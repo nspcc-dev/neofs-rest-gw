@@ -62,15 +62,18 @@ func (a *API) GetContainer(params operations.GetContainerParams) middleware.Resp
 
 	attrs := make([]*models.Attribute, len(cnr.Attributes()))
 	for i, attr := range cnr.Attributes() {
-		attrs[i] = &models.Attribute{Key: attr.Key(), Value: attr.Value()}
+		attrs[i] = &models.Attribute{
+			Key:   NewString(attr.Key()),
+			Value: NewString(attr.Value()),
+		}
 	}
 
 	resp := &models.ContainerInfo{
-		ContainerID:     params.ContainerID,
-		Version:         cnr.Version().String(),
-		OwnerID:         cnr.OwnerID().String(),
-		BasicACL:        acl.BasicACL(cnr.BasicACL()).String(),
-		PlacementPolicy: strings.Join(policy.Encode(cnr.PlacementPolicy()), " "),
+		ContainerID:     NewString(params.ContainerID),
+		Version:         NewString(cnr.Version().String()),
+		OwnerID:         NewString(cnr.OwnerID().String()),
+		BasicACL:        NewString(acl.BasicACL(cnr.BasicACL()).String()),
+		PlacementPolicy: NewString(strings.Join(policy.Encode(cnr.PlacementPolicy()), " ")),
 		Attributes:      attrs,
 	}
 

@@ -9,6 +9,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/nspcc-dev/neofs-rest-gw/gen/models"
+
 	objectv2 "github.com/nspcc-dev/neofs-api-go/v2/object"
 	"github.com/nspcc-dev/neofs-sdk-go/netmap"
 	"github.com/nspcc-dev/neofs-sdk-go/object"
@@ -215,4 +217,8 @@ func updateExpirationHeader(headers map[string]string, durations *epochDurations
 
 func NewString(val string) *string {
 	return &val
+}
+
+func NewError(err error) models.Error {
+	return models.Error(err.Error())
 }
