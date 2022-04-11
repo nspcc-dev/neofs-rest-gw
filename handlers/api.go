@@ -1,11 +1,13 @@
 package handlers
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"strings"
 
 	"github.com/go-openapi/errors"
+	"github.com/google/uuid"
 	"github.com/nspcc-dev/neo-go/pkg/crypto/keys"
 	"github.com/nspcc-dev/neofs-rest-gw/gen/models"
 	"github.com/nspcc-dev/neofs-rest-gw/gen/restapi/operations"
@@ -35,6 +37,17 @@ type BearerToken struct {
 	Key       string
 }
 
+// ContextKey is used for context.Context value. The value requires a key that is not primitive type.
+type ContextKey string
+
+const (
+	// BearerPrefix is the prefix for authorization token
+	BearerPrefix = "Bearer "
+
+	// ContextKeyRequestID is the ContextKey for RequestID
+	ContextKeyRequestID ContextKey = "requestID"
+)
+
 // New creates a new API using specified logger, connection pool and other parameters.
 func New(prm *PrmAPI) *API {
 	return &API{
@@ -45,10 +58,6 @@ func New(prm *PrmAPI) *API {
 	}
 }
 
-const (
-	bearerPrefix = "Bearer "
-)
-
 func (a *API) Configure(api *operations.NeofsRestGwAPI) http.Handler {
 	api.ServeError = errors.ServeError
 
@@ -57,10 +66,10 @@ func (a *API) Configure(api *operations.NeofsRestGwAPI) http.Handler {
 	api.PutContainerHandler = operations.PutContainerHandlerFunc(a.PutContainers)
 	api.GetContainerHandler = operations.GetContainerHandlerFunc(a.GetContainer)
 	api.BearerAuthAuth = func(s string) (*models.Principal, error) {
-		if !strings.HasPrefix(s, bearerPrefix) {
+		if !strings.HasPrefix(s, BearerPrefix) {
 			return nil, fmt.Errorf("has not bearer token")
 		}
-		if s = strings.TrimPrefix(s, bearerPrefix); len(s) == 0 {
+		if s = strings.TrimPrefix(s, BearerPrefix); len(s) == 0 {
 			return nil, fmt.Errorf("bearer token is empty")
 		}
 
@@ -71,7 +80,7 @@ func (a *API) Configure(api *operations.NeofsRestGwAPI) http.Handler {
 
 	api.ServerShutdown = func() {}
 
-	return setupGlobalMiddleware(api.Serve(setupMiddlewares))
+	return a.setupGlobalMiddleware(api.Serve(setupMiddlewares))
 }
 
 // The middleware configuration is for the handler executors. These do not apply to the swagger.json document.
@@ -82,6 +91,15 @@ func setupMiddlewares(handler http.Handler) http.Handler {
 
 // The middleware configuration happens before anything, this middleware also applies to serving the swagger.json document.
 // So this is a good place to plug in a panic handling middleware, logging and metrics.
-func setupGlobalMiddleware(handler http.Handler) http.Handler {
-	return handler
+func (a *API) setupGlobalMiddleware(handler http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requestID := uuid.NewString()
+		a.log.Info("request", zap.String("remote", r.RemoteAddr),
+			zap.String("method", r.Method), zap.String("uri", r.RequestURI),
+			zap.String("id", requestID))
+
+		ctx := context.WithValue(r.Context(), ContextKeyRequestID, requestID)
+
+		handler.ServeHTTP(w, r.WithContext(ctx))
+	})
 }
