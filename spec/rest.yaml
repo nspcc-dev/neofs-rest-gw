@@ -1,0 +1,388 @@
+swagger: "2.0"
+info:
+  title: REST API NeoFS
+  description: REST API NeoFS
+  version: v1
+
+host: localhost:8090
+basePath: /v1
+schemes:
+  - http
+#  - https
+
+securityDefinitions:
+  BearerAuth:
+    type: apiKey
+    in: header
+    name: Authorization
+
+security:
+  - BearerAuth: [ ]
+
+paths:
+  /auth:
+    post:
+      operationId: auth
+      summary: Form bearer token to futher requests
+      security: [ ]
+      parameters:
+        - in: header
+          description: Supported operation scope for token
+          name: X-Neofs-Token-Scope
+          type: string
+          enum:
+            - object
+            - container
+          required: true
+        - in: header
+          description: Public key of user
+          name: X-Neofs-Token-Signature-Key
+          type: string
+          required: true
+        - in: header
+          description: Token lifetime in epoch
+          name: X-Neofs-Token-Lifetime
+          type: integer
+          default: 100
+        - in: body
+          name: token
+          required: true
+          description: Bearer token
+          schema:
+            $ref: '#/definitions/Bearer'
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      responses:
+        200:
+          description: Base64 encoded stable binary marshaled bearer token
+          schema:
+            $ref: '#/definitions/TokenResponse'
+        400:
+          description: Bad request
+          schema:
+            $ref: '#/definitions/Error'
+
+  /objects:
+    parameters:
+      - in: header
+        name: X-Neofs-Token-Signature
+        description: Base64 encoded signature for bearer token
+        type: string
+        required: true
+      #        example:
+      #          BGtqMEpzxTabrdIIIDAnL79Cs7bm46+8lsFaMMU+LCKw/ujEjF0r5mVLKixWmxoreuj1E0BXWcqp9d3wGV6Hc9I=
+      - in: header
+        name: X-Neofs-Token-Signature-Key
+        description: Hex encoded the public part of the key that signed the bearer token
+        type: string
+        required: true
+    #        example:
+    #          031a6c6fbbdf02ca351745fa86b9ba5a9452d785ac4f7fc2b7548ca2a46c4fcf4a
+    put:
+      operationId: putObject
+      summary: Upload object to NeoFS
+      parameters:
+        - in: body
+          required: true
+          name: object
+          description: Object info to upload
+          schema:
+            type: object
+            properties:
+              containerId:
+                type: string
+              fileName:
+                type: string
+              payload:
+                type: string
+            required:
+              - containerId
+              - fileName
+            example:
+              containerId: 5HZTn5qkRnmgSz9gSrw22CEdPPk6nQhkwf2Mgzyvkikv
+              fileName: myFile.txt
+              payload: Y29udGVudCBvZiBmaWxl
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      responses:
+        200:
+          description: Address of uploaded objects
+          schema:
+            type: object
+            properties:
+              objectId:
+                type: string
+              containerId:
+                type: string
+            required:
+              - objectId
+              - containerId
+            example:
+              objectId: 8N3o7Dtr6T1xteCt6eRwhpmJ7JhME58Hyu1dvaswuTDd
+              containerId: 5HZTn5qkRnmgSz9gSrw22CEdPPk6nQhkwf2Mgzyvkikv
+        400:
+          description: Bad request
+          schema:
+            $ref: '#/definitions/Error'
+
+  /containers:
+    parameters:
+      - in: header
+        name: X-Neofs-Token-Signature
+        description: Base64 encoded signature for bearer token
+        type: string
+        required: true
+      #        example:
+      #          BEvF1N0heytTXn1p2ZV3jN8YM25YkG4FxHmPeq2kWP5HeHCAN4cDjONyX6Bh30Ypw6Kfch2nYOfhiL+rClYQJ9Q=
+      - in: header
+        name: X-Neofs-Token-signature-Key
+        description: Hex encoded the public part of the key that signed the bearer token
+        type: string
+        required: true
+    #        example:
+    #          031a6c6fbbdf02ca351745fa86b9ba5a9452d785ac4f7fc2b7548ca2a46c4fcf4a
+    put:
+      operationId: putContainer
+      summary: Create new container in NeoFS
+      parameters:
+        - in: body
+          name: container
+          required: true
+          description: Container info
+          schema:
+            type: object
+            properties:
+              containerName:
+                type: string
+              placementPolicy:
+                type: string
+              basicAcl:
+                type: string
+            required:
+              - containerName
+            example:
+              containerId: container
+              placementPolicy: "REP 3"
+              basicAcl: public-read-write
+      responses:
+        200:
+          description: Address of uploaded objects
+          schema:
+            type: object
+            properties:
+              containerId:
+                type: string
+            required:
+              - containerId
+            example:
+              containerId: 5HZTn5qkRnmgSz9gSrw22CEdPPk6nQhkwf2Mgzyvkikv
+        400:
+          description: Bad request
+          schema:
+            $ref: '#/definitions/Error'
+
+  /containers/{containerId}:
+    get:
+      operationId: getContainer
+      summary: Get container by id
+      security: [ ]
+      parameters:
+        - in: path
+          name: containerId
+          type: string
+          required: true
+          description: Base58 encoded container id
+      responses:
+        200:
+          description: Container info
+          schema:
+            $ref: '#/definitions/ContainerInfo'
+        400:
+          description: Bad request
+          schema:
+            $ref: '#/definitions/Error'
+
+definitions:
+  Bearer:
+    type: object
+    properties:
+      object:
+        type: array
+        items:
+          $ref: '#/definitions/Record'
+      container:
+        $ref: '#/definitions/Rule'
+  Record:
+    type: object
+    properties:
+      action:
+        $ref: '#/definitions/Action'
+      operation:
+        $ref: '#/definitions/Operation'
+      filters:
+        type: array
+        items:
+          $ref: '#/definitions/Filter'
+      targets:
+        type: array
+        items:
+          $ref: '#/definitions/Target'
+    required:
+      - action
+      - operation
+      - filters
+      - targets
+    example:
+      operation: GET
+      action: ALLOW
+      filters: [ ]
+      targets:
+        - role: OTHERS
+          keys: [ ]
+  Action:
+    type: string
+    enum:
+      - ALLOW
+      - DENY
+  Operation:
+    type: string
+    enum:
+      - GET
+      - HEAD
+      - PUT
+      - DELETE
+      - SEARCH
+      - RANGE
+      - RANGEHASH
+  Filter:
+    type: object
+    properties:
+      headerType:
+        $ref: '#/definitions/HeaderType'
+      matchType:
+        $ref: '#/definitions/MatchType'
+      key:
+        type: string
+      value:
+        type: string
+    required:
+      - headerType
+      - matchType
+      - key
+      - value
+    example:
+      headerType: OBJECT
+      matchType: STRING_NOT_EQUAL
+      key: FileName
+      value: myfile
+  HeaderType:
+    type: string
+    enum:
+      - REQUEST
+      - OBJECT
+      - SERVICE
+  MatchType:
+    type: string
+    enum:
+      - STRING_EQUAL
+      - STRING_NOT_EQUAL
+  Target:
+    type: object
+    properties:
+      role:
+        $ref: '#/definitions/Role'
+      keys:
+        type: array
+        items:
+          type: string
+    required:
+      - role
+      - keys
+    example:
+      role: USER
+      keys:
+        - 021dc56fc6d81d581ae7605a8e00e0e0bab6cbad566a924a527339475a97a8e38e
+  Role:
+    type: string
+    enum:
+      - USER
+      - SYSTEM
+      - OTHERS
+  Rule:
+    type: object
+    properties:
+      verb:
+        $ref: '#/definitions/Verb'
+      containerId:
+        type: string
+    required:
+      - verb
+  Verb:
+    type: string
+    enum:
+      - PUT
+      - DELETE
+      - SETEACL
+  TokenResponse:
+    type: object
+    properties:
+      type:
+        $ref: '#/definitions/TokenType'
+      token:
+        type: string
+    required:
+      - type
+      - token
+    example:
+      - type: object
+        token: sometoken-todo-add
+      - type: container
+        token: ChCpanIBJCpJuJz42KOmGMSnEhsKGTWquaX2Lq6GhhO4faOYkLD0f9WkXuYJlq4aBAhnGAMiIQJgFcIEghQB5lq3AJZOVswInwc1IGhlQ7NCUh4DFO3UATIECAEQAQ==
+  TokenType:
+    type: string
+    enum:
+      - object
+      - container
+  ContainerInfo:
+    type: object
+    properties:
+      containerId:
+        type: string
+      version:
+        type: string
+      ownerId:
+        type: string
+      basicAcl:
+        type: string
+      placementPolicy:
+        type: string
+      attributes:
+        type: array
+        items:
+          $ref: '#/definitions/Attribute'
+    example:
+      containerId: 5HZTn5qkRnmgSz9gSrw22CEdPPk6nQhkwf2Mgzyvkikv
+      version: "2.11"
+      ownerId: NbUgTSFvPmsRxmGeWpuuGeJUoRoi6PErcM
+      basicAcl: "0x1fbf9fff"
+      placementPolicy: "REP 2"
+      attribute:
+        - key: Timestamp
+          value: "1648810072"
+        - key: Name
+          value: container
+  Attribute:
+    type: object
+    properties:
+      key:
+        type: string
+      value:
+        type: string
+  Principal:
+    type: string
+  Error:
+    type: string
