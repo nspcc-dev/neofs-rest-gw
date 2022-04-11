@@ -6,30 +6,27 @@ package operations
 // Editing this file might prove futile when you re-run the swagger generate command
 
 import (
-	"context"
-	"io"
 	"net/http"
 
 	"github.com/go-openapi/errors"
-	"github.com/go-openapi/runtime"
 	"github.com/go-openapi/runtime/middleware"
 	"github.com/go-openapi/strfmt"
 	"github.com/go-openapi/validate"
 )
 
-// NewPutContainerParams creates a new PutContainerParams object
+// NewGetObjectInfoParams creates a new GetObjectInfoParams object
 //
 // There are no default values defined in the spec.
-func NewPutContainerParams() PutContainerParams {
+func NewGetObjectInfoParams() GetObjectInfoParams {
 
-	return PutContainerParams{}
+	return GetObjectInfoParams{}
 }
 
-// PutContainerParams contains all the bound params for the put container operation
+// GetObjectInfoParams contains all the bound params for the get object info operation
 // typically these are obtained from a http.Request
 //
-// swagger:parameters putContainer
-type PutContainerParams struct {
+// swagger:parameters getObjectInfo
+type GetObjectInfoParams struct {
 
 	// HTTP Request Object
 	HTTPRequest *http.Request `json:"-"`
@@ -44,18 +41,23 @@ type PutContainerParams struct {
 	  In: header
 	*/
 	XNeofsTokenSignatureKey string
-	/*Container info
+	/*Base58 encoded container id
 	  Required: true
-	  In: body
+	  In: path
 	*/
-	Container PutContainerBody
+	ContainerID string
+	/*Base58 encoded object id
+	  Required: true
+	  In: path
+	*/
+	ObjectID string
 }
 
 // BindRequest both binds and validates a request, it assumes that complex things implement a Validatable(strfmt.Registry) error interface
 // for simple values it will use straight method calls.
 //
-// To ensure default values, the struct must have been initialized with NewPutContainerParams() beforehand.
-func (o *PutContainerParams) BindRequest(r *http.Request, route *middleware.MatchedRoute) error {
+// To ensure default values, the struct must have been initialized with NewGetObjectInfoParams() beforehand.
+func (o *GetObjectInfoParams) BindRequest(r *http.Request, route *middleware.MatchedRoute) error {
 	var res []error
 
 	o.HTTPRequest = r
@@ -68,32 +70,14 @@ func (o *PutContainerParams) BindRequest(r *http.Request, route *middleware.Matc
 		res = append(res, err)
 	}
 
-	if runtime.HasBody(r) {
-		defer r.Body.Close()
-		var body PutContainerBody
-		if err := route.Consumer.Consume(r.Body, &body); err != nil {
-			if err == io.EOF {
-				res = append(res, errors.Required("container", "body", ""))
-			} else {
-				res = append(res, errors.NewParseError("container", "body", "", err))
-			}
-		} else {
-			// validate body object
-			if err := body.Validate(route.Formats); err != nil {
-				res = append(res, err)
-			}
+	rContainerID, rhkContainerID, _ := route.Params.GetOK("containerId")
+	if err := o.bindContainerID(rContainerID, rhkContainerID, route.Formats); err != nil {
+		res = append(res, err)
+	}
 
-			ctx := validate.WithOperationRequest(context.Background())
-			if err := body.ContextValidate(ctx, route.Formats); err != nil {
-				res = append(res, err)
-			}
-
-			if len(res) == 0 {
-				o.Container = body
-			}
-		}
-	} else {
-		res = append(res, errors.Required("container", "body", ""))
+	rObjectID, rhkObjectID, _ := route.Params.GetOK("objectId")
+	if err := o.bindObjectID(rObjectID, rhkObjectID, route.Formats); err != nil {
+		res = append(res, err)
 	}
 	if len(res) > 0 {
 		return errors.CompositeValidationError(res...)
@@ -102,7 +86,7 @@ func (o *PutContainerParams) BindRequest(r *http.Request, route *middleware.Matc
 }
 
 // bindXNeofsTokenSignature binds and validates parameter XNeofsTokenSignature from header.
-func (o *PutContainerParams) bindXNeofsTokenSignature(rawData []string, hasKey bool, formats strfmt.Registry) error {
+func (o *GetObjectInfoParams) bindXNeofsTokenSignature(rawData []string, hasKey bool, formats strfmt.Registry) error {
 	if !hasKey {
 		return errors.Required("X-Neofs-Token-Signature", "header", rawData)
 	}
@@ -122,7 +106,7 @@ func (o *PutContainerParams) bindXNeofsTokenSignature(rawData []string, hasKey b
 }
 
 // bindXNeofsTokenSignatureKey binds and validates parameter XNeofsTokenSignatureKey from header.
-func (o *PutContainerParams) bindXNeofsTokenSignatureKey(rawData []string, hasKey bool, formats strfmt.Registry) error {
+func (o *GetObjectInfoParams) bindXNeofsTokenSignatureKey(rawData []string, hasKey bool, formats strfmt.Registry) error {
 	if !hasKey {
 		return errors.Required("X-Neofs-Token-Signature-Key", "header", rawData)
 	}
@@ -137,6 +121,34 @@ func (o *PutContainerParams) bindXNeofsTokenSignatureKey(rawData []string, hasKe
 		return err
 	}
 	o.XNeofsTokenSignatureKey = raw
+
+	return nil
+}
+
+// bindContainerID binds and validates parameter ContainerID from path.
+func (o *GetObjectInfoParams) bindContainerID(rawData []string, hasKey bool, formats strfmt.Registry) error {
+	var raw string
+	if len(rawData) > 0 {
+		raw = rawData[len(rawData)-1]
+	}
+
+	// Required: true
+	// Parameter is provided by construction from the route
+	o.ContainerID = raw
+
+	return nil
+}
+
+// bindObjectID binds and validates parameter ObjectID from path.
+func (o *GetObjectInfoParams) bindObjectID(rawData []string, hasKey bool, formats strfmt.Registry) error {
+	var raw string
+	if len(rawData) > 0 {
+		raw = rawData[len(rawData)-1]
+	}
+
+	// Required: true
+	// Parameter is provided by construction from the route
+	o.ObjectID = raw
 
 	return nil
 }

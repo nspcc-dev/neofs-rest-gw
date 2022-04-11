@@ -15,9 +15,24 @@ securityDefinitions:
     type: apiKey
     in: header
     name: Authorization
+    description: Bearer token body to provide with NeoFS request. Must have 'Bearer ' prefix.
 
 security:
   - BearerAuth: [ ]
+
+parameters:
+  signatureParam:
+    in: header
+    name: X-Neofs-Token-Signature
+    description: Base64 encoded signature for bearer token
+    type: string
+    required: true
+  signatureKeyParam:
+    in: header
+    name: X-Neofs-Token-Signature-Key
+    description: Hex encoded the public part of the key that signed the bearer token
+    type: string
+    required: true
 
 paths:
   /auth:
@@ -66,20 +81,8 @@ paths:
 
   /objects:
     parameters:
-      - in: header
-        name: X-Neofs-Token-Signature
-        description: Base64 encoded signature for bearer token
-        type: string
-        required: true
-      #        example:
-      #          BGtqMEpzxTabrdIIIDAnL79Cs7bm46+8lsFaMMU+LCKw/ujEjF0r5mVLKixWmxoreuj1E0BXWcqp9d3wGV6Hc9I=
-      - in: header
-        name: X-Neofs-Token-Signature-Key
-        description: Hex encoded the public part of the key that signed the bearer token
-        type: string
-        required: true
-    #        example:
-    #          031a6c6fbbdf02ca351745fa86b9ba5a9452d785ac4f7fc2b7548ca2a46c4fcf4a
+      - $ref: '#/parameters/signatureParam'
+      - $ref: '#/parameters/signatureKeyParam'
     put:
       operationId: putObject
       summary: Upload object to NeoFS
@@ -129,22 +132,37 @@ paths:
           schema:
             $ref: '#/definitions/Error'
 
+  /objects/{containerId}/{objectId}:
+    parameters:
+      - $ref: '#/parameters/signatureParam'
+      - $ref: '#/parameters/signatureKeyParam'
+      - in: path
+        name: containerId
+        type: string
+        required: true
+        description: Base58 encoded container id
+      - in: path
+        name: objectId
+        type: string
+        required: true
+        description: Base58 encoded object id
+    get:
+      operationId: getObjectInfo
+      summary: Get object info by address and
+      responses:
+        200:
+          description: Object info
+          schema:
+            $ref: '#/definitions/ObjectInfo'
+        400:
+          description: Bad request
+          schema:
+            $ref: '#/definitions/Error'
+
   /containers:
     parameters:
-      - in: header
-        name: X-Neofs-Token-Signature
-        description: Base64 encoded signature for bearer token
-        type: string
-        required: true
-      #        example:
-      #          BEvF1N0heytTXn1p2ZV3jN8YM25YkG4FxHmPeq2kWP5HeHCAN4cDjONyX6Bh30Ypw6Kfch2nYOfhiL+rClYQJ9Q=
-      - in: header
-        name: X-Neofs-Token-signature-Key
-        description: Hex encoded the public part of the key that signed the bearer token
-        type: string
-        required: true
-    #        example:
-    #          031a6c6fbbdf02ca351745fa86b9ba5a9452d785ac4f7fc2b7548ca2a46c4fcf4a
+      - $ref: '#/parameters/signatureParam'
+      - $ref: '#/parameters/signatureKeyParam'
     put:
       operationId: putContainer
       summary: Create new container in NeoFS
@@ -364,6 +382,13 @@ definitions:
         type: array
         items:
           $ref: '#/definitions/Attribute'
+    required:
+      - containerId
+      - version
+      - ownerId
+      - basicAcl
+      - placementPolicy
+      - attributes
     example:
       containerId: 5HZTn5qkRnmgSz9gSrw22CEdPPk6nQhkwf2Mgzyvkikv
       version: "2.11"
@@ -375,6 +400,34 @@ definitions:
           value: "1648810072"
         - key: Name
           value: container
+  ObjectInfo:
+    type: object
+    properties:
+      containerId:
+        type: string
+      objectId:
+        type: string
+      ownerId:
+        type: string
+      attributes:
+        type: array
+        items:
+          $ref: '#/definitions/Attribute'
+    required:
+      - containerId
+      - objectId
+      - ownerId
+      - attributes
+    example:
+      containerId: 5HZTn5qkRnmgSz9gSrw22CEdPPk6nQhkwf2Mgzyvkikv
+      objectId: 8N3o7Dtr6T1xteCt6eRwhpmJ7JhME58Hyu1dvaswuTDd
+      ownerId: NbUgTSFvPmsRxmGeWpuuGeJUoRoi6PErcM
+      attribute:
+        - key: Timestamp
+          value: "1648810072"
+        - key: Name
+          value: object
+
   Attribute:
     type: object
     properties:
@@ -382,6 +435,9 @@ definitions:
         type: string
       value:
         type: string
+    required:
+      - key
+      - value
   Principal:
     type: string
   Error:

@@ -155,18 +155,10 @@ func init() {
       },
       "parameters": [
         {
-          "type": "string",
-          "description": "Base64 encoded signature for bearer token",
-          "name": "X-Neofs-Token-Signature",
-          "in": "header",
-          "required": true
+          "$ref": "#/parameters/signatureParam"
         },
         {
-          "type": "string",
-          "description": "Hex encoded the public part of the key that signed the bearer token",
-          "name": "X-Neofs-Token-signature-Key",
-          "in": "header",
-          "required": true
+          "$ref": "#/parameters/signatureKeyParam"
         }
       ]
     },
@@ -274,17 +266,51 @@ func init() {
       },
       "parameters": [
         {
+          "$ref": "#/parameters/signatureParam"
+        },
+        {
+          "$ref": "#/parameters/signatureKeyParam"
+        }
+      ]
+    },
+    "/objects/{containerId}/{objectId}": {
+      "get": {
+        "summary": "Get object info by address and",
+        "operationId": "getObjectInfo",
+        "responses": {
+          "200": {
+            "description": "Object info",
+            "schema": {
+              "$ref": "#/definitions/ObjectInfo"
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          }
+        }
+      },
+      "parameters": [
+        {
+          "$ref": "#/parameters/signatureParam"
+        },
+        {
+          "$ref": "#/parameters/signatureKeyParam"
+        },
+        {
           "type": "string",
-          "description": "Base64 encoded signature for bearer token",
-          "name": "X-Neofs-Token-Signature",
-          "in": "header",
+          "description": "Base58 encoded container id",
+          "name": "containerId",
+          "in": "path",
           "required": true
         },
         {
           "type": "string",
-          "description": "Hex encoded the public part of the key that signed the bearer token",
-          "name": "X-Neofs-Token-Signature-Key",
-          "in": "header",
+          "description": "Base58 encoded object id",
+          "name": "objectId",
+          "in": "path",
           "required": true
         }
       ]
@@ -300,6 +326,10 @@ func init() {
     },
     "Attribute": {
       "type": "object",
+      "required": [
+        "key",
+        "value"
+      ],
       "properties": {
         "key": {
           "type": "string"
@@ -325,6 +355,14 @@ func init() {
     },
     "ContainerInfo": {
       "type": "object",
+      "required": [
+        "containerId",
+        "version",
+        "ownerId",
+        "basicAcl",
+        "placementPolicy",
+        "attributes"
+      ],
       "properties": {
         "attributes": {
           "type": "array",
@@ -412,6 +450,47 @@ func init() {
         "STRING_EQUAL",
         "STRING_NOT_EQUAL"
       ]
+    },
+    "ObjectInfo": {
+      "type": "object",
+      "required": [
+        "containerId",
+        "objectId",
+        "ownerId",
+        "attributes"
+      ],
+      "properties": {
+        "attributes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Attribute"
+          }
+        },
+        "containerId": {
+          "type": "string"
+        },
+        "objectId": {
+          "type": "string"
+        },
+        "ownerId": {
+          "type": "string"
+        }
+      },
+      "example": {
+        "attribute": [
+          {
+            "key": "Timestamp",
+            "value": "1648810072"
+          },
+          {
+            "key": "Name",
+            "value": "object"
+          }
+        ],
+        "containerId": "5HZTn5qkRnmgSz9gSrw22CEdPPk6nQhkwf2Mgzyvkikv",
+        "objectId": "8N3o7Dtr6T1xteCt6eRwhpmJ7JhME58Hyu1dvaswuTDd",
+        "ownerId": "NbUgTSFvPmsRxmGeWpuuGeJUoRoi6PErcM"
+      }
     },
     "Operation": {
       "type": "string",
@@ -555,8 +634,25 @@ func init() {
       ]
     }
   },
+  "parameters": {
+    "signatureKeyParam": {
+      "type": "string",
+      "description": "Hex encoded the public part of the key that signed the bearer token",
+      "name": "X-Neofs-Token-Signature-Key",
+      "in": "header",
+      "required": true
+    },
+    "signatureParam": {
+      "type": "string",
+      "description": "Base64 encoded signature for bearer token",
+      "name": "X-Neofs-Token-Signature",
+      "in": "header",
+      "required": true
+    }
+  },
   "securityDefinitions": {
     "BearerAuth": {
+      "description": "Bearer token body to provide with NeoFS request. Must have 'Bearer ' prefix.",
       "type": "apiKey",
       "name": "Authorization",
       "in": "header"
@@ -715,7 +811,7 @@ func init() {
         {
           "type": "string",
           "description": "Hex encoded the public part of the key that signed the bearer token",
-          "name": "X-Neofs-Token-signature-Key",
+          "name": "X-Neofs-Token-Signature-Key",
           "in": "header",
           "required": true
         }
@@ -839,6 +935,56 @@ func init() {
           "required": true
         }
       ]
+    },
+    "/objects/{containerId}/{objectId}": {
+      "get": {
+        "summary": "Get object info by address and",
+        "operationId": "getObjectInfo",
+        "responses": {
+          "200": {
+            "description": "Object info",
+            "schema": {
+              "$ref": "#/definitions/ObjectInfo"
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          }
+        }
+      },
+      "parameters": [
+        {
+          "type": "string",
+          "description": "Base64 encoded signature for bearer token",
+          "name": "X-Neofs-Token-Signature",
+          "in": "header",
+          "required": true
+        },
+        {
+          "type": "string",
+          "description": "Hex encoded the public part of the key that signed the bearer token",
+          "name": "X-Neofs-Token-Signature-Key",
+          "in": "header",
+          "required": true
+        },
+        {
+          "type": "string",
+          "description": "Base58 encoded container id",
+          "name": "containerId",
+          "in": "path",
+          "required": true
+        },
+        {
+          "type": "string",
+          "description": "Base58 encoded object id",
+          "name": "objectId",
+          "in": "path",
+          "required": true
+        }
+      ]
     }
   },
   "definitions": {
@@ -851,6 +997,10 @@ func init() {
     },
     "Attribute": {
       "type": "object",
+      "required": [
+        "key",
+        "value"
+      ],
       "properties": {
         "key": {
           "type": "string"
@@ -876,6 +1026,14 @@ func init() {
     },
     "ContainerInfo": {
       "type": "object",
+      "required": [
+        "containerId",
+        "version",
+        "ownerId",
+        "basicAcl",
+        "placementPolicy",
+        "attributes"
+      ],
       "properties": {
         "attributes": {
           "type": "array",
@@ -963,6 +1121,47 @@ func init() {
         "STRING_EQUAL",
         "STRING_NOT_EQUAL"
       ]
+    },
+    "ObjectInfo": {
+      "type": "object",
+      "required": [
+        "containerId",
+        "objectId",
+        "ownerId",
+        "attributes"
+      ],
+      "properties": {
+        "attributes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Attribute"
+          }
+        },
+        "containerId": {
+          "type": "string"
+        },
+        "objectId": {
+          "type": "string"
+        },
+        "ownerId": {
+          "type": "string"
+        }
+      },
+      "example": {
+        "attribute": [
+          {
+            "key": "Timestamp",
+            "value": "1648810072"
+          },
+          {
+            "key": "Name",
+            "value": "object"
+          }
+        ],
+        "containerId": "5HZTn5qkRnmgSz9gSrw22CEdPPk6nQhkwf2Mgzyvkikv",
+        "objectId": "8N3o7Dtr6T1xteCt6eRwhpmJ7JhME58Hyu1dvaswuTDd",
+        "ownerId": "NbUgTSFvPmsRxmGeWpuuGeJUoRoi6PErcM"
+      }
     },
     "Operation": {
       "type": "string",
@@ -1106,8 +1305,25 @@ func init() {
       ]
     }
   },
+  "parameters": {
+    "signatureKeyParam": {
+      "type": "string",
+      "description": "Hex encoded the public part of the key that signed the bearer token",
+      "name": "X-Neofs-Token-Signature-Key",
+      "in": "header",
+      "required": true
+    },
+    "signatureParam": {
+      "type": "string",
+      "description": "Base64 encoded signature for bearer token",
+      "name": "X-Neofs-Token-Signature",
+      "in": "header",
+      "required": true
+    }
+  },
   "securityDefinitions": {
     "BearerAuth": {
+      "description": "Bearer token body to provide with NeoFS request. Must have 'Bearer ' prefix.",
       "type": "apiKey",
       "name": "Authorization",
       "in": "header"

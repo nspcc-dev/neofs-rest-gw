@@ -41,10 +41,10 @@ type BearerToken struct {
 type ContextKey string
 
 const (
-	// BearerPrefix is the prefix for authorization token
+	// BearerPrefix is the prefix for authorization token.
 	BearerPrefix = "Bearer "
 
-	// ContextKeyRequestID is the ContextKey for RequestID
+	// ContextKeyRequestID is the ContextKey for RequestID.
 	ContextKeyRequestID ContextKey = "requestID"
 )
 
@@ -62,9 +62,13 @@ func (a *API) Configure(api *operations.NeofsRestGwAPI) http.Handler {
 	api.ServeError = errors.ServeError
 
 	api.AuthHandler = operations.AuthHandlerFunc(a.PostAuth)
+
 	api.PutObjectHandler = operations.PutObjectHandlerFunc(a.PutObjects)
+	api.GetObjectInfoHandler = operations.GetObjectInfoHandlerFunc(a.GetObjectInfo)
+
 	api.PutContainerHandler = operations.PutContainerHandlerFunc(a.PutContainers)
 	api.GetContainerHandler = operations.GetContainerHandlerFunc(a.GetContainer)
+
 	api.BearerAuthAuth = func(s string) (*models.Principal, error) {
 		if !strings.HasPrefix(s, BearerPrefix) {
 			return nil, fmt.Errorf("has not bearer token")

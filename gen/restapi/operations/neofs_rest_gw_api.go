@@ -50,6 +50,9 @@ func NewNeofsRestGwAPI(spec *loads.Document) *NeofsRestGwAPI {
 		GetContainerHandler: GetContainerHandlerFunc(func(params GetContainerParams) middleware.Responder {
 			return middleware.NotImplemented("operation GetContainer has not yet been implemented")
 		}),
+		GetObjectInfoHandler: GetObjectInfoHandlerFunc(func(params GetObjectInfoParams, principal *models.Principal) middleware.Responder {
+			return middleware.NotImplemented("operation GetObjectInfo has not yet been implemented")
+		}),
 		PutContainerHandler: PutContainerHandlerFunc(func(params PutContainerParams, principal *models.Principal) middleware.Responder {
 			return middleware.NotImplemented("operation PutContainer has not yet been implemented")
 		}),
@@ -110,6 +113,8 @@ type NeofsRestGwAPI struct {
 	AuthHandler AuthHandler
 	// GetContainerHandler sets the operation handler for the get container operation
 	GetContainerHandler GetContainerHandler
+	// GetObjectInfoHandler sets the operation handler for the get object info operation
+	GetObjectInfoHandler GetObjectInfoHandler
 	// PutContainerHandler sets the operation handler for the put container operation
 	PutContainerHandler PutContainerHandler
 	// PutObjectHandler sets the operation handler for the put object operation
@@ -200,6 +205,9 @@ func (o *NeofsRestGwAPI) Validate() error {
 	}
 	if o.GetContainerHandler == nil {
 		unregistered = append(unregistered, "GetContainerHandler")
+	}
+	if o.GetObjectInfoHandler == nil {
+		unregistered = append(unregistered, "GetObjectInfoHandler")
 	}
 	if o.PutContainerHandler == nil {
 		unregistered = append(unregistered, "PutContainerHandler")
@@ -314,6 +322,10 @@ func (o *NeofsRestGwAPI) initHandlerCache() {
 		o.handlers["GET"] = make(map[string]http.Handler)
 	}
 	o.handlers["GET"]["/containers/{containerId}"] = NewGetContainer(o.context, o.GetContainerHandler)
+	if o.handlers["GET"] == nil {
+		o.handlers["GET"] = make(map[string]http.Handler)
+	}
+	o.handlers["GET"]["/objects/{containerId}/{objectId}"] = NewGetObjectInfo(o.context, o.GetObjectInfoHandler)
 	if o.handlers["PUT"] == nil {
 		o.handlers["PUT"] = make(map[string]http.Handler)
 	}
