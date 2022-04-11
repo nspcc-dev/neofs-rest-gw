@@ -1,0 +1,12 @@
+.idea
+bin
+temp
+/plugins/
+/vendor/
+
+*.log
+
+.cache
+
+coverage.txt
+coverage.html
