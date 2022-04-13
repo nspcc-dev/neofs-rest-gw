@@ -69,6 +69,8 @@ func (a *API) Configure(api *operations.NeofsRestGwAPI) http.Handler {
 	api.PutContainerHandler = operations.PutContainerHandlerFunc(a.PutContainers)
 	api.GetContainerHandler = operations.GetContainerHandlerFunc(a.GetContainer)
 	api.DeleteContainerHandler = operations.DeleteContainerHandlerFunc(a.DeleteContainer)
+	api.PutContainerEACLHandler = operations.PutContainerEACLHandlerFunc(a.PutContainerEACL)
+	api.GetContainerEACLHandler = operations.GetContainerEACLHandlerFunc(a.GetContainerEACL)
 
 	api.BearerAuthAuth = func(s string) (*models.Principal, error) {
 		if !strings.HasPrefix(s, BearerPrefix) {

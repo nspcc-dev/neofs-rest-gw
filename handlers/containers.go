@@ -81,6 +81,49 @@ func (a *API) GetContainer(params operations.GetContainerParams) middleware.Resp
 	return operations.NewGetContainerOK().WithPayload(resp)
 }
 
+// PutContainerEACL handler that update container eacl.
+func (a *API) PutContainerEACL(params operations.PutContainerEACLParams, principal *models.Principal) middleware.Responder {
+	cnrID, err := parseContainerID(params.ContainerID)
+	if err != nil {
+		a.log.Error("invalid container id", zap.Error(err))
+		return operations.NewPutContainerEACLBadRequest().WithPayload("invalid container id")
+	}
+
+	bt := &BearerToken{
+		Token:     string(*principal),
+		Signature: params.XNeofsTokenSignature,
+		Key:       params.XNeofsTokenSignatureKey,
+	}
+	stoken, err := prepareSessionToken(bt)
+	if err != nil {
+		return wrapError(err)
+	}
+
+	if err = setContainerEACL(params.HTTPRequest.Context(), a.pool, cnrID, stoken, params.Eacl); err != nil {
+		a.log.Error("failed set container eacl", zap.Error(err))
+		return operations.NewPutContainerEACLBadRequest().WithPayload(NewError(err))
+	}
+
+	return operations.NewPutContainerEACLOK()
+}
+
+// GetContainerEACL handler that returns container eacl.
+func (a *API) GetContainerEACL(params operations.GetContainerEACLParams) middleware.Responder {
+	cnrID, err := parseContainerID(params.ContainerID)
+	if err != nil {
+		a.log.Error("invalid container id", zap.Error(err))
+		return operations.NewGetContainerEACLBadRequest().WithPayload("invalid container id")
+	}
+
+	resp, err := getContainerEACL(params.HTTPRequest.Context(), a.pool, cnrID)
+	if err != nil {
+		a.log.Error("failed to get container eacl", zap.Error(err))
+		return operations.NewGetContainerEACLBadRequest().WithPayload("failed to get container eacl")
+	}
+
+	return operations.NewGetContainerEACLOK().WithPayload(resp)
+}
+
 // DeleteContainer handler that returns container info.
 func (a *API) DeleteContainer(params operations.DeleteContainerParams, principal *models.Principal) middleware.Responder {
 	bt := &BearerToken{
@@ -138,6 +181,46 @@ func parseContainerID(containerID string) (*cid.ID, error) {
 	}
 
 	return &cnrID, nil
+}
+
+func setContainerEACL(ctx context.Context, p *pool.Pool, cnrID *cid.ID, stoken *session.Token, eaclPrm *models.Eacl) error {
+	table, err := ToNativeTable(eaclPrm.Records)
+	if err != nil {
+		return err
+	}
+
+	table.SetCID(cnrID)
+	table.SetSessionToken(stoken)
+
+	var prm pool.PrmContainerSetEACL
+	prm.SetTable(*table)
+
+	return p.SetEACL(ctx, prm)
+}
+
+func getContainerEACL(ctx context.Context, p *pool.Pool, cnrID *cid.ID) (*models.Eacl, error) {
+	var prm pool.PrmContainerEACL
+	prm.SetContainerID(*cnrID)
+
+	table, err := p.GetEACL(ctx, prm)
+	if err != nil {
+		return nil, err
+	}
+
+	tableResp := &models.Eacl{
+		ContainerID: cnrID.String(),
+		Records:     make([]*models.Record, len(table.Records())),
+	}
+
+	for i, rec := range table.Records() {
+		record, err := FromNativeRecord(rec)
+		if err != nil {
+			return nil, fmt.Errorf("couldn't transform record from native: %w", err)
+		}
+		tableResp.Records[i] = record
+	}
+
+	return tableResp, nil
 }
 
 func createContainer(ctx context.Context, p *pool.Pool, stoken *session.Token, params *operations.PutContainerParams, userAttrs map[string]string) (*cid.ID, error) {

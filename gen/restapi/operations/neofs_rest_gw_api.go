@@ -53,11 +53,17 @@ func NewNeofsRestGwAPI(spec *loads.Document) *NeofsRestGwAPI {
 		GetContainerHandler: GetContainerHandlerFunc(func(params GetContainerParams) middleware.Responder {
 			return middleware.NotImplemented("operation GetContainer has not yet been implemented")
 		}),
+		GetContainerEACLHandler: GetContainerEACLHandlerFunc(func(params GetContainerEACLParams) middleware.Responder {
+			return middleware.NotImplemented("operation GetContainerEACL has not yet been implemented")
+		}),
 		GetObjectInfoHandler: GetObjectInfoHandlerFunc(func(params GetObjectInfoParams, principal *models.Principal) middleware.Responder {
 			return middleware.NotImplemented("operation GetObjectInfo has not yet been implemented")
 		}),
 		PutContainerHandler: PutContainerHandlerFunc(func(params PutContainerParams, principal *models.Principal) middleware.Responder {
 			return middleware.NotImplemented("operation PutContainer has not yet been implemented")
+		}),
+		PutContainerEACLHandler: PutContainerEACLHandlerFunc(func(params PutContainerEACLParams, principal *models.Principal) middleware.Responder {
+			return middleware.NotImplemented("operation PutContainerEACL has not yet been implemented")
 		}),
 		PutObjectHandler: PutObjectHandlerFunc(func(params PutObjectParams, principal *models.Principal) middleware.Responder {
 			return middleware.NotImplemented("operation PutObject has not yet been implemented")
@@ -118,10 +124,14 @@ type NeofsRestGwAPI struct {
 	DeleteContainerHandler DeleteContainerHandler
 	// GetContainerHandler sets the operation handler for the get container operation
 	GetContainerHandler GetContainerHandler
+	// GetContainerEACLHandler sets the operation handler for the get container e ACL operation
+	GetContainerEACLHandler GetContainerEACLHandler
 	// GetObjectInfoHandler sets the operation handler for the get object info operation
 	GetObjectInfoHandler GetObjectInfoHandler
 	// PutContainerHandler sets the operation handler for the put container operation
 	PutContainerHandler PutContainerHandler
+	// PutContainerEACLHandler sets the operation handler for the put container e ACL operation
+	PutContainerEACLHandler PutContainerEACLHandler
 	// PutObjectHandler sets the operation handler for the put object operation
 	PutObjectHandler PutObjectHandler
 
@@ -214,11 +224,17 @@ func (o *NeofsRestGwAPI) Validate() error {
 	if o.GetContainerHandler == nil {
 		unregistered = append(unregistered, "GetContainerHandler")
 	}
+	if o.GetContainerEACLHandler == nil {
+		unregistered = append(unregistered, "GetContainerEACLHandler")
+	}
 	if o.GetObjectInfoHandler == nil {
 		unregistered = append(unregistered, "GetObjectInfoHandler")
 	}
 	if o.PutContainerHandler == nil {
 		unregistered = append(unregistered, "PutContainerHandler")
+	}
+	if o.PutContainerEACLHandler == nil {
+		unregistered = append(unregistered, "PutContainerEACLHandler")
 	}
 	if o.PutObjectHandler == nil {
 		unregistered = append(unregistered, "PutObjectHandler")
@@ -337,11 +353,19 @@ func (o *NeofsRestGwAPI) initHandlerCache() {
 	if o.handlers["GET"] == nil {
 		o.handlers["GET"] = make(map[string]http.Handler)
 	}
+	o.handlers["GET"]["/containers/{containerId}/eacl"] = NewGetContainerEACL(o.context, o.GetContainerEACLHandler)
+	if o.handlers["GET"] == nil {
+		o.handlers["GET"] = make(map[string]http.Handler)
+	}
 	o.handlers["GET"]["/objects/{containerId}/{objectId}"] = NewGetObjectInfo(o.context, o.GetObjectInfoHandler)
 	if o.handlers["PUT"] == nil {
 		o.handlers["PUT"] = make(map[string]http.Handler)
 	}
 	o.handlers["PUT"]["/containers"] = NewPutContainer(o.context, o.PutContainerHandler)
+	if o.handlers["PUT"] == nil {
+		o.handlers["PUT"] = make(map[string]http.Handler)
+	}
+	o.handlers["PUT"]["/containers/{containerId}/eacl"] = NewPutContainerEACL(o.context, o.PutContainerEACLHandler)
 	if o.handlers["PUT"] == nil {
 		o.handlers["PUT"] = make(map[string]http.Handler)
 	}
