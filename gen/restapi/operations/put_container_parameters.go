@@ -14,15 +14,23 @@ import (
 	"github.com/go-openapi/runtime"
 	"github.com/go-openapi/runtime/middleware"
 	"github.com/go-openapi/strfmt"
+	"github.com/go-openapi/swag"
 	"github.com/go-openapi/validate"
 )
 
 // NewPutContainerParams creates a new PutContainerParams object
-//
-// There are no default values defined in the spec.
+// with the default values initialized.
 func NewPutContainerParams() PutContainerParams {
 
-	return PutContainerParams{}
+	var (
+		// initialize parameters with default values
+
+		skipNativeNameDefault = bool(false)
+	)
+
+	return PutContainerParams{
+		SkipNativeName: &skipNativeNameDefault,
+	}
 }
 
 // PutContainerParams contains all the bound params for the put container operation
@@ -49,6 +57,11 @@ type PutContainerParams struct {
 	  In: body
 	*/
 	Container PutContainerBody
+	/*Provide this parameter to skip registration container name in NNS service
+	  In: query
+	  Default: false
+	*/
+	SkipNativeName *bool
 }
 
 // BindRequest both binds and validates a request, it assumes that complex things implement a Validatable(strfmt.Registry) error interface
@@ -59,6 +72,8 @@ func (o *PutContainerParams) BindRequest(r *http.Request, route *middleware.Matc
 	var res []error
 
 	o.HTTPRequest = r
+
+	qs := runtime.Values(r.URL.Query())
 
 	if err := o.bindXNeofsTokenSignature(r.Header[http.CanonicalHeaderKey("X-Neofs-Token-Signature")], true, route.Formats); err != nil {
 		res = append(res, err)
@@ -94,6 +109,11 @@ func (o *PutContainerParams) BindRequest(r *http.Request, route *middleware.Matc
 		}
 	} else {
 		res = append(res, errors.Required("container", "body", ""))
+	}
+
+	qSkipNativeName, qhkSkipNativeName, _ := qs.GetOK("skip-native-name")
+	if err := o.bindSkipNativeName(qSkipNativeName, qhkSkipNativeName, route.Formats); err != nil {
+		res = append(res, err)
 	}
 	if len(res) > 0 {
 		return errors.CompositeValidationError(res...)
@@ -137,6 +157,30 @@ func (o *PutContainerParams) bindXNeofsTokenSignatureKey(rawData []string, hasKe
 		return err
 	}
 	o.XNeofsTokenSignatureKey = raw
+
+	return nil
+}
+
+// bindSkipNativeName binds and validates parameter SkipNativeName from query.
+func (o *PutContainerParams) bindSkipNativeName(rawData []string, hasKey bool, formats strfmt.Registry) error {
+	var raw string
+	if len(rawData) > 0 {
+		raw = rawData[len(rawData)-1]
+	}
+
+	// Required: false
+	// AllowEmptyValue: false
+
+	if raw == "" { // empty values pass all other validations
+		// Default values have been previously initialized by NewPutContainerParams()
+		return nil
+	}
+
+	value, err := swag.ConvertBool(raw)
+	if err != nil {
+		return errors.InvalidType("skip-native-name", "query", "bool", raw)
+	}
+	o.SkipNativeName = &value
 
 	return nil
 }

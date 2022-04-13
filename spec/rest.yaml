@@ -167,6 +167,11 @@ paths:
       operationId: putContainer
       summary: Create new container in NeoFS
       parameters:
+        - in: query
+          name: skip-native-name
+          description: Provide this parameter to skip registration container name in NNS service
+          type: boolean
+          default: false
         - in: body
           name: container
           required: true
@@ -204,21 +209,34 @@ paths:
             $ref: '#/definitions/Error'
 
   /containers/{containerId}:
+    parameters:
+      - in: path
+        name: containerId
+        type: string
+        required: true
+        description: Base58 encoded container id
     get:
       operationId: getContainer
       summary: Get container by id
       security: [ ]
-      parameters:
-        - in: path
-          name: containerId
-          type: string
-          required: true
-          description: Base58 encoded container id
       responses:
         200:
           description: Container info
           schema:
             $ref: '#/definitions/ContainerInfo'
+        400:
+          description: Bad request
+          schema:
+            $ref: '#/definitions/Error'
+    delete:
+      operationId: deleteContainer
+      summary: Delete container by id
+      parameters:
+        - $ref: '#/parameters/signatureParam'
+        - $ref: '#/parameters/signatureKeyParam'
+      responses:
+        204:
+          description: Successul deletion
         400:
           description: Bad request
           schema:

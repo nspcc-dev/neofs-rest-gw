@@ -13,6 +13,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"strconv"
 	"testing"
 	"time"
@@ -55,7 +56,13 @@ const (
 func TestIntegration(t *testing.T) {
 	rootCtx := context.Background()
 	aioImage := "nspccdev/neofs-aio-testcontainer:"
-	versions := []string{"0.24.0", "0.25.1", "0.27.5", "latest"}
+	versions := []string{
+		"0.24.0",
+		"0.25.1",
+		"0.26.1",
+		"0.27.5",
+		"latest",
+	}
 	key, err := keys.NewPrivateKeyFromHex(devenvPrivateKey)
 	require.NoError(t, err)
 
@@ -65,12 +72,13 @@ func TestIntegration(t *testing.T) {
 		aioContainer := createDockerContainer(ctx, t, aioImage+version)
 		cancel := runServer(ctx, t)
 		clientPool := getPool(ctx, t, key)
-		CID, err := createContainer(ctx, t, clientPool)
-		require.NoError(t, err, version)
+		cnrID := createContainer(ctx, t, clientPool, "test-container")
 
-		t.Run("rest put object "+version, func(t *testing.T) { restObjectPut(ctx, t, clientPool, CID) })
+		t.Run("rest put object "+version, func(t *testing.T) { restObjectPut(ctx, t, clientPool, cnrID) })
+
 		t.Run("rest put container"+version, func(t *testing.T) { restContainerPut(ctx, t, clientPool) })
-		t.Run("rest get container"+version, func(t *testing.T) { restContainerGet(ctx, t, clientPool, CID) })
+		t.Run("rest get container"+version, func(t *testing.T) { restContainerGet(ctx, t, clientPool, cnrID) })
+		t.Run("rest delete container"+version, func(t *testing.T) { restContainerDelete(ctx, t, clientPool) })
 
 		cancel()
 		err = aioContainer.Terminate(ctx)
@@ -132,6 +140,7 @@ func getDefaultConfig() *viper.Viper {
 	v.SetDefault(cfgPeers+".0.weight", 1)
 	v.SetDefault(cfgPeers+".0.priority", 1)
 	v.SetDefault(restapi.FlagListenAddress, testListenAddress)
+	v.SetDefault(restapi.FlagWriteTimeout, 60*time.Second)
 
 	return v
 }
@@ -292,8 +301,98 @@ func restContainerGet(ctx context.Context, t *testing.T, clientPool *pool.Pool, 
 	err = json.NewDecoder(resp.Body).Decode(cnrInfo)
 	require.NoError(t, err)
 
-	require.Equal(t, cnrID.String(), cnrInfo.ContainerID)
-	require.Equal(t, clientPool.OwnerID().String(), cnrInfo.OwnerID)
+	require.Equal(t, cnrID.String(), *cnrInfo.ContainerID)
+	require.Equal(t, clientPool.OwnerID().String(), *cnrInfo.OwnerID)
+}
+
+func restContainerDelete(ctx context.Context, t *testing.T, clientPool *pool.Pool) {
+	cnrID := createContainer(ctx, t, clientPool, "for-delete")
+
+	bearer := &models.Bearer{
+		Container: &models.Rule{
+			Verb: models.NewVerb(models.VerbDELETE),
+		},
+	}
+
+	httpClient := &http.Client{Timeout: 60 * time.Second}
+
+	bearerToken := makeAuthContainerTokenRequest(ctx, t, bearer, httpClient)
+
+	request, err := http.NewRequest(http.MethodDelete, testHost+"/v1/containers/"+cnrID.String(), nil)
+	require.NoError(t, err)
+	request = request.WithContext(ctx)
+	prepareBearerHeaders(request.Header, bearerToken)
+
+	resp, err := httpClient.Do(request)
+	require.NoError(t, err)
+	defer func() {
+		err := resp.Body.Close()
+		require.NoError(t, err)
+	}()
+	if resp.StatusCode != http.StatusNoContent {
+		fmt.Println("resp")
+	}
+	require.Equal(t, http.StatusNoContent, resp.StatusCode)
+
+	var prm pool.PrmContainerGet
+	prm.SetContainerID(*cnrID)
+
+	_, err = clientPool.GetContainer(ctx, prm)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "not found")
+}
+
+func makeAuthContainerTokenRequest(ctx context.Context, t *testing.T, bearer *models.Bearer, httpClient *http.Client) *handlers.BearerToken {
+	key, err := keys.NewPrivateKeyFromHex(devenvPrivateKey)
+	require.NoError(t, err)
+
+	hexPubKey := hex.EncodeToString(key.PublicKey().Bytes())
+
+	data, err := json.Marshal(bearer)
+	require.NoError(t, err)
+
+	request, err := http.NewRequest(http.MethodPost, testHost+"/v1/auth", bytes.NewReader(data))
+	require.NoError(t, err)
+	request = request.WithContext(ctx)
+	request.Header.Add("Content-Type", "application/json")
+	request.Header.Add(XNeofsTokenScope, string(models.TokenTypeContainer))
+	request.Header.Add(XNeofsTokenSignatureKey, hexPubKey)
+
+	resp, err := httpClient.Do(request)
+	require.NoError(t, err)
+	defer func() {
+		err := resp.Body.Close()
+		require.NoError(t, err)
+	}()
+
+	rr, err := io.ReadAll(resp.Body)
+	require.NoError(t, err)
+
+	if resp.StatusCode != http.StatusOK {
+		fmt.Println("auth response", string(rr))
+	}
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+
+	stokenResp := &models.TokenResponse{}
+	err = json.Unmarshal(rr, stokenResp)
+	require.NoError(t, err)
+
+	require.Equal(t, *stokenResp.Type, models.TokenTypeContainer)
+
+	binaryData, err := base64.StdEncoding.DecodeString(*stokenResp.Token)
+	require.NoError(t, err)
+
+	signatureData := signData(t, key, binaryData)
+	signature := base64.StdEncoding.EncodeToString(signatureData)
+
+	bt := handlers.BearerToken{
+		Token:     *stokenResp.Token,
+		Signature: signature,
+		Key:       hexPubKey,
+	}
+
+	fmt.Printf("container token:\n%+v\n", bt)
+	return &bt
 }
 
 func signData(t *testing.T, key *keys.PrivateKey, data []byte) []byte {
@@ -304,48 +403,15 @@ func signData(t *testing.T, key *keys.PrivateKey, data []byte) []byte {
 }
 
 func restContainerPut(ctx context.Context, t *testing.T, clientPool *pool.Pool) {
-	key, err := keys.NewPrivateKeyFromHex(devenvPrivateKey)
-	require.NoError(t, err)
-
-	b := models.Bearer{
+	bearer := &models.Bearer{
 		Container: &models.Rule{
 			Verb: models.NewVerb(models.VerbPUT),
 		},
 	}
 
-	data, err := json.Marshal(&b)
-	require.NoError(t, err)
+	httpClient := &http.Client{Timeout: 30 * time.Second}
 
-	request0, err := http.NewRequest(http.MethodPost, testHost+"/v1/auth", bytes.NewReader(data))
-	require.NoError(t, err)
-	request0.Header.Add("Content-Type", "application/json")
-	request0.Header.Add(XNeofsTokenScope, "container")
-	request0.Header.Add(XNeofsTokenSignatureKey, hex.EncodeToString(key.PublicKey().Bytes()))
-
-	httpClient := http.Client{
-		Timeout: 30 * time.Second,
-	}
-
-	resp, err := httpClient.Do(request0)
-	require.NoError(t, err)
-	defer resp.Body.Close()
-
-	rr, err := io.ReadAll(resp.Body)
-	require.NoError(t, err)
-	fmt.Println(string(rr))
-	require.Equal(t, http.StatusOK, resp.StatusCode)
-
-	stokenResp := &models.TokenResponse{}
-	err = json.Unmarshal(rr, stokenResp)
-	require.NoError(t, err)
-
-	require.Equal(t, *stokenResp.Type, models.TokenTypeContainer)
-
-	bearerBase64 := stokenResp.Token
-	binaryData, err := base64.StdEncoding.DecodeString(*bearerBase64)
-	require.NoError(t, err)
-
-	signatureData := signData(t, key, binaryData)
+	bearerToken := makeAuthContainerTokenRequest(ctx, t, bearer, httpClient)
 
 	attrKey, attrValue := "User-Attribute", "user value"
 
@@ -360,15 +426,18 @@ func restContainerPut(ctx context.Context, t *testing.T, clientPool *pool.Pool) 
 	body, err := json.Marshal(&req)
 	require.NoError(t, err)
 
-	fmt.Println(base64.StdEncoding.EncodeToString(signatureData))
-	fmt.Println(hex.EncodeToString(key.PublicKey().Bytes()))
+	reqURL, err := url.Parse(testHost + "/v1/containers")
+	require.NoError(t, err)
 
-	request, err := http.NewRequest(http.MethodPut, testHost+"/v1/containers", bytes.NewReader(body))
+	query := reqURL.Query()
+	query.Add("skip-native-name", "true")
+
+	reqURL.RawQuery = query.Encode()
+
+	request, err := http.NewRequest(http.MethodPut, reqURL.String(), bytes.NewReader(body))
 	require.NoError(t, err)
 	request.Header.Add("Content-Type", "application/json")
-	request.Header.Add(XNeofsTokenSignature, base64.StdEncoding.EncodeToString(signatureData))
-	request.Header.Add("Authorization", "Bearer "+*bearerBase64)
-	request.Header.Add(XNeofsTokenSignatureKey, hex.EncodeToString(key.PublicKey().Bytes()))
+	prepareBearerHeaders(request.Header, bearerToken)
 	request.Header.Add("X-Attribute-"+attrKey, attrValue)
 
 	resp2, err := httpClient.Do(request)
@@ -406,14 +475,20 @@ func restContainerPut(ctx context.Context, t *testing.T, clientPool *pool.Pool) 
 	}
 }
 
-func createContainer(ctx context.Context, t *testing.T, clientPool *pool.Pool) (*cid.ID, error) {
+func prepareBearerHeaders(header http.Header, bearerToken *handlers.BearerToken) {
+	header.Add(XNeofsTokenSignature, bearerToken.Signature)
+	header.Add("Authorization", "Bearer "+bearerToken.Token)
+	header.Add(XNeofsTokenSignatureKey, bearerToken.Key)
+}
+
+func createContainer(ctx context.Context, t *testing.T, clientPool *pool.Pool, name string) *cid.ID {
 	pp, err := policy.Parse("REP 1")
 	require.NoError(t, err)
 
 	cnr := container.New(
 		container.WithPolicy(pp),
 		container.WithCustomBasicACL(0x0FFFFFFF),
-		container.WithAttribute(container.AttributeName, "friendlyName"),
+		container.WithAttribute(container.AttributeName, name),
 		container.WithAttribute(container.AttributeTimestamp, strconv.FormatInt(time.Now().Unix(), 10)))
 	cnr.SetOwnerID(clientPool.OwnerID())
 
@@ -426,12 +501,9 @@ func createContainer(ctx context.Context, t *testing.T, clientPool *pool.Pool) (
 	prm.SetWaitParams(waitPrm)
 
 	CID, err := clientPool.PutContainer(ctx, prm)
-	if err != nil {
-		return nil, err
-	}
-	fmt.Println(CID.String())
+	require.NoError(t, err)
 
-	return CID, err
+	return CID
 }
 
 func restrictByEACL(ctx context.Context, t *testing.T, clientPool *pool.Pool, cnrID *cid.ID) {

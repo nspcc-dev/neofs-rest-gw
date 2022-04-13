@@ -47,6 +47,9 @@ func NewNeofsRestGwAPI(spec *loads.Document) *NeofsRestGwAPI {
 		AuthHandler: AuthHandlerFunc(func(params AuthParams) middleware.Responder {
 			return middleware.NotImplemented("operation Auth has not yet been implemented")
 		}),
+		DeleteContainerHandler: DeleteContainerHandlerFunc(func(params DeleteContainerParams, principal *models.Principal) middleware.Responder {
+			return middleware.NotImplemented("operation DeleteContainer has not yet been implemented")
+		}),
 		GetContainerHandler: GetContainerHandlerFunc(func(params GetContainerParams) middleware.Responder {
 			return middleware.NotImplemented("operation GetContainer has not yet been implemented")
 		}),
@@ -111,6 +114,8 @@ type NeofsRestGwAPI struct {
 
 	// AuthHandler sets the operation handler for the auth operation
 	AuthHandler AuthHandler
+	// DeleteContainerHandler sets the operation handler for the delete container operation
+	DeleteContainerHandler DeleteContainerHandler
 	// GetContainerHandler sets the operation handler for the get container operation
 	GetContainerHandler GetContainerHandler
 	// GetObjectInfoHandler sets the operation handler for the get object info operation
@@ -202,6 +207,9 @@ func (o *NeofsRestGwAPI) Validate() error {
 
 	if o.AuthHandler == nil {
 		unregistered = append(unregistered, "AuthHandler")
+	}
+	if o.DeleteContainerHandler == nil {
+		unregistered = append(unregistered, "DeleteContainerHandler")
 	}
 	if o.GetContainerHandler == nil {
 		unregistered = append(unregistered, "GetContainerHandler")
@@ -318,6 +326,10 @@ func (o *NeofsRestGwAPI) initHandlerCache() {
 		o.handlers["POST"] = make(map[string]http.Handler)
 	}
 	o.handlers["POST"]["/auth"] = NewAuth(o.context, o.AuthHandler)
+	if o.handlers["DELETE"] == nil {
+		o.handlers["DELETE"] = make(map[string]http.Handler)
+	}
+	o.handlers["DELETE"]["/containers/{containerId}"] = NewDeleteContainer(o.context, o.DeleteContainerHandler)
 	if o.handlers["GET"] == nil {
 		o.handlers["GET"] = make(map[string]http.Handler)
 	}
