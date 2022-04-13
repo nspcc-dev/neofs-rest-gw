@@ -60,7 +60,7 @@ func TestIntegration(t *testing.T) {
 		//"0.24.0",
 		//"0.25.1",
 		//"0.26.1",
-		"0.27.5",
+		//"0.27.5",
 		"latest",
 	}
 	key, err := keys.NewPrivateKeyFromHex(devenvPrivateKey)
@@ -75,6 +75,7 @@ func TestIntegration(t *testing.T) {
 		cnrID := createContainer(ctx, t, clientPool, "test-container")
 
 		t.Run("rest put object "+version, func(t *testing.T) { restObjectPut(ctx, t, clientPool, cnrID) })
+		t.Run("rest get object "+version, func(t *testing.T) { restObjectGet(ctx, t, clientPool, cnrID) })
 
 		t.Run("rest put container"+version, func(t *testing.T) { restContainerPut(ctx, t, clientPool) })
 		t.Run("rest get container"+version, func(t *testing.T) { restContainerGet(ctx, t, clientPool, cnrID) })
@@ -136,6 +137,10 @@ func runServer(ctx context.Context, t *testing.T) context.CancelFunc {
 	}
 }
 
+func defaultHTTPClient() *http.Client {
+	return &http.Client{Timeout: 60 * time.Second}
+}
+
 func getDefaultConfig() *viper.Viper {
 	v := config()
 	v.SetDefault(cfgPeers+".0.address", testNode)
@@ -165,10 +170,7 @@ func getPool(ctx context.Context, t *testing.T, key *keys.PrivateKey) *pool.Pool
 func restObjectPut(ctx context.Context, t *testing.T, clientPool *pool.Pool, cnrID *cid.ID) {
 	restrictByEACL(ctx, t, clientPool, cnrID)
 
-	key, err := keys.NewPrivateKeyFromHex(devenvPrivateKey)
-	require.NoError(t, err)
-
-	b := models.Bearer{
+	bearer := &models.Bearer{
 		Object: []*models.Record{{
 			Operation: models.NewOperation(models.OperationPUT),
 			Action:    models.NewAction(models.ActionALLOW),
@@ -180,41 +182,8 @@ func restObjectPut(ctx context.Context, t *testing.T, clientPool *pool.Pool, cnr
 		}},
 	}
 
-	data, err := json.Marshal(&b)
-	require.NoError(t, err)
-
-	request0, err := http.NewRequest(http.MethodPost, testHost+"/v1/auth", bytes.NewReader(data))
-	require.NoError(t, err)
-	request0.Header.Add("Content-Type", "application/json")
-	request0.Header.Add(XNeofsTokenScope, string(models.TokenTypeObject))
-	request0.Header.Add(XNeofsTokenSignatureKey, hex.EncodeToString(key.PublicKey().Bytes()))
-
-	httpClient := http.Client{
-		Timeout: 5 * time.Second,
-	}
-
-	resp, err := httpClient.Do(request0)
-	require.NoError(t, err)
-	defer resp.Body.Close()
-
-	rr, err := io.ReadAll(resp.Body)
-	require.NoError(t, err)
-	fmt.Println(string(rr))
-
-	require.Equal(t, http.StatusOK, resp.StatusCode)
-
-	stokenResp := &models.TokenResponse{}
-	err = json.Unmarshal(rr, stokenResp)
-	require.NoError(t, err)
-
-	require.Equal(t, *stokenResp.Type, models.TokenTypeObject)
-
-	bearerBase64 := stokenResp.Token
-	fmt.Println(*bearerBase64)
-	binaryData, err := base64.StdEncoding.DecodeString(*bearerBase64)
-	require.NoError(t, err)
-
-	signatureData := signData(t, key, binaryData)
+	httpClient := defaultHTTPClient()
+	bearerToken := makeAuthObjectTokenRequest(ctx, t, bearer, httpClient)
 
 	content := "content of file"
 	attrKey, attrValue := "User-Attribute", "user value"
@@ -233,54 +202,32 @@ func restObjectPut(ctx context.Context, t *testing.T, clientPool *pool.Pool, cnr
 	body, err := json.Marshal(&req)
 	require.NoError(t, err)
 
-	fmt.Println(base64.StdEncoding.EncodeToString(signatureData))
-	fmt.Println(hex.EncodeToString(key.PublicKey().Bytes()))
-
 	request, err := http.NewRequest(http.MethodPut, testHost+"/v1/objects", bytes.NewReader(body))
 	require.NoError(t, err)
-	request.Header.Add("Content-Type", "application/json")
-	request.Header.Add(XNeofsTokenSignature, base64.StdEncoding.EncodeToString(signatureData))
-	request.Header.Add("Authorization", "Bearer "+*bearerBase64)
-	request.Header.Add(XNeofsTokenSignatureKey, hex.EncodeToString(key.PublicKey().Bytes()))
+	prepareCommonHeaders(request.Header, bearerToken)
 	request.Header.Add("X-Attribute-"+attrKey, attrValue)
 
-	resp2, err := httpClient.Do(request)
-	require.NoError(t, err)
-	defer resp2.Body.Close()
-
-	rr2, err := io.ReadAll(resp2.Body)
-	require.NoError(t, err)
-
-	fmt.Println(string(rr2))
-	require.Equal(t, http.StatusOK, resp2.StatusCode)
-
 	addr := &operations.PutObjectOKBody{}
-	err = json.Unmarshal(rr2, addr)
-	require.NoError(t, err)
+	doRequest(t, httpClient, request, http.StatusOK, addr)
 
 	var CID cid.ID
 	err = CID.Parse(*addr.ContainerID)
 	require.NoError(t, err)
-
-	id := oid.NewID()
+	var id oid.ID
 	err = id.Parse(*addr.ObjectID)
 	require.NoError(t, err)
-
 	objectAddress := address.NewAddress()
 	objectAddress.SetContainerID(&CID)
-	objectAddress.SetObjectID(id)
-
-	payload := bytes.NewBuffer(nil)
+	objectAddress.SetObjectID(&id)
 
 	var prm pool.PrmObjectGet
 	prm.SetAddress(*objectAddress)
-
 	res, err := clientPool.GetObject(ctx, prm)
 	require.NoError(t, err)
 
+	payload := bytes.NewBuffer(nil)
 	_, err = io.Copy(payload, res.Payload)
 	require.NoError(t, err)
-
 	require.Equal(t, content, payload.String())
 
 	for _, attribute := range res.Header.Attributes() {
@@ -288,20 +235,79 @@ func restObjectPut(ctx context.Context, t *testing.T, clientPool *pool.Pool, cnr
 	}
 }
 
+func restObjectGet(ctx context.Context, t *testing.T, p *pool.Pool, cnrID *cid.ID) {
+	restrictByEACL(ctx, t, p, cnrID)
+
+	attributes := map[string]string{
+		object.AttributeFileName: "get-obj-name",
+		"user-attribute":         "user value",
+	}
+
+	objID := createObject(ctx, t, p, cnrID, attributes, []byte("some content"))
+
+	bearer := &models.Bearer{
+		Object: []*models.Record{{
+			Operation: models.NewOperation(models.OperationGET),
+			Action:    models.NewAction(models.ActionALLOW),
+			Filters:   []*models.Filter{},
+			Targets: []*models.Target{{
+				Role: models.NewRole(models.RoleOTHERS),
+				Keys: []string{},
+			}},
+		}},
+	}
+
+	httpClient := defaultHTTPClient()
+	bearerToken := makeAuthObjectTokenRequest(ctx, t, bearer, httpClient)
+
+	request, err := http.NewRequest(http.MethodGet, testHost+"/v1/objects/"+cnrID.String()+"/"+objID.String(), nil)
+	require.NoError(t, err)
+	prepareCommonHeaders(request.Header, bearerToken)
+
+	objInfo := &models.ObjectInfo{}
+	doRequest(t, httpClient, request, http.StatusOK, objInfo)
+
+	require.Equal(t, cnrID.String(), *objInfo.ContainerID)
+	require.Equal(t, objID.String(), *objInfo.ObjectID)
+	require.Equal(t, p.OwnerID().String(), *objInfo.OwnerID)
+	require.Equal(t, len(attributes), len(objInfo.Attributes))
+
+	for _, attr := range objInfo.Attributes {
+		require.Equal(t, attributes[*attr.Key], *attr.Value)
+	}
+}
+
+func doRequest(t *testing.T, httpClient *http.Client, request *http.Request, expectedCode int, model interface{}) {
+	resp, err := httpClient.Do(request)
+	require.NoError(t, err)
+	defer func() {
+		err := resp.Body.Close()
+		require.NoError(t, err)
+	}()
+	respBody, err := io.ReadAll(resp.Body)
+	require.NoError(t, err)
+
+	if expectedCode != resp.StatusCode {
+		fmt.Println("resp", string(respBody))
+	}
+	require.Equal(t, expectedCode, resp.StatusCode)
+
+	if model == nil {
+		return
+	}
+
+	err = json.Unmarshal(respBody, model)
+	require.NoError(t, err)
+}
+
 func restContainerGet(ctx context.Context, t *testing.T, clientPool *pool.Pool, cnrID *cid.ID) {
-	httpClient := http.Client{Timeout: 5 * time.Second}
+	httpClient := &http.Client{Timeout: 5 * time.Second}
 	request, err := http.NewRequest(http.MethodGet, testHost+"/v1/containers/"+cnrID.String(), nil)
 	require.NoError(t, err)
 	request = request.WithContext(ctx)
 
-	resp, err := httpClient.Do(request)
-	require.NoError(t, err)
-	defer resp.Body.Close()
-	require.Equal(t, http.StatusOK, resp.StatusCode)
-
 	cnrInfo := &models.ContainerInfo{}
-	err = json.NewDecoder(resp.Body).Decode(cnrInfo)
-	require.NoError(t, err)
+	doRequest(t, httpClient, request, http.StatusOK, cnrInfo)
 
 	require.Equal(t, cnrID.String(), *cnrInfo.ContainerID)
 	require.Equal(t, clientPool.OwnerID().String(), *cnrInfo.OwnerID)
@@ -316,8 +322,7 @@ func restContainerDelete(ctx context.Context, t *testing.T, clientPool *pool.Poo
 		},
 	}
 
-	httpClient := &http.Client{Timeout: 60 * time.Second}
-
+	httpClient := defaultHTTPClient()
 	bearerToken := makeAuthContainerTokenRequest(ctx, t, bearer, httpClient)
 
 	request, err := http.NewRequest(http.MethodDelete, testHost+"/v1/containers/"+cnrID.String(), nil)
@@ -325,19 +330,7 @@ func restContainerDelete(ctx context.Context, t *testing.T, clientPool *pool.Poo
 	request = request.WithContext(ctx)
 	prepareCommonHeaders(request.Header, bearerToken)
 
-	resp, err := httpClient.Do(request)
-	require.NoError(t, err)
-	defer func() {
-		err := resp.Body.Close()
-		require.NoError(t, err)
-	}()
-	if resp.StatusCode != http.StatusNoContent {
-		fmt.Println("resp", resp.Status)
-		respBody, err := io.ReadAll(resp.Body)
-		require.NoError(t, err)
-		fmt.Println(string(respBody))
-	}
-	require.Equal(t, http.StatusNoContent, resp.StatusCode)
+	doRequest(t, httpClient, request, http.StatusNoContent, nil)
 
 	var prm pool.PrmContainerGet
 	prm.SetContainerID(*cnrID)
@@ -377,21 +370,7 @@ func restContainerEACLPut(ctx context.Context, t *testing.T, clientPool *pool.Po
 	request = request.WithContext(ctx)
 	prepareCommonHeaders(request.Header, bearerToken)
 
-	resp, err := httpClient.Do(request)
-	require.NoError(t, err)
-	defer func() {
-		err := resp.Body.Close()
-		require.NoError(t, err)
-	}()
-
-	if resp.StatusCode != http.StatusOK {
-		fmt.Println("resp", resp.Status)
-		respBody, err := io.ReadAll(resp.Body)
-		require.NoError(t, err)
-		fmt.Println(string(respBody))
-
-	}
-	require.Equal(t, http.StatusOK, resp.StatusCode)
+	doRequest(t, httpClient, request, http.StatusOK, nil)
 
 	var prm pool.PrmContainerEACL
 	prm.SetContainerID(*cnrID)
@@ -416,26 +395,8 @@ func restContainerEACLGet(ctx context.Context, t *testing.T, clientPool *pool.Po
 	require.NoError(t, err)
 	request = request.WithContext(ctx)
 
-	resp, err := httpClient.Do(request)
-	require.NoError(t, err)
-	defer func() {
-		err := resp.Body.Close()
-		require.NoError(t, err)
-	}()
-
-	respBody, err := io.ReadAll(resp.Body)
-	require.NoError(t, err)
-
-	if resp.StatusCode != http.StatusOK {
-		fmt.Println("resp", resp.Status)
-		fmt.Println(string(respBody))
-
-	}
-	require.Equal(t, http.StatusOK, resp.StatusCode)
-
 	responseTable := &models.Eacl{}
-	err = json.Unmarshal(respBody, responseTable)
-	require.NoError(t, err)
+	doRequest(t, httpClient, request, http.StatusOK, responseTable)
 
 	require.Equal(t, cnrID.String(), responseTable.ContainerID)
 
@@ -447,6 +408,14 @@ func restContainerEACLGet(ctx context.Context, t *testing.T, clientPool *pool.Po
 }
 
 func makeAuthContainerTokenRequest(ctx context.Context, t *testing.T, bearer *models.Bearer, httpClient *http.Client) *handlers.BearerToken {
+	return makeAuthTokenRequest(ctx, t, bearer, httpClient, models.TokenTypeContainer)
+}
+
+func makeAuthObjectTokenRequest(ctx context.Context, t *testing.T, bearer *models.Bearer, httpClient *http.Client) *handlers.BearerToken {
+	return makeAuthTokenRequest(ctx, t, bearer, httpClient, models.TokenTypeObject)
+}
+
+func makeAuthTokenRequest(ctx context.Context, t *testing.T, bearer *models.Bearer, httpClient *http.Client, tokenType models.TokenType) *handlers.BearerToken {
 	key, err := keys.NewPrivateKeyFromHex(devenvPrivateKey)
 	require.NoError(t, err)
 
@@ -459,7 +428,7 @@ func makeAuthContainerTokenRequest(ctx context.Context, t *testing.T, bearer *mo
 	require.NoError(t, err)
 	request = request.WithContext(ctx)
 	request.Header.Add("Content-Type", "application/json")
-	request.Header.Add(XNeofsTokenScope, string(models.TokenTypeContainer))
+	request.Header.Add(XNeofsTokenScope, string(tokenType))
 	request.Header.Add(XNeofsTokenSignatureKey, hexPubKey)
 
 	resp, err := httpClient.Do(request)
@@ -481,7 +450,7 @@ func makeAuthContainerTokenRequest(ctx context.Context, t *testing.T, bearer *mo
 	err = json.Unmarshal(rr, stokenResp)
 	require.NoError(t, err)
 
-	require.Equal(t, *stokenResp.Type, models.TokenTypeContainer)
+	require.Equal(t, *stokenResp.Type, tokenType)
 
 	binaryData, err := base64.StdEncoding.DecodeString(*stokenResp.Token)
 	require.NoError(t, err)
@@ -514,11 +483,9 @@ func restContainerPut(ctx context.Context, t *testing.T, clientPool *pool.Pool) 
 	}
 
 	httpClient := &http.Client{Timeout: 30 * time.Second}
-
 	bearerToken := makeAuthContainerTokenRequest(ctx, t, bearer, httpClient)
 
 	attrKey, attrValue := "User-Attribute", "user value"
-
 	userAttributes := map[string]string{
 		attrKey: attrValue,
 	}
@@ -526,16 +493,13 @@ func restContainerPut(ctx context.Context, t *testing.T, clientPool *pool.Pool) 
 	req := operations.PutContainerBody{
 		ContainerName: handlers.NewString("cnr"),
 	}
-
 	body, err := json.Marshal(&req)
 	require.NoError(t, err)
 
 	reqURL, err := url.Parse(testHost + "/v1/containers")
 	require.NoError(t, err)
-
 	query := reqURL.Query()
 	query.Add("skip-native-name", "true")
-
 	reqURL.RawQuery = query.Encode()
 
 	request, err := http.NewRequest(http.MethodPut, reqURL.String(), bytes.NewReader(body))
@@ -543,19 +507,8 @@ func restContainerPut(ctx context.Context, t *testing.T, clientPool *pool.Pool) 
 	prepareCommonHeaders(request.Header, bearerToken)
 	request.Header.Add("X-Attribute-"+attrKey, attrValue)
 
-	resp2, err := httpClient.Do(request)
-	require.NoError(t, err)
-	defer resp2.Body.Close()
-
-	body, err = io.ReadAll(resp2.Body)
-	require.NoError(t, err)
-	fmt.Println(string(body))
-
-	require.Equal(t, http.StatusOK, resp2.StatusCode)
-
 	addr := &operations.PutContainerOKBody{}
-	err = json.Unmarshal(body, addr)
-	require.NoError(t, err)
+	doRequest(t, httpClient, request, http.StatusOK, addr)
 
 	var CID cid.ID
 	err = CID.Parse(*addr.ContainerID)
@@ -608,6 +561,31 @@ func createContainer(ctx context.Context, t *testing.T, clientPool *pool.Pool, n
 	require.NoError(t, err)
 
 	return CID
+}
+
+func createObject(ctx context.Context, t *testing.T, p *pool.Pool, cnrID *cid.ID, headers map[string]string, payload []byte) *oid.ID {
+	attributes := make([]object.Attribute, 0, len(headers))
+
+	for key, val := range headers {
+		attr := object.NewAttribute()
+		attr.SetKey(key)
+		attr.SetValue(val)
+		attributes = append(attributes, *attr)
+	}
+
+	obj := object.New()
+	obj.SetOwnerID(p.OwnerID())
+	obj.SetContainerID(cnrID)
+	obj.SetAttributes(attributes...)
+	obj.SetPayload(payload)
+
+	var prm pool.PrmObjectPut
+	prm.SetHeader(*obj)
+
+	objID, err := p.PutObject(ctx, prm)
+	require.NoError(t, err)
+
+	return objID
 }
 
 func restrictByEACL(ctx context.Context, t *testing.T, clientPool *pool.Pool, cnrID *cid.ID) *eacl.Table {
