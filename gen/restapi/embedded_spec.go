@@ -214,11 +214,65 @@ func init() {
       },
       "parameters": [
         {
-          "type": "string",
-          "description": "Base58 encoded container id",
-          "name": "containerId",
-          "in": "path",
-          "required": true
+          "$ref": "#/parameters/containerId"
+        }
+      ]
+    },
+    "/containers/{containerId}/eacl": {
+      "get": {
+        "security": [],
+        "summary": "Get container EACL by id",
+        "operationId": "getContainerEACL",
+        "responses": {
+          "200": {
+            "description": "Container EACL information",
+            "schema": {
+              "$ref": "#/definitions/Eacl"
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          }
+        }
+      },
+      "put": {
+        "summary": "Set container EACL by id",
+        "operationId": "putContainerEACL",
+        "parameters": [
+          {
+            "$ref": "#/parameters/signatureParam"
+          },
+          {
+            "$ref": "#/parameters/signatureKeyParam"
+          },
+          {
+            "description": "EACL for container",
+            "name": "eacl",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/Eacl"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successfule EACL upading"
+          },
+          "400": {
+            "description": "Bad request",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          }
+        }
+      },
+      "parameters": [
+        {
+          "$ref": "#/parameters/containerId"
         }
       ]
     },
@@ -330,11 +384,7 @@ func init() {
           "$ref": "#/parameters/signatureKeyParam"
         },
         {
-          "type": "string",
-          "description": "Base58 encoded container id",
-          "name": "containerId",
-          "in": "path",
-          "required": true
+          "$ref": "#/parameters/containerId"
         },
         {
           "type": "string",
@@ -432,6 +482,24 @@ func init() {
         "ownerId": "NbUgTSFvPmsRxmGeWpuuGeJUoRoi6PErcM",
         "placementPolicy": "REP 2",
         "version": "2.11"
+      }
+    },
+    "Eacl": {
+      "type": "object",
+      "required": [
+        "records"
+      ],
+      "properties": {
+        "containerId": {
+          "type": "string",
+          "readOnly": true
+        },
+        "records": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Record"
+          }
+        }
       }
     },
     "Error": {
@@ -665,6 +733,20 @@ func init() {
     }
   },
   "parameters": {
+    "containerId": {
+      "type": "string",
+      "description": "Base58 encoded container id",
+      "name": "containerId",
+      "in": "path",
+      "required": true
+    },
+    "ojectId": {
+      "type": "string",
+      "description": "Base58 encoded object id",
+      "name": "objectId",
+      "in": "path",
+      "required": true
+    },
     "signatureKeyParam": {
       "type": "string",
       "description": "Hex encoded the public part of the key that signed the bearer token",
@@ -915,6 +997,76 @@ func init() {
         }
       ]
     },
+    "/containers/{containerId}/eacl": {
+      "get": {
+        "security": [],
+        "summary": "Get container EACL by id",
+        "operationId": "getContainerEACL",
+        "responses": {
+          "200": {
+            "description": "Container EACL information",
+            "schema": {
+              "$ref": "#/definitions/Eacl"
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          }
+        }
+      },
+      "put": {
+        "summary": "Set container EACL by id",
+        "operationId": "putContainerEACL",
+        "parameters": [
+          {
+            "type": "string",
+            "description": "Base64 encoded signature for bearer token",
+            "name": "X-Neofs-Token-Signature",
+            "in": "header",
+            "required": true
+          },
+          {
+            "type": "string",
+            "description": "Hex encoded the public part of the key that signed the bearer token",
+            "name": "X-Neofs-Token-Signature-Key",
+            "in": "header",
+            "required": true
+          },
+          {
+            "description": "EACL for container",
+            "name": "eacl",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/Eacl"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successfule EACL upading"
+          },
+          "400": {
+            "description": "Bad request",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          }
+        }
+      },
+      "parameters": [
+        {
+          "type": "string",
+          "description": "Base58 encoded container id",
+          "name": "containerId",
+          "in": "path",
+          "required": true
+        }
+      ]
+    },
     "/objects": {
       "put": {
         "consumes": [
@@ -1141,6 +1293,24 @@ func init() {
         "ownerId": "NbUgTSFvPmsRxmGeWpuuGeJUoRoi6PErcM",
         "placementPolicy": "REP 2",
         "version": "2.11"
+      }
+    },
+    "Eacl": {
+      "type": "object",
+      "required": [
+        "records"
+      ],
+      "properties": {
+        "containerId": {
+          "type": "string",
+          "readOnly": true
+        },
+        "records": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Record"
+          }
+        }
       }
     },
     "Error": {
@@ -1374,6 +1544,20 @@ func init() {
     }
   },
   "parameters": {
+    "containerId": {
+      "type": "string",
+      "description": "Base58 encoded container id",
+      "name": "containerId",
+      "in": "path",
+      "required": true
+    },
+    "ojectId": {
+      "type": "string",
+      "description": "Base58 encoded object id",
+      "name": "objectId",
+      "in": "path",
+      "required": true
+    },
     "signatureKeyParam": {
       "type": "string",
       "description": "Hex encoded the public part of the key that signed the bearer token",

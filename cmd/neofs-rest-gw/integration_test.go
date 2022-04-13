@@ -57,9 +57,9 @@ func TestIntegration(t *testing.T) {
 	rootCtx := context.Background()
 	aioImage := "nspccdev/neofs-aio-testcontainer:"
 	versions := []string{
-		"0.24.0",
-		"0.25.1",
-		"0.26.1",
+		//"0.24.0",
+		//"0.25.1",
+		//"0.26.1",
 		"0.27.5",
 		"latest",
 	}
@@ -79,6 +79,8 @@ func TestIntegration(t *testing.T) {
 		t.Run("rest put container"+version, func(t *testing.T) { restContainerPut(ctx, t, clientPool) })
 		t.Run("rest get container"+version, func(t *testing.T) { restContainerGet(ctx, t, clientPool, cnrID) })
 		t.Run("rest delete container"+version, func(t *testing.T) { restContainerDelete(ctx, t, clientPool) })
+		t.Run("rest put container eacl	"+version, func(t *testing.T) { restContainerEACLPut(ctx, t, clientPool) })
+		t.Run("rest get container eacl	"+version, func(t *testing.T) { restContainerEACLGet(ctx, t, clientPool) })
 
 		cancel()
 		err = aioContainer.Terminate(ctx)
@@ -321,7 +323,7 @@ func restContainerDelete(ctx context.Context, t *testing.T, clientPool *pool.Poo
 	request, err := http.NewRequest(http.MethodDelete, testHost+"/v1/containers/"+cnrID.String(), nil)
 	require.NoError(t, err)
 	request = request.WithContext(ctx)
-	prepareBearerHeaders(request.Header, bearerToken)
+	prepareCommonHeaders(request.Header, bearerToken)
 
 	resp, err := httpClient.Do(request)
 	require.NoError(t, err)
@@ -330,7 +332,10 @@ func restContainerDelete(ctx context.Context, t *testing.T, clientPool *pool.Poo
 		require.NoError(t, err)
 	}()
 	if resp.StatusCode != http.StatusNoContent {
-		fmt.Println("resp")
+		fmt.Println("resp", resp.Status)
+		respBody, err := io.ReadAll(resp.Body)
+		require.NoError(t, err)
+		fmt.Println(string(respBody))
 	}
 	require.Equal(t, http.StatusNoContent, resp.StatusCode)
 
@@ -340,6 +345,105 @@ func restContainerDelete(ctx context.Context, t *testing.T, clientPool *pool.Poo
 	_, err = clientPool.GetContainer(ctx, prm)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "not found")
+}
+
+func restContainerEACLPut(ctx context.Context, t *testing.T, clientPool *pool.Pool) {
+	cnrID := createContainer(ctx, t, clientPool, "for-eacl-put")
+	httpClient := &http.Client{Timeout: 60 * time.Second}
+	bearer := &models.Bearer{
+		Container: &models.Rule{
+			Verb: models.NewVerb(models.VerbSETEACL),
+		},
+	}
+	bearerToken := makeAuthContainerTokenRequest(ctx, t, bearer, httpClient)
+
+	req := models.Eacl{
+		Records: []*models.Record{{
+			Action:    models.NewAction(models.ActionDENY),
+			Filters:   []*models.Filter{},
+			Operation: models.NewOperation(models.OperationDELETE),
+			Targets: []*models.Target{{
+				Keys: []string{},
+				Role: models.NewRole(models.RoleOTHERS),
+			}},
+		}},
+	}
+
+	body, err := json.Marshal(&req)
+	require.NoError(t, err)
+
+	request, err := http.NewRequest(http.MethodPut, testHost+"/v1/containers/"+cnrID.String()+"/eacl", bytes.NewReader(body))
+	require.NoError(t, err)
+	request = request.WithContext(ctx)
+	prepareCommonHeaders(request.Header, bearerToken)
+
+	resp, err := httpClient.Do(request)
+	require.NoError(t, err)
+	defer func() {
+		err := resp.Body.Close()
+		require.NoError(t, err)
+	}()
+
+	if resp.StatusCode != http.StatusOK {
+		fmt.Println("resp", resp.Status)
+		respBody, err := io.ReadAll(resp.Body)
+		require.NoError(t, err)
+		fmt.Println(string(respBody))
+
+	}
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+
+	var prm pool.PrmContainerEACL
+	prm.SetContainerID(*cnrID)
+
+	table, err := clientPool.GetEACL(ctx, prm)
+	require.NoError(t, err)
+
+	expectedTable, err := handlers.ToNativeTable(req.Records)
+	require.NoError(t, err)
+	expectedTable.SetCID(cnrID)
+
+	require.True(t, eacl.EqualTables(*expectedTable, *table))
+}
+
+func restContainerEACLGet(ctx context.Context, t *testing.T, clientPool *pool.Pool) {
+	cnrID := createContainer(ctx, t, clientPool, "for-eacl-get")
+	expectedTable := restrictByEACL(ctx, t, clientPool, cnrID)
+
+	httpClient := &http.Client{Timeout: 60 * time.Second}
+
+	request, err := http.NewRequest(http.MethodGet, testHost+"/v1/containers/"+cnrID.String()+"/eacl", nil)
+	require.NoError(t, err)
+	request = request.WithContext(ctx)
+
+	resp, err := httpClient.Do(request)
+	require.NoError(t, err)
+	defer func() {
+		err := resp.Body.Close()
+		require.NoError(t, err)
+	}()
+
+	respBody, err := io.ReadAll(resp.Body)
+	require.NoError(t, err)
+
+	if resp.StatusCode != http.StatusOK {
+		fmt.Println("resp", resp.Status)
+		fmt.Println(string(respBody))
+
+	}
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+
+	responseTable := &models.Eacl{}
+	err = json.Unmarshal(respBody, responseTable)
+	require.NoError(t, err)
+
+	require.Equal(t, cnrID.String(), responseTable.ContainerID)
+
+	actualTable, err := handlers.ToNativeTable(responseTable.Records)
+	require.NoError(t, err)
+	actualTable.SetCID(cnrID)
+
+	require.True(t, eacl.EqualTables(*expectedTable, *actualTable))
 }
 
 func makeAuthContainerTokenRequest(ctx context.Context, t *testing.T, bearer *models.Bearer, httpClient *http.Client) *handlers.BearerToken {
@@ -436,8 +540,7 @@ func restContainerPut(ctx context.Context, t *testing.T, clientPool *pool.Pool) 
 
 	request, err := http.NewRequest(http.MethodPut, reqURL.String(), bytes.NewReader(body))
 	require.NoError(t, err)
-	request.Header.Add("Content-Type", "application/json")
-	prepareBearerHeaders(request.Header, bearerToken)
+	prepareCommonHeaders(request.Header, bearerToken)
 	request.Header.Add("X-Attribute-"+attrKey, attrValue)
 
 	resp2, err := httpClient.Do(request)
@@ -475,7 +578,8 @@ func restContainerPut(ctx context.Context, t *testing.T, clientPool *pool.Pool) 
 	}
 }
 
-func prepareBearerHeaders(header http.Header, bearerToken *handlers.BearerToken) {
+func prepareCommonHeaders(header http.Header, bearerToken *handlers.BearerToken) {
+	header.Add("Content-Type", "application/json")
 	header.Add(XNeofsTokenSignature, bearerToken.Signature)
 	header.Add("Authorization", "Bearer "+bearerToken.Token)
 	header.Add(XNeofsTokenSignatureKey, bearerToken.Key)
@@ -506,8 +610,8 @@ func createContainer(ctx context.Context, t *testing.T, clientPool *pool.Pool, n
 	return CID
 }
 
-func restrictByEACL(ctx context.Context, t *testing.T, clientPool *pool.Pool, cnrID *cid.ID) {
-	table := new(eacl.Table)
+func restrictByEACL(ctx context.Context, t *testing.T, clientPool *pool.Pool, cnrID *cid.ID) *eacl.Table {
+	table := eacl.NewTable()
 	table.SetCID(cnrID)
 
 	for op := eacl.OperationGet; op <= eacl.OperationRangeHash; op++ {
@@ -530,4 +634,6 @@ func restrictByEACL(ctx context.Context, t *testing.T, clientPool *pool.Pool, cn
 
 	err := clientPool.SetEACL(ctx, prm)
 	require.NoError(t, err)
+
+	return table
 }

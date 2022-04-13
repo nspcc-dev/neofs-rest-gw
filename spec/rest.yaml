@@ -33,6 +33,18 @@ parameters:
     description: Hex encoded the public part of the key that signed the bearer token
     type: string
     required: true
+  containerId:
+    in: path
+    name: containerId
+    type: string
+    required: true
+    description: Base58 encoded container id
+  ojectId:
+    in: path
+    name: objectId
+    type: string
+    required: true
+    description: Base58 encoded object id
 
 paths:
   /auth:
@@ -136,11 +148,7 @@ paths:
     parameters:
       - $ref: '#/parameters/signatureParam'
       - $ref: '#/parameters/signatureKeyParam'
-      - in: path
-        name: containerId
-        type: string
-        required: true
-        description: Base58 encoded container id
+      - $ref: '#/parameters/containerId'
       - in: path
         name: objectId
         type: string
@@ -210,11 +218,7 @@ paths:
 
   /containers/{containerId}:
     parameters:
-      - in: path
-        name: containerId
-        type: string
-        required: true
-        description: Base58 encoded container id
+      - $ref: '#/parameters/containerId'
     get:
       operationId: getContainer
       summary: Get container by id
@@ -237,6 +241,41 @@ paths:
       responses:
         204:
           description: Successul deletion
+        400:
+          description: Bad request
+          schema:
+            $ref: '#/definitions/Error'
+  /containers/{containerId}/eacl:
+    parameters:
+      - $ref: '#/parameters/containerId'
+    put:
+      operationId: putContainerEACL
+      summary: Set container EACL by id
+      parameters:
+        - $ref: '#/parameters/signatureParam'
+        - $ref: '#/parameters/signatureKeyParam'
+        - in: body
+          name: eacl
+          required: true
+          description: EACL for container
+          schema:
+            $ref: '#/definitions/Eacl'
+      responses:
+        200:
+          description: Successfule EACL upading
+        400:
+          description: Bad request
+          schema:
+            $ref: '#/definitions/Error'
+    get:
+      operationId: getContainerEACL
+      summary: Get container EACL by id
+      security: [ ]
+      responses:
+        200:
+          description: Container EACL information
+          schema:
+            $ref: '#/definitions/Eacl'
         400:
           description: Bad request
           schema:
@@ -445,7 +484,18 @@ definitions:
           value: "1648810072"
         - key: Name
           value: object
-
+  Eacl:
+    type: object
+    properties:
+      containerId:
+        type: string
+        readOnly: true
+      records:
+        type: array
+        items:
+          $ref: '#/definitions/Record'
+    required:
+      - records
   Attribute:
     type: object
     properties:

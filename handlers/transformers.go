@@ -28,6 +28,18 @@ func ToNativeAction(a *models.Action) (eacl.Action, error) {
 	}
 }
 
+// FromNativeAction converts eacl.Action to appropriate models.Action.
+func FromNativeAction(a eacl.Action) (*models.Action, error) {
+	switch a {
+	case eacl.ActionAllow:
+		return models.NewAction(models.ActionALLOW), nil
+	case eacl.ActionDeny:
+		return models.NewAction(models.ActionDENY), nil
+	default:
+		return nil, fmt.Errorf("unsupported action type: '%s'", a)
+	}
+}
+
 // ToNativeOperation converts models.Operation to appropriate eacl.Operation.
 func ToNativeOperation(o *models.Operation) (eacl.Operation, error) {
 	if o == nil {
@@ -54,6 +66,28 @@ func ToNativeOperation(o *models.Operation) (eacl.Operation, error) {
 	}
 }
 
+// FromNativeOperation converts eacl.Operation to appropriate models.Operation.
+func FromNativeOperation(o eacl.Operation) (*models.Operation, error) {
+	switch o {
+	case eacl.OperationGet:
+		return models.NewOperation(models.OperationGET), nil
+	case eacl.OperationHead:
+		return models.NewOperation(models.OperationHEAD), nil
+	case eacl.OperationPut:
+		return models.NewOperation(models.OperationPUT), nil
+	case eacl.OperationDelete:
+		return models.NewOperation(models.OperationDELETE), nil
+	case eacl.OperationSearch:
+		return models.NewOperation(models.OperationSEARCH), nil
+	case eacl.OperationRange:
+		return models.NewOperation(models.OperationRANGE), nil
+	case eacl.OperationRangeHash:
+		return models.NewOperation(models.OperationRANGEHASH), nil
+	default:
+		return nil, fmt.Errorf("unsupported operation type: '%s'", o)
+	}
+}
+
 // ToNativeHeaderType converts models.HeaderType to appropriate eacl.FilterHeaderType.
 func ToNativeHeaderType(h *models.HeaderType) (eacl.FilterHeaderType, error) {
 	if h == nil {
@@ -69,6 +103,20 @@ func ToNativeHeaderType(h *models.HeaderType) (eacl.FilterHeaderType, error) {
 		return eacl.HeaderFromService, nil
 	default:
 		return eacl.HeaderTypeUnknown, fmt.Errorf("unsupported header type: '%s'", *h)
+	}
+}
+
+// FromNativeHeaderType converts eacl.FilterHeaderType to appropriate models.HeaderType.
+func FromNativeHeaderType(h eacl.FilterHeaderType) (*models.HeaderType, error) {
+	switch h {
+	case eacl.HeaderFromObject:
+		return models.NewHeaderType(models.HeaderTypeOBJECT), nil
+	case eacl.HeaderFromRequest:
+		return models.NewHeaderType(models.HeaderTypeREQUEST), nil
+	case eacl.HeaderFromService:
+		return models.NewHeaderType(models.HeaderTypeSERVICE), nil
+	default:
+		return nil, fmt.Errorf("unsupported header type: '%s'", h)
 	}
 }
 
@@ -88,6 +136,18 @@ func ToNativeMatchType(t *models.MatchType) (eacl.Match, error) {
 	}
 }
 
+// FromNativeMatchType converts eacl.Match to appropriate models.MatchType.
+func FromNativeMatchType(t eacl.Match) (*models.MatchType, error) {
+	switch t {
+	case eacl.MatchStringEqual:
+		return models.NewMatchType(models.MatchTypeSTRINGEQUAL), nil
+	case eacl.MatchStringNotEqual:
+		return models.NewMatchType(models.MatchTypeSTRINGNOTEQUAL), nil
+	default:
+		return nil, fmt.Errorf("unsupported match type: '%s'", t)
+	}
+}
+
 // ToNativeRole converts models.Role to appropriate eacl.Role.
 func ToNativeRole(r *models.Role) (eacl.Role, error) {
 	if r == nil {
@@ -103,6 +163,20 @@ func ToNativeRole(r *models.Role) (eacl.Role, error) {
 		return eacl.RoleOthers, nil
 	default:
 		return eacl.RoleUnknown, fmt.Errorf("unsupported role type: '%s'", *r)
+	}
+}
+
+// FromNativeRole converts eacl.Role to appropriate models.Role.
+func FromNativeRole(r eacl.Role) (*models.Role, error) {
+	switch r {
+	case eacl.RoleUser:
+		return models.NewRole(models.RoleUSER), nil
+	case eacl.RoleSystem:
+		return models.NewRole(models.RoleSYSTEM), nil
+	case eacl.RoleOthers:
+		return models.NewRole(models.RoleOTHERS), nil
+	default:
+		return nil, fmt.Errorf("unsupported role type: '%s'", r)
 	}
 }
 
@@ -203,6 +277,52 @@ func ToNativeRecord(r *models.Record) (*eacl.Record, error) {
 	return &record, nil
 }
 
+// FromNativeRecord converts eacl.Record to appropriate models.Record.
+func FromNativeRecord(r eacl.Record) (*models.Record, error) {
+	var err error
+	var record models.Record
+
+	record.Action, err = FromNativeAction(r.Action())
+	if err != nil {
+		return nil, err
+	}
+
+	record.Operation, err = FromNativeOperation(r.Operation())
+	if err != nil {
+		return nil, err
+	}
+
+	record.Filters = make([]*models.Filter, len(r.Filters()))
+	for i, filter := range r.Filters() {
+		headerType, err := FromNativeHeaderType(filter.From())
+		if err != nil {
+			return nil, err
+		}
+		matchType, err := FromNativeMatchType(filter.Matcher())
+		if err != nil {
+			return nil, err
+		}
+
+		record.Filters[i] = &models.Filter{
+			HeaderType: headerType,
+			Key:        NewString(filter.Key()),
+			MatchType:  matchType,
+			Value:      NewString(filter.Value()),
+		}
+	}
+
+	record.Targets = make([]*models.Target, len(r.Targets()))
+	for i, target := range r.Targets() {
+		trgt, err := FromNativeTarget(target)
+		if err != nil {
+			return nil, err
+		}
+		record.Targets[i] = trgt
+	}
+
+	return &record, nil
+}
+
 // ToNativeTarget converts models.Target to appropriate eacl.Target.
 func ToNativeTarget(t *models.Target) (*eacl.Target, error) {
 	var target eacl.Target
@@ -226,12 +346,42 @@ func ToNativeTarget(t *models.Target) (*eacl.Target, error) {
 	return &target, nil
 }
 
+// FromNativeTarget converts eacl.Target to appropriate models.Target.
+func FromNativeTarget(t eacl.Target) (*models.Target, error) {
+	var err error
+	var target models.Target
+
+	target.Role, err = FromNativeRole(t.Role())
+	if err != nil {
+		return nil, err
+	}
+
+	target.Keys = make([]string, len(t.BinaryKeys()))
+	for i, key := range t.BinaryKeys() {
+		target.Keys[i] = hex.EncodeToString(key)
+	}
+
+	return &target, nil
+}
+
 // ToNativeObjectToken converts Bearer to appropriate token.BearerToken.
 func ToNativeObjectToken(b *models.Bearer) (*token.BearerToken, error) {
-	var btoken token.BearerToken
-	var table eacl.Table
+	table, err := ToNativeTable(b.Object)
+	if err != nil {
+		return nil, err
+	}
 
-	for _, rec := range b.Object {
+	var btoken token.BearerToken
+	btoken.SetEACLTable(table)
+
+	return &btoken, nil
+}
+
+// ToNativeTable converts records to eacl.Table.
+func ToNativeTable(records []*models.Record) (*eacl.Table, error) {
+	table := eacl.NewTable()
+
+	for _, rec := range records {
 		record, err := ToNativeRecord(rec)
 		if err != nil {
 			return nil, fmt.Errorf("couldn't transform record to native: %w", err)
@@ -239,7 +389,5 @@ func ToNativeObjectToken(b *models.Bearer) (*token.BearerToken, error) {
 		table.AddRecord(record)
 	}
 
-	btoken.SetEACLTable(&table)
-
-	return &btoken, nil
+	return table, nil
 }
