@@ -21,6 +21,7 @@ import (
 	"github.com/nspcc-dev/neofs-sdk-go/policy"
 	"github.com/nspcc-dev/neofs-sdk-go/pool"
 	"github.com/nspcc-dev/neofs-sdk-go/session"
+	"go.uber.org/zap"
 )
 
 const (
@@ -42,7 +43,7 @@ func (a *API) PutContainers(params operations.PutContainerParams, principal *mod
 
 	userAttributes := prepareUserAttributes(params.HTTPRequest.Header)
 
-	cnrID, err := createContainer(params.HTTPRequest.Context(), a.pool, stoken, &params.Container, userAttributes)
+	cnrID, err := createContainer(params.HTTPRequest.Context(), a.pool, stoken, &params, userAttributes)
 	if err != nil {
 		return wrapError(err)
 	}
@@ -80,6 +81,37 @@ func (a *API) GetContainer(params operations.GetContainerParams) middleware.Resp
 	return operations.NewGetContainerOK().WithPayload(resp)
 }
 
+// DeleteContainer handler that returns container info.
+func (a *API) DeleteContainer(params operations.DeleteContainerParams, principal *models.Principal) middleware.Responder {
+	bt := &BearerToken{
+		Token:     string(*principal),
+		Signature: params.XNeofsTokenSignature,
+		Key:       params.XNeofsTokenSignatureKey,
+	}
+	stoken, err := prepareSessionToken(bt)
+	if err != nil {
+		a.log.Error("failed parse session token", zap.Error(err))
+		return operations.NewDeleteContainerBadRequest().WithPayload(NewError(err))
+	}
+
+	cnrID, err := parseContainerID(params.ContainerID)
+	if err != nil {
+		a.log.Error("failed get container id", zap.Error(err))
+		return operations.NewDeleteContainerBadRequest().WithPayload(NewError(err))
+	}
+
+	var prm pool.PrmContainerDelete
+	prm.SetContainerID(*cnrID)
+	prm.SetSessionToken(*stoken)
+
+	if err = a.pool.DeleteContainer(params.HTTPRequest.Context(), prm); err != nil {
+		a.log.Error("failed delete container", zap.String("container", params.ContainerID), zap.Error(err))
+		return operations.NewDeleteContainerBadRequest().WithPayload(NewError(err))
+	}
+
+	return operations.NewDeleteContainerNoContent()
+}
+
 func prepareUserAttributes(header http.Header) map[string]string {
 	filtered := filterHeaders(header)
 	delete(filtered, container.AttributeName)
@@ -88,18 +120,29 @@ func prepareUserAttributes(header http.Header) map[string]string {
 }
 
 func getContainer(ctx context.Context, p *pool.Pool, containerID string) (*container.Container, error) {
+	cnrID, err := parseContainerID(containerID)
+	if err != nil {
+		return nil, err
+	}
+
+	var prm pool.PrmContainerGet
+	prm.SetContainerID(*cnrID)
+
+	return p.GetContainer(ctx, prm)
+}
+
+func parseContainerID(containerID string) (*cid.ID, error) {
 	var cnrID cid.ID
 	if err := cnrID.Parse(containerID); err != nil {
 		return nil, fmt.Errorf("parse container id '%s': %w", containerID, err)
 	}
 
-	var prm pool.PrmContainerGet
-	prm.SetContainerID(cnrID)
-
-	return p.GetContainer(ctx, prm)
+	return &cnrID, nil
 }
 
-func createContainer(ctx context.Context, p *pool.Pool, stoken *session.Token, request *operations.PutContainerBody, userAttrs map[string]string) (*cid.ID, error) {
+func createContainer(ctx context.Context, p *pool.Pool, stoken *session.Token, params *operations.PutContainerParams, userAttrs map[string]string) (*cid.ID, error) {
+	request := params.Container
+
 	if request.PlacementPolicy == "" {
 		request.PlacementPolicy = defaultPlacementPolicy
 	}
@@ -131,7 +174,9 @@ func createContainer(ctx context.Context, p *pool.Pool, stoken *session.Token, r
 	cnr.SetOwnerID(stoken.OwnerID())
 	cnr.SetSessionToken(stoken)
 
-	container.SetNativeName(cnr, *request.ContainerName)
+	if !*params.SkipNativeName { // we don't check for nil because there is default false value
+		container.SetNativeName(cnr, *request.ContainerName)
+	}
 
 	var prm pool.PrmContainerPut
 	prm.SetContainer(*cnr)

@@ -99,6 +99,13 @@ func init() {
         "operationId": "putContainer",
         "parameters": [
           {
+            "type": "boolean",
+            "default": false,
+            "description": "Provide this parameter to skip registration container name in NNS service",
+            "name": "skip-native-name",
+            "in": "query"
+          },
+          {
             "description": "Container info",
             "name": "container",
             "in": "body",
@@ -167,15 +174,6 @@ func init() {
         "security": [],
         "summary": "Get container by id",
         "operationId": "getContainer",
-        "parameters": [
-          {
-            "type": "string",
-            "description": "Base58 encoded container id",
-            "name": "containerId",
-            "in": "path",
-            "required": true
-          }
-        ],
         "responses": {
           "200": {
             "description": "Container info",
@@ -190,7 +188,39 @@ func init() {
             }
           }
         }
-      }
+      },
+      "delete": {
+        "summary": "Delete container by id",
+        "operationId": "deleteContainer",
+        "parameters": [
+          {
+            "$ref": "#/parameters/signatureParam"
+          },
+          {
+            "$ref": "#/parameters/signatureKeyParam"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successul deletion"
+          },
+          "400": {
+            "description": "Bad request",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          }
+        }
+      },
+      "parameters": [
+        {
+          "type": "string",
+          "description": "Base58 encoded container id",
+          "name": "containerId",
+          "in": "path",
+          "required": true
+        }
+      ]
     },
     "/objects": {
       "put": {
@@ -746,6 +776,13 @@ func init() {
         "operationId": "putContainer",
         "parameters": [
           {
+            "type": "boolean",
+            "default": false,
+            "description": "Provide this parameter to skip registration container name in NNS service",
+            "name": "skip-native-name",
+            "in": "query"
+          },
+          {
             "description": "Container info",
             "name": "container",
             "in": "body",
@@ -822,15 +859,6 @@ func init() {
         "security": [],
         "summary": "Get container by id",
         "operationId": "getContainer",
-        "parameters": [
-          {
-            "type": "string",
-            "description": "Base58 encoded container id",
-            "name": "containerId",
-            "in": "path",
-            "required": true
-          }
-        ],
         "responses": {
           "200": {
             "description": "Container info",
@@ -845,7 +873,47 @@ func init() {
             }
           }
         }
-      }
+      },
+      "delete": {
+        "summary": "Delete container by id",
+        "operationId": "deleteContainer",
+        "parameters": [
+          {
+            "type": "string",
+            "description": "Base64 encoded signature for bearer token",
+            "name": "X-Neofs-Token-Signature",
+            "in": "header",
+            "required": true
+          },
+          {
+            "type": "string",
+            "description": "Hex encoded the public part of the key that signed the bearer token",
+            "name": "X-Neofs-Token-Signature-Key",
+            "in": "header",
+            "required": true
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successul deletion"
+          },
+          "400": {
+            "description": "Bad request",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          }
+        }
+      },
+      "parameters": [
+        {
+          "type": "string",
+          "description": "Base58 encoded container id",
+          "name": "containerId",
+          "in": "path",
+          "required": true
+        }
+      ]
     },
     "/objects": {
       "put": {

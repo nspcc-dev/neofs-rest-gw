@@ -68,6 +68,7 @@ func (a *API) Configure(api *operations.NeofsRestGwAPI) http.Handler {
 
 	api.PutContainerHandler = operations.PutContainerHandlerFunc(a.PutContainers)
 	api.GetContainerHandler = operations.GetContainerHandlerFunc(a.GetContainer)
+	api.DeleteContainerHandler = operations.DeleteContainerHandlerFunc(a.DeleteContainer)
 
 	api.BearerAuthAuth = func(s string) (*models.Principal, error) {
 		if !strings.HasPrefix(s, BearerPrefix) {
@@ -99,7 +100,7 @@ func (a *API) setupGlobalMiddleware(handler http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		requestID := uuid.NewString()
 		a.log.Info("request", zap.String("remote", r.RemoteAddr),
-			zap.String("method", r.Method), zap.String("uri", r.RequestURI),
+			zap.String("method", r.Method), zap.String("url", r.URL.String()),
 			zap.String("id", requestID))
 
 		ctx := context.WithValue(r.Context(), ContextKeyRequestID, requestID)
