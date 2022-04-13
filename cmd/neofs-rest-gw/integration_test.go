@@ -43,6 +43,7 @@ const (
 	testListenAddress = "localhost:8082"
 	testHost          = "http://" + testListenAddress
 	testNode          = "localhost:8080"
+	containerName     = "test-container"
 
 	// XNeofsTokenSignature header contains base64 encoded signature of the token body.
 	XNeofsTokenSignature = "X-Neofs-Token-Signature"
@@ -72,7 +73,7 @@ func TestIntegration(t *testing.T) {
 		aioContainer := createDockerContainer(ctx, t, aioImage+version)
 		cancel := runServer(ctx, t)
 		clientPool := getPool(ctx, t, key)
-		cnrID := createContainer(ctx, t, clientPool, "test-container")
+		cnrID := createContainer(ctx, t, clientPool, containerName)
 
 		t.Run("rest put object "+version, func(t *testing.T) { restObjectPut(ctx, t, clientPool, cnrID) })
 		t.Run("rest get object "+version, func(t *testing.T) { restObjectGet(ctx, t, clientPool, cnrID) })
@@ -82,6 +83,7 @@ func TestIntegration(t *testing.T) {
 		t.Run("rest delete container"+version, func(t *testing.T) { restContainerDelete(ctx, t, clientPool) })
 		t.Run("rest put container eacl	"+version, func(t *testing.T) { restContainerEACLPut(ctx, t, clientPool) })
 		t.Run("rest get container eacl	"+version, func(t *testing.T) { restContainerEACLGet(ctx, t, clientPool) })
+		t.Run("rest list containers	"+version, func(t *testing.T) { restContainerList(ctx, t, clientPool, cnrID) })
 
 		cancel()
 		err = aioContainer.Terminate(ctx)
@@ -405,6 +407,35 @@ func restContainerEACLGet(ctx context.Context, t *testing.T, clientPool *pool.Po
 	actualTable.SetCID(cnrID)
 
 	require.True(t, eacl.EqualTables(*expectedTable, *actualTable))
+}
+
+func restContainerList(ctx context.Context, t *testing.T, p *pool.Pool, cnrID *cid.ID) {
+	var prm pool.PrmContainerList
+	prm.SetOwnerID(*p.OwnerID())
+
+	ids, err := p.ListContainers(ctx, prm)
+	require.NoError(t, err)
+
+	httpClient := defaultHTTPClient()
+
+	query := make(url.Values)
+	query.Add("ownerId", p.OwnerID().String())
+
+	request, err := http.NewRequest(http.MethodGet, testHost+"/v1/containers?"+query.Encode(), nil)
+	require.NoError(t, err)
+	request = request.WithContext(ctx)
+
+	list := &models.ContainerList{}
+	doRequest(t, httpClient, request, http.StatusOK, list)
+
+	require.Equal(t, len(ids), int(*list.Size))
+
+	expected := &models.ContainerBaseInfo{
+		ContainerID: handlers.NewString(cnrID.String()),
+		Name:        containerName,
+	}
+
+	require.Contains(t, list.Containers, expected)
 }
 
 func makeAuthContainerTokenRequest(ctx context.Context, t *testing.T, bearer *models.Bearer, httpClient *http.Client) *handlers.BearerToken {

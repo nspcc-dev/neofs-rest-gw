@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
+	"github.com/nspcc-dev/neofs-sdk-go/owner"
 	"net/http"
 	"strconv"
 	"strings"
@@ -124,6 +125,57 @@ func (a *API) GetContainerEACL(params operations.GetContainerEACLParams) middlew
 	return operations.NewGetContainerEACLOK().WithPayload(resp)
 }
 
+// ListContainer handler that returns containers.
+func (a *API) ListContainer(params operations.ListContainersParams) middleware.Responder {
+	ctx := params.HTTPRequest.Context()
+
+	var ownerID owner.ID
+	if err := ownerID.Parse(params.OwnerID); err != nil {
+		a.log.Error("invalid owner id", zap.Error(err))
+		return operations.NewListContainersBadRequest().WithPayload("invalid owner id")
+	}
+
+	var prm pool.PrmContainerList
+	prm.SetOwnerID(ownerID)
+
+	ids, err := a.pool.ListContainers(ctx, prm)
+	if err != nil {
+		a.log.Error("list containers", zap.Error(err))
+		return operations.NewListContainersBadRequest().WithPayload("failed to get containers")
+	}
+
+	offset := int(*params.Offset)
+	size := int(*params.Limit)
+
+	if offset > len(ids)-1 {
+		res := &models.ContainerList{
+			Size:       NewInteger(0),
+			Containers: []*models.ContainerBaseInfo{},
+		}
+		return operations.NewListContainersOK().WithPayload(res)
+	}
+
+	if offset+size > len(ids) {
+		size = len(ids) - offset
+	}
+
+	res := &models.ContainerList{
+		Size:       NewInteger(int64(size)),
+		Containers: make([]*models.ContainerBaseInfo, 0, size),
+	}
+
+	for _, id := range ids[offset : offset+size] {
+		baseInfo, err := getContainerBaseInfo(ctx, a.pool, id)
+		if err != nil {
+			a.log.Error("get container", zap.String("cid", id.String()), zap.Error(err))
+			return operations.NewListContainersBadRequest().WithPayload("failed to get container")
+		}
+		res.Containers = append(res.Containers, baseInfo)
+	}
+
+	return operations.NewListContainersOK().WithPayload(res)
+}
+
 // DeleteContainer handler that returns container info.
 func (a *API) DeleteContainer(params operations.DeleteContainerParams, principal *models.Principal) middleware.Responder {
 	bt := &BearerToken{
@@ -153,6 +205,26 @@ func (a *API) DeleteContainer(params operations.DeleteContainerParams, principal
 	}
 
 	return operations.NewDeleteContainerNoContent()
+}
+
+func getContainerBaseInfo(ctx context.Context, p *pool.Pool, cnrID cid.ID) (*models.ContainerBaseInfo, error) {
+	var prm pool.PrmContainerGet
+	prm.SetContainerID(cnrID)
+
+	cnr, err := p.GetContainer(ctx, prm)
+	if err != nil {
+		return nil, err
+	}
+
+	baseInfo := &models.ContainerBaseInfo{ContainerID: NewString(cnrID.String())}
+
+	for _, attr := range cnr.Attributes() {
+		if attr.Key() == container.AttributeName {
+			baseInfo.Name = attr.Value()
+		}
+	}
+
+	return baseInfo, nil
 }
 
 func prepareUserAttributes(header http.Header) map[string]string {

@@ -219,6 +219,10 @@ func NewString(val string) *string {
 	return &val
 }
 
+func NewInteger(val int64) *int64 {
+	return &val
+}
+
 func NewError(err error) models.Error {
 	return models.Error(err.Error())
 }
