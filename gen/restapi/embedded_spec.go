@@ -94,10 +94,60 @@ func init() {
       }
     },
     "/containers": {
+      "get": {
+        "security": [],
+        "summary": "Get list of containers",
+        "operationId": "listContainers",
+        "parameters": [
+          {
+            "type": "string",
+            "description": "Base58 encoded owner id",
+            "name": "ownerId",
+            "in": "query",
+            "required": true
+          },
+          {
+            "type": "integer",
+            "default": 0,
+            "description": "The number of containers to skip before starting to collect the result set.",
+            "name": "offset",
+            "in": "query"
+          },
+          {
+            "maximum": 10000,
+            "minimum": 1,
+            "type": "integer",
+            "default": 100,
+            "description": "The numbers of containers to return.",
+            "name": "limit",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Containers info",
+            "schema": {
+              "$ref": "#/definitions/ContainerList"
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          }
+        }
+      },
       "put": {
         "summary": "Create new container in NeoFS",
         "operationId": "putContainer",
         "parameters": [
+          {
+            "$ref": "#/parameters/signatureParam"
+          },
+          {
+            "$ref": "#/parameters/signatureKeyParam"
+          },
           {
             "type": "boolean",
             "default": false,
@@ -159,15 +209,7 @@ func init() {
             }
           }
         }
-      },
-      "parameters": [
-        {
-          "$ref": "#/parameters/signatureParam"
-        },
-        {
-          "$ref": "#/parameters/signatureKeyParam"
-        }
-      ]
+      }
     },
     "/containers/{containerId}": {
       "get": {
@@ -433,6 +475,20 @@ func init() {
         }
       }
     },
+    "ContainerBaseInfo": {
+      "type": "object",
+      "required": [
+        "containerId"
+      ],
+      "properties": {
+        "containerId": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        }
+      }
+    },
     "ContainerInfo": {
       "type": "object",
       "required": [
@@ -482,6 +538,24 @@ func init() {
         "ownerId": "NbUgTSFvPmsRxmGeWpuuGeJUoRoi6PErcM",
         "placementPolicy": "REP 2",
         "version": "2.11"
+      }
+    },
+    "ContainerList": {
+      "type": "object",
+      "required": [
+        "size",
+        "containers"
+      ],
+      "properties": {
+        "containers": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/ContainerBaseInfo"
+          }
+        },
+        "size": {
+          "type": "integer"
+        }
       }
     },
     "Eacl": {
@@ -853,10 +927,69 @@ func init() {
       }
     },
     "/containers": {
+      "get": {
+        "security": [],
+        "summary": "Get list of containers",
+        "operationId": "listContainers",
+        "parameters": [
+          {
+            "type": "string",
+            "description": "Base58 encoded owner id",
+            "name": "ownerId",
+            "in": "query",
+            "required": true
+          },
+          {
+            "minimum": 0,
+            "type": "integer",
+            "default": 0,
+            "description": "The number of containers to skip before starting to collect the result set.",
+            "name": "offset",
+            "in": "query"
+          },
+          {
+            "maximum": 10000,
+            "minimum": 1,
+            "type": "integer",
+            "default": 100,
+            "description": "The numbers of containers to return.",
+            "name": "limit",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Containers info",
+            "schema": {
+              "$ref": "#/definitions/ContainerList"
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          }
+        }
+      },
       "put": {
         "summary": "Create new container in NeoFS",
         "operationId": "putContainer",
         "parameters": [
+          {
+            "type": "string",
+            "description": "Base64 encoded signature for bearer token",
+            "name": "X-Neofs-Token-Signature",
+            "in": "header",
+            "required": true
+          },
+          {
+            "type": "string",
+            "description": "Hex encoded the public part of the key that signed the bearer token",
+            "name": "X-Neofs-Token-Signature-Key",
+            "in": "header",
+            "required": true
+          },
           {
             "type": "boolean",
             "default": false,
@@ -918,23 +1051,7 @@ func init() {
             }
           }
         }
-      },
-      "parameters": [
-        {
-          "type": "string",
-          "description": "Base64 encoded signature for bearer token",
-          "name": "X-Neofs-Token-Signature",
-          "in": "header",
-          "required": true
-        },
-        {
-          "type": "string",
-          "description": "Hex encoded the public part of the key that signed the bearer token",
-          "name": "X-Neofs-Token-Signature-Key",
-          "in": "header",
-          "required": true
-        }
-      ]
+      }
     },
     "/containers/{containerId}": {
       "get": {
@@ -1244,6 +1361,20 @@ func init() {
         }
       }
     },
+    "ContainerBaseInfo": {
+      "type": "object",
+      "required": [
+        "containerId"
+      ],
+      "properties": {
+        "containerId": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        }
+      }
+    },
     "ContainerInfo": {
       "type": "object",
       "required": [
@@ -1293,6 +1424,24 @@ func init() {
         "ownerId": "NbUgTSFvPmsRxmGeWpuuGeJUoRoi6PErcM",
         "placementPolicy": "REP 2",
         "version": "2.11"
+      }
+    },
+    "ContainerList": {
+      "type": "object",
+      "required": [
+        "size",
+        "containers"
+      ],
+      "properties": {
+        "containers": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/ContainerBaseInfo"
+          }
+        },
+        "size": {
+          "type": "integer"
+        }
       }
     },
     "Eacl": {
