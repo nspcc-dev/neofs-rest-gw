@@ -35,12 +35,12 @@ type DeleteContainerParams struct {
 	  Required: true
 	  In: header
 	*/
-	XNeofsTokenSignature string
+	XBearerSignature string
 	/*Hex encoded the public part of the key that signed the bearer token
 	  Required: true
 	  In: header
 	*/
-	XNeofsTokenSignatureKey string
+	XBearerSignatureKey string
 	/*Base58 encoded container id
 	  Required: true
 	  In: path
@@ -57,11 +57,11 @@ func (o *DeleteContainerParams) BindRequest(r *http.Request, route *middleware.M
 
 	o.HTTPRequest = r
 
-	if err := o.bindXNeofsTokenSignature(r.Header[http.CanonicalHeaderKey("X-Neofs-Token-Signature")], true, route.Formats); err != nil {
+	if err := o.bindXBearerSignature(r.Header[http.CanonicalHeaderKey("X-Bearer-Signature")], true, route.Formats); err != nil {
 		res = append(res, err)
 	}
 
-	if err := o.bindXNeofsTokenSignatureKey(r.Header[http.CanonicalHeaderKey("X-Neofs-Token-Signature-Key")], true, route.Formats); err != nil {
+	if err := o.bindXBearerSignatureKey(r.Header[http.CanonicalHeaderKey("X-Bearer-Signature-Key")], true, route.Formats); err != nil {
 		res = append(res, err)
 	}
 
@@ -75,10 +75,10 @@ func (o *DeleteContainerParams) BindRequest(r *http.Request, route *middleware.M
 	return nil
 }
 
-// bindXNeofsTokenSignature binds and validates parameter XNeofsTokenSignature from header.
-func (o *DeleteContainerParams) bindXNeofsTokenSignature(rawData []string, hasKey bool, formats strfmt.Registry) error {
+// bindXBearerSignature binds and validates parameter XBearerSignature from header.
+func (o *DeleteContainerParams) bindXBearerSignature(rawData []string, hasKey bool, formats strfmt.Registry) error {
 	if !hasKey {
-		return errors.Required("X-Neofs-Token-Signature", "header", rawData)
+		return errors.Required("X-Bearer-Signature", "header", rawData)
 	}
 	var raw string
 	if len(rawData) > 0 {
@@ -87,18 +87,18 @@ func (o *DeleteContainerParams) bindXNeofsTokenSignature(rawData []string, hasKe
 
 	// Required: true
 
-	if err := validate.RequiredString("X-Neofs-Token-Signature", "header", raw); err != nil {
+	if err := validate.RequiredString("X-Bearer-Signature", "header", raw); err != nil {
 		return err
 	}
-	o.XNeofsTokenSignature = raw
+	o.XBearerSignature = raw
 
 	return nil
 }
 
-// bindXNeofsTokenSignatureKey binds and validates parameter XNeofsTokenSignatureKey from header.
-func (o *DeleteContainerParams) bindXNeofsTokenSignatureKey(rawData []string, hasKey bool, formats strfmt.Registry) error {
+// bindXBearerSignatureKey binds and validates parameter XBearerSignatureKey from header.
+func (o *DeleteContainerParams) bindXBearerSignatureKey(rawData []string, hasKey bool, formats strfmt.Registry) error {
 	if !hasKey {
-		return errors.Required("X-Neofs-Token-Signature-Key", "header", rawData)
+		return errors.Required("X-Bearer-Signature-Key", "header", rawData)
 	}
 	var raw string
 	if len(rawData) > 0 {
@@ -107,10 +107,10 @@ func (o *DeleteContainerParams) bindXNeofsTokenSignatureKey(rawData []string, ha
 
 	// Required: true
 
-	if err := validate.RequiredString("X-Neofs-Token-Signature-Key", "header", raw); err != nil {
+	if err := validate.RequiredString("X-Bearer-Signature-Key", "header", raw); err != nil {
 		return err
 	}
-	o.XNeofsTokenSignatureKey = raw
+	o.XBearerSignatureKey = raw
 
 	return nil
 }

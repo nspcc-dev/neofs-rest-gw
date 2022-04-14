@@ -6,32 +6,27 @@ package operations
 // Editing this file might prove futile when you re-run the swagger generate command
 
 import (
-	"context"
-	"io"
 	"net/http"
 
 	"github.com/go-openapi/errors"
-	"github.com/go-openapi/runtime"
 	"github.com/go-openapi/runtime/middleware"
 	"github.com/go-openapi/strfmt"
 	"github.com/go-openapi/validate"
-
-	"github.com/nspcc-dev/neofs-rest-gw/gen/models"
 )
 
-// NewPutContainerEACLParams creates a new PutContainerEACLParams object
+// NewDeleteObjectParams creates a new DeleteObjectParams object
 //
 // There are no default values defined in the spec.
-func NewPutContainerEACLParams() PutContainerEACLParams {
+func NewDeleteObjectParams() DeleteObjectParams {
 
-	return PutContainerEACLParams{}
+	return DeleteObjectParams{}
 }
 
-// PutContainerEACLParams contains all the bound params for the put container e ACL operation
+// DeleteObjectParams contains all the bound params for the delete object operation
 // typically these are obtained from a http.Request
 //
-// swagger:parameters putContainerEACL
-type PutContainerEACLParams struct {
+// swagger:parameters deleteObject
+type DeleteObjectParams struct {
 
 	// HTTP Request Object
 	HTTPRequest *http.Request `json:"-"`
@@ -51,18 +46,18 @@ type PutContainerEACLParams struct {
 	  In: path
 	*/
 	ContainerID string
-	/*EACL for container
+	/*Base58 encoded object id
 	  Required: true
-	  In: body
+	  In: path
 	*/
-	Eacl *models.Eacl
+	ObjectID string
 }
 
 // BindRequest both binds and validates a request, it assumes that complex things implement a Validatable(strfmt.Registry) error interface
 // for simple values it will use straight method calls.
 //
-// To ensure default values, the struct must have been initialized with NewPutContainerEACLParams() beforehand.
-func (o *PutContainerEACLParams) BindRequest(r *http.Request, route *middleware.MatchedRoute) error {
+// To ensure default values, the struct must have been initialized with NewDeleteObjectParams() beforehand.
+func (o *DeleteObjectParams) BindRequest(r *http.Request, route *middleware.MatchedRoute) error {
 	var res []error
 
 	o.HTTPRequest = r
@@ -80,32 +75,9 @@ func (o *PutContainerEACLParams) BindRequest(r *http.Request, route *middleware.
 		res = append(res, err)
 	}
 
-	if runtime.HasBody(r) {
-		defer r.Body.Close()
-		var body models.Eacl
-		if err := route.Consumer.Consume(r.Body, &body); err != nil {
-			if err == io.EOF {
-				res = append(res, errors.Required("eacl", "body", ""))
-			} else {
-				res = append(res, errors.NewParseError("eacl", "body", "", err))
-			}
-		} else {
-			// validate body object
-			if err := body.Validate(route.Formats); err != nil {
-				res = append(res, err)
-			}
-
-			ctx := validate.WithOperationRequest(context.Background())
-			if err := body.ContextValidate(ctx, route.Formats); err != nil {
-				res = append(res, err)
-			}
-
-			if len(res) == 0 {
-				o.Eacl = &body
-			}
-		}
-	} else {
-		res = append(res, errors.Required("eacl", "body", ""))
+	rObjectID, rhkObjectID, _ := route.Params.GetOK("objectId")
+	if err := o.bindObjectID(rObjectID, rhkObjectID, route.Formats); err != nil {
+		res = append(res, err)
 	}
 	if len(res) > 0 {
 		return errors.CompositeValidationError(res...)
@@ -114,7 +86,7 @@ func (o *PutContainerEACLParams) BindRequest(r *http.Request, route *middleware.
 }
 
 // bindXBearerSignature binds and validates parameter XBearerSignature from header.
-func (o *PutContainerEACLParams) bindXBearerSignature(rawData []string, hasKey bool, formats strfmt.Registry) error {
+func (o *DeleteObjectParams) bindXBearerSignature(rawData []string, hasKey bool, formats strfmt.Registry) error {
 	if !hasKey {
 		return errors.Required("X-Bearer-Signature", "header", rawData)
 	}
@@ -134,7 +106,7 @@ func (o *PutContainerEACLParams) bindXBearerSignature(rawData []string, hasKey b
 }
 
 // bindXBearerSignatureKey binds and validates parameter XBearerSignatureKey from header.
-func (o *PutContainerEACLParams) bindXBearerSignatureKey(rawData []string, hasKey bool, formats strfmt.Registry) error {
+func (o *DeleteObjectParams) bindXBearerSignatureKey(rawData []string, hasKey bool, formats strfmt.Registry) error {
 	if !hasKey {
 		return errors.Required("X-Bearer-Signature-Key", "header", rawData)
 	}
@@ -154,7 +126,7 @@ func (o *PutContainerEACLParams) bindXBearerSignatureKey(rawData []string, hasKe
 }
 
 // bindContainerID binds and validates parameter ContainerID from path.
-func (o *PutContainerEACLParams) bindContainerID(rawData []string, hasKey bool, formats strfmt.Registry) error {
+func (o *DeleteObjectParams) bindContainerID(rawData []string, hasKey bool, formats strfmt.Registry) error {
 	var raw string
 	if len(rawData) > 0 {
 		raw = rawData[len(rawData)-1]
@@ -163,6 +135,20 @@ func (o *PutContainerEACLParams) bindContainerID(rawData []string, hasKey bool, 
 	// Required: true
 	// Parameter is provided by construction from the route
 	o.ContainerID = raw
+
+	return nil
+}
+
+// bindObjectID binds and validates parameter ObjectID from path.
+func (o *DeleteObjectParams) bindObjectID(rawData []string, hasKey bool, formats strfmt.Registry) error {
+	var raw string
+	if len(rawData) > 0 {
+		raw = rawData[len(rawData)-1]
+	}
+
+	// Required: true
+	// Parameter is provided by construction from the route
+	o.ObjectID = raw
 
 	return nil
 }

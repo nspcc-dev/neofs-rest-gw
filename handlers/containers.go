@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
-	"github.com/nspcc-dev/neofs-sdk-go/owner"
 	"net/http"
 	"strconv"
 	"strings"
@@ -19,6 +18,7 @@ import (
 	"github.com/nspcc-dev/neofs-sdk-go/acl"
 	"github.com/nspcc-dev/neofs-sdk-go/container"
 	cid "github.com/nspcc-dev/neofs-sdk-go/container/id"
+	"github.com/nspcc-dev/neofs-sdk-go/owner"
 	"github.com/nspcc-dev/neofs-sdk-go/policy"
 	"github.com/nspcc-dev/neofs-sdk-go/pool"
 	"github.com/nspcc-dev/neofs-sdk-go/session"
@@ -34,8 +34,8 @@ const (
 func (a *API) PutContainers(params operations.PutContainerParams, principal *models.Principal) middleware.Responder {
 	bt := &BearerToken{
 		Token:     string(*principal),
-		Signature: params.XNeofsTokenSignature,
-		Key:       params.XNeofsTokenSignatureKey,
+		Signature: params.XBearerSignature,
+		Key:       params.XBearerSignatureKey,
 	}
 	stoken, err := prepareSessionToken(bt)
 	if err != nil {
@@ -92,8 +92,8 @@ func (a *API) PutContainerEACL(params operations.PutContainerEACLParams, princip
 
 	bt := &BearerToken{
 		Token:     string(*principal),
-		Signature: params.XNeofsTokenSignature,
-		Key:       params.XNeofsTokenSignatureKey,
+		Signature: params.XBearerSignature,
+		Key:       params.XBearerSignatureKey,
 	}
 	stoken, err := prepareSessionToken(bt)
 	if err != nil {
@@ -180,8 +180,8 @@ func (a *API) ListContainer(params operations.ListContainersParams) middleware.R
 func (a *API) DeleteContainer(params operations.DeleteContainerParams, principal *models.Principal) middleware.Responder {
 	bt := &BearerToken{
 		Token:     string(*principal),
-		Signature: params.XNeofsTokenSignature,
-		Key:       params.XNeofsTokenSignatureKey,
+		Signature: params.XBearerSignature,
+		Key:       params.XBearerSignatureKey,
 	}
 	stoken, err := prepareSessionToken(bt)
 	if err != nil {

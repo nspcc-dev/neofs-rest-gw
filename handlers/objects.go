@@ -4,10 +4,6 @@ import (
 	"encoding/base64"
 	"fmt"
 
-	"github.com/nspcc-dev/neofs-sdk-go/object/address"
-	oid "github.com/nspcc-dev/neofs-sdk-go/object/id"
-	"go.uber.org/zap"
-
 	"github.com/go-openapi/runtime/middleware"
 	"github.com/nspcc-dev/neo-go/pkg/crypto/keys"
 	"github.com/nspcc-dev/neofs-api-go/v2/acl"
@@ -16,8 +12,11 @@ import (
 	"github.com/nspcc-dev/neofs-rest-gw/gen/restapi/operations"
 	cid "github.com/nspcc-dev/neofs-sdk-go/container/id"
 	"github.com/nspcc-dev/neofs-sdk-go/object"
+	"github.com/nspcc-dev/neofs-sdk-go/object/address"
+	oid "github.com/nspcc-dev/neofs-sdk-go/object/id"
 	"github.com/nspcc-dev/neofs-sdk-go/pool"
 	"github.com/nspcc-dev/neofs-sdk-go/token"
+	"go.uber.org/zap"
 )
 
 // PutObjects handler that uploads object to NeoFS.
@@ -25,13 +24,7 @@ func (a *API) PutObjects(params operations.PutObjectParams, principal *models.Pr
 	errorResponse := operations.NewPutObjectBadRequest()
 	ctx := params.HTTPRequest.Context()
 
-	bt := &BearerToken{
-		Token:     string(*principal),
-		Signature: params.XNeofsTokenSignature,
-		Key:       params.XNeofsTokenSignatureKey,
-	}
-
-	btoken, err := prepareBearerToken(bt)
+	btoken, err := getBearerToken(principal, params.XBearerSignature, params.XBearerSignatureKey)
 	if err != nil {
 		return errorResponse.WithPayload(models.Error(err.Error()))
 	}
@@ -83,32 +76,18 @@ func (a *API) GetObjectInfo(params operations.GetObjectInfoParams, principal *mo
 	errorResponse := operations.NewGetObjectInfoBadRequest()
 	ctx := params.HTTPRequest.Context()
 
-	var cnrID cid.ID
-	if err := cnrID.Parse(params.ContainerID); err != nil {
-		a.log.Error("invalid container id", zap.Error(err))
-		return errorResponse.WithPayload("invalid container id")
-	}
-	var objID oid.ID
-	if err := objID.Parse(params.ObjectID); err != nil {
-		a.log.Error("invalid object id", zap.Error(err))
-		return errorResponse.WithPayload("invalid object id")
+	addr, err := parseAddress(params.ContainerID, params.ObjectID)
+	if err != nil {
+		a.log.Error("invalid address", zap.Error(err))
+		return errorResponse.WithPayload("invalid address")
 	}
 
-	bt := &BearerToken{
-		Token:     string(*principal),
-		Signature: params.XNeofsTokenSignature,
-		Key:       params.XNeofsTokenSignatureKey,
-	}
-
-	btoken, err := prepareBearerToken(bt)
+	btoken, err := getBearerToken(principal, params.XBearerSignature, params.XBearerSignatureKey)
 	if err != nil {
 		return errorResponse.WithPayload(NewError(err))
 	}
 
 	var prm pool.PrmObjectHead
-	addr := address.NewAddress()
-	addr.SetContainerID(&cnrID)
-	addr.SetObjectID(&objID)
 	prm.SetAddress(*addr)
 	prm.UseBearer(btoken)
 
@@ -133,8 +112,64 @@ func (a *API) GetObjectInfo(params operations.GetObjectInfoParams, principal *mo
 	return operations.NewGetObjectInfoOK().WithPayload(&resp)
 }
 
+// DeleteObject handler that removes object from NeoFS.
+func (a *API) DeleteObject(params operations.DeleteObjectParams, principal *models.Principal) middleware.Responder {
+	errorResponse := operations.NewDeleteObjectBadRequest()
+	ctx := params.HTTPRequest.Context()
+
+	addr, err := parseAddress(params.ContainerID, params.ObjectID)
+	if err != nil {
+		a.log.Error("invalid address", zap.Error(err))
+		return errorResponse.WithPayload("invalid address")
+	}
+
+	btoken, err := getBearerToken(principal, params.XBearerSignature, params.XBearerSignatureKey)
+	if err != nil {
+		a.log.Error("failed to get bearer token", zap.Error(err))
+		return errorResponse.WithPayload(NewError(err))
+	}
+
+	var prm pool.PrmObjectDelete
+	prm.SetAddress(*addr)
+	prm.UseBearer(btoken)
+
+	if err = a.pool.DeleteObject(ctx, prm); err != nil {
+		a.log.Error("failed to delete object", zap.Error(err))
+		return errorResponse.WithPayload(NewError(err))
+	}
+
+	return operations.NewDeleteObjectNoContent()
+}
+
+func parseAddress(containerID, objectID string) (*address.Address, error) {
+	var cnrID cid.ID
+	if err := cnrID.Parse(containerID); err != nil {
+		return nil, fmt.Errorf("invalid container id: %w", err)
+	}
+	var objID oid.ID
+	if err := objID.Parse(objectID); err != nil {
+		return nil, fmt.Errorf("invalid object id: %w", err)
+	}
+
+	addr := address.NewAddress()
+	addr.SetContainerID(&cnrID)
+	addr.SetObjectID(&objID)
+
+	return addr, nil
+}
+
+func getBearerToken(token *models.Principal, signature, key string) (*token.BearerToken, error) {
+	bt := &BearerToken{
+		Token:     string(*token),
+		Signature: signature,
+		Key:       key,
+	}
+
+	return prepareBearerToken(bt)
+}
+
 func prepareBearerToken(bt *BearerToken) (*token.BearerToken, error) {
-	btoken, err := getBearerToken(bt.Token)
+	btoken, err := parseBearerToken(bt.Token)
 	if err != nil {
 		return nil, fmt.Errorf("could not fetch bearer token: %w", err)
 	}
@@ -158,7 +193,7 @@ func prepareBearerToken(bt *BearerToken) (*token.BearerToken, error) {
 	return btoken, btoken.VerifySignature()
 }
 
-func getBearerToken(auth string) (*token.BearerToken, error) {
+func parseBearerToken(auth string) (*token.BearerToken, error) {
 	data, err := base64.StdEncoding.DecodeString(auth)
 	if err != nil {
 		return nil, fmt.Errorf("can't base64-decode bearer token: %w", err)
