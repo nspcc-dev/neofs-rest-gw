@@ -23,13 +23,13 @@ security:
 parameters:
   signatureParam:
     in: header
-    name: X-Neofs-Token-Signature
+    name: X-Bearer-Signature
     description: Base64 encoded signature for bearer token
     type: string
     required: true
   signatureKeyParam:
     in: header
-    name: X-Neofs-Token-Signature-Key
+    name: X-Bearer-Signature-Key
     description: Hex encoded the public part of the key that signed the bearer token
     type: string
     required: true
@@ -39,7 +39,7 @@ parameters:
     type: string
     required: true
     description: Base58 encoded container id
-  ojectId:
+  objectId:
     in: path
     name: objectId
     type: string
@@ -53,22 +53,18 @@ paths:
       summary: Form bearer token to futher requests
       security: [ ]
       parameters:
+        - $ref: '#/parameters/signatureKeyParam'
         - in: header
           description: Supported operation scope for token
-          name: X-Neofs-Token-Scope
+          name: X-Bearer-Scope
           type: string
           enum:
             - object
             - container
           required: true
         - in: header
-          description: Public key of user
-          name: X-Neofs-Token-Signature-Key
-          type: string
-          required: true
-        - in: header
           description: Token lifetime in epoch
-          name: X-Neofs-Token-Lifetime
+          name: X-Bearer-Lifetime
           type: integer
           default: 100
         - in: body
@@ -149,11 +145,7 @@ paths:
       - $ref: '#/parameters/signatureParam'
       - $ref: '#/parameters/signatureKeyParam'
       - $ref: '#/parameters/containerId'
-      - in: path
-        name: objectId
-        type: string
-        required: true
-        description: Base58 encoded object id
+      - $ref: '#/parameters/objectId'
     get:
       operationId: getObjectInfo
       summary: Get object info by address and
@@ -162,6 +154,16 @@ paths:
           description: Object info
           schema:
             $ref: '#/definitions/ObjectInfo'
+        400:
+          description: Bad request
+          schema:
+            $ref: '#/definitions/Error'
+    delete:
+      operationId: deleteObject
+      summary: Remove object from NeoFS
+      responses:
+        204:
+          description: Successful deletion
         400:
           description: Bad request
           schema:

@@ -43,20 +43,16 @@ func init() {
         "operationId": "auth",
         "parameters": [
           {
+            "$ref": "#/parameters/signatureKeyParam"
+          },
+          {
             "enum": [
               "object",
               "container"
             ],
             "type": "string",
             "description": "Supported operation scope for token",
-            "name": "X-Neofs-Token-Scope",
-            "in": "header",
-            "required": true
-          },
-          {
-            "type": "string",
-            "description": "Public key of user",
-            "name": "X-Neofs-Token-Signature-Key",
+            "name": "X-Bearer-Scope",
             "in": "header",
             "required": true
           },
@@ -64,7 +60,7 @@ func init() {
             "type": "integer",
             "default": 100,
             "description": "Token lifetime in epoch",
-            "name": "X-Neofs-Token-Lifetime",
+            "name": "X-Bearer-Lifetime",
             "in": "header"
           },
           {
@@ -418,6 +414,21 @@ func init() {
           }
         }
       },
+      "delete": {
+        "summary": "Remove object from NeoFS",
+        "operationId": "deleteObject",
+        "responses": {
+          "204": {
+            "description": "Successful deletion"
+          },
+          "400": {
+            "description": "Bad request",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          }
+        }
+      },
       "parameters": [
         {
           "$ref": "#/parameters/signatureParam"
@@ -429,11 +440,7 @@ func init() {
           "$ref": "#/parameters/containerId"
         },
         {
-          "type": "string",
-          "description": "Base58 encoded object id",
-          "name": "objectId",
-          "in": "path",
-          "required": true
+          "$ref": "#/parameters/objectId"
         }
       ]
     }
@@ -814,7 +821,7 @@ func init() {
       "in": "path",
       "required": true
     },
-    "ojectId": {
+    "objectId": {
       "type": "string",
       "description": "Base58 encoded object id",
       "name": "objectId",
@@ -824,14 +831,14 @@ func init() {
     "signatureKeyParam": {
       "type": "string",
       "description": "Hex encoded the public part of the key that signed the bearer token",
-      "name": "X-Neofs-Token-Signature-Key",
+      "name": "X-Bearer-Signature-Key",
       "in": "header",
       "required": true
     },
     "signatureParam": {
       "type": "string",
       "description": "Base64 encoded signature for bearer token",
-      "name": "X-Neofs-Token-Signature",
+      "name": "X-Bearer-Signature",
       "in": "header",
       "required": true
     }
@@ -876,20 +883,20 @@ func init() {
         "operationId": "auth",
         "parameters": [
           {
+            "type": "string",
+            "description": "Hex encoded the public part of the key that signed the bearer token",
+            "name": "X-Bearer-Signature-Key",
+            "in": "header",
+            "required": true
+          },
+          {
             "enum": [
               "object",
               "container"
             ],
             "type": "string",
             "description": "Supported operation scope for token",
-            "name": "X-Neofs-Token-Scope",
-            "in": "header",
-            "required": true
-          },
-          {
-            "type": "string",
-            "description": "Public key of user",
-            "name": "X-Neofs-Token-Signature-Key",
+            "name": "X-Bearer-Scope",
             "in": "header",
             "required": true
           },
@@ -897,7 +904,7 @@ func init() {
             "type": "integer",
             "default": 100,
             "description": "Token lifetime in epoch",
-            "name": "X-Neofs-Token-Lifetime",
+            "name": "X-Bearer-Lifetime",
             "in": "header"
           },
           {
@@ -979,14 +986,14 @@ func init() {
           {
             "type": "string",
             "description": "Base64 encoded signature for bearer token",
-            "name": "X-Neofs-Token-Signature",
+            "name": "X-Bearer-Signature",
             "in": "header",
             "required": true
           },
           {
             "type": "string",
             "description": "Hex encoded the public part of the key that signed the bearer token",
-            "name": "X-Neofs-Token-Signature-Key",
+            "name": "X-Bearer-Signature-Key",
             "in": "header",
             "required": true
           },
@@ -1080,14 +1087,14 @@ func init() {
           {
             "type": "string",
             "description": "Base64 encoded signature for bearer token",
-            "name": "X-Neofs-Token-Signature",
+            "name": "X-Bearer-Signature",
             "in": "header",
             "required": true
           },
           {
             "type": "string",
             "description": "Hex encoded the public part of the key that signed the bearer token",
-            "name": "X-Neofs-Token-Signature-Key",
+            "name": "X-Bearer-Signature-Key",
             "in": "header",
             "required": true
           }
@@ -1141,14 +1148,14 @@ func init() {
           {
             "type": "string",
             "description": "Base64 encoded signature for bearer token",
-            "name": "X-Neofs-Token-Signature",
+            "name": "X-Bearer-Signature",
             "in": "header",
             "required": true
           },
           {
             "type": "string",
             "description": "Hex encoded the public part of the key that signed the bearer token",
-            "name": "X-Neofs-Token-Signature-Key",
+            "name": "X-Bearer-Signature-Key",
             "in": "header",
             "required": true
           },
@@ -1260,14 +1267,14 @@ func init() {
         {
           "type": "string",
           "description": "Base64 encoded signature for bearer token",
-          "name": "X-Neofs-Token-Signature",
+          "name": "X-Bearer-Signature",
           "in": "header",
           "required": true
         },
         {
           "type": "string",
           "description": "Hex encoded the public part of the key that signed the bearer token",
-          "name": "X-Neofs-Token-Signature-Key",
+          "name": "X-Bearer-Signature-Key",
           "in": "header",
           "required": true
         }
@@ -1292,18 +1299,33 @@ func init() {
           }
         }
       },
+      "delete": {
+        "summary": "Remove object from NeoFS",
+        "operationId": "deleteObject",
+        "responses": {
+          "204": {
+            "description": "Successful deletion"
+          },
+          "400": {
+            "description": "Bad request",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          }
+        }
+      },
       "parameters": [
         {
           "type": "string",
           "description": "Base64 encoded signature for bearer token",
-          "name": "X-Neofs-Token-Signature",
+          "name": "X-Bearer-Signature",
           "in": "header",
           "required": true
         },
         {
           "type": "string",
           "description": "Hex encoded the public part of the key that signed the bearer token",
-          "name": "X-Neofs-Token-Signature-Key",
+          "name": "X-Bearer-Signature-Key",
           "in": "header",
           "required": true
         },
@@ -1700,7 +1722,7 @@ func init() {
       "in": "path",
       "required": true
     },
-    "ojectId": {
+    "objectId": {
       "type": "string",
       "description": "Base58 encoded object id",
       "name": "objectId",
@@ -1710,14 +1732,14 @@ func init() {
     "signatureKeyParam": {
       "type": "string",
       "description": "Hex encoded the public part of the key that signed the bearer token",
-      "name": "X-Neofs-Token-Signature-Key",
+      "name": "X-Bearer-Signature-Key",
       "in": "header",
       "required": true
     },
     "signatureParam": {
       "type": "string",
       "description": "Base64 encoded signature for bearer token",
-      "name": "X-Neofs-Token-Signature",
+      "name": "X-Bearer-Signature",
       "in": "header",
       "required": true
     }

@@ -24,7 +24,7 @@ func (a *API) PostAuth(params operations.AuthParams) middleware.Responder {
 		resp *models.TokenResponse
 	)
 
-	if params.XNeofsTokenScope == "object" {
+	if params.XBearerScope == "object" {
 		resp, err = prepareObjectToken(params, a.pool)
 	} else {
 		resp, err = prepareContainerTokens(params, a.pool, a.key.PublicKey())
@@ -45,7 +45,7 @@ func prepareObjectToken(params operations.AuthParams, pool *pool.Pool) (*models.
 	}
 	btoken.SetOwner(pool.OwnerID())
 
-	iat, exp, err := getTokenLifetime(ctx, pool, params.XNeofsTokenLifetime)
+	iat, exp, err := getTokenLifetime(ctx, pool, params.XBearerLifetime)
 	if err != nil {
 		return nil, fmt.Errorf("couldn't get lifetime: %w", err)
 	}
@@ -66,12 +66,12 @@ func prepareObjectToken(params operations.AuthParams, pool *pool.Pool) (*models.
 func prepareContainerTokens(params operations.AuthParams, pool *pool.Pool, key *keys.PublicKey) (*models.TokenResponse, error) {
 	ctx := params.HTTPRequest.Context()
 
-	iat, exp, err := getTokenLifetime(ctx, pool, params.XNeofsTokenLifetime)
+	iat, exp, err := getTokenLifetime(ctx, pool, params.XBearerLifetime)
 	if err != nil {
 		return nil, fmt.Errorf("couldn't get lifetime: %w", err)
 	}
 
-	ownerKey, err := keys.NewPublicKeyFromString(params.XNeofsTokenSignatureKey)
+	ownerKey, err := keys.NewPublicKeyFromString(params.XBearerSignatureKey)
 	if err != nil {
 		return nil, fmt.Errorf("invalid singature key: %w", err)
 	}

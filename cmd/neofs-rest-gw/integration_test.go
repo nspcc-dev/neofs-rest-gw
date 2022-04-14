@@ -45,13 +45,13 @@ const (
 	testNode          = "localhost:8080"
 	containerName     = "test-container"
 
-	// XNeofsTokenSignature header contains base64 encoded signature of the token body.
-	XNeofsTokenSignature = "X-Neofs-Token-Signature"
-	// XNeofsTokenSignatureKey header contains hex encoded public key that corresponds the signature of the token body.
-	XNeofsTokenSignatureKey = "X-Neofs-Token-Signature-Key"
-	// XNeofsTokenScope header contains operation scope for auth (bearer) token.
+	// XBearerSignature header contains base64 encoded signature of the token body.
+	XBearerSignature = "X-Bearer-Signature"
+	// XBearerSignatureKey header contains hex encoded public key that corresponds the signature of the token body.
+	XBearerSignatureKey = "X-Bearer-Signature-Key"
+	// XBearerScope header contains operation scope for auth (bearer) token.
 	// It corresponds to 'object' or 'container' services in neofs.
-	XNeofsTokenScope = "X-Neofs-Token-Scope"
+	XBearerScope = "X-Bearer-Scope"
 )
 
 func TestIntegration(t *testing.T) {
@@ -74,15 +74,17 @@ func TestIntegration(t *testing.T) {
 		cancel := runServer(ctx, t)
 		clientPool := getPool(ctx, t, key)
 		cnrID := createContainer(ctx, t, clientPool, containerName)
+		restrictByEACL(ctx, t, clientPool, cnrID)
 
 		t.Run("rest put object "+version, func(t *testing.T) { restObjectPut(ctx, t, clientPool, cnrID) })
 		t.Run("rest get object "+version, func(t *testing.T) { restObjectGet(ctx, t, clientPool, cnrID) })
+		t.Run("rest delete object "+version, func(t *testing.T) { restObjectDelete(ctx, t, clientPool, cnrID) })
 
 		t.Run("rest put container"+version, func(t *testing.T) { restContainerPut(ctx, t, clientPool) })
 		t.Run("rest get container"+version, func(t *testing.T) { restContainerGet(ctx, t, clientPool, cnrID) })
 		t.Run("rest delete container"+version, func(t *testing.T) { restContainerDelete(ctx, t, clientPool) })
 		t.Run("rest put container eacl	"+version, func(t *testing.T) { restContainerEACLPut(ctx, t, clientPool) })
-		t.Run("rest get container eacl	"+version, func(t *testing.T) { restContainerEACLGet(ctx, t, clientPool) })
+		t.Run("rest get container eacl	"+version, func(t *testing.T) { restContainerEACLGet(ctx, t, clientPool, cnrID) })
 		t.Run("rest list containers	"+version, func(t *testing.T) { restContainerList(ctx, t, clientPool, cnrID) })
 
 		cancel()
@@ -170,8 +172,6 @@ func getPool(ctx context.Context, t *testing.T, key *keys.PrivateKey) *pool.Pool
 }
 
 func restObjectPut(ctx context.Context, t *testing.T, clientPool *pool.Pool, cnrID *cid.ID) {
-	restrictByEACL(ctx, t, clientPool, cnrID)
-
 	bearer := &models.Bearer{
 		Object: []*models.Record{{
 			Operation: models.NewOperation(models.OperationPUT),
@@ -238,8 +238,6 @@ func restObjectPut(ctx context.Context, t *testing.T, clientPool *pool.Pool, cnr
 }
 
 func restObjectGet(ctx context.Context, t *testing.T, p *pool.Pool, cnrID *cid.ID) {
-	restrictByEACL(ctx, t, p, cnrID)
-
 	attributes := map[string]string{
 		object.AttributeFileName: "get-obj-name",
 		"user-attribute":         "user value",
@@ -277,6 +275,41 @@ func restObjectGet(ctx context.Context, t *testing.T, p *pool.Pool, cnrID *cid.I
 	for _, attr := range objInfo.Attributes {
 		require.Equal(t, attributes[*attr.Key], *attr.Value)
 	}
+}
+
+func restObjectDelete(ctx context.Context, t *testing.T, p *pool.Pool, cnrID *cid.ID) {
+	objID := createObject(ctx, t, p, cnrID, nil, []byte("some content"))
+
+	bearer := &models.Bearer{
+		Object: []*models.Record{{
+			Operation: models.NewOperation(models.OperationDELETE),
+			Action:    models.NewAction(models.ActionALLOW),
+			Filters:   []*models.Filter{},
+			Targets: []*models.Target{{
+				Role: models.NewRole(models.RoleOTHERS),
+				Keys: []string{},
+			}},
+		}},
+	}
+
+	httpClient := defaultHTTPClient()
+	bearerToken := makeAuthObjectTokenRequest(ctx, t, bearer, httpClient)
+
+	request, err := http.NewRequest(http.MethodDelete, testHost+"/v1/objects/"+cnrID.String()+"/"+objID.String(), nil)
+	require.NoError(t, err)
+	prepareCommonHeaders(request.Header, bearerToken)
+
+	doRequest(t, httpClient, request, http.StatusNoContent, nil)
+
+	var addr address.Address
+	addr.SetContainerID(cnrID)
+	addr.SetObjectID(objID)
+
+	var prm pool.PrmObjectHead
+	prm.SetAddress(addr)
+
+	_, err = p.HeadObject(ctx, prm)
+	require.Error(t, err)
 }
 
 func doRequest(t *testing.T, httpClient *http.Client, request *http.Request, expectedCode int, model interface{}) {
@@ -387,9 +420,11 @@ func restContainerEACLPut(ctx context.Context, t *testing.T, clientPool *pool.Po
 	require.True(t, eacl.EqualTables(*expectedTable, *table))
 }
 
-func restContainerEACLGet(ctx context.Context, t *testing.T, clientPool *pool.Pool) {
-	cnrID := createContainer(ctx, t, clientPool, "for-eacl-get")
-	expectedTable := restrictByEACL(ctx, t, clientPool, cnrID)
+func restContainerEACLGet(ctx context.Context, t *testing.T, p *pool.Pool, cnrID *cid.ID) {
+	var prm pool.PrmContainerEACL
+	prm.SetContainerID(*cnrID)
+	expectedTable, err := p.GetEACL(ctx, prm)
+	require.NoError(t, err)
 
 	httpClient := &http.Client{Timeout: 60 * time.Second}
 
@@ -459,8 +494,8 @@ func makeAuthTokenRequest(ctx context.Context, t *testing.T, bearer *models.Bear
 	require.NoError(t, err)
 	request = request.WithContext(ctx)
 	request.Header.Add("Content-Type", "application/json")
-	request.Header.Add(XNeofsTokenScope, string(tokenType))
-	request.Header.Add(XNeofsTokenSignatureKey, hexPubKey)
+	request.Header.Add(XBearerScope, string(tokenType))
+	request.Header.Add(XBearerSignatureKey, hexPubKey)
 
 	resp, err := httpClient.Do(request)
 	require.NoError(t, err)
@@ -564,9 +599,9 @@ func restContainerPut(ctx context.Context, t *testing.T, clientPool *pool.Pool) 
 
 func prepareCommonHeaders(header http.Header, bearerToken *handlers.BearerToken) {
 	header.Add("Content-Type", "application/json")
-	header.Add(XNeofsTokenSignature, bearerToken.Signature)
+	header.Add(XBearerSignature, bearerToken.Signature)
 	header.Add("Authorization", "Bearer "+bearerToken.Token)
-	header.Add(XNeofsTokenSignatureKey, bearerToken.Key)
+	header.Add(XBearerSignatureKey, bearerToken.Key)
 }
 
 func createContainer(ctx context.Context, t *testing.T, clientPool *pool.Pool, name string) *cid.ID {

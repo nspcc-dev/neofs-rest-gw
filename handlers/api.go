@@ -65,6 +65,7 @@ func (a *API) Configure(api *operations.NeofsRestGwAPI) http.Handler {
 
 	api.PutObjectHandler = operations.PutObjectHandlerFunc(a.PutObjects)
 	api.GetObjectInfoHandler = operations.GetObjectInfoHandlerFunc(a.GetObjectInfo)
+	api.DeleteObjectHandler = operations.DeleteObjectHandlerFunc(a.DeleteObject)
 
 	api.PutContainerHandler = operations.PutContainerHandlerFunc(a.PutContainers)
 	api.GetContainerHandler = operations.GetContainerHandlerFunc(a.GetContainer)

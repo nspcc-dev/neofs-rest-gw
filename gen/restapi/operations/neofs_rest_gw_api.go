@@ -50,6 +50,9 @@ func NewNeofsRestGwAPI(spec *loads.Document) *NeofsRestGwAPI {
 		DeleteContainerHandler: DeleteContainerHandlerFunc(func(params DeleteContainerParams, principal *models.Principal) middleware.Responder {
 			return middleware.NotImplemented("operation DeleteContainer has not yet been implemented")
 		}),
+		DeleteObjectHandler: DeleteObjectHandlerFunc(func(params DeleteObjectParams, principal *models.Principal) middleware.Responder {
+			return middleware.NotImplemented("operation DeleteObject has not yet been implemented")
+		}),
 		GetContainerHandler: GetContainerHandlerFunc(func(params GetContainerParams) middleware.Responder {
 			return middleware.NotImplemented("operation GetContainer has not yet been implemented")
 		}),
@@ -125,6 +128,8 @@ type NeofsRestGwAPI struct {
 	AuthHandler AuthHandler
 	// DeleteContainerHandler sets the operation handler for the delete container operation
 	DeleteContainerHandler DeleteContainerHandler
+	// DeleteObjectHandler sets the operation handler for the delete object operation
+	DeleteObjectHandler DeleteObjectHandler
 	// GetContainerHandler sets the operation handler for the get container operation
 	GetContainerHandler GetContainerHandler
 	// GetContainerEACLHandler sets the operation handler for the get container e ACL operation
@@ -225,6 +230,9 @@ func (o *NeofsRestGwAPI) Validate() error {
 	}
 	if o.DeleteContainerHandler == nil {
 		unregistered = append(unregistered, "DeleteContainerHandler")
+	}
+	if o.DeleteObjectHandler == nil {
+		unregistered = append(unregistered, "DeleteObjectHandler")
 	}
 	if o.GetContainerHandler == nil {
 		unregistered = append(unregistered, "GetContainerHandler")
@@ -354,6 +362,10 @@ func (o *NeofsRestGwAPI) initHandlerCache() {
 		o.handlers["DELETE"] = make(map[string]http.Handler)
 	}
 	o.handlers["DELETE"]["/containers/{containerId}"] = NewDeleteContainer(o.context, o.DeleteContainerHandler)
+	if o.handlers["DELETE"] == nil {
+		o.handlers["DELETE"] = make(map[string]http.Handler)
+	}
+	o.handlers["DELETE"]["/objects/{containerId}/{objectId}"] = NewDeleteObject(o.context, o.DeleteObjectHandler)
 	if o.handlers["GET"] == nil {
 		o.handlers["GET"] = make(map[string]http.Handler)
 	}

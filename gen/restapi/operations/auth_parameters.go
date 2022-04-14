@@ -27,11 +27,11 @@ func NewAuthParams() AuthParams {
 	var (
 		// initialize parameters with default values
 
-		xNeofsTokenLifetimeDefault = int64(100)
+		xBearerLifetimeDefault = int64(100)
 	)
 
 	return AuthParams{
-		XNeofsTokenLifetime: &xNeofsTokenLifetimeDefault,
+		XBearerLifetime: &xBearerLifetimeDefault,
 	}
 }
 
@@ -48,17 +48,17 @@ type AuthParams struct {
 	  In: header
 	  Default: 100
 	*/
-	XNeofsTokenLifetime *int64
+	XBearerLifetime *int64
 	/*Supported operation scope for token
 	  Required: true
 	  In: header
 	*/
-	XNeofsTokenScope string
-	/*Public key of user
+	XBearerScope string
+	/*Hex encoded the public part of the key that signed the bearer token
 	  Required: true
 	  In: header
 	*/
-	XNeofsTokenSignatureKey string
+	XBearerSignatureKey string
 	/*Bearer token
 	  Required: true
 	  In: body
@@ -75,15 +75,15 @@ func (o *AuthParams) BindRequest(r *http.Request, route *middleware.MatchedRoute
 
 	o.HTTPRequest = r
 
-	if err := o.bindXNeofsTokenLifetime(r.Header[http.CanonicalHeaderKey("X-Neofs-Token-Lifetime")], true, route.Formats); err != nil {
+	if err := o.bindXBearerLifetime(r.Header[http.CanonicalHeaderKey("X-Bearer-Lifetime")], true, route.Formats); err != nil {
 		res = append(res, err)
 	}
 
-	if err := o.bindXNeofsTokenScope(r.Header[http.CanonicalHeaderKey("X-Neofs-Token-Scope")], true, route.Formats); err != nil {
+	if err := o.bindXBearerScope(r.Header[http.CanonicalHeaderKey("X-Bearer-Scope")], true, route.Formats); err != nil {
 		res = append(res, err)
 	}
 
-	if err := o.bindXNeofsTokenSignatureKey(r.Header[http.CanonicalHeaderKey("X-Neofs-Token-Signature-Key")], true, route.Formats); err != nil {
+	if err := o.bindXBearerSignatureKey(r.Header[http.CanonicalHeaderKey("X-Bearer-Signature-Key")], true, route.Formats); err != nil {
 		res = append(res, err)
 	}
 
@@ -120,8 +120,8 @@ func (o *AuthParams) BindRequest(r *http.Request, route *middleware.MatchedRoute
 	return nil
 }
 
-// bindXNeofsTokenLifetime binds and validates parameter XNeofsTokenLifetime from header.
-func (o *AuthParams) bindXNeofsTokenLifetime(rawData []string, hasKey bool, formats strfmt.Registry) error {
+// bindXBearerLifetime binds and validates parameter XBearerLifetime from header.
+func (o *AuthParams) bindXBearerLifetime(rawData []string, hasKey bool, formats strfmt.Registry) error {
 	var raw string
 	if len(rawData) > 0 {
 		raw = rawData[len(rawData)-1]
@@ -136,17 +136,17 @@ func (o *AuthParams) bindXNeofsTokenLifetime(rawData []string, hasKey bool, form
 
 	value, err := swag.ConvertInt64(raw)
 	if err != nil {
-		return errors.InvalidType("X-Neofs-Token-Lifetime", "header", "int64", raw)
+		return errors.InvalidType("X-Bearer-Lifetime", "header", "int64", raw)
 	}
-	o.XNeofsTokenLifetime = &value
+	o.XBearerLifetime = &value
 
 	return nil
 }
 
-// bindXNeofsTokenScope binds and validates parameter XNeofsTokenScope from header.
-func (o *AuthParams) bindXNeofsTokenScope(rawData []string, hasKey bool, formats strfmt.Registry) error {
+// bindXBearerScope binds and validates parameter XBearerScope from header.
+func (o *AuthParams) bindXBearerScope(rawData []string, hasKey bool, formats strfmt.Registry) error {
 	if !hasKey {
-		return errors.Required("X-Neofs-Token-Scope", "header", rawData)
+		return errors.Required("X-Bearer-Scope", "header", rawData)
 	}
 	var raw string
 	if len(rawData) > 0 {
@@ -155,32 +155,32 @@ func (o *AuthParams) bindXNeofsTokenScope(rawData []string, hasKey bool, formats
 
 	// Required: true
 
-	if err := validate.RequiredString("X-Neofs-Token-Scope", "header", raw); err != nil {
+	if err := validate.RequiredString("X-Bearer-Scope", "header", raw); err != nil {
 		return err
 	}
-	o.XNeofsTokenScope = raw
+	o.XBearerScope = raw
 
-	if err := o.validateXNeofsTokenScope(formats); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-// validateXNeofsTokenScope carries on validations for parameter XNeofsTokenScope
-func (o *AuthParams) validateXNeofsTokenScope(formats strfmt.Registry) error {
-
-	if err := validate.EnumCase("X-Neofs-Token-Scope", "header", o.XNeofsTokenScope, []interface{}{"object", "container"}, true); err != nil {
+	if err := o.validateXBearerScope(formats); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-// bindXNeofsTokenSignatureKey binds and validates parameter XNeofsTokenSignatureKey from header.
-func (o *AuthParams) bindXNeofsTokenSignatureKey(rawData []string, hasKey bool, formats strfmt.Registry) error {
+// validateXBearerScope carries on validations for parameter XBearerScope
+func (o *AuthParams) validateXBearerScope(formats strfmt.Registry) error {
+
+	if err := validate.EnumCase("X-Bearer-Scope", "header", o.XBearerScope, []interface{}{"object", "container"}, true); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// bindXBearerSignatureKey binds and validates parameter XBearerSignatureKey from header.
+func (o *AuthParams) bindXBearerSignatureKey(rawData []string, hasKey bool, formats strfmt.Registry) error {
 	if !hasKey {
-		return errors.Required("X-Neofs-Token-Signature-Key", "header", rawData)
+		return errors.Required("X-Bearer-Signature-Key", "header", rawData)
 	}
 	var raw string
 	if len(rawData) > 0 {
@@ -189,10 +189,10 @@ func (o *AuthParams) bindXNeofsTokenSignatureKey(rawData []string, hasKey bool, 
 
 	// Required: true
 
-	if err := validate.RequiredString("X-Neofs-Token-Signature-Key", "header", raw); err != nil {
+	if err := validate.RequiredString("X-Bearer-Signature-Key", "header", raw); err != nil {
 		return err
 	}
-	o.XNeofsTokenSignatureKey = raw
+	o.XBearerSignatureKey = raw
 
 	return nil
 }
