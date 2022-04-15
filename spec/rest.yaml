@@ -33,6 +33,12 @@ parameters:
     description: Hex encoded the public part of the key that signed the bearer token
     type: string
     required: true
+  signatureScheme:
+    in: query
+    name: walletConnect
+    description: Use wallect connect signature scheme or not
+    type: boolean
+    default: false
   containerId:
     in: path
     name: containerId
@@ -91,6 +97,7 @@ paths:
     parameters:
       - $ref: '#/parameters/signatureParam'
       - $ref: '#/parameters/signatureKeyParam'
+      - $ref: '#/parameters/signatureScheme'
     put:
       operationId: putObject
       summary: Upload object to NeoFS
@@ -144,6 +151,7 @@ paths:
     parameters:
       - $ref: '#/parameters/signatureParam'
       - $ref: '#/parameters/signatureKeyParam'
+      - $ref: '#/parameters/signatureScheme'
       - $ref: '#/parameters/containerId'
       - $ref: '#/parameters/objectId'
     get:
@@ -176,6 +184,7 @@ paths:
       parameters:
         - $ref: '#/parameters/signatureParam'
         - $ref: '#/parameters/signatureKeyParam'
+        - $ref: '#/parameters/signatureScheme'
         - in: query
           name: skip-native-name
           description: Provide this parameter to skip registration container name in NNS service
@@ -271,6 +280,7 @@ paths:
       parameters:
         - $ref: '#/parameters/signatureParam'
         - $ref: '#/parameters/signatureKeyParam'
+        - $ref: '#/parameters/signatureScheme'
       responses:
         204:
           description: Successul deletion
@@ -287,6 +297,7 @@ paths:
       parameters:
         - $ref: '#/parameters/signatureParam'
         - $ref: '#/parameters/signatureKeyParam'
+        - $ref: '#/parameters/signatureScheme'
         - in: body
           name: eacl
           required: true

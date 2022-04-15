@@ -9,17 +9,26 @@ import (
 	"net/http"
 
 	"github.com/go-openapi/errors"
+	"github.com/go-openapi/runtime"
 	"github.com/go-openapi/runtime/middleware"
 	"github.com/go-openapi/strfmt"
+	"github.com/go-openapi/swag"
 	"github.com/go-openapi/validate"
 )
 
 // NewDeleteObjectParams creates a new DeleteObjectParams object
-//
-// There are no default values defined in the spec.
+// with the default values initialized.
 func NewDeleteObjectParams() DeleteObjectParams {
 
-	return DeleteObjectParams{}
+	var (
+		// initialize parameters with default values
+
+		walletConnectDefault = bool(false)
+	)
+
+	return DeleteObjectParams{
+		WalletConnect: &walletConnectDefault,
+	}
 }
 
 // DeleteObjectParams contains all the bound params for the delete object operation
@@ -51,6 +60,11 @@ type DeleteObjectParams struct {
 	  In: path
 	*/
 	ObjectID string
+	/*Use wallect connect signature scheme or not
+	  In: query
+	  Default: false
+	*/
+	WalletConnect *bool
 }
 
 // BindRequest both binds and validates a request, it assumes that complex things implement a Validatable(strfmt.Registry) error interface
@@ -61,6 +75,8 @@ func (o *DeleteObjectParams) BindRequest(r *http.Request, route *middleware.Matc
 	var res []error
 
 	o.HTTPRequest = r
+
+	qs := runtime.Values(r.URL.Query())
 
 	if err := o.bindXBearerSignature(r.Header[http.CanonicalHeaderKey("X-Bearer-Signature")], true, route.Formats); err != nil {
 		res = append(res, err)
@@ -77,6 +93,11 @@ func (o *DeleteObjectParams) BindRequest(r *http.Request, route *middleware.Matc
 
 	rObjectID, rhkObjectID, _ := route.Params.GetOK("objectId")
 	if err := o.bindObjectID(rObjectID, rhkObjectID, route.Formats); err != nil {
+		res = append(res, err)
+	}
+
+	qWalletConnect, qhkWalletConnect, _ := qs.GetOK("walletConnect")
+	if err := o.bindWalletConnect(qWalletConnect, qhkWalletConnect, route.Formats); err != nil {
 		res = append(res, err)
 	}
 	if len(res) > 0 {
@@ -149,6 +170,30 @@ func (o *DeleteObjectParams) bindObjectID(rawData []string, hasKey bool, formats
 	// Required: true
 	// Parameter is provided by construction from the route
 	o.ObjectID = raw
+
+	return nil
+}
+
+// bindWalletConnect binds and validates parameter WalletConnect from query.
+func (o *DeleteObjectParams) bindWalletConnect(rawData []string, hasKey bool, formats strfmt.Registry) error {
+	var raw string
+	if len(rawData) > 0 {
+		raw = rawData[len(rawData)-1]
+	}
+
+	// Required: false
+	// AllowEmptyValue: false
+
+	if raw == "" { // empty values pass all other validations
+		// Default values have been previously initialized by NewDeleteObjectParams()
+		return nil
+	}
+
+	value, err := swag.ConvertBool(raw)
+	if err != nil {
+		return errors.InvalidType("walletConnect", "query", "bool", raw)
+	}
+	o.WalletConnect = &value
 
 	return nil
 }

@@ -26,10 +26,13 @@ func NewPutContainerParams() PutContainerParams {
 		// initialize parameters with default values
 
 		skipNativeNameDefault = bool(false)
+		walletConnectDefault  = bool(false)
 	)
 
 	return PutContainerParams{
 		SkipNativeName: &skipNativeNameDefault,
+
+		WalletConnect: &walletConnectDefault,
 	}
 }
 
@@ -62,6 +65,11 @@ type PutContainerParams struct {
 	  Default: false
 	*/
 	SkipNativeName *bool
+	/*Use wallect connect signature scheme or not
+	  In: query
+	  Default: false
+	*/
+	WalletConnect *bool
 }
 
 // BindRequest both binds and validates a request, it assumes that complex things implement a Validatable(strfmt.Registry) error interface
@@ -113,6 +121,11 @@ func (o *PutContainerParams) BindRequest(r *http.Request, route *middleware.Matc
 
 	qSkipNativeName, qhkSkipNativeName, _ := qs.GetOK("skip-native-name")
 	if err := o.bindSkipNativeName(qSkipNativeName, qhkSkipNativeName, route.Formats); err != nil {
+		res = append(res, err)
+	}
+
+	qWalletConnect, qhkWalletConnect, _ := qs.GetOK("walletConnect")
+	if err := o.bindWalletConnect(qWalletConnect, qhkWalletConnect, route.Formats); err != nil {
 		res = append(res, err)
 	}
 	if len(res) > 0 {
@@ -181,6 +194,30 @@ func (o *PutContainerParams) bindSkipNativeName(rawData []string, hasKey bool, f
 		return errors.InvalidType("skip-native-name", "query", "bool", raw)
 	}
 	o.SkipNativeName = &value
+
+	return nil
+}
+
+// bindWalletConnect binds and validates parameter WalletConnect from query.
+func (o *PutContainerParams) bindWalletConnect(rawData []string, hasKey bool, formats strfmt.Registry) error {
+	var raw string
+	if len(rawData) > 0 {
+		raw = rawData[len(rawData)-1]
+	}
+
+	// Required: false
+	// AllowEmptyValue: false
+
+	if raw == "" { // empty values pass all other validations
+		// Default values have been previously initialized by NewPutContainerParams()
+		return nil
+	}
+
+	value, err := swag.ConvertBool(raw)
+	if err != nil {
+		return errors.InvalidType("walletConnect", "query", "bool", raw)
+	}
+	o.WalletConnect = &value
 
 	return nil
 }

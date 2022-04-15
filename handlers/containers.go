@@ -2,8 +2,10 @@ package handlers
 
 import (
 	"context"
+	"crypto/ecdsa"
 	"encoding/base64"
 	"fmt"
+	walletconnect "github.com/nspcc-dev/neofs-rest-gw/wallet-connect"
 	"net/http"
 	"strconv"
 	"strings"
@@ -37,7 +39,7 @@ func (a *API) PutContainers(params operations.PutContainerParams, principal *mod
 		Signature: params.XBearerSignature,
 		Key:       params.XBearerSignatureKey,
 	}
-	stoken, err := prepareSessionToken(bt)
+	stoken, err := prepareSessionToken(bt, *params.WalletConnect)
 	if err != nil {
 		return wrapError(err)
 	}
@@ -95,7 +97,7 @@ func (a *API) PutContainerEACL(params operations.PutContainerEACLParams, princip
 		Signature: params.XBearerSignature,
 		Key:       params.XBearerSignatureKey,
 	}
-	stoken, err := prepareSessionToken(bt)
+	stoken, err := prepareSessionToken(bt, *params.WalletConnect)
 	if err != nil {
 		return wrapError(err)
 	}
@@ -183,7 +185,7 @@ func (a *API) DeleteContainer(params operations.DeleteContainerParams, principal
 		Signature: params.XBearerSignature,
 		Key:       params.XBearerSignatureKey,
 	}
-	stoken, err := prepareSessionToken(bt)
+	stoken, err := prepareSessionToken(bt, *params.WalletConnect)
 	if err != nil {
 		a.log.Error("failed parse session token", zap.Error(err))
 		return operations.NewDeleteContainerBadRequest().WithPayload(NewError(err))
@@ -344,10 +346,10 @@ func createContainer(ctx context.Context, p *pool.Pool, stoken *session.Token, p
 	return cnrID, nil
 }
 
-func prepareSessionToken(bt *BearerToken) (*session.Token, error) {
-	stoken, err := GetSessionToken(bt.Token)
+func prepareSessionToken(bt *BearerToken, isWalletConnect bool) (*session.Token, error) {
+	data, err := base64.StdEncoding.DecodeString(bt.Token)
 	if err != nil {
-		return nil, fmt.Errorf("could not fetch session token: %w", err)
+		return nil, fmt.Errorf("can't base64-decode bearer token: %w", err)
 	}
 
 	signature, err := base64.StdEncoding.DecodeString(bt.Signature)
@@ -360,34 +362,32 @@ func prepareSessionToken(bt *BearerToken) (*session.Token, error) {
 		return nil, fmt.Errorf("couldn't fetch bearer token owner key: %w", err)
 	}
 
-	v2signature := new(refs.Signature)
-	v2signature.SetScheme(refs.ECDSA_SHA512)
-	v2signature.SetSign(signature)
-	v2signature.SetKey(ownerKey.Bytes())
-	stoken.ToV2().SetSignature(v2signature)
-
-	if !stoken.VerifySignature() {
-		err = fmt.Errorf("invalid signature")
-	}
-
-	return stoken, err
-}
-
-func GetSessionToken(auth string) (*session.Token, error) {
-	data, err := base64.StdEncoding.DecodeString(auth)
-	if err != nil {
-		return nil, fmt.Errorf("can't base64-decode bearer token: %w", err)
-	}
-
 	body := new(sessionv2.TokenBody)
 	if err = body.Unmarshal(data); err != nil {
 		return nil, fmt.Errorf("can't unmarshal bearer token: %w", err)
 	}
 
-	tkn := new(session.Token)
-	tkn.ToV2().SetBody(body)
+	stoken := new(session.Token)
+	stoken.ToV2().SetBody(body)
 
-	return tkn, nil
+	v2signature := new(refs.Signature)
+	v2signature.SetScheme(refs.ECDSA_SHA512)
+	if isWalletConnect {
+		v2signature.SetScheme(2)
+	}
+	v2signature.SetSign(signature)
+	v2signature.SetKey(ownerKey.Bytes())
+	stoken.ToV2().SetSignature(v2signature)
+
+	if isWalletConnect {
+		if !walletconnect.Verify((*ecdsa.PublicKey)(ownerKey), data, signature) {
+			return nil, fmt.Errorf("invalid signature")
+		}
+	} else if !stoken.VerifySignature() {
+		return nil, fmt.Errorf("invalid signature")
+	}
+
+	return stoken, err
 }
 
 func wrapError(err error) middleware.Responder {
