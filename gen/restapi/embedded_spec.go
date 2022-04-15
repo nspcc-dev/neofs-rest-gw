@@ -145,6 +145,9 @@ func init() {
             "$ref": "#/parameters/signatureKeyParam"
           },
           {
+            "$ref": "#/parameters/signatureScheme"
+          },
+          {
             "type": "boolean",
             "default": false,
             "description": "Provide this parameter to skip registration container name in NNS service",
@@ -236,6 +239,9 @@ func init() {
           },
           {
             "$ref": "#/parameters/signatureKeyParam"
+          },
+          {
+            "$ref": "#/parameters/signatureScheme"
           }
         ],
         "responses": {
@@ -285,6 +291,9 @@ func init() {
           },
           {
             "$ref": "#/parameters/signatureKeyParam"
+          },
+          {
+            "$ref": "#/parameters/signatureScheme"
           },
           {
             "description": "EACL for container",
@@ -392,6 +401,9 @@ func init() {
         },
         {
           "$ref": "#/parameters/signatureKeyParam"
+        },
+        {
+          "$ref": "#/parameters/signatureScheme"
         }
       ]
     },
@@ -435,6 +447,9 @@ func init() {
         },
         {
           "$ref": "#/parameters/signatureKeyParam"
+        },
+        {
+          "$ref": "#/parameters/signatureScheme"
         },
         {
           "$ref": "#/parameters/containerId"
@@ -841,6 +856,13 @@ func init() {
       "name": "X-Bearer-Signature",
       "in": "header",
       "required": true
+    },
+    "signatureScheme": {
+      "type": "boolean",
+      "default": false,
+      "description": "Use wallect connect signature scheme or not",
+      "name": "walletConnect",
+      "in": "query"
     }
   },
   "securityDefinitions": {
@@ -1000,6 +1022,13 @@ func init() {
           {
             "type": "boolean",
             "default": false,
+            "description": "Use wallect connect signature scheme or not",
+            "name": "walletConnect",
+            "in": "query"
+          },
+          {
+            "type": "boolean",
+            "default": false,
             "description": "Provide this parameter to skip registration container name in NNS service",
             "name": "skip-native-name",
             "in": "query"
@@ -1097,6 +1126,13 @@ func init() {
             "name": "X-Bearer-Signature-Key",
             "in": "header",
             "required": true
+          },
+          {
+            "type": "boolean",
+            "default": false,
+            "description": "Use wallect connect signature scheme or not",
+            "name": "walletConnect",
+            "in": "query"
           }
         ],
         "responses": {
@@ -1158,6 +1194,13 @@ func init() {
             "name": "X-Bearer-Signature-Key",
             "in": "header",
             "required": true
+          },
+          {
+            "type": "boolean",
+            "default": false,
+            "description": "Use wallect connect signature scheme or not",
+            "name": "walletConnect",
+            "in": "query"
           },
           {
             "description": "EACL for container",
@@ -1277,6 +1320,13 @@ func init() {
           "name": "X-Bearer-Signature-Key",
           "in": "header",
           "required": true
+        },
+        {
+          "type": "boolean",
+          "default": false,
+          "description": "Use wallect connect signature scheme or not",
+          "name": "walletConnect",
+          "in": "query"
         }
       ]
     },
@@ -1328,6 +1378,13 @@ func init() {
           "name": "X-Bearer-Signature-Key",
           "in": "header",
           "required": true
+        },
+        {
+          "type": "boolean",
+          "default": false,
+          "description": "Use wallect connect signature scheme or not",
+          "name": "walletConnect",
+          "in": "query"
         },
         {
           "type": "string",
@@ -1742,6 +1799,13 @@ func init() {
       "name": "X-Bearer-Signature",
       "in": "header",
       "required": true
+    },
+    "signatureScheme": {
+      "type": "boolean",
+      "default": false,
+      "description": "Use wallect connect signature scheme or not",
+      "name": "walletConnect",
+      "in": "query"
     }
   },
   "securityDefinitions": {

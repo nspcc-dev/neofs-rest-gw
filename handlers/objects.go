@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"crypto/ecdsa"
 	"encoding/base64"
 	"fmt"
 
@@ -10,6 +11,7 @@ import (
 	"github.com/nspcc-dev/neofs-api-go/v2/refs"
 	"github.com/nspcc-dev/neofs-rest-gw/gen/models"
 	"github.com/nspcc-dev/neofs-rest-gw/gen/restapi/operations"
+	walletconnect "github.com/nspcc-dev/neofs-rest-gw/wallet-connect"
 	cid "github.com/nspcc-dev/neofs-sdk-go/container/id"
 	"github.com/nspcc-dev/neofs-sdk-go/object"
 	"github.com/nspcc-dev/neofs-sdk-go/object/address"
@@ -24,7 +26,7 @@ func (a *API) PutObjects(params operations.PutObjectParams, principal *models.Pr
 	errorResponse := operations.NewPutObjectBadRequest()
 	ctx := params.HTTPRequest.Context()
 
-	btoken, err := getBearerToken(principal, params.XBearerSignature, params.XBearerSignatureKey)
+	btoken, err := getBearerToken(principal, params.XBearerSignature, params.XBearerSignatureKey, *params.WalletConnect)
 	if err != nil {
 		return errorResponse.WithPayload(models.Error(err.Error()))
 	}
@@ -61,6 +63,7 @@ func (a *API) PutObjects(params operations.PutObjectParams, principal *models.Pr
 
 	objID, err := a.pool.PutObject(ctx, prmPut)
 	if err != nil {
+		a.log.Error("put object", zap.Error(err))
 		return errorResponse.WithPayload(NewError(err))
 	}
 
@@ -82,7 +85,7 @@ func (a *API) GetObjectInfo(params operations.GetObjectInfoParams, principal *mo
 		return errorResponse.WithPayload("invalid address")
 	}
 
-	btoken, err := getBearerToken(principal, params.XBearerSignature, params.XBearerSignatureKey)
+	btoken, err := getBearerToken(principal, params.XBearerSignature, params.XBearerSignatureKey, *params.WalletConnect)
 	if err != nil {
 		return errorResponse.WithPayload(NewError(err))
 	}
@@ -123,7 +126,7 @@ func (a *API) DeleteObject(params operations.DeleteObjectParams, principal *mode
 		return errorResponse.WithPayload("invalid address")
 	}
 
-	btoken, err := getBearerToken(principal, params.XBearerSignature, params.XBearerSignatureKey)
+	btoken, err := getBearerToken(principal, params.XBearerSignature, params.XBearerSignatureKey, *params.WalletConnect)
 	if err != nil {
 		a.log.Error("failed to get bearer token", zap.Error(err))
 		return errorResponse.WithPayload(NewError(err))
@@ -158,20 +161,20 @@ func parseAddress(containerID, objectID string) (*address.Address, error) {
 	return addr, nil
 }
 
-func getBearerToken(token *models.Principal, signature, key string) (*token.BearerToken, error) {
+func getBearerToken(token *models.Principal, signature, key string, isWalletConnect bool) (*token.BearerToken, error) {
 	bt := &BearerToken{
 		Token:     string(*token),
 		Signature: signature,
 		Key:       key,
 	}
 
-	return prepareBearerToken(bt)
+	return prepareBearerToken(bt, isWalletConnect)
 }
 
-func prepareBearerToken(bt *BearerToken) (*token.BearerToken, error) {
-	btoken, err := parseBearerToken(bt.Token)
+func prepareBearerToken(bt *BearerToken, isWalletConnect bool) (*token.BearerToken, error) {
+	data, err := base64.StdEncoding.DecodeString(bt.Token)
 	if err != nil {
-		return nil, fmt.Errorf("could not fetch bearer token: %w", err)
+		return nil, fmt.Errorf("can't base64-decode bearer token: %w", err)
 	}
 
 	signature, err := base64.StdEncoding.DecodeString(bt.Signature)
@@ -184,28 +187,30 @@ func prepareBearerToken(bt *BearerToken) (*token.BearerToken, error) {
 		return nil, fmt.Errorf("couldn't fetch bearer token owner key: %w", err)
 	}
 
-	v2signature := new(refs.Signature)
-	v2signature.SetScheme(refs.ECDSA_SHA512)
-	v2signature.SetSign(signature)
-	v2signature.SetKey(ownerKey.Bytes())
-	btoken.ToV2().SetSignature(v2signature)
-
-	return btoken, btoken.VerifySignature()
-}
-
-func parseBearerToken(auth string) (*token.BearerToken, error) {
-	data, err := base64.StdEncoding.DecodeString(auth)
-	if err != nil {
-		return nil, fmt.Errorf("can't base64-decode bearer token: %w", err)
-	}
-
 	body := new(acl.BearerTokenBody)
 	if err = body.Unmarshal(data); err != nil {
 		return nil, fmt.Errorf("can't unmarshal bearer token: %w", err)
 	}
 
-	tkn := new(token.BearerToken)
-	tkn.ToV2().SetBody(body)
+	btoken := new(token.BearerToken)
+	btoken.ToV2().SetBody(body)
 
-	return tkn, nil
+	v2signature := new(refs.Signature)
+	v2signature.SetScheme(refs.ECDSA_SHA512)
+	if isWalletConnect {
+		v2signature.SetScheme(2)
+	}
+	v2signature.SetSign(signature)
+	v2signature.SetKey(ownerKey.Bytes())
+	btoken.ToV2().SetSignature(v2signature)
+
+	if isWalletConnect {
+		if !walletconnect.Verify((*ecdsa.PublicKey)(ownerKey), data, signature) {
+			return nil, fmt.Errorf("invalid signature")
+		}
+	} else if err = btoken.VerifySignature(); err != nil {
+		return nil, fmt.Errorf("invalid signature")
+	}
+
+	return btoken, nil
 }

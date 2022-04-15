@@ -24,6 +24,7 @@ import (
 	"github.com/nspcc-dev/neofs-rest-gw/gen/restapi"
 	"github.com/nspcc-dev/neofs-rest-gw/gen/restapi/operations"
 	"github.com/nspcc-dev/neofs-rest-gw/handlers"
+	walletconnect "github.com/nspcc-dev/neofs-rest-gw/wallet-connect"
 	"github.com/nspcc-dev/neofs-sdk-go/container"
 	cid "github.com/nspcc-dev/neofs-sdk-go/container/id"
 	"github.com/nspcc-dev/neofs-sdk-go/eacl"
@@ -42,9 +43,12 @@ const (
 	devenvPrivateKey  = "1dd37fba80fec4e6a6f13fd708d8dcb3b29def768017052f6c930fa1c5d90bbb"
 	testListenAddress = "localhost:8082"
 	testHost          = "http://" + testListenAddress
-	testNode          = "localhost:8080"
+	testContainerNode = "localhost:8080"
+	testLocalNode     = "s01.neofs.devenv:8080"
 	containerName     = "test-container"
+	localVersion      = "local"
 
+	walletConnectQuery = "walletConnect"
 	// XBearerSignature header contains base64 encoded signature of the token body.
 	XBearerSignature = "X-Bearer-Signature"
 	// XBearerSignatureKey header contains hex encoded public key that corresponds the signature of the token body.
@@ -52,10 +56,29 @@ const (
 	// XBearerScope header contains operation scope for auth (bearer) token.
 	// It corresponds to 'object' or 'container' services in neofs.
 	XBearerScope = "X-Bearer-Scope"
+
+	// configuration tests
+	useWalletConnect    = false
+	useLocalEnvironment = false
 )
 
 func TestIntegration(t *testing.T) {
-	rootCtx := context.Background()
+	ctx := context.Background()
+	key, err := keys.NewPrivateKeyFromHex(devenvPrivateKey)
+	require.NoError(t, err)
+
+	if useLocalEnvironment {
+		runLocalTests(ctx, t, key)
+	} else {
+		runTestInContainer(ctx, t, key)
+	}
+}
+
+func runLocalTests(ctx context.Context, t *testing.T, key *keys.PrivateKey) {
+	runTests(ctx, t, key, localVersion)
+}
+
+func runTestInContainer(rootCtx context.Context, t *testing.T, key *keys.PrivateKey) {
 	aioImage := "nspccdev/neofs-aio-testcontainer:"
 	versions := []string{
 		//"0.24.0",
@@ -64,35 +87,43 @@ func TestIntegration(t *testing.T) {
 		//"0.27.5",
 		"latest",
 	}
-	key, err := keys.NewPrivateKeyFromHex(devenvPrivateKey)
-	require.NoError(t, err)
 
 	for _, version := range versions {
-		ctx, cancel2 := context.WithCancel(rootCtx)
-
+		ctx, cancel := context.WithCancel(rootCtx)
 		aioContainer := createDockerContainer(ctx, t, aioImage+version)
-		cancel := runServer(ctx, t)
-		clientPool := getPool(ctx, t, key)
-		cnrID := createContainer(ctx, t, clientPool, containerName)
-		restrictByEACL(ctx, t, clientPool, cnrID)
 
-		t.Run("rest put object "+version, func(t *testing.T) { restObjectPut(ctx, t, clientPool, cnrID) })
-		t.Run("rest get object "+version, func(t *testing.T) { restObjectGet(ctx, t, clientPool, cnrID) })
-		t.Run("rest delete object "+version, func(t *testing.T) { restObjectDelete(ctx, t, clientPool, cnrID) })
+		runTests(ctx, t, key, version)
 
-		t.Run("rest put container"+version, func(t *testing.T) { restContainerPut(ctx, t, clientPool) })
-		t.Run("rest get container"+version, func(t *testing.T) { restContainerGet(ctx, t, clientPool, cnrID) })
-		t.Run("rest delete container"+version, func(t *testing.T) { restContainerDelete(ctx, t, clientPool) })
-		t.Run("rest put container eacl	"+version, func(t *testing.T) { restContainerEACLPut(ctx, t, clientPool) })
-		t.Run("rest get container eacl	"+version, func(t *testing.T) { restContainerEACLGet(ctx, t, clientPool, cnrID) })
-		t.Run("rest list containers	"+version, func(t *testing.T) { restContainerList(ctx, t, clientPool, cnrID) })
-
-		cancel()
-		err = aioContainer.Terminate(ctx)
+		err := aioContainer.Terminate(ctx)
 		require.NoError(t, err)
-		cancel2()
+		cancel()
 		<-ctx.Done()
 	}
+}
+
+func runTests(ctx context.Context, t *testing.T, key *keys.PrivateKey, version string) {
+	node := testContainerNode
+	if version == localVersion {
+		node = testLocalNode
+	}
+
+	cancel := runServer(ctx, t, node)
+	defer cancel()
+
+	clientPool := getPool(ctx, t, key, node)
+	cnrID := createContainer(ctx, t, clientPool, containerName)
+	restrictByEACL(ctx, t, clientPool, cnrID)
+
+	t.Run("rest put object "+version, func(t *testing.T) { restObjectPut(ctx, t, clientPool, cnrID) })
+	t.Run("rest get object "+version, func(t *testing.T) { restObjectGet(ctx, t, clientPool, cnrID) })
+	t.Run("rest delete object "+version, func(t *testing.T) { restObjectDelete(ctx, t, clientPool, cnrID) })
+
+	t.Run("rest put container "+version, func(t *testing.T) { restContainerPut(ctx, t, clientPool) })
+	t.Run("rest get container "+version, func(t *testing.T) { restContainerGet(ctx, t, clientPool, cnrID) })
+	//t.Run("rest delete container "+version, func(t *testing.T) { restContainerDelete(ctx, t, clientPool) })
+	t.Run("rest put container eacl "+version, func(t *testing.T) { restContainerEACLPut(ctx, t, clientPool) })
+	t.Run("rest get container eacl "+version, func(t *testing.T) { restContainerEACLGet(ctx, t, clientPool, cnrID) })
+	t.Run("rest list containers	"+version, func(t *testing.T) { restContainerList(ctx, t, clientPool, cnrID) })
 }
 
 func createDockerContainer(ctx context.Context, t *testing.T, image string) testcontainers.Container {
@@ -112,10 +143,10 @@ func createDockerContainer(ctx context.Context, t *testing.T, image string) test
 	return aioC
 }
 
-func runServer(ctx context.Context, t *testing.T) context.CancelFunc {
+func runServer(ctx context.Context, t *testing.T, node string) context.CancelFunc {
 	cancelCtx, cancel := context.WithCancel(ctx)
 
-	v := getDefaultConfig()
+	v := getDefaultConfig(node)
 	l := newLogger(v)
 
 	neofsAPI, err := newNeofsAPI(cancelCtx, l, v)
@@ -145,9 +176,9 @@ func defaultHTTPClient() *http.Client {
 	return &http.Client{Timeout: 60 * time.Second}
 }
 
-func getDefaultConfig() *viper.Viper {
+func getDefaultConfig(node string) *viper.Viper {
 	v := config()
-	v.SetDefault(cfgPeers+".0.address", testNode)
+	v.SetDefault(cfgPeers+".0.address", node)
 	v.SetDefault(cfgPeers+".0.weight", 1)
 	v.SetDefault(cfgPeers+".0.priority", 1)
 	v.SetDefault(restapi.FlagListenAddress, testListenAddress)
@@ -156,9 +187,9 @@ func getDefaultConfig() *viper.Viper {
 	return v
 }
 
-func getPool(ctx context.Context, t *testing.T, key *keys.PrivateKey) *pool.Pool {
+func getPool(ctx context.Context, t *testing.T, key *keys.PrivateKey, node string) *pool.Pool {
 	var prm pool.InitParameters
-	prm.AddNode(pool.NewNodeParam(1, testNode, 1))
+	prm.AddNode(pool.NewNodeParam(1, node, 1))
 	prm.SetKey(&key.PrivateKey)
 	prm.SetHealthcheckTimeout(5 * time.Second)
 	prm.SetNodeDialTimeout(5 * time.Second)
@@ -204,7 +235,10 @@ func restObjectPut(ctx context.Context, t *testing.T, clientPool *pool.Pool, cnr
 	body, err := json.Marshal(&req)
 	require.NoError(t, err)
 
-	request, err := http.NewRequest(http.MethodPut, testHost+"/v1/objects", bytes.NewReader(body))
+	query := make(url.Values)
+	query.Add(walletConnectQuery, strconv.FormatBool(useWalletConnect))
+
+	request, err := http.NewRequest(http.MethodPut, testHost+"/v1/objects?"+query.Encode(), bytes.NewReader(body))
 	require.NoError(t, err)
 	prepareCommonHeaders(request.Header, bearerToken)
 	request.Header.Add("X-Attribute-"+attrKey, attrValue)
@@ -260,7 +294,10 @@ func restObjectGet(ctx context.Context, t *testing.T, p *pool.Pool, cnrID *cid.I
 	httpClient := defaultHTTPClient()
 	bearerToken := makeAuthObjectTokenRequest(ctx, t, bearer, httpClient)
 
-	request, err := http.NewRequest(http.MethodGet, testHost+"/v1/objects/"+cnrID.String()+"/"+objID.String(), nil)
+	query := make(url.Values)
+	query.Add(walletConnectQuery, strconv.FormatBool(useWalletConnect))
+
+	request, err := http.NewRequest(http.MethodGet, testHost+"/v1/objects/"+cnrID.String()+"/"+objID.String()+"?"+query.Encode(), nil)
 	require.NoError(t, err)
 	prepareCommonHeaders(request.Header, bearerToken)
 
@@ -295,7 +332,10 @@ func restObjectDelete(ctx context.Context, t *testing.T, p *pool.Pool, cnrID *ci
 	httpClient := defaultHTTPClient()
 	bearerToken := makeAuthObjectTokenRequest(ctx, t, bearer, httpClient)
 
-	request, err := http.NewRequest(http.MethodDelete, testHost+"/v1/objects/"+cnrID.String()+"/"+objID.String(), nil)
+	query := make(url.Values)
+	query.Add(walletConnectQuery, strconv.FormatBool(useWalletConnect))
+
+	request, err := http.NewRequest(http.MethodDelete, testHost+"/v1/objects/"+cnrID.String()+"/"+objID.String()+"?"+query.Encode(), nil)
 	require.NoError(t, err)
 	prepareCommonHeaders(request.Header, bearerToken)
 
@@ -360,7 +400,10 @@ func restContainerDelete(ctx context.Context, t *testing.T, clientPool *pool.Poo
 	httpClient := defaultHTTPClient()
 	bearerToken := makeAuthContainerTokenRequest(ctx, t, bearer, httpClient)
 
-	request, err := http.NewRequest(http.MethodDelete, testHost+"/v1/containers/"+cnrID.String(), nil)
+	query := make(url.Values)
+	query.Add(walletConnectQuery, strconv.FormatBool(useWalletConnect))
+
+	request, err := http.NewRequest(http.MethodDelete, testHost+"/v1/containers/"+cnrID.String()+"?"+query.Encode(), nil)
 	require.NoError(t, err)
 	request = request.WithContext(ctx)
 	prepareCommonHeaders(request.Header, bearerToken)
@@ -400,7 +443,10 @@ func restContainerEACLPut(ctx context.Context, t *testing.T, clientPool *pool.Po
 	body, err := json.Marshal(&req)
 	require.NoError(t, err)
 
-	request, err := http.NewRequest(http.MethodPut, testHost+"/v1/containers/"+cnrID.String()+"/eacl", bytes.NewReader(body))
+	query := make(url.Values)
+	query.Add(walletConnectQuery, strconv.FormatBool(useWalletConnect))
+
+	request, err := http.NewRequest(http.MethodPut, testHost+"/v1/containers/"+cnrID.String()+"/eacl?"+query.Encode(), bytes.NewReader(body))
 	require.NoError(t, err)
 	request = request.WithContext(ctx)
 	prepareCommonHeaders(request.Header, bearerToken)
@@ -521,24 +567,39 @@ func makeAuthTokenRequest(ctx context.Context, t *testing.T, bearer *models.Bear
 	binaryData, err := base64.StdEncoding.DecodeString(*stokenResp.Token)
 	require.NoError(t, err)
 
-	signatureData := signData(t, key, binaryData)
-	signature := base64.StdEncoding.EncodeToString(signatureData)
-
-	bt := handlers.BearerToken{
-		Token:     *stokenResp.Token,
-		Signature: signature,
-		Key:       hexPubKey,
+	var bt *handlers.BearerToken
+	if useWalletConnect {
+		bt = signTokenWalletConnect(t, key, binaryData)
+	} else {
+		bt = signToken(t, key, binaryData)
 	}
 
 	fmt.Printf("container token:\n%+v\n", bt)
-	return &bt
+	return bt
 }
 
-func signData(t *testing.T, key *keys.PrivateKey, data []byte) []byte {
+func signToken(t *testing.T, key *keys.PrivateKey, data []byte) *handlers.BearerToken {
 	h := sha512.Sum512(data)
 	x, y, err := ecdsa.Sign(rand.Reader, &key.PrivateKey, h[:])
 	require.NoError(t, err)
-	return elliptic.Marshal(elliptic.P256(), x, y)
+	sign := elliptic.Marshal(elliptic.P256(), x, y)
+
+	return &handlers.BearerToken{
+		Token:     base64.StdEncoding.EncodeToString(data),
+		Signature: base64.StdEncoding.EncodeToString(sign),
+		Key:       hex.EncodeToString(key.PublicKey().Bytes()),
+	}
+}
+
+func signTokenWalletConnect(t *testing.T, key *keys.PrivateKey, data []byte) *handlers.BearerToken {
+	sm, err := walletconnect.SignMessage(&key.PrivateKey, data[:])
+	require.NoError(t, err)
+
+	return &handlers.BearerToken{
+		Token:     base64.StdEncoding.EncodeToString(data),
+		Signature: base64.StdEncoding.EncodeToString(append(sm.Data, sm.Salt...)),
+		Key:       hex.EncodeToString(key.PublicKey().Bytes()),
+	}
 }
 
 func restContainerPut(ctx context.Context, t *testing.T, clientPool *pool.Pool) {
@@ -566,6 +627,7 @@ func restContainerPut(ctx context.Context, t *testing.T, clientPool *pool.Pool) 
 	require.NoError(t, err)
 	query := reqURL.Query()
 	query.Add("skip-native-name", "true")
+	query.Add(walletConnectQuery, strconv.FormatBool(useWalletConnect))
 	reqURL.RawQuery = query.Encode()
 
 	request, err := http.NewRequest(http.MethodPut, reqURL.String(), bytes.NewReader(body))
