@@ -74,6 +74,9 @@ func NewNeofsRestGwAPI(spec *loads.Document) *NeofsRestGwAPI {
 		PutObjectHandler: PutObjectHandlerFunc(func(params PutObjectParams, principal *models.Principal) middleware.Responder {
 			return middleware.NotImplemented("operation PutObject has not yet been implemented")
 		}),
+		SearchObjectsHandler: SearchObjectsHandlerFunc(func(params SearchObjectsParams, principal *models.Principal) middleware.Responder {
+			return middleware.NotImplemented("operation SearchObjects has not yet been implemented")
+		}),
 
 		// Applies when the "Authorization" header is set
 		BearerAuthAuth: func(token string) (*models.Principal, error) {
@@ -144,6 +147,8 @@ type NeofsRestGwAPI struct {
 	PutContainerEACLHandler PutContainerEACLHandler
 	// PutObjectHandler sets the operation handler for the put object operation
 	PutObjectHandler PutObjectHandler
+	// SearchObjectsHandler sets the operation handler for the search objects operation
+	SearchObjectsHandler SearchObjectsHandler
 
 	// ServeError is called when an error is received, there is a default handler
 	// but you can set your own with this
@@ -254,6 +259,9 @@ func (o *NeofsRestGwAPI) Validate() error {
 	}
 	if o.PutObjectHandler == nil {
 		unregistered = append(unregistered, "PutObjectHandler")
+	}
+	if o.SearchObjectsHandler == nil {
+		unregistered = append(unregistered, "SearchObjectsHandler")
 	}
 
 	if len(unregistered) > 0 {
@@ -394,6 +402,10 @@ func (o *NeofsRestGwAPI) initHandlerCache() {
 		o.handlers["PUT"] = make(map[string]http.Handler)
 	}
 	o.handlers["PUT"]["/objects"] = NewPutObject(o.context, o.PutObjectHandler)
+	if o.handlers["POST"] == nil {
+		o.handlers["POST"] = make(map[string]http.Handler)
+	}
+	o.handlers["POST"]["/objects/{containerId}/search"] = NewSearchObjects(o.context, o.SearchObjectsHandler)
 }
 
 // Serve creates a http handler to serve the API over HTTP

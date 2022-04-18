@@ -368,23 +368,7 @@ func init() {
           "200": {
             "description": "Address of uploaded objects",
             "schema": {
-              "type": "object",
-              "required": [
-                "objectId",
-                "containerId"
-              ],
-              "properties": {
-                "containerId": {
-                  "type": "string"
-                },
-                "objectId": {
-                  "type": "string"
-                }
-              },
-              "example": {
-                "containerId": "5HZTn5qkRnmgSz9gSrw22CEdPPk6nQhkwf2Mgzyvkikv",
-                "objectId": "8N3o7Dtr6T1xteCt6eRwhpmJ7JhME58Hyu1dvaswuTDd"
-              }
+              "$ref": "#/definitions/Address"
             }
           },
           "400": {
@@ -404,6 +388,67 @@ func init() {
         },
         {
           "$ref": "#/parameters/signatureScheme"
+        }
+      ]
+    },
+    "/objects/{containerId}/search": {
+      "post": {
+        "summary": "Search objects by filters",
+        "operationId": "searchObjects",
+        "parameters": [
+          {
+            "type": "integer",
+            "default": 0,
+            "description": "The number of containers to skip before starting to collect the result set.",
+            "name": "offset",
+            "in": "query"
+          },
+          {
+            "maximum": 10000,
+            "minimum": 1,
+            "type": "integer",
+            "default": 100,
+            "description": "The numbers of containers to return.",
+            "name": "limit",
+            "in": "query"
+          },
+          {
+            "description": "Filters to search objects",
+            "name": "searchFilters",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/SearchFilters"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of objects",
+            "schema": {
+              "$ref": "#/definitions/ObjectList"
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          }
+        }
+      },
+      "parameters": [
+        {
+          "$ref": "#/parameters/signatureParam"
+        },
+        {
+          "$ref": "#/parameters/signatureKeyParam"
+        },
+        {
+          "$ref": "#/parameters/signatureScheme"
+        },
+        {
+          "$ref": "#/parameters/containerId"
         }
       ]
     },
@@ -467,6 +512,25 @@ func init() {
         "ALLOW",
         "DENY"
       ]
+    },
+    "Address": {
+      "type": "object",
+      "required": [
+        "containerId",
+        "objectId"
+      ],
+      "properties": {
+        "containerId": {
+          "type": "string"
+        },
+        "objectId": {
+          "type": "string"
+        }
+      },
+      "example": {
+        "containerId": "5HZTn5qkRnmgSz9gSrw22CEdPPk6nQhkwf2Mgzyvkikv",
+        "objectId": "8N3o7Dtr6T1xteCt6eRwhpmJ7JhME58Hyu1dvaswuTDd"
+      }
     },
     "Attribute": {
       "type": "object",
@@ -645,6 +709,20 @@ func init() {
         "STRING_NOT_EQUAL"
       ]
     },
+    "ObjectBaseInfo": {
+      "type": "object",
+      "required": [
+        "address"
+      ],
+      "properties": {
+        "address": {
+          "$ref": "#/definitions/Address"
+        },
+        "name": {
+          "type": "string"
+        }
+      }
+    },
     "ObjectInfo": {
       "type": "object",
       "required": [
@@ -684,6 +762,24 @@ func init() {
         "containerId": "5HZTn5qkRnmgSz9gSrw22CEdPPk6nQhkwf2Mgzyvkikv",
         "objectId": "8N3o7Dtr6T1xteCt6eRwhpmJ7JhME58Hyu1dvaswuTDd",
         "ownerId": "NbUgTSFvPmsRxmGeWpuuGeJUoRoi6PErcM"
+      }
+    },
+    "ObjectList": {
+      "type": "object",
+      "required": [
+        "size",
+        "objects"
+      ],
+      "properties": {
+        "objects": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/ObjectBaseInfo"
+          }
+        },
+        "size": {
+          "type": "integer"
+        }
       }
     },
     "Operation": {
@@ -762,6 +858,48 @@ func init() {
           "$ref": "#/definitions/Verb"
         }
       }
+    },
+    "SearchFilter": {
+      "type": "object",
+      "required": [
+        "key",
+        "value",
+        "match"
+      ],
+      "properties": {
+        "key": {
+          "type": "string"
+        },
+        "match": {
+          "$ref": "#/definitions/SearchMatch"
+        },
+        "value": {
+          "type": "string"
+        }
+      }
+    },
+    "SearchFilters": {
+      "type": "object",
+      "required": [
+        "filters"
+      ],
+      "properties": {
+        "filters": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/SearchFilter"
+          }
+        }
+      }
+    },
+    "SearchMatch": {
+      "type": "string",
+      "enum": [
+        "MatchStringEqual",
+        "MatchStringNotEqual",
+        "MatchNotPresent",
+        "MatchCommonPrefix"
+      ]
     },
     "Target": {
       "type": "object",
@@ -1279,23 +1417,7 @@ func init() {
           "200": {
             "description": "Address of uploaded objects",
             "schema": {
-              "type": "object",
-              "required": [
-                "objectId",
-                "containerId"
-              ],
-              "properties": {
-                "containerId": {
-                  "type": "string"
-                },
-                "objectId": {
-                  "type": "string"
-                }
-              },
-              "example": {
-                "containerId": "5HZTn5qkRnmgSz9gSrw22CEdPPk6nQhkwf2Mgzyvkikv",
-                "objectId": "8N3o7Dtr6T1xteCt6eRwhpmJ7JhME58Hyu1dvaswuTDd"
-              }
+              "$ref": "#/definitions/Address"
             }
           },
           "400": {
@@ -1327,6 +1449,84 @@ func init() {
           "description": "Use wallect connect signature scheme or not",
           "name": "walletConnect",
           "in": "query"
+        }
+      ]
+    },
+    "/objects/{containerId}/search": {
+      "post": {
+        "summary": "Search objects by filters",
+        "operationId": "searchObjects",
+        "parameters": [
+          {
+            "minimum": 0,
+            "type": "integer",
+            "default": 0,
+            "description": "The number of containers to skip before starting to collect the result set.",
+            "name": "offset",
+            "in": "query"
+          },
+          {
+            "maximum": 10000,
+            "minimum": 1,
+            "type": "integer",
+            "default": 100,
+            "description": "The numbers of containers to return.",
+            "name": "limit",
+            "in": "query"
+          },
+          {
+            "description": "Filters to search objects",
+            "name": "searchFilters",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/SearchFilters"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of objects",
+            "schema": {
+              "$ref": "#/definitions/ObjectList"
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          }
+        }
+      },
+      "parameters": [
+        {
+          "type": "string",
+          "description": "Base64 encoded signature for bearer token",
+          "name": "X-Bearer-Signature",
+          "in": "header",
+          "required": true
+        },
+        {
+          "type": "string",
+          "description": "Hex encoded the public part of the key that signed the bearer token",
+          "name": "X-Bearer-Signature-Key",
+          "in": "header",
+          "required": true
+        },
+        {
+          "type": "boolean",
+          "default": false,
+          "description": "Use wallect connect signature scheme or not",
+          "name": "walletConnect",
+          "in": "query"
+        },
+        {
+          "type": "string",
+          "description": "Base58 encoded container id",
+          "name": "containerId",
+          "in": "path",
+          "required": true
         }
       ]
     },
@@ -1410,6 +1610,25 @@ func init() {
         "ALLOW",
         "DENY"
       ]
+    },
+    "Address": {
+      "type": "object",
+      "required": [
+        "containerId",
+        "objectId"
+      ],
+      "properties": {
+        "containerId": {
+          "type": "string"
+        },
+        "objectId": {
+          "type": "string"
+        }
+      },
+      "example": {
+        "containerId": "5HZTn5qkRnmgSz9gSrw22CEdPPk6nQhkwf2Mgzyvkikv",
+        "objectId": "8N3o7Dtr6T1xteCt6eRwhpmJ7JhME58Hyu1dvaswuTDd"
+      }
     },
     "Attribute": {
       "type": "object",
@@ -1588,6 +1807,20 @@ func init() {
         "STRING_NOT_EQUAL"
       ]
     },
+    "ObjectBaseInfo": {
+      "type": "object",
+      "required": [
+        "address"
+      ],
+      "properties": {
+        "address": {
+          "$ref": "#/definitions/Address"
+        },
+        "name": {
+          "type": "string"
+        }
+      }
+    },
     "ObjectInfo": {
       "type": "object",
       "required": [
@@ -1627,6 +1860,24 @@ func init() {
         "containerId": "5HZTn5qkRnmgSz9gSrw22CEdPPk6nQhkwf2Mgzyvkikv",
         "objectId": "8N3o7Dtr6T1xteCt6eRwhpmJ7JhME58Hyu1dvaswuTDd",
         "ownerId": "NbUgTSFvPmsRxmGeWpuuGeJUoRoi6PErcM"
+      }
+    },
+    "ObjectList": {
+      "type": "object",
+      "required": [
+        "size",
+        "objects"
+      ],
+      "properties": {
+        "objects": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/ObjectBaseInfo"
+          }
+        },
+        "size": {
+          "type": "integer"
+        }
       }
     },
     "Operation": {
@@ -1705,6 +1956,48 @@ func init() {
           "$ref": "#/definitions/Verb"
         }
       }
+    },
+    "SearchFilter": {
+      "type": "object",
+      "required": [
+        "key",
+        "value",
+        "match"
+      ],
+      "properties": {
+        "key": {
+          "type": "string"
+        },
+        "match": {
+          "$ref": "#/definitions/SearchMatch"
+        },
+        "value": {
+          "type": "string"
+        }
+      }
+    },
+    "SearchFilters": {
+      "type": "object",
+      "required": [
+        "filters"
+      ],
+      "properties": {
+        "filters": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/SearchFilter"
+          }
+        }
+      }
+    },
+    "SearchMatch": {
+      "type": "string",
+      "enum": [
+        "MatchStringEqual",
+        "MatchStringNotEqual",
+        "MatchNotPresent",
+        "MatchCommonPrefix"
+      ]
     },
     "Target": {
       "type": "object",

@@ -25,7 +25,7 @@ type PutObjectOK struct {
 	/*
 	  In: Body
 	*/
-	Payload *PutObjectOKBody `json:"body,omitempty"`
+	Payload *models.Address `json:"body,omitempty"`
 }
 
 // NewPutObjectOK creates PutObjectOK with default headers values
@@ -35,13 +35,13 @@ func NewPutObjectOK() *PutObjectOK {
 }
 
 // WithPayload adds the payload to the put object o k response
-func (o *PutObjectOK) WithPayload(payload *PutObjectOKBody) *PutObjectOK {
+func (o *PutObjectOK) WithPayload(payload *models.Address) *PutObjectOK {
 	o.Payload = payload
 	return o
 }
 
 // SetPayload sets the payload to the put object o k response
-func (o *PutObjectOK) SetPayload(payload *PutObjectOKBody) {
+func (o *PutObjectOK) SetPayload(payload *models.Address) {
 	o.Payload = payload
 }
 
