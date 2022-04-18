@@ -117,10 +117,11 @@ func runTests(ctx context.Context, t *testing.T, key *keys.PrivateKey, version s
 	t.Run("rest put object "+version, func(t *testing.T) { restObjectPut(ctx, t, clientPool, cnrID) })
 	t.Run("rest get object "+version, func(t *testing.T) { restObjectGet(ctx, t, clientPool, cnrID) })
 	t.Run("rest delete object "+version, func(t *testing.T) { restObjectDelete(ctx, t, clientPool, cnrID) })
+	t.Run("rest search objects "+version, func(t *testing.T) { restObjectsSearch(ctx, t, clientPool, cnrID) })
 
 	t.Run("rest put container "+version, func(t *testing.T) { restContainerPut(ctx, t, clientPool) })
 	t.Run("rest get container "+version, func(t *testing.T) { restContainerGet(ctx, t, clientPool, cnrID) })
-	//t.Run("rest delete container "+version, func(t *testing.T) { restContainerDelete(ctx, t, clientPool) })
+	t.Run("rest delete container "+version, func(t *testing.T) { restContainerDelete(ctx, t, clientPool) })
 	t.Run("rest put container eacl "+version, func(t *testing.T) { restContainerEACLPut(ctx, t, clientPool) })
 	t.Run("rest get container eacl "+version, func(t *testing.T) { restContainerEACLGet(ctx, t, clientPool, cnrID) })
 	t.Run("rest list containers	"+version, func(t *testing.T) { restContainerList(ctx, t, clientPool, cnrID) })
@@ -243,7 +244,7 @@ func restObjectPut(ctx context.Context, t *testing.T, clientPool *pool.Pool, cnr
 	prepareCommonHeaders(request.Header, bearerToken)
 	request.Header.Add("X-Attribute-"+attrKey, attrValue)
 
-	addr := &operations.PutObjectOKBody{}
+	addr := &models.Address{}
 	doRequest(t, httpClient, request, http.StatusOK, addr)
 
 	var CID cid.ID
@@ -350,6 +351,75 @@ func restObjectDelete(ctx context.Context, t *testing.T, p *pool.Pool, cnrID *ci
 
 	_, err = p.HeadObject(ctx, prm)
 	require.Error(t, err)
+}
+
+func restObjectsSearch(ctx context.Context, t *testing.T, p *pool.Pool, cnrID *cid.ID) {
+	userKey, userValue := "User-Attribute", "user-attribute-value"
+	objectName := "object-name"
+	headers := map[string]string{
+		object.AttributeFileName: objectName,
+		userKey:                  userValue,
+	}
+	objID := createObject(ctx, t, p, cnrID, headers, []byte("some content"))
+	headers[userKey] = "dummy"
+	_ = createObject(ctx, t, p, cnrID, headers, []byte("some content"))
+
+	bearer := &models.Bearer{
+		Object: []*models.Record{
+			{
+				Operation: models.NewOperation(models.OperationSEARCH),
+				Action:    models.NewAction(models.ActionALLOW),
+				Filters:   []*models.Filter{},
+				Targets:   []*models.Target{{Role: models.NewRole(models.RoleOTHERS), Keys: []string{}}},
+			},
+			{
+				Operation: models.NewOperation(models.OperationHEAD),
+				Action:    models.NewAction(models.ActionALLOW),
+				Filters:   []*models.Filter{},
+				Targets:   []*models.Target{{Role: models.NewRole(models.RoleOTHERS), Keys: []string{}}},
+			},
+			{
+				Operation: models.NewOperation(models.OperationGET),
+				Action:    models.NewAction(models.ActionALLOW),
+				Filters:   []*models.Filter{},
+				Targets:   []*models.Target{{Role: models.NewRole(models.RoleOTHERS), Keys: []string{}}},
+			},
+		},
+	}
+
+	httpClient := defaultHTTPClient()
+	bearerToken := makeAuthObjectTokenRequest(ctx, t, bearer, httpClient)
+
+	search := &models.SearchFilters{
+		Filters: []*models.SearchFilter{
+			{
+				Key:   handlers.NewString(userKey),
+				Match: models.NewSearchMatch(models.SearchMatchMatchStringEqual),
+				Value: handlers.NewString(userValue),
+			},
+		},
+	}
+
+	body, err := json.Marshal(search)
+	require.NoError(t, err)
+
+	query := make(url.Values)
+	query.Add(walletConnectQuery, strconv.FormatBool(useWalletConnect))
+
+	request, err := http.NewRequest(http.MethodPost, testHost+"/v1/objects/"+cnrID.String()+"/search?"+query.Encode(), bytes.NewReader(body))
+	require.NoError(t, err)
+	prepareCommonHeaders(request.Header, bearerToken)
+
+	resp := &models.ObjectList{}
+	doRequest(t, httpClient, request, http.StatusOK, resp)
+
+	require.Equal(t, 1, int(*resp.Size))
+	require.Len(t, resp.Objects, 1)
+
+	objBaseInfo := resp.Objects[0]
+	require.Equal(t, cnrID.String(), *objBaseInfo.Address.ContainerID)
+	require.Equal(t, objID.String(), *objBaseInfo.Address.ObjectID)
+	require.Equal(t, objectName, objBaseInfo.Name)
 }
 
 func doRequest(t *testing.T, httpClient *http.Client, request *http.Request, expectedCode int, model interface{}) {

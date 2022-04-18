@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"crypto/ecdsa"
 	"encoding/base64"
 	"fmt"
@@ -67,7 +68,7 @@ func (a *API) PutObjects(params operations.PutObjectParams, principal *models.Pr
 		return errorResponse.WithPayload(NewError(err))
 	}
 
-	var resp operations.PutObjectOKBody
+	var resp models.Address
 	resp.ContainerID = params.Object.ContainerID
 	resp.ObjectID = NewString(objID.String())
 
@@ -142,6 +143,109 @@ func (a *API) DeleteObject(params operations.DeleteObjectParams, principal *mode
 	}
 
 	return operations.NewDeleteObjectNoContent()
+}
+
+// SearchObjects handler that removes object from NeoFS.
+func (a *API) SearchObjects(params operations.SearchObjectsParams, principal *models.Principal) middleware.Responder {
+	errorResponse := operations.NewSearchObjectsBadRequest()
+	ctx := params.HTTPRequest.Context()
+
+	var cnrID cid.ID
+	if err := cnrID.Parse(params.ContainerID); err != nil {
+		a.log.Error("invalid container id", zap.Error(err))
+		return errorResponse.WithPayload("invalid container id")
+	}
+
+	btoken, err := getBearerToken(principal, params.XBearerSignature, params.XBearerSignatureKey, *params.WalletConnect)
+	if err != nil {
+		a.log.Error("failed to get bearer token", zap.Error(err))
+		return errorResponse.WithPayload(NewError(err))
+	}
+
+	filters, err := ToNativeFilters(params.SearchFilters)
+	if err != nil {
+		a.log.Error("failed to transform to native", zap.Error(err))
+		return errorResponse.WithPayload(NewError(err))
+	}
+
+	var prm pool.PrmObjectSearch
+	prm.SetContainerID(cnrID)
+	prm.UseBearer(btoken)
+	prm.SetFilters(filters)
+
+	resSearch, err := a.pool.SearchObjects(ctx, prm)
+	if err != nil {
+		a.log.Error("failed to search objects", zap.Error(err))
+		return errorResponse.WithPayload(NewError(err))
+	}
+
+	offset := int(*params.Offset)
+	size := int(*params.Limit)
+
+	var iterateErr error
+	var obj *models.ObjectBaseInfo
+	var objects []*models.ObjectBaseInfo
+
+	i := 0
+	err = resSearch.Iterate(func(id oid.ID) bool {
+		if i < offset {
+			i++
+			return false
+		}
+
+		if obj, iterateErr = headObjectBaseInfo(ctx, a.pool, &cnrID, &id, btoken); iterateErr != nil {
+			return true
+		}
+
+		objects = append(objects, obj)
+
+		return len(objects) == size
+	})
+	if err == nil {
+		err = iterateErr
+	}
+	if err != nil {
+		a.log.Error("failed to search objects", zap.Error(err))
+		return errorResponse.WithPayload(NewError(err))
+	}
+
+	list := &models.ObjectList{
+		Size:    NewInteger(int64(len(objects))),
+		Objects: objects,
+	}
+
+	return operations.NewSearchObjectsOK().WithPayload(list)
+}
+
+func headObjectBaseInfo(ctx context.Context, p *pool.Pool, cnrID *cid.ID, objID *oid.ID, btoken *token.BearerToken) (*models.ObjectBaseInfo, error) {
+	addr := address.NewAddress()
+	addr.SetContainerID(cnrID)
+	addr.SetObjectID(objID)
+
+	var prm pool.PrmObjectHead
+	prm.SetAddress(*addr)
+	prm.UseBearer(btoken)
+
+	objInfo, err := p.HeadObject(ctx, prm)
+	if err != nil {
+		return nil, err
+	}
+
+	resp := &models.ObjectBaseInfo{
+		Address: &models.Address{
+			ContainerID: NewString(cnrID.String()),
+			ObjectID:    NewString(objID.String()),
+		},
+	}
+
+	for _, attr := range objInfo.Attributes() {
+		if attr.Key() == object.AttributeFileName {
+			resp.Name = attr.Value()
+			break
+		}
+	}
+
+	return resp, nil
 }
 
 func parseAddress(containerID, objectID string) (*address.Address, error) {

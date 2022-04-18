@@ -130,18 +130,46 @@ paths:
         200:
           description: Address of uploaded objects
           schema:
-            type: object
-            properties:
-              objectId:
-                type: string
-              containerId:
-                type: string
-            required:
-              - objectId
-              - containerId
-            example:
-              objectId: 8N3o7Dtr6T1xteCt6eRwhpmJ7JhME58Hyu1dvaswuTDd
-              containerId: 5HZTn5qkRnmgSz9gSrw22CEdPPk6nQhkwf2Mgzyvkikv
+            $ref: '#/definitions/Address'
+        400:
+          description: Bad request
+          schema:
+            $ref: '#/definitions/Error'
+
+  /objects/{containerId}/search:
+    parameters:
+      - $ref: '#/parameters/signatureParam'
+      - $ref: '#/parameters/signatureKeyParam'
+      - $ref: '#/parameters/signatureScheme'
+      - $ref: '#/parameters/containerId'
+    post:
+      operationId: searchObjects
+      summary: Search objects by filters
+      parameters:
+        - in: query
+          name: offset
+          type: integer
+          default: 0
+          minimum: 0
+          description: The number of containers to skip before starting to collect the result set.
+        - in: query
+          name: limit
+          type: integer
+          default: 100
+          minimum: 1
+          maximum: 10000
+          description: The numbers of containers to return.
+        - in: body
+          required: true
+          name: searchFilters
+          description: Filters to search objects
+          schema:
+            $ref: '#/definitions/SearchFilters'
+      responses:
+        200:
+          description: List of objects
+          schema:
+            $ref: '#/definitions/ObjectList'
         400:
           description: Bad request
           schema:
@@ -513,6 +541,35 @@ definitions:
     required:
       - size
       - containers
+  SearchFilters:
+    type: object
+    properties:
+      filters:
+        type: array
+        items:
+          $ref: '#/definitions/SearchFilter'
+    required:
+      - filters
+  SearchFilter:
+    type: object
+    properties:
+      key:
+        type: string
+      value:
+        type: string
+      match:
+        $ref: '#/definitions/SearchMatch'
+    required:
+      - key
+      - value
+      - match
+  SearchMatch:
+    type: string
+    enum:
+      - MatchStringEqual
+      - MatchStringNotEqual
+      - MatchNotPresent
+      - MatchCommonPrefix
   ContainerBaseInfo:
     type: object
     properties:
@@ -522,6 +579,27 @@ definitions:
         type: string
     required:
       - containerId
+  ObjectList:
+    type: object
+    properties:
+      size:
+        type: integer
+      objects:
+        type: array
+        items:
+          $ref: '#/definitions/ObjectBaseInfo'
+    required:
+      - size
+      - objects
+  ObjectBaseInfo:
+    type: object
+    properties:
+      address:
+        $ref: '#/definitions/Address'
+      name:
+        type: string
+    required:
+      - address
   ObjectInfo:
     type: object
     properties:
@@ -549,6 +627,19 @@ definitions:
           value: "1648810072"
         - key: Name
           value: object
+  Address:
+    type: object
+    properties:
+      containerId:
+        type: string
+      objectId:
+          type: string
+    required:
+      - containerId
+      - objectId
+    example:
+      objectId: 8N3o7Dtr6T1xteCt6eRwhpmJ7JhME58Hyu1dvaswuTDd
+      containerId: 5HZTn5qkRnmgSz9gSrw22CEdPPk6nQhkwf2Mgzyvkikv
   Eacl:
     type: object
     properties:

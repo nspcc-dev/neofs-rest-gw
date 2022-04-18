@@ -3,6 +3,7 @@ package handlers
 import (
 	"encoding/hex"
 	"fmt"
+	"github.com/nspcc-dev/neofs-sdk-go/object"
 
 	sessionv2 "github.com/nspcc-dev/neofs-api-go/v2/session"
 	"github.com/nspcc-dev/neofs-rest-gw/gen/models"
@@ -390,4 +391,41 @@ func ToNativeTable(records []*models.Record) (*eacl.Table, error) {
 	}
 
 	return table, nil
+}
+
+// ToNativeMatchFilter converts models.SearchMatch to object.SearchMatchType.
+func ToNativeMatchFilter(s *models.SearchMatch) (object.SearchMatchType, error) {
+	if s == nil {
+		return object.MatchUnknown, fmt.Errorf("unsupported empty verb type")
+	}
+
+	switch *s {
+	case models.SearchMatchMatchStringEqual:
+		return object.MatchStringEqual, nil
+	case models.SearchMatchMatchStringNotEqual:
+		return object.MatchStringNotEqual, nil
+	case models.SearchMatchMatchNotPresent:
+		return object.MatchNotPresent, nil
+	case models.SearchMatchMatchCommonPrefix:
+		return object.MatchCommonPrefix, nil
+	default:
+		return object.MatchUnknown, fmt.Errorf("unsupported search match: '%s'", *s)
+	}
+}
+
+// ToNativeFilters converts models.SearchFilters to object.SearchFilters.
+func ToNativeFilters(fs *models.SearchFilters) (object.SearchFilters, error) {
+	filters := object.NewSearchFilters()
+	filters.AddRootFilter()
+
+	for _, f := range fs.Filters {
+		matchFilter, err := ToNativeMatchFilter(f.Match)
+		if err != nil {
+			return nil, err
+		}
+
+		filters.AddFilter(*f.Key, *f.Value, matchFilter)
+	}
+
+	return filters, nil
 }
