@@ -16,6 +16,8 @@ import (
 	"github.com/go-openapi/strfmt"
 	"github.com/go-openapi/swag"
 	"github.com/go-openapi/validate"
+
+	"github.com/nspcc-dev/neofs-rest-gw/gen/models"
 )
 
 // NewPutObjectParams creates a new PutObjectParams object
@@ -56,7 +58,7 @@ type PutObjectParams struct {
 	  Required: true
 	  In: body
 	*/
-	Object PutObjectBody
+	Object *models.ObjectUpload
 	/*Use wallect connect signature scheme or not
 	  In: query
 	  Default: false
@@ -85,7 +87,7 @@ func (o *PutObjectParams) BindRequest(r *http.Request, route *middleware.Matched
 
 	if runtime.HasBody(r) {
 		defer r.Body.Close()
-		var body PutObjectBody
+		var body models.ObjectUpload
 		if err := route.Consumer.Consume(r.Body, &body); err != nil {
 			if err == io.EOF {
 				res = append(res, errors.Required("object", "body", ""))
@@ -104,7 +106,7 @@ func (o *PutObjectParams) BindRequest(r *http.Request, route *middleware.Matched
 			}
 
 			if len(res) == 0 {
-				o.Object = body
+				o.Object = &body
 			}
 		}
 	} else {

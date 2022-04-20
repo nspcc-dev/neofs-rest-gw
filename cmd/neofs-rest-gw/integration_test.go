@@ -227,13 +227,17 @@ func restObjectPut(ctx context.Context, t *testing.T, clientPool *pool.Pool, cnr
 		attrKey:                  attrValue,
 	}
 
-	req := operations.PutObjectBody{
+	req := &models.ObjectUpload{
 		ContainerID: handlers.NewString(cnrID.String()),
 		FileName:    handlers.NewString("newFile.txt"),
 		Payload:     base64.StdEncoding.EncodeToString([]byte(content)),
+		Attributes: []*models.Attribute{{
+			Key:   &attrKey,
+			Value: &attrValue,
+		}},
 	}
 
-	body, err := json.Marshal(&req)
+	body, err := json.Marshal(req)
 	require.NoError(t, err)
 
 	query := make(url.Values)
@@ -242,7 +246,6 @@ func restObjectPut(ctx context.Context, t *testing.T, clientPool *pool.Pool, cnr
 	request, err := http.NewRequest(http.MethodPut, testHost+"/v1/objects?"+query.Encode(), bytes.NewReader(body))
 	require.NoError(t, err)
 	prepareCommonHeaders(request.Header, bearerToken)
-	request.Header.Add("X-Attribute-"+attrKey, attrValue)
 
 	addr := &models.Address{}
 	doRequest(t, httpClient, request, http.StatusOK, addr)
