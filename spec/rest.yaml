@@ -184,7 +184,25 @@ paths:
       - $ref: '#/parameters/objectId'
     get:
       operationId: getObjectInfo
-      summary: Get object info by address and
+      summary: Get object info by address
+      parameters:
+        - in: query
+          name: range-offset
+          type: integer
+          minimum: 0
+        - in: query
+          name: range-length
+          type: integer
+          minimum: 1
+        - in: query
+          name: max-payload-size
+          type: integer
+          default: 4194304
+          minimum: 0
+          maximum: 524288000
+          description: |
+            Max payload size (in bytes) that can be included in the response.
+            If the actual size is greater than this params the payload won't be included in the response.
       responses:
         200:
           description: Object info
@@ -613,11 +631,22 @@ definitions:
         type: array
         items:
           $ref: '#/definitions/Attribute'
+      objectSize:
+        type: integer
+        description: Object full payload size
+      payloadSize:
+        type: integer
+        description: Payload size in response
+      payload:
+        type: string
+        description: Base64 encoded object payload
     required:
       - containerId
       - objectId
       - ownerId
       - attributes
+      - objectSize
+      - payloadSize
     example:
       containerId: 5HZTn5qkRnmgSz9gSrw22CEdPPk6nQhkwf2Mgzyvkikv
       objectId: 8N3o7Dtr6T1xteCt6eRwhpmJ7JhME58Hyu1dvaswuTDd
@@ -633,7 +662,7 @@ definitions:
       containerId:
         type: string
       objectId:
-          type: string
+        type: string
     required:
       - containerId
       - objectId

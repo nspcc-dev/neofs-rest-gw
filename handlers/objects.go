@@ -5,7 +5,6 @@ import (
 	"crypto/ecdsa"
 	"encoding/base64"
 	"fmt"
-
 	"github.com/go-openapi/runtime/middleware"
 	"github.com/nspcc-dev/neo-go/pkg/crypto/keys"
 	"github.com/nspcc-dev/neofs-api-go/v2/acl"
@@ -20,6 +19,8 @@ import (
 	"github.com/nspcc-dev/neofs-sdk-go/pool"
 	"github.com/nspcc-dev/neofs-sdk-go/token"
 	"go.uber.org/zap"
+	"io"
+	"strings"
 )
 
 // PutObjects handler that uploads object to NeoFS.
@@ -88,6 +89,7 @@ func (a *API) GetObjectInfo(params operations.GetObjectInfoParams, principal *mo
 
 	btoken, err := getBearerToken(principal, params.XBearerSignature, params.XBearerSignatureKey, *params.WalletConnect)
 	if err != nil {
+		a.log.Error("get bearer token", zap.Error(err))
 		return errorResponse.WithPayload(NewError(err))
 	}
 
@@ -97,6 +99,7 @@ func (a *API) GetObjectInfo(params operations.GetObjectInfoParams, principal *mo
 
 	objInfo, err := a.pool.HeadObject(ctx, prm)
 	if err != nil {
+		a.log.Error("head object", zap.Error(err))
 		return errorResponse.WithPayload(NewError(err))
 	}
 
@@ -105,6 +108,8 @@ func (a *API) GetObjectInfo(params operations.GetObjectInfoParams, principal *mo
 	resp.ObjectID = NewString(params.ObjectID)
 	resp.OwnerID = NewString(objInfo.OwnerID().String())
 	resp.Attributes = make([]*models.Attribute, len(objInfo.Attributes()))
+	resp.ObjectSize = NewInteger(int64(objInfo.PayloadSize()))
+	resp.PayloadSize = NewInteger(0)
 
 	for i, attr := range objInfo.Attributes() {
 		resp.Attributes[i] = &models.Attribute{
@@ -112,6 +117,55 @@ func (a *API) GetObjectInfo(params operations.GetObjectInfoParams, principal *mo
 			Value: NewString(attr.Value()),
 		}
 	}
+
+	var prmRange pool.PrmObjectRange
+	prmRange.SetAddress(*addr)
+	prmRange.UseBearer(btoken)
+
+	var offset, length uint64
+	if params.RangeOffset != nil || params.RangeLength != nil {
+		if params.RangeOffset == nil || params.RangeLength == nil {
+			a.log.Error("both offset and length must be provided")
+			return errorResponse.WithPayload(NewError(fmt.Errorf("both offset and length must be provided")))
+		}
+		offset = uint64(*params.RangeOffset)
+		length = uint64(*params.RangeLength)
+	} else {
+		length = objInfo.PayloadSize()
+	}
+	prmRange.SetOffset(offset)
+	prmRange.SetLength(length)
+
+	if uint64(*params.MaxPayloadSize) < length {
+		return operations.NewGetObjectInfoOK().WithPayload(&resp)
+	}
+
+	rangeRes, err := a.pool.ObjectRange(ctx, prmRange)
+	if err != nil {
+		a.log.Error("range object", zap.Error(err))
+		return errorResponse.WithPayload(NewError(err))
+	}
+
+	defer func() {
+		if err = rangeRes.Close(); err != nil {
+			a.log.Error("close range result", zap.Error(err))
+		}
+	}()
+
+	sb := new(strings.Builder)
+	encoder := base64.NewEncoder(base64.StdEncoding, sb)
+	payloadSize, err := io.Copy(encoder, rangeRes)
+	if err != nil {
+		a.log.Error("encode object payload", zap.Error(err))
+		return errorResponse.WithPayload(NewError(err))
+	}
+	if err = encoder.Close(); err != nil {
+		a.log.Error("close encoder", zap.Error(err))
+		return errorResponse.WithPayload(NewError(err))
+	}
+
+	resp.Payload = sb.String()
+	resp.PayloadSize = NewInteger(payloadSize)
 
 	return operations.NewGetObjectInfoOK().WithPayload(&resp)
 }

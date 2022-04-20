@@ -454,8 +454,29 @@ func init() {
     },
     "/objects/{containerId}/{objectId}": {
       "get": {
-        "summary": "Get object info by address and",
+        "summary": "Get object info by address",
         "operationId": "getObjectInfo",
+        "parameters": [
+          {
+            "type": "integer",
+            "name": "range-offset",
+            "in": "query"
+          },
+          {
+            "minimum": 1,
+            "type": "integer",
+            "name": "range-length",
+            "in": "query"
+          },
+          {
+            "maximum": 524288000,
+            "type": "integer",
+            "default": 4194304,
+            "description": "Max payload size (in bytes) that can be included in the response.\nIf the actual size is greater than this params the payload won't be included in the response.\n",
+            "name": "max-payload-size",
+            "in": "query"
+          }
+        ],
         "responses": {
           "200": {
             "description": "Object info",
@@ -729,7 +750,9 @@ func init() {
         "containerId",
         "objectId",
         "ownerId",
-        "attributes"
+        "attributes",
+        "objectSize",
+        "payloadSize"
       ],
       "properties": {
         "attributes": {
@@ -744,8 +767,20 @@ func init() {
         "objectId": {
           "type": "string"
         },
+        "objectSize": {
+          "description": "Object full payload size",
+          "type": "integer"
+        },
         "ownerId": {
           "type": "string"
+        },
+        "payload": {
+          "description": "Base64 encoded object payload",
+          "type": "string"
+        },
+        "payloadSize": {
+          "description": "Payload size in response",
+          "type": "integer"
         }
       },
       "example": {
@@ -1532,8 +1567,31 @@ func init() {
     },
     "/objects/{containerId}/{objectId}": {
       "get": {
-        "summary": "Get object info by address and",
+        "summary": "Get object info by address",
         "operationId": "getObjectInfo",
+        "parameters": [
+          {
+            "minimum": 0,
+            "type": "integer",
+            "name": "range-offset",
+            "in": "query"
+          },
+          {
+            "minimum": 1,
+            "type": "integer",
+            "name": "range-length",
+            "in": "query"
+          },
+          {
+            "maximum": 524288000,
+            "minimum": 0,
+            "type": "integer",
+            "default": 4194304,
+            "description": "Max payload size (in bytes) that can be included in the response.\nIf the actual size is greater than this params the payload won't be included in the response.\n",
+            "name": "max-payload-size",
+            "in": "query"
+          }
+        ],
         "responses": {
           "200": {
             "description": "Object info",
@@ -1827,7 +1885,9 @@ func init() {
         "containerId",
         "objectId",
         "ownerId",
-        "attributes"
+        "attributes",
+        "objectSize",
+        "payloadSize"
       ],
       "properties": {
         "attributes": {
@@ -1842,8 +1902,20 @@ func init() {
         "objectId": {
           "type": "string"
         },
+        "objectSize": {
+          "description": "Object full payload size",
+          "type": "integer"
+        },
         "ownerId": {
           "type": "string"
+        },
+        "payload": {
+          "description": "Base64 encoded object payload",
+          "type": "string"
+        },
+        "payloadSize": {
+          "description": "Payload size in response",
+          "type": "integer"
         }
       },
       "example": {

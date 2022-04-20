@@ -33,9 +33,20 @@ type ObjectInfo struct {
 	// Required: true
 	ObjectID *string `json:"objectId"`
 
+	// Object full payload size
+	// Required: true
+	ObjectSize *int64 `json:"objectSize"`
+
 	// owner Id
 	// Required: true
 	OwnerID *string `json:"ownerId"`
+
+	// Base64 encoded object payload
+	Payload string `json:"payload,omitempty"`
+
+	// Payload size in response
+	// Required: true
+	PayloadSize *int64 `json:"payloadSize"`
 }
 
 // Validate validates this object info
@@ -54,7 +65,15 @@ func (m *ObjectInfo) Validate(formats strfmt.Registry) error {
 		res = append(res, err)
 	}
 
+	if err := m.validateObjectSize(formats); err != nil {
+		res = append(res, err)
+	}
+
 	if err := m.validateOwnerID(formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.validatePayloadSize(formats); err != nil {
 		res = append(res, err)
 	}
 
@@ -109,9 +128,27 @@ func (m *ObjectInfo) validateObjectID(formats strfmt.Registry) error {
 	return nil
 }
 
+func (m *ObjectInfo) validateObjectSize(formats strfmt.Registry) error {
+
+	if err := validate.Required("objectSize", "body", m.ObjectSize); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (m *ObjectInfo) validateOwnerID(formats strfmt.Registry) error {
 
 	if err := validate.Required("ownerId", "body", m.OwnerID); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (m *ObjectInfo) validatePayloadSize(formats strfmt.Registry) error {
+
+	if err := validate.Required("payloadSize", "body", m.PayloadSize); err != nil {
 		return err
 	}
 

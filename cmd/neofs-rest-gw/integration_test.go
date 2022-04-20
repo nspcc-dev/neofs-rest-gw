@@ -273,12 +273,13 @@ func restObjectPut(ctx context.Context, t *testing.T, clientPool *pool.Pool, cnr
 }
 
 func restObjectGet(ctx context.Context, t *testing.T, p *pool.Pool, cnrID *cid.ID) {
+	content := []byte("some content")
 	attributes := map[string]string{
 		object.AttributeFileName: "get-obj-name",
 		"user-attribute":         "user value",
 	}
 
-	objID := createObject(ctx, t, p, cnrID, attributes, []byte("some content"))
+	objID := createObject(ctx, t, p, cnrID, attributes, content)
 
 	bearer := &models.Bearer{
 		Object: []*models.Record{{
@@ -309,10 +310,48 @@ func restObjectGet(ctx context.Context, t *testing.T, p *pool.Pool, cnrID *cid.I
 	require.Equal(t, objID.String(), *objInfo.ObjectID)
 	require.Equal(t, p.OwnerID().String(), *objInfo.OwnerID)
 	require.Equal(t, len(attributes), len(objInfo.Attributes))
+	require.Equal(t, int64(len(content)), *objInfo.ObjectSize)
+
+	contentData, err := base64.StdEncoding.DecodeString(objInfo.Payload)
+	require.NoError(t, err)
+	require.Equal(t, content, contentData)
 
 	for _, attr := range objInfo.Attributes {
 		require.Equal(t, attributes[*attr.Key], *attr.Value)
 	}
+
+	// check max-payload-size params
+	query = make(url.Values)
+	query.Add(walletConnectQuery, strconv.FormatBool(useWalletConnect))
+	query.Add("max-payload-size", "0")
+
+	request, err = http.NewRequest(http.MethodGet, testHost+"/v1/objects/"+cnrID.String()+"/"+objID.String()+"?"+query.Encode(), nil)
+	require.NoError(t, err)
+	prepareCommonHeaders(request.Header, bearerToken)
+
+	objInfo = &models.ObjectInfo{}
+	doRequest(t, httpClient, request, http.StatusOK, objInfo)
+	require.Empty(t, objInfo.Payload)
+	require.Equal(t, int64(0), *objInfo.PayloadSize)
+
+	// check range params
+	rangeLength := 4
+	query = make(url.Values)
+	query.Add(walletConnectQuery, strconv.FormatBool(useWalletConnect))
+	query.Add("range-offset", "0")
+	query.Add("range-length", strconv.Itoa(rangeLength))
+
+	request, err = http.NewRequest(http.MethodGet, testHost+"/v1/objects/"+cnrID.String()+"/"+objID.String()+"?"+query.Encode(), nil)
+	require.NoError(t, err)
+	prepareCommonHeaders(request.Header, bearerToken)
+
+	objInfo = &models.ObjectInfo{}
+	doRequest(t, httpClient, request, http.StatusOK, objInfo)
+	require.Equal(t, int64(rangeLength), *objInfo.PayloadSize)
+
+	contentData, err = base64.StdEncoding.DecodeString(objInfo.Payload)
+	require.NoError(t, err)
+	require.Equal(t, content[:rangeLength], contentData)
 }
 
 func restObjectDelete(ctx context.Context, t *testing.T, p *pool.Pool, cnrID *cid.ID) {
