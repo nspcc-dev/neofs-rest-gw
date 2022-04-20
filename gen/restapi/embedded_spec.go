@@ -340,27 +340,7 @@ func init() {
             "in": "body",
             "required": true,
             "schema": {
-              "type": "object",
-              "required": [
-                "containerId",
-                "fileName"
-              ],
-              "properties": {
-                "containerId": {
-                  "type": "string"
-                },
-                "fileName": {
-                  "type": "string"
-                },
-                "payload": {
-                  "type": "string"
-                }
-              },
-              "example": {
-                "containerId": "5HZTn5qkRnmgSz9gSrw22CEdPPk6nQhkwf2Mgzyvkikv",
-                "fileName": "myFile.txt",
-                "payload": "Y29udGVudCBvZiBmaWxl"
-              }
+              "$ref": "#/definitions/ObjectUpload"
             }
           }
         ],
@@ -815,6 +795,41 @@ func init() {
         "size": {
           "type": "integer"
         }
+      }
+    },
+    "ObjectUpload": {
+      "type": "object",
+      "required": [
+        "containerId",
+        "fileName"
+      ],
+      "properties": {
+        "attributes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Attribute"
+          }
+        },
+        "containerId": {
+          "type": "string"
+        },
+        "fileName": {
+          "type": "string"
+        },
+        "payload": {
+          "type": "string"
+        }
+      },
+      "example": {
+        "attributes": [
+          {
+            "key": "User-Attribute",
+            "value": "some-value"
+          }
+        ],
+        "containerId": "5HZTn5qkRnmgSz9gSrw22CEdPPk6nQhkwf2Mgzyvkikv",
+        "fileName": "myFile.txt",
+        "payload": "Y29udGVudCBvZiBmaWxl"
       }
     },
     "Operation": {
@@ -1424,27 +1439,7 @@ func init() {
             "in": "body",
             "required": true,
             "schema": {
-              "type": "object",
-              "required": [
-                "containerId",
-                "fileName"
-              ],
-              "properties": {
-                "containerId": {
-                  "type": "string"
-                },
-                "fileName": {
-                  "type": "string"
-                },
-                "payload": {
-                  "type": "string"
-                }
-              },
-              "example": {
-                "containerId": "5HZTn5qkRnmgSz9gSrw22CEdPPk6nQhkwf2Mgzyvkikv",
-                "fileName": "myFile.txt",
-                "payload": "Y29udGVudCBvZiBmaWxl"
-              }
+              "$ref": "#/definitions/ObjectUpload"
             }
           }
         ],
@@ -1950,6 +1945,41 @@ func init() {
         "size": {
           "type": "integer"
         }
+      }
+    },
+    "ObjectUpload": {
+      "type": "object",
+      "required": [
+        "containerId",
+        "fileName"
+      ],
+      "properties": {
+        "attributes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Attribute"
+          }
+        },
+        "containerId": {
+          "type": "string"
+        },
+        "fileName": {
+          "type": "string"
+        },
+        "payload": {
+          "type": "string"
+        }
+      },
+      "example": {
+        "attributes": [
+          {
+            "key": "User-Attribute",
+            "value": "some-value"
+          }
+        ],
+        "containerId": "5HZTn5qkRnmgSz9gSrw22CEdPPk6nQhkwf2Mgzyvkikv",
+        "fileName": "myFile.txt",
+        "payload": "Y29udGVudCBvZiBmaWxl"
       }
     },
     "Operation": {

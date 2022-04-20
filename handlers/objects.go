@@ -5,6 +5,9 @@ import (
 	"crypto/ecdsa"
 	"encoding/base64"
 	"fmt"
+	"io"
+	"strings"
+
 	"github.com/go-openapi/runtime/middleware"
 	"github.com/nspcc-dev/neo-go/pkg/crypto/keys"
 	"github.com/nspcc-dev/neofs-api-go/v2/acl"
@@ -19,8 +22,6 @@ import (
 	"github.com/nspcc-dev/neofs-sdk-go/pool"
 	"github.com/nspcc-dev/neofs-sdk-go/token"
 	"go.uber.org/zap"
-	"io"
-	"strings"
 )
 
 // PutObjects handler that uploads object to NeoFS.
@@ -48,7 +49,7 @@ func (a *API) PutObjects(params operations.PutObjectParams, principal *models.Pr
 		DefaultTimestamp: a.defaultTimestamp,
 		DefaultFileName:  *params.Object.FileName,
 	}
-	attributes, err := GetObjectAttributes(ctx, params.HTTPRequest.Header, a.pool, prm)
+	attributes, err := GetObjectAttributes(ctx, a.pool, params.Object.Attributes, prm)
 	if err != nil {
 		return errorResponse.WithPayload(models.Error(err.Error()))
 	}
