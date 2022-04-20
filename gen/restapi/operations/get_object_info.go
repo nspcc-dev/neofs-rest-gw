@@ -33,7 +33,7 @@ func NewGetObjectInfo(ctx *middleware.Context, handler GetObjectInfoHandler) *Ge
 
 /* GetObjectInfo swagger:route GET /objects/{containerId}/{objectId} getObjectInfo
 
-Get object info by address and
+Get object info by address
 
 */
 type GetObjectInfo struct {

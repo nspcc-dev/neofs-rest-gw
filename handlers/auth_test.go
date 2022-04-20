@@ -61,6 +61,6 @@ func TestSign(t *testing.T) {
 		Key:       pubKeyHex,
 	}
 
-	_, err = prepareBearerToken(bt)
+	_, err = prepareBearerToken(bt, false)
 	require.NoError(t, err)
 }
