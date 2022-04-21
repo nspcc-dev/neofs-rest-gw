@@ -203,6 +203,29 @@ func getPool(ctx context.Context, t *testing.T, key *keys.PrivateKey, node strin
 	return clientPool
 }
 
+func getRestrictBearerRecords() []*models.Record {
+	return []*models.Record{
+		formRestrictRecord(models.OperationGET),
+		formRestrictRecord(models.OperationHEAD),
+		formRestrictRecord(models.OperationPUT),
+		formRestrictRecord(models.OperationDELETE),
+		formRestrictRecord(models.OperationSEARCH),
+		formRestrictRecord(models.OperationRANGE),
+		formRestrictRecord(models.OperationRANGEHASH),
+	}
+}
+
+func formRestrictRecord(op models.Operation) *models.Record {
+	return &models.Record{
+		Operation: models.NewOperation(op),
+		Action:    models.NewAction(models.ActionDENY),
+		Filters:   []*models.Filter{},
+		Targets: []*models.Target{{
+			Role: models.NewRole(models.RoleOTHERS),
+			Keys: []string{},
+		}}}
+}
+
 func restObjectPut(ctx context.Context, t *testing.T, clientPool *pool.Pool, cnrID *cid.ID) {
 	bearer := &models.Bearer{
 		Object: []*models.Record{{
@@ -215,6 +238,7 @@ func restObjectPut(ctx context.Context, t *testing.T, clientPool *pool.Pool, cnr
 			}},
 		}},
 	}
+	bearer.Object = append(bearer.Object, getRestrictBearerRecords()...)
 
 	httpClient := defaultHTTPClient()
 	bearerToken := makeAuthObjectTokenRequest(ctx, t, bearer, httpClient)
@@ -285,16 +309,28 @@ func restObjectGet(ctx context.Context, t *testing.T, p *pool.Pool, cnrID *cid.I
 	objID := createObject(ctx, t, p, cnrID, attributes, content)
 
 	bearer := &models.Bearer{
-		Object: []*models.Record{{
-			Operation: models.NewOperation(models.OperationGET),
-			Action:    models.NewAction(models.ActionALLOW),
-			Filters:   []*models.Filter{},
-			Targets: []*models.Target{{
-				Role: models.NewRole(models.RoleOTHERS),
-				Keys: []string{},
-			}},
-		}},
+		Object: []*models.Record{
+			{
+				Operation: models.NewOperation(models.OperationHEAD),
+				Action:    models.NewAction(models.ActionALLOW),
+				Filters:   []*models.Filter{},
+				Targets: []*models.Target{{
+					Role: models.NewRole(models.RoleOTHERS),
+					Keys: []string{},
+				}},
+			},
+			{
+				Operation: models.NewOperation(models.OperationRANGE),
+				Action:    models.NewAction(models.ActionALLOW),
+				Filters:   []*models.Filter{},
+				Targets: []*models.Target{{
+					Role: models.NewRole(models.RoleOTHERS),
+					Keys: []string{},
+				}},
+			},
+		},
 	}
+	bearer.Object = append(bearer.Object, getRestrictBearerRecords()...)
 
 	httpClient := defaultHTTPClient()
 	bearerToken := makeAuthObjectTokenRequest(ctx, t, bearer, httpClient)
@@ -371,6 +407,7 @@ func restObjectDelete(ctx context.Context, t *testing.T, p *pool.Pool, cnrID *ci
 			}},
 		}},
 	}
+	bearer.Object = append(bearer.Object, getRestrictBearerRecords()...)
 
 	httpClient := defaultHTTPClient()
 	bearerToken := makeAuthObjectTokenRequest(ctx, t, bearer, httpClient)
@@ -428,6 +465,7 @@ func restObjectsSearch(ctx context.Context, t *testing.T, p *pool.Pool, cnrID *c
 			},
 		},
 	}
+	bearer.Object = append(bearer.Object, getRestrictBearerRecords()...)
 
 	httpClient := defaultHTTPClient()
 	bearerToken := makeAuthObjectTokenRequest(ctx, t, bearer, httpClient)
