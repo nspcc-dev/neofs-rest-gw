@@ -5,7 +5,6 @@ import (
 	"crypto/ecdsa"
 	"encoding/base64"
 	"fmt"
-	walletconnect "github.com/nspcc-dev/neofs-rest-gw/wallet-connect"
 	"net/http"
 	"strconv"
 	"strings"
@@ -17,6 +16,8 @@ import (
 	sessionv2 "github.com/nspcc-dev/neofs-api-go/v2/session"
 	"github.com/nspcc-dev/neofs-rest-gw/gen/models"
 	"github.com/nspcc-dev/neofs-rest-gw/gen/restapi/operations"
+	"github.com/nspcc-dev/neofs-rest-gw/internal/util"
+	"github.com/nspcc-dev/neofs-rest-gw/internal/wallet-connect"
 	"github.com/nspcc-dev/neofs-sdk-go/acl"
 	"github.com/nspcc-dev/neofs-sdk-go/container"
 	cid "github.com/nspcc-dev/neofs-sdk-go/container/id"
@@ -52,7 +53,7 @@ func (a *API) PutContainers(params operations.PutContainerParams, principal *mod
 	}
 
 	var resp operations.PutContainerOKBody
-	resp.ContainerID = NewString(cnrID.String())
+	resp.ContainerID = util.NewString(cnrID.String())
 
 	return operations.NewPutContainerOK().WithPayload(&resp)
 }
@@ -67,17 +68,17 @@ func (a *API) GetContainer(params operations.GetContainerParams) middleware.Resp
 	attrs := make([]*models.Attribute, len(cnr.Attributes()))
 	for i, attr := range cnr.Attributes() {
 		attrs[i] = &models.Attribute{
-			Key:   NewString(attr.Key()),
-			Value: NewString(attr.Value()),
+			Key:   util.NewString(attr.Key()),
+			Value: util.NewString(attr.Value()),
 		}
 	}
 
 	resp := &models.ContainerInfo{
-		ContainerID:     NewString(params.ContainerID),
-		Version:         NewString(cnr.Version().String()),
-		OwnerID:         NewString(cnr.OwnerID().String()),
-		BasicACL:        NewString(acl.BasicACL(cnr.BasicACL()).String()),
-		PlacementPolicy: NewString(strings.Join(policy.Encode(cnr.PlacementPolicy()), " ")),
+		ContainerID:     util.NewString(params.ContainerID),
+		Version:         util.NewString(cnr.Version().String()),
+		OwnerID:         util.NewString(cnr.OwnerID().String()),
+		BasicACL:        util.NewString(acl.BasicACL(cnr.BasicACL()).String()),
+		PlacementPolicy: util.NewString(strings.Join(policy.Encode(cnr.PlacementPolicy()), " ")),
 		Attributes:      attrs,
 	}
 
@@ -104,7 +105,7 @@ func (a *API) PutContainerEACL(params operations.PutContainerEACLParams, princip
 
 	if err = setContainerEACL(params.HTTPRequest.Context(), a.pool, cnrID, stoken, params.Eacl); err != nil {
 		a.log.Error("failed set container eacl", zap.Error(err))
-		return operations.NewPutContainerEACLBadRequest().WithPayload(NewError(err))
+		return operations.NewPutContainerEACLBadRequest().WithPayload(util.NewError(err))
 	}
 
 	return operations.NewPutContainerEACLOK()
@@ -151,7 +152,7 @@ func (a *API) ListContainer(params operations.ListContainersParams) middleware.R
 
 	if offset > len(ids)-1 {
 		res := &models.ContainerList{
-			Size:       NewInteger(0),
+			Size:       util.NewInteger(0),
 			Containers: []*models.ContainerBaseInfo{},
 		}
 		return operations.NewListContainersOK().WithPayload(res)
@@ -162,7 +163,7 @@ func (a *API) ListContainer(params operations.ListContainersParams) middleware.R
 	}
 
 	res := &models.ContainerList{
-		Size:       NewInteger(int64(size)),
+		Size:       util.NewInteger(int64(size)),
 		Containers: make([]*models.ContainerBaseInfo, 0, size),
 	}
 
@@ -188,13 +189,13 @@ func (a *API) DeleteContainer(params operations.DeleteContainerParams, principal
 	stoken, err := prepareSessionToken(bt, *params.WalletConnect)
 	if err != nil {
 		a.log.Error("failed parse session token", zap.Error(err))
-		return operations.NewDeleteContainerBadRequest().WithPayload(NewError(err))
+		return operations.NewDeleteContainerBadRequest().WithPayload(util.NewError(err))
 	}
 
 	cnrID, err := parseContainerID(params.ContainerID)
 	if err != nil {
 		a.log.Error("failed get container id", zap.Error(err))
-		return operations.NewDeleteContainerBadRequest().WithPayload(NewError(err))
+		return operations.NewDeleteContainerBadRequest().WithPayload(util.NewError(err))
 	}
 
 	var prm pool.PrmContainerDelete
@@ -203,7 +204,7 @@ func (a *API) DeleteContainer(params operations.DeleteContainerParams, principal
 
 	if err = a.pool.DeleteContainer(params.HTTPRequest.Context(), prm); err != nil {
 		a.log.Error("failed delete container", zap.String("container", params.ContainerID), zap.Error(err))
-		return operations.NewDeleteContainerBadRequest().WithPayload(NewError(err))
+		return operations.NewDeleteContainerBadRequest().WithPayload(util.NewError(err))
 	}
 
 	return operations.NewDeleteContainerNoContent()
@@ -218,7 +219,7 @@ func getContainerBaseInfo(ctx context.Context, p *pool.Pool, cnrID cid.ID) (*mod
 		return nil, err
 	}
 
-	baseInfo := &models.ContainerBaseInfo{ContainerID: NewString(cnrID.String())}
+	baseInfo := &models.ContainerBaseInfo{ContainerID: util.NewString(cnrID.String())}
 
 	for _, attr := range cnr.Attributes() {
 		if attr.Key() == container.AttributeName {
@@ -258,7 +259,7 @@ func parseContainerID(containerID string) (*cid.ID, error) {
 }
 
 func setContainerEACL(ctx context.Context, p *pool.Pool, cnrID *cid.ID, stoken *session.Token, eaclPrm *models.Eacl) error {
-	table, err := ToNativeTable(eaclPrm.Records)
+	table, err := util.ToNativeTable(eaclPrm.Records)
 	if err != nil {
 		return err
 	}
@@ -287,7 +288,7 @@ func getContainerEACL(ctx context.Context, p *pool.Pool, cnrID *cid.ID) (*models
 	}
 
 	for i, rec := range table.Records() {
-		record, err := FromNativeRecord(rec)
+		record, err := util.FromNativeRecord(rec)
 		if err != nil {
 			return nil, fmt.Errorf("couldn't transform record from native: %w", err)
 		}

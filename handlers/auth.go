@@ -11,6 +11,7 @@ import (
 	"github.com/nspcc-dev/neo-go/pkg/crypto/keys"
 	"github.com/nspcc-dev/neofs-rest-gw/gen/models"
 	"github.com/nspcc-dev/neofs-rest-gw/gen/restapi/operations"
+	"github.com/nspcc-dev/neofs-rest-gw/internal/util"
 	"github.com/nspcc-dev/neofs-sdk-go/owner"
 	"github.com/nspcc-dev/neofs-sdk-go/pool"
 )
@@ -39,7 +40,7 @@ func (a *API) PostAuth(params operations.AuthParams) middleware.Responder {
 func prepareObjectToken(params operations.AuthParams, pool *pool.Pool) (*models.TokenResponse, error) {
 	ctx := params.HTTPRequest.Context()
 
-	btoken, err := ToNativeObjectToken(params.Token)
+	btoken, err := util.ToNativeObjectToken(params.Token)
 	if err != nil {
 		return nil, fmt.Errorf("couldn't transform token to native: %w", err)
 	}
@@ -58,7 +59,7 @@ func prepareObjectToken(params operations.AuthParams, pool *pool.Pool) (*models.
 
 	var resp models.TokenResponse
 	resp.Type = models.NewTokenType(models.TokenTypeObject)
-	resp.Token = NewString(base64.StdEncoding.EncodeToString(binaryBearer))
+	resp.Token = util.NewString(base64.StdEncoding.EncodeToString(binaryBearer))
 
 	return &resp, nil
 }
@@ -79,7 +80,7 @@ func prepareContainerTokens(params operations.AuthParams, pool *pool.Pool, key *
 	var resp models.TokenResponse
 	resp.Type = models.NewTokenType(models.TokenTypeContainer)
 
-	stoken, err := ToNativeContainerToken(params.Token)
+	stoken, err := util.ToNativeContainerToken(params.Token)
 	if err != nil {
 		return nil, fmt.Errorf("couldn't transform rule to native session token: %w", err)
 	}
@@ -101,7 +102,7 @@ func prepareContainerTokens(params operations.AuthParams, pool *pool.Pool, key *
 		return nil, fmt.Errorf("couldn't marshal session token: %w", err)
 	}
 
-	resp.Token = NewString(base64.StdEncoding.EncodeToString(binaryToken))
+	resp.Token = util.NewString(base64.StdEncoding.EncodeToString(binaryToken))
 
 	return &resp, nil
 }

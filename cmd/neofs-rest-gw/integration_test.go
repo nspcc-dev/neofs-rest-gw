@@ -24,7 +24,8 @@ import (
 	"github.com/nspcc-dev/neofs-rest-gw/gen/restapi"
 	"github.com/nspcc-dev/neofs-rest-gw/gen/restapi/operations"
 	"github.com/nspcc-dev/neofs-rest-gw/handlers"
-	walletconnect "github.com/nspcc-dev/neofs-rest-gw/wallet-connect"
+	"github.com/nspcc-dev/neofs-rest-gw/internal/util"
+	"github.com/nspcc-dev/neofs-rest-gw/internal/wallet-connect"
 	"github.com/nspcc-dev/neofs-sdk-go/container"
 	cid "github.com/nspcc-dev/neofs-sdk-go/container/id"
 	"github.com/nspcc-dev/neofs-sdk-go/eacl"
@@ -252,8 +253,8 @@ func restObjectPut(ctx context.Context, t *testing.T, clientPool *pool.Pool, cnr
 	}
 
 	req := &models.ObjectUpload{
-		ContainerID: handlers.NewString(cnrID.String()),
-		FileName:    handlers.NewString("newFile.txt"),
+		ContainerID: util.NewString(cnrID.String()),
+		FileName:    util.NewString("newFile.txt"),
 		Payload:     base64.StdEncoding.EncodeToString([]byte(content)),
 		Attributes: []*models.Attribute{{
 			Key:   &attrKey,
@@ -473,9 +474,9 @@ func restObjectsSearch(ctx context.Context, t *testing.T, p *pool.Pool, cnrID *c
 	search := &models.SearchFilters{
 		Filters: []*models.SearchFilter{
 			{
-				Key:   handlers.NewString(userKey),
+				Key:   util.NewString(userKey),
 				Match: models.NewSearchMatch(models.SearchMatchMatchStringEqual),
-				Value: handlers.NewString(userValue),
+				Value: util.NewString(userValue),
 			},
 		},
 	}
@@ -609,7 +610,7 @@ func restContainerEACLPut(ctx context.Context, t *testing.T, clientPool *pool.Po
 	table, err := clientPool.GetEACL(ctx, prm)
 	require.NoError(t, err)
 
-	expectedTable, err := handlers.ToNativeTable(req.Records)
+	expectedTable, err := util.ToNativeTable(req.Records)
 	require.NoError(t, err)
 	expectedTable.SetCID(cnrID)
 
@@ -633,7 +634,7 @@ func restContainerEACLGet(ctx context.Context, t *testing.T, p *pool.Pool, cnrID
 
 	require.Equal(t, cnrID.String(), responseTable.ContainerID)
 
-	actualTable, err := handlers.ToNativeTable(responseTable.Records)
+	actualTable, err := util.ToNativeTable(responseTable.Records)
 	require.NoError(t, err)
 	actualTable.SetCID(cnrID)
 
@@ -662,7 +663,7 @@ func restContainerList(ctx context.Context, t *testing.T, p *pool.Pool, cnrID *c
 	require.Equal(t, len(ids), int(*list.Size))
 
 	expected := &models.ContainerBaseInfo{
-		ContainerID: handlers.NewString(cnrID.String()),
+		ContainerID: util.NewString(cnrID.String()),
 		Name:        containerName,
 	}
 
@@ -768,7 +769,7 @@ func restContainerPut(ctx context.Context, t *testing.T, clientPool *pool.Pool) 
 	}
 
 	req := operations.PutContainerBody{
-		ContainerName: handlers.NewString("cnr"),
+		ContainerName: util.NewString("cnr"),
 	}
 	body, err := json.Marshal(&req)
 	require.NoError(t, err)

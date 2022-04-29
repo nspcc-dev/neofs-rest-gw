@@ -11,6 +11,7 @@ import (
 
 	"github.com/nspcc-dev/neo-go/pkg/crypto/keys"
 	"github.com/nspcc-dev/neofs-rest-gw/gen/models"
+	"github.com/nspcc-dev/neofs-rest-gw/internal/util"
 	"github.com/nspcc-dev/neofs-sdk-go/owner"
 	"github.com/stretchr/testify/require"
 )
@@ -35,7 +36,7 @@ func TestSign(t *testing.T) {
 		}},
 	}
 
-	btoken, err := ToNativeObjectToken(b)
+	btoken, err := util.ToNativeObjectToken(b)
 	require.NoError(t, err)
 
 	ownerKey, err := keys.NewPublicKeyFromString(pubKeyHex)
