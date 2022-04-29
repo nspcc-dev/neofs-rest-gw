@@ -14,7 +14,8 @@ import (
 	"github.com/nspcc-dev/neofs-api-go/v2/refs"
 	"github.com/nspcc-dev/neofs-rest-gw/gen/models"
 	"github.com/nspcc-dev/neofs-rest-gw/gen/restapi/operations"
-	walletconnect "github.com/nspcc-dev/neofs-rest-gw/wallet-connect"
+	"github.com/nspcc-dev/neofs-rest-gw/internal/util"
+	"github.com/nspcc-dev/neofs-rest-gw/internal/wallet-connect"
 	cid "github.com/nspcc-dev/neofs-sdk-go/container/id"
 	"github.com/nspcc-dev/neofs-sdk-go/object"
 	"github.com/nspcc-dev/neofs-sdk-go/object/address"
@@ -67,12 +68,12 @@ func (a *API) PutObjects(params operations.PutObjectParams, principal *models.Pr
 	objID, err := a.pool.PutObject(ctx, prmPut)
 	if err != nil {
 		a.log.Error("put object", zap.Error(err))
-		return errorResponse.WithPayload(NewError(err))
+		return errorResponse.WithPayload(util.NewError(err))
 	}
 
 	var resp models.Address
 	resp.ContainerID = params.Object.ContainerID
-	resp.ObjectID = NewString(objID.String())
+	resp.ObjectID = util.NewString(objID.String())
 
 	return operations.NewPutObjectOK().WithPayload(&resp)
 }
@@ -91,7 +92,7 @@ func (a *API) GetObjectInfo(params operations.GetObjectInfoParams, principal *mo
 	btoken, err := getBearerToken(principal, params.XBearerSignature, params.XBearerSignatureKey, *params.WalletConnect)
 	if err != nil {
 		a.log.Error("get bearer token", zap.Error(err))
-		return errorResponse.WithPayload(NewError(err))
+		return errorResponse.WithPayload(util.NewError(err))
 	}
 
 	var prm pool.PrmObjectHead
@@ -101,21 +102,21 @@ func (a *API) GetObjectInfo(params operations.GetObjectInfoParams, principal *mo
 	objInfo, err := a.pool.HeadObject(ctx, prm)
 	if err != nil {
 		a.log.Error("head object", zap.Error(err))
-		return errorResponse.WithPayload(NewError(err))
+		return errorResponse.WithPayload(util.NewError(err))
 	}
 
 	var resp models.ObjectInfo
-	resp.ContainerID = NewString(params.ContainerID)
-	resp.ObjectID = NewString(params.ObjectID)
-	resp.OwnerID = NewString(objInfo.OwnerID().String())
+	resp.ContainerID = util.NewString(params.ContainerID)
+	resp.ObjectID = util.NewString(params.ObjectID)
+	resp.OwnerID = util.NewString(objInfo.OwnerID().String())
 	resp.Attributes = make([]*models.Attribute, len(objInfo.Attributes()))
-	resp.ObjectSize = NewInteger(int64(objInfo.PayloadSize()))
-	resp.PayloadSize = NewInteger(0)
+	resp.ObjectSize = util.NewInteger(int64(objInfo.PayloadSize()))
+	resp.PayloadSize = util.NewInteger(0)
 
 	for i, attr := range objInfo.Attributes() {
 		resp.Attributes[i] = &models.Attribute{
-			Key:   NewString(attr.Key()),
-			Value: NewString(attr.Value()),
+			Key:   util.NewString(attr.Key()),
+			Value: util.NewString(attr.Value()),
 		}
 	}
 
@@ -127,7 +128,7 @@ func (a *API) GetObjectInfo(params operations.GetObjectInfoParams, principal *mo
 	if params.RangeOffset != nil || params.RangeLength != nil {
 		if params.RangeOffset == nil || params.RangeLength == nil {
 			a.log.Error("both offset and length must be provided")
-			return errorResponse.WithPayload(NewError(fmt.Errorf("both offset and length must be provided")))
+			return errorResponse.WithPayload(util.NewError(fmt.Errorf("both offset and length must be provided")))
 		}
 		offset = uint64(*params.RangeOffset)
 		length = uint64(*params.RangeLength)
@@ -144,7 +145,7 @@ func (a *API) GetObjectInfo(params operations.GetObjectInfoParams, principal *mo
 	rangeRes, err := a.pool.ObjectRange(ctx, prmRange)
 	if err != nil {
 		a.log.Error("range object", zap.Error(err))
-		return errorResponse.WithPayload(NewError(err))
+		return errorResponse.WithPayload(util.NewError(err))
 	}
 
 	defer func() {
@@ -158,15 +159,15 @@ func (a *API) GetObjectInfo(params operations.GetObjectInfoParams, principal *mo
 	payloadSize, err := io.Copy(encoder, rangeRes)
 	if err != nil {
 		a.log.Error("encode object payload", zap.Error(err))
-		return errorResponse.WithPayload(NewError(err))
+		return errorResponse.WithPayload(util.NewError(err))
 	}
 	if err = encoder.Close(); err != nil {
 		a.log.Error("close encoder", zap.Error(err))
-		return errorResponse.WithPayload(NewError(err))
+		return errorResponse.WithPayload(util.NewError(err))
 	}
 
 	resp.Payload = sb.String()
-	resp.PayloadSize = NewInteger(payloadSize)
+	resp.PayloadSize = util.NewInteger(payloadSize)
 
 	return operations.NewGetObjectInfoOK().WithPayload(&resp)
 }
@@ -185,7 +186,7 @@ func (a *API) DeleteObject(params operations.DeleteObjectParams, principal *mode
 	btoken, err := getBearerToken(principal, params.XBearerSignature, params.XBearerSignatureKey, *params.WalletConnect)
 	if err != nil {
 		a.log.Error("failed to get bearer token", zap.Error(err))
-		return errorResponse.WithPayload(NewError(err))
+		return errorResponse.WithPayload(util.NewError(err))
 	}
 
 	var prm pool.PrmObjectDelete
@@ -194,7 +195,7 @@ func (a *API) DeleteObject(params operations.DeleteObjectParams, principal *mode
 
 	if err = a.pool.DeleteObject(ctx, prm); err != nil {
 		a.log.Error("failed to delete object", zap.Error(err))
-		return errorResponse.WithPayload(NewError(err))
+		return errorResponse.WithPayload(util.NewError(err))
 	}
 
 	return operations.NewDeleteObjectNoContent()
@@ -214,13 +215,13 @@ func (a *API) SearchObjects(params operations.SearchObjectsParams, principal *mo
 	btoken, err := getBearerToken(principal, params.XBearerSignature, params.XBearerSignatureKey, *params.WalletConnect)
 	if err != nil {
 		a.log.Error("failed to get bearer token", zap.Error(err))
-		return errorResponse.WithPayload(NewError(err))
+		return errorResponse.WithPayload(util.NewError(err))
 	}
 
-	filters, err := ToNativeFilters(params.SearchFilters)
+	filters, err := util.ToNativeFilters(params.SearchFilters)
 	if err != nil {
 		a.log.Error("failed to transform to native", zap.Error(err))
-		return errorResponse.WithPayload(NewError(err))
+		return errorResponse.WithPayload(util.NewError(err))
 	}
 
 	var prm pool.PrmObjectSearch
@@ -231,7 +232,7 @@ func (a *API) SearchObjects(params operations.SearchObjectsParams, principal *mo
 	resSearch, err := a.pool.SearchObjects(ctx, prm)
 	if err != nil {
 		a.log.Error("failed to search objects", zap.Error(err))
-		return errorResponse.WithPayload(NewError(err))
+		return errorResponse.WithPayload(util.NewError(err))
 	}
 
 	offset := int(*params.Offset)
@@ -261,11 +262,11 @@ func (a *API) SearchObjects(params operations.SearchObjectsParams, principal *mo
 	}
 	if err != nil {
 		a.log.Error("failed to search objects", zap.Error(err))
-		return errorResponse.WithPayload(NewError(err))
+		return errorResponse.WithPayload(util.NewError(err))
 	}
 
 	list := &models.ObjectList{
-		Size:    NewInteger(int64(len(objects))),
+		Size:    util.NewInteger(int64(len(objects))),
 		Objects: objects,
 	}
 
@@ -288,8 +289,8 @@ func headObjectBaseInfo(ctx context.Context, p *pool.Pool, cnrID *cid.ID, objID 
 
 	resp := &models.ObjectBaseInfo{
 		Address: &models.Address{
-			ContainerID: NewString(cnrID.String()),
-			ObjectID:    NewString(objID.String()),
+			ContainerID: util.NewString(cnrID.String()),
+			ObjectID:    util.NewString(objID.String()),
 		},
 	}
 

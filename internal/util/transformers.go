@@ -1,14 +1,14 @@
-package handlers
+package util
 
 import (
 	"encoding/hex"
 	"fmt"
-	"github.com/nspcc-dev/neofs-sdk-go/object"
 
 	sessionv2 "github.com/nspcc-dev/neofs-api-go/v2/session"
 	"github.com/nspcc-dev/neofs-rest-gw/gen/models"
 	cid "github.com/nspcc-dev/neofs-sdk-go/container/id"
 	"github.com/nspcc-dev/neofs-sdk-go/eacl"
+	"github.com/nspcc-dev/neofs-sdk-go/object"
 	"github.com/nspcc-dev/neofs-sdk-go/session"
 	"github.com/nspcc-dev/neofs-sdk-go/token"
 )
@@ -428,4 +428,19 @@ func ToNativeFilters(fs *models.SearchFilters) (object.SearchFilters, error) {
 	}
 
 	return filters, nil
+}
+
+// NewString returns pointer to provided string.
+func NewString(val string) *string {
+	return &val
+}
+
+// NewInteger returns pointer to provided int.
+func NewInteger(val int64) *int64 {
+	return &val
+}
+
+// NewError wraps error into models.Error.
+func NewError(err error) models.Error {
+	return models.Error(err.Error())
 }

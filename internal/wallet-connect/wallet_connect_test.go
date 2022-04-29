@@ -3,12 +3,13 @@ package walletconnect
 import (
 	"crypto/ecdsa"
 	"encoding/hex"
+	"testing"
+
 	"github.com/nspcc-dev/neo-go/pkg/crypto/keys"
 	"github.com/nspcc-dev/neofs-rest-gw/gen/models"
-	"github.com/nspcc-dev/neofs-rest-gw/handlers"
+	"github.com/nspcc-dev/neofs-rest-gw/internal/util"
 	"github.com/nspcc-dev/neofs-sdk-go/owner"
 	"github.com/stretchr/testify/require"
-	"testing"
 )
 
 const devenvPrivateKey = "1dd37fba80fec4e6a6f13fd708d8dcb3b29def768017052f6c930fa1c5d90bbb"
@@ -31,7 +32,7 @@ func TestSign(t *testing.T) {
 		}},
 	}
 
-	btoken, err := handlers.ToNativeObjectToken(b)
+	btoken, err := util.ToNativeObjectToken(b)
 	require.NoError(t, err)
 
 	ownerKey, err := keys.NewPublicKeyFromString(pubKeyHex)

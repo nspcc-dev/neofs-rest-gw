@@ -9,9 +9,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/nspcc-dev/neofs-rest-gw/gen/models"
-
 	objectv2 "github.com/nspcc-dev/neofs-api-go/v2/object"
+	"github.com/nspcc-dev/neofs-rest-gw/gen/models"
 	"github.com/nspcc-dev/neofs-sdk-go/netmap"
 	"github.com/nspcc-dev/neofs-sdk-go/object"
 	"github.com/nspcc-dev/neofs-sdk-go/pool"
@@ -216,16 +215,4 @@ func updateExpirationHeader(headers map[string]string, durations *epochDurations
 	epochDuration := durations.msPerBlock * int64(durations.blockPerEpoch)
 	numEpoch := expDuration.Milliseconds() / epochDuration
 	headers[objectv2.SysAttributeExpEpoch] = strconv.FormatInt(int64(durations.currentEpoch)+numEpoch, 10)
-}
-
-func NewString(val string) *string {
-	return &val
-}
-
-func NewInteger(val int64) *int64 {
-	return &val
-}
-
-func NewError(err error) models.Error {
-	return models.Error(err.Error())
 }
