@@ -17,7 +17,7 @@ import (
 	"github.com/nspcc-dev/neofs-rest-gw/gen/models"
 	"github.com/nspcc-dev/neofs-rest-gw/gen/restapi/operations"
 	"github.com/nspcc-dev/neofs-rest-gw/internal/util"
-	"github.com/nspcc-dev/neofs-rest-gw/internal/wallet-connect"
+	walletconnect "github.com/nspcc-dev/neofs-rest-gw/internal/wallet-connect"
 	"github.com/nspcc-dev/neofs-sdk-go/acl"
 	"github.com/nspcc-dev/neofs-sdk-go/container"
 	cid "github.com/nspcc-dev/neofs-sdk-go/container/id"

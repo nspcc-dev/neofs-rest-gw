@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"context"
-	"crypto/ecdsa"
 	"encoding/base64"
 	"fmt"
 
@@ -72,9 +71,9 @@ func prepareContainerTokens(params operations.AuthParams, pool *pool.Pool, key *
 		return nil, fmt.Errorf("couldn't get lifetime: %w", err)
 	}
 
-	ownerKey, err := keys.NewPublicKeyFromString(params.XBearerSignatureKey)
-	if err != nil {
-		return nil, fmt.Errorf("invalid singature key: %w", err)
+	var ownerID owner.ID
+	if err = ownerID.Parse(params.XBearerOwnerID); err != nil {
+		return nil, fmt.Errorf("invalid bearer owner: %w", err)
 	}
 
 	var resp models.TokenResponse
@@ -91,7 +90,7 @@ func prepareContainerTokens(params operations.AuthParams, pool *pool.Pool, key *
 	}
 	stoken.SetID(uid)
 
-	stoken.SetOwnerID(owner.NewIDFromPublicKey((*ecdsa.PublicKey)(ownerKey)))
+	stoken.SetOwnerID(&ownerID)
 
 	stoken.SetIat(iat)
 	stoken.SetExp(exp)

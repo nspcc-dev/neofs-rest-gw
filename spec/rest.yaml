@@ -59,7 +59,11 @@ paths:
       summary: Form bearer token to futher requests
       security: [ ]
       parameters:
-        - $ref: '#/parameters/signatureKeyParam'
+        - in: header
+          name: X-Bearer-Owner-Id
+          description: Owner Id (wallet address) that will sign the token
+          type: string
+          required: true
         - in: header
           description: Supported operation scope for token
           name: X-Bearer-Scope
