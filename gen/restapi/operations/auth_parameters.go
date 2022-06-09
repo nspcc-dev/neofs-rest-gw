@@ -49,16 +49,16 @@ type AuthParams struct {
 	  Default: 100
 	*/
 	XBearerLifetime *int64
+	/*Owner Id (wallet address) that will sign the token
+	  Required: true
+	  In: header
+	*/
+	XBearerOwnerID string
 	/*Supported operation scope for token
 	  Required: true
 	  In: header
 	*/
 	XBearerScope string
-	/*Hex encoded the public part of the key that signed the bearer token
-	  Required: true
-	  In: header
-	*/
-	XBearerSignatureKey string
 	/*Bearer token
 	  Required: true
 	  In: body
@@ -79,11 +79,11 @@ func (o *AuthParams) BindRequest(r *http.Request, route *middleware.MatchedRoute
 		res = append(res, err)
 	}
 
-	if err := o.bindXBearerScope(r.Header[http.CanonicalHeaderKey("X-Bearer-Scope")], true, route.Formats); err != nil {
+	if err := o.bindXBearerOwnerID(r.Header[http.CanonicalHeaderKey("X-Bearer-Owner-Id")], true, route.Formats); err != nil {
 		res = append(res, err)
 	}
 
-	if err := o.bindXBearerSignatureKey(r.Header[http.CanonicalHeaderKey("X-Bearer-Signature-Key")], true, route.Formats); err != nil {
+	if err := o.bindXBearerScope(r.Header[http.CanonicalHeaderKey("X-Bearer-Scope")], true, route.Formats); err != nil {
 		res = append(res, err)
 	}
 
@@ -143,6 +143,26 @@ func (o *AuthParams) bindXBearerLifetime(rawData []string, hasKey bool, formats 
 	return nil
 }
 
+// bindXBearerOwnerID binds and validates parameter XBearerOwnerID from header.
+func (o *AuthParams) bindXBearerOwnerID(rawData []string, hasKey bool, formats strfmt.Registry) error {
+	if !hasKey {
+		return errors.Required("X-Bearer-Owner-Id", "header", rawData)
+	}
+	var raw string
+	if len(rawData) > 0 {
+		raw = rawData[len(rawData)-1]
+	}
+
+	// Required: true
+
+	if err := validate.RequiredString("X-Bearer-Owner-Id", "header", raw); err != nil {
+		return err
+	}
+	o.XBearerOwnerID = raw
+
+	return nil
+}
+
 // bindXBearerScope binds and validates parameter XBearerScope from header.
 func (o *AuthParams) bindXBearerScope(rawData []string, hasKey bool, formats strfmt.Registry) error {
 	if !hasKey {
@@ -173,26 +193,6 @@ func (o *AuthParams) validateXBearerScope(formats strfmt.Registry) error {
 	if err := validate.EnumCase("X-Bearer-Scope", "header", o.XBearerScope, []interface{}{"object", "container"}, true); err != nil {
 		return err
 	}
-
-	return nil
-}
-
-// bindXBearerSignatureKey binds and validates parameter XBearerSignatureKey from header.
-func (o *AuthParams) bindXBearerSignatureKey(rawData []string, hasKey bool, formats strfmt.Registry) error {
-	if !hasKey {
-		return errors.Required("X-Bearer-Signature-Key", "header", rawData)
-	}
-	var raw string
-	if len(rawData) > 0 {
-		raw = rawData[len(rawData)-1]
-	}
-
-	// Required: true
-
-	if err := validate.RequiredString("X-Bearer-Signature-Key", "header", raw); err != nil {
-		return err
-	}
-	o.XBearerSignatureKey = raw
 
 	return nil
 }

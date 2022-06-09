@@ -43,7 +43,11 @@ func init() {
         "operationId": "auth",
         "parameters": [
           {
-            "$ref": "#/parameters/signatureKeyParam"
+            "type": "string",
+            "description": "Owner Id (wallet address) that will sign the token",
+            "name": "X-Bearer-Owner-Id",
+            "in": "header",
+            "required": true
           },
           {
             "enum": [
@@ -1094,8 +1098,8 @@ func init() {
         "parameters": [
           {
             "type": "string",
-            "description": "Hex encoded the public part of the key that signed the bearer token",
-            "name": "X-Bearer-Signature-Key",
+            "description": "Owner Id (wallet address) that will sign the token",
+            "name": "X-Bearer-Owner-Id",
             "in": "header",
             "required": true
           },

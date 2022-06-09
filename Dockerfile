@@ -2,7 +2,7 @@ FROM golang:1.17 as basebuilder
 
 RUN set -x \
     && apt-get update \
-    && apt-get install -y make
+    && apt-get install -y make jq
 
 FROM basebuilder as builder
 ENV GOGC off

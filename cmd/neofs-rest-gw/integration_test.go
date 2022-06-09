@@ -25,13 +25,14 @@ import (
 	"github.com/nspcc-dev/neofs-rest-gw/gen/restapi/operations"
 	"github.com/nspcc-dev/neofs-rest-gw/handlers"
 	"github.com/nspcc-dev/neofs-rest-gw/internal/util"
-	"github.com/nspcc-dev/neofs-rest-gw/internal/wallet-connect"
+	walletconnect "github.com/nspcc-dev/neofs-rest-gw/internal/wallet-connect"
 	"github.com/nspcc-dev/neofs-sdk-go/container"
 	cid "github.com/nspcc-dev/neofs-sdk-go/container/id"
 	"github.com/nspcc-dev/neofs-sdk-go/eacl"
 	"github.com/nspcc-dev/neofs-sdk-go/object"
 	"github.com/nspcc-dev/neofs-sdk-go/object/address"
 	oid "github.com/nspcc-dev/neofs-sdk-go/object/id"
+	"github.com/nspcc-dev/neofs-sdk-go/owner"
 	"github.com/nspcc-dev/neofs-sdk-go/policy"
 	"github.com/nspcc-dev/neofs-sdk-go/pool"
 	"github.com/spf13/viper"
@@ -54,11 +55,13 @@ const (
 	XBearerSignature = "X-Bearer-Signature"
 	// XBearerSignatureKey header contains hex encoded public key that corresponds the signature of the token body.
 	XBearerSignatureKey = "X-Bearer-Signature-Key"
+	// XBearerOwnerID header contains owner id (wallet address) that corresponds the signature of the token body.
+	XBearerOwnerID = "X-Bearer-Owner-Id"
 	// XBearerScope header contains operation scope for auth (bearer) token.
 	// It corresponds to 'object' or 'container' services in neofs.
 	XBearerScope = "X-Bearer-Scope"
 
-	// configuration tests
+	// tests configuration.
 	useWalletConnect    = false
 	useLocalEnvironment = false
 )
@@ -86,7 +89,8 @@ func runTestInContainer(rootCtx context.Context, t *testing.T, key *keys.Private
 		//"0.25.1",
 		//"0.26.1",
 		//"0.27.5",
-		"latest",
+		"0.27.7",
+		//"latest",
 	}
 
 	for _, version := range versions {
@@ -682,7 +686,7 @@ func makeAuthTokenRequest(ctx context.Context, t *testing.T, bearer *models.Bear
 	key, err := keys.NewPrivateKeyFromHex(devenvPrivateKey)
 	require.NoError(t, err)
 
-	hexPubKey := hex.EncodeToString(key.PublicKey().Bytes())
+	ownerID := owner.NewIDFromPublicKey((*ecdsa.PublicKey)(key.PublicKey()))
 
 	data, err := json.Marshal(bearer)
 	require.NoError(t, err)
@@ -692,7 +696,7 @@ func makeAuthTokenRequest(ctx context.Context, t *testing.T, bearer *models.Bear
 	request = request.WithContext(ctx)
 	request.Header.Add("Content-Type", "application/json")
 	request.Header.Add(XBearerScope, string(tokenType))
-	request.Header.Add(XBearerSignatureKey, hexPubKey)
+	request.Header.Add(XBearerOwnerID, ownerID.String())
 
 	resp, err := httpClient.Do(request)
 	require.NoError(t, err)
