@@ -154,8 +154,8 @@ func init() {
           {
             "type": "boolean",
             "default": false,
-            "description": "Provide this parameter to skip registration container name in NNS service",
-            "name": "skip-native-name",
+            "description": "Provide this parameter to register container name in NNS service",
+            "name": "name-scope-global",
             "in": "query"
           },
           {
@@ -165,9 +165,6 @@ func init() {
             "required": true,
             "schema": {
               "type": "object",
-              "required": [
-                "containerName"
-              ],
               "properties": {
                 "basicAcl": {
                   "type": "string"
@@ -1221,8 +1218,8 @@ func init() {
           {
             "type": "boolean",
             "default": false,
-            "description": "Provide this parameter to skip registration container name in NNS service",
-            "name": "skip-native-name",
+            "description": "Provide this parameter to register container name in NNS service",
+            "name": "name-scope-global",
             "in": "query"
           },
           {
@@ -1232,9 +1229,6 @@ func init() {
             "required": true,
             "schema": {
               "type": "object",
-              "required": [
-                "containerName"
-              ],
               "properties": {
                 "basicAcl": {
                   "type": "string"

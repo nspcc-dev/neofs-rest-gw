@@ -320,8 +320,11 @@ func createContainer(ctx context.Context, p *pool.Pool, stoken *session.Token, p
 	cnrOptions := []container.Option{
 		container.WithPolicy(pp),
 		container.WithCustomBasicACL(basicACL),
-		container.WithAttribute(container.AttributeName, *request.ContainerName),
 		container.WithAttribute(container.AttributeTimestamp, strconv.FormatInt(time.Now().Unix(), 10)),
+	}
+
+	if request.ContainerName != "" {
+		container.WithAttribute(container.AttributeName, request.ContainerName)
 	}
 
 	for key, val := range userAttrs {
@@ -332,8 +335,11 @@ func createContainer(ctx context.Context, p *pool.Pool, stoken *session.Token, p
 	cnr.SetOwnerID(stoken.OwnerID())
 	cnr.SetSessionToken(stoken)
 
-	if !*params.SkipNativeName { // we don't check for nil because there is default false value
-		container.SetNativeName(cnr, *request.ContainerName)
+	if *params.NameScopeGlobal { // we don't check for nil because there is default false value
+		if request.ContainerName == "" {
+			return nil, fmt.Errorf("container name must not be empty to be registered in NNS")
+		}
+		container.SetNativeName(cnr, request.ContainerName)
 	}
 
 	var prm pool.PrmContainerPut

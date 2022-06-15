@@ -222,8 +222,8 @@ paths:
         - $ref: '#/parameters/signatureKeyParam'
         - $ref: '#/parameters/signatureScheme'
         - in: query
-          name: skip-native-name
-          description: Provide this parameter to skip registration container name in NNS service
+          name: name-scope-global
+          description: Provide this parameter to register container name in NNS service
           type: boolean
           default: false
         - in: body
@@ -239,8 +239,6 @@ paths:
                 type: string
               basicAcl:
                 type: string
-            required:
-              - containerName
             example:
               containerId: container
               placementPolicy: "REP 3"
