@@ -25,12 +25,12 @@ func NewPutContainerParams() PutContainerParams {
 	var (
 		// initialize parameters with default values
 
-		skipNativeNameDefault = bool(false)
-		walletConnectDefault  = bool(false)
+		nameScopeGlobalDefault = bool(false)
+		walletConnectDefault   = bool(false)
 	)
 
 	return PutContainerParams{
-		SkipNativeName: &skipNativeNameDefault,
+		NameScopeGlobal: &nameScopeGlobalDefault,
 
 		WalletConnect: &walletConnectDefault,
 	}
@@ -60,11 +60,11 @@ type PutContainerParams struct {
 	  In: body
 	*/
 	Container PutContainerBody
-	/*Provide this parameter to skip registration container name in NNS service
+	/*Provide this parameter to register container name in NNS service
 	  In: query
 	  Default: false
 	*/
-	SkipNativeName *bool
+	NameScopeGlobal *bool
 	/*Use wallect connect signature scheme or not
 	  In: query
 	  Default: false
@@ -119,8 +119,8 @@ func (o *PutContainerParams) BindRequest(r *http.Request, route *middleware.Matc
 		res = append(res, errors.Required("container", "body", ""))
 	}
 
-	qSkipNativeName, qhkSkipNativeName, _ := qs.GetOK("skip-native-name")
-	if err := o.bindSkipNativeName(qSkipNativeName, qhkSkipNativeName, route.Formats); err != nil {
+	qNameScopeGlobal, qhkNameScopeGlobal, _ := qs.GetOK("name-scope-global")
+	if err := o.bindNameScopeGlobal(qNameScopeGlobal, qhkNameScopeGlobal, route.Formats); err != nil {
 		res = append(res, err)
 	}
 
@@ -174,8 +174,8 @@ func (o *PutContainerParams) bindXBearerSignatureKey(rawData []string, hasKey bo
 	return nil
 }
 
-// bindSkipNativeName binds and validates parameter SkipNativeName from query.
-func (o *PutContainerParams) bindSkipNativeName(rawData []string, hasKey bool, formats strfmt.Registry) error {
+// bindNameScopeGlobal binds and validates parameter NameScopeGlobal from query.
+func (o *PutContainerParams) bindNameScopeGlobal(rawData []string, hasKey bool, formats strfmt.Registry) error {
 	var raw string
 	if len(rawData) > 0 {
 		raw = rawData[len(rawData)-1]
@@ -191,9 +191,9 @@ func (o *PutContainerParams) bindSkipNativeName(rawData []string, hasKey bool, f
 
 	value, err := swag.ConvertBool(raw)
 	if err != nil {
-		return errors.InvalidType("skip-native-name", "query", "bool", raw)
+		return errors.InvalidType("name-scope-global", "query", "bool", raw)
 	}
-	o.SkipNativeName = &value
+	o.NameScopeGlobal = &value
 
 	return nil
 }

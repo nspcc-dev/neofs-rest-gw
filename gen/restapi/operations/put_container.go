@@ -85,8 +85,7 @@ type PutContainerBody struct {
 	BasicACL string `json:"basicAcl,omitempty"`
 
 	// container name
-	// Required: true
-	ContainerName *string `json:"containerName"`
+	ContainerName string `json:"containerName,omitempty"`
 
 	// placement policy
 	PlacementPolicy string `json:"placementPolicy,omitempty"`
@@ -94,24 +93,6 @@ type PutContainerBody struct {
 
 // Validate validates this put container body
 func (o *PutContainerBody) Validate(formats strfmt.Registry) error {
-	var res []error
-
-	if err := o.validateContainerName(formats); err != nil {
-		res = append(res, err)
-	}
-
-	if len(res) > 0 {
-		return errors.CompositeValidationError(res...)
-	}
-	return nil
-}
-
-func (o *PutContainerBody) validateContainerName(formats strfmt.Registry) error {
-
-	if err := validate.Required("container"+"."+"containerName", "body", o.ContainerName); err != nil {
-		return err
-	}
-
 	return nil
 }
 

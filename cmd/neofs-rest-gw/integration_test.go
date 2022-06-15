@@ -772,20 +772,34 @@ func restContainerPut(ctx context.Context, t *testing.T, clientPool *pool.Pool) 
 		attrKey: attrValue,
 	}
 
-	req := operations.PutContainerBody{
-		ContainerName: util.NewString("cnr"),
-	}
-	body, err := json.Marshal(&req)
+	// try to create container without name but with name-scope-global
+	body, err := json.Marshal(&operations.PutContainerBody{})
 	require.NoError(t, err)
 
 	reqURL, err := url.Parse(testHost + "/v1/containers")
 	require.NoError(t, err)
 	query := reqURL.Query()
-	query.Add("skip-native-name", "true")
+	query.Add("name-scope-global", "true")
 	query.Add(walletConnectQuery, strconv.FormatBool(useWalletConnect))
 	reqURL.RawQuery = query.Encode()
 
 	request, err := http.NewRequest(http.MethodPut, reqURL.String(), bytes.NewReader(body))
+	require.NoError(t, err)
+	prepareCommonHeaders(request.Header, bearerToken)
+
+	doRequest(t, httpClient, request, http.StatusBadRequest, nil)
+
+	// create container with name in local scope
+	body, err = json.Marshal(&operations.PutContainerBody{})
+	require.NoError(t, err)
+
+	reqURL, err = url.Parse(testHost + "/v1/containers")
+	require.NoError(t, err)
+	query = reqURL.Query()
+	query.Add(walletConnectQuery, strconv.FormatBool(useWalletConnect))
+	reqURL.RawQuery = query.Encode()
+
+	request, err = http.NewRequest(http.MethodPut, reqURL.String(), bytes.NewReader(body))
 	require.NoError(t, err)
 	prepareCommonHeaders(request.Header, bearerToken)
 	request.Header.Add("X-Attribute-"+attrKey, attrValue)
