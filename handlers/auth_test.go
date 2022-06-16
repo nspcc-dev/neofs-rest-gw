@@ -58,7 +58,7 @@ func TestSign(t *testing.T) {
 
 	bt := &BearerToken{
 		Token:     bearerBase64,
-		Signature: base64.StdEncoding.EncodeToString(signatureData),
+		Signature: hex.EncodeToString(signatureData),
 		Key:       pubKeyHex,
 	}
 

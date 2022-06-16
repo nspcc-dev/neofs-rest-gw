@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/ecdsa"
 	"encoding/base64"
+	"encoding/hex"
 	"fmt"
 	"io"
 	"strings"
@@ -337,7 +338,7 @@ func prepareBearerToken(bt *BearerToken, isWalletConnect bool) (*token.BearerTok
 		return nil, fmt.Errorf("can't base64-decode bearer token: %w", err)
 	}
 
-	signature, err := base64.StdEncoding.DecodeString(bt.Signature)
+	signature, err := hex.DecodeString(bt.Signature)
 	if err != nil {
 		return nil, fmt.Errorf("couldn't decode bearer signature: %w", err)
 	}

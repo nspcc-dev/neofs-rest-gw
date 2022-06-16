@@ -741,7 +741,7 @@ func signToken(t *testing.T, key *keys.PrivateKey, data []byte) *handlers.Bearer
 
 	return &handlers.BearerToken{
 		Token:     base64.StdEncoding.EncodeToString(data),
-		Signature: base64.StdEncoding.EncodeToString(sign),
+		Signature: hex.EncodeToString(sign),
 		Key:       hex.EncodeToString(key.PublicKey().Bytes()),
 	}
 }
@@ -752,7 +752,7 @@ func signTokenWalletConnect(t *testing.T, key *keys.PrivateKey, data []byte) *ha
 
 	return &handlers.BearerToken{
 		Token:     base64.StdEncoding.EncodeToString(data),
-		Signature: base64.StdEncoding.EncodeToString(append(sm.Data, sm.Salt...)),
+		Signature: hex.EncodeToString(append(sm.Data, sm.Salt...)),
 		Key:       hex.EncodeToString(key.PublicKey().Bytes()),
 	}
 }
