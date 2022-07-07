@@ -341,8 +341,8 @@ func createContainer(ctx context.Context, p *pool.Pool, stoken *session.Token, p
 	cnr.SetSessionToken(stoken)
 
 	if *params.NameScopeGlobal { // we don't check for nil because there is default false value
-		if request.ContainerName == "" {
-			return nil, fmt.Errorf("container name must not be empty to be registered in NNS")
+		if err = checkNNSContainerName(request.ContainerName); err != nil {
+			return nil, fmt.Errorf("invalid container name: %w", err)
 		}
 		container.SetNativeName(cnr, request.ContainerName)
 	}
@@ -352,10 +352,41 @@ func createContainer(ctx context.Context, p *pool.Pool, stoken *session.Token, p
 
 	cnrID, err := p.PutContainer(ctx, prm)
 	if err != nil {
-		return nil, fmt.Errorf("could put object to neofs: %w", err)
+		return nil, fmt.Errorf("put container: %w", err)
 	}
 
 	return cnrID, nil
+}
+
+func checkNNSContainerName(name string) error {
+	length := len(name)
+	if length < 3 || 255 < length {
+		return fmt.Errorf("invalid length: %d", length)
+	}
+	fragments := strings.Split(name, ".")
+
+	for _, fragment := range fragments {
+		fLength := len(fragment)
+		if fLength < 1 || 63 < fLength {
+			return fmt.Errorf("invalid fragment length: %d", fLength)
+		}
+
+		if !isAlNum(fragment[0]) || !isAlNum(fragment[fLength-1]) {
+			return fmt.Errorf("invalid fragment: '%s'", fragment)
+		}
+
+		for i := 1; i < fLength-1; i++ {
+			if fragment[i] != '-' && !isAlNum(fragment[i]) {
+				return fmt.Errorf("invalid fragment: '%s'", fragment)
+			}
+		}
+	}
+
+	return nil
+}
+
+func isAlNum(c uint8) bool {
+	return c >= 'a' && c <= 'z' || c >= '0' && c <= '9'
 }
 
 func prepareSessionToken(bt *BearerToken, isWalletConnect bool) (*session.Token, error) {
