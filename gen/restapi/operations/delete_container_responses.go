@@ -13,28 +13,48 @@ import (
 	"github.com/nspcc-dev/neofs-rest-gw/gen/models"
 )
 
-// DeleteContainerNoContentCode is the HTTP code returned for type DeleteContainerNoContent
-const DeleteContainerNoContentCode int = 204
+// DeleteContainerOKCode is the HTTP code returned for type DeleteContainerOK
+const DeleteContainerOKCode int = 200
 
-/*DeleteContainerNoContent Successul deletion
+/*DeleteContainerOK Successful deletion
 
-swagger:response deleteContainerNoContent
+swagger:response deleteContainerOK
 */
-type DeleteContainerNoContent struct {
+type DeleteContainerOK struct {
+
+	/*
+	  In: Body
+	*/
+	Payload *models.SuccessResponse `json:"body,omitempty"`
 }
 
-// NewDeleteContainerNoContent creates DeleteContainerNoContent with default headers values
-func NewDeleteContainerNoContent() *DeleteContainerNoContent {
+// NewDeleteContainerOK creates DeleteContainerOK with default headers values
+func NewDeleteContainerOK() *DeleteContainerOK {
 
-	return &DeleteContainerNoContent{}
+	return &DeleteContainerOK{}
+}
+
+// WithPayload adds the payload to the delete container o k response
+func (o *DeleteContainerOK) WithPayload(payload *models.SuccessResponse) *DeleteContainerOK {
+	o.Payload = payload
+	return o
+}
+
+// SetPayload sets the payload to the delete container o k response
+func (o *DeleteContainerOK) SetPayload(payload *models.SuccessResponse) {
+	o.Payload = payload
 }
 
 // WriteResponse to the client
-func (o *DeleteContainerNoContent) WriteResponse(rw http.ResponseWriter, producer runtime.Producer) {
+func (o *DeleteContainerOK) WriteResponse(rw http.ResponseWriter, producer runtime.Producer) {
 
-	rw.Header().Del(runtime.HeaderContentType) //Remove Content-Type on empty responses
-
-	rw.WriteHeader(204)
+	rw.WriteHeader(200)
+	if o.Payload != nil {
+		payload := o.Payload
+		if err := producer.Produce(rw, payload); err != nil {
+			panic(err) // let the recovery middleware deal with this
+		}
+	}
 }
 
 // DeleteContainerBadRequestCode is the HTTP code returned for type DeleteContainerBadRequest

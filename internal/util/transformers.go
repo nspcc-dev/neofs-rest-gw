@@ -440,7 +440,19 @@ func NewInteger(val int64) *int64 {
 	return &val
 }
 
+// NewBool returns pointer to provided bool.
+func NewBool(val bool) *bool {
+	return &val
+}
+
 // NewError wraps error into models.Error.
 func NewError(err error) models.Error {
 	return models.Error(err.Error())
+}
+
+// NewSuccessResponse forms model.SuccessResponse.
+func NewSuccessResponse() *models.SuccessResponse {
+	return &models.SuccessResponse{
+		Success: NewBool(true),
+	}
 }

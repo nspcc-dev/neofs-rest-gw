@@ -241,8 +241,11 @@ func init() {
           }
         ],
         "responses": {
-          "204": {
-            "description": "Successul deletion"
+          "200": {
+            "description": "Successful deletion",
+            "schema": {
+              "$ref": "#/definitions/SuccessResponse"
+            }
           },
           "400": {
             "description": "Bad request",
@@ -303,7 +306,10 @@ func init() {
         ],
         "responses": {
           "200": {
-            "description": "Successfule EACL upading"
+            "description": "Successful EACL updating",
+            "schema": {
+              "$ref": "#/definitions/SuccessResponse"
+            }
           },
           "400": {
             "description": "Bad request",
@@ -472,8 +478,11 @@ func init() {
         "summary": "Remove object from NeoFS",
         "operationId": "deleteObject",
         "responses": {
-          "204": {
-            "description": "Successful deletion"
+          "200": {
+            "description": "Successful deletion",
+            "schema": {
+              "$ref": "#/definitions/SuccessResponse"
+            }
           },
           "400": {
             "description": "Bad request",
@@ -950,6 +959,17 @@ func init() {
         "MatchCommonPrefix"
       ]
     },
+    "SuccessResponse": {
+      "type": "object",
+      "required": [
+        "success"
+      ],
+      "properties": {
+        "success": {
+          "type": "boolean"
+        }
+      }
+    },
     "Target": {
       "type": "object",
       "required": [
@@ -1318,8 +1338,11 @@ func init() {
           }
         ],
         "responses": {
-          "204": {
-            "description": "Successul deletion"
+          "200": {
+            "description": "Successful deletion",
+            "schema": {
+              "$ref": "#/definitions/SuccessResponse"
+            }
           },
           "400": {
             "description": "Bad request",
@@ -1396,7 +1419,10 @@ func init() {
         ],
         "responses": {
           "200": {
-            "description": "Successfule EACL upading"
+            "description": "Successful EACL updating",
+            "schema": {
+              "$ref": "#/definitions/SuccessResponse"
+            }
           },
           "400": {
             "description": "Bad request",
@@ -1600,8 +1626,11 @@ func init() {
         "summary": "Remove object from NeoFS",
         "operationId": "deleteObject",
         "responses": {
-          "204": {
-            "description": "Successful deletion"
+          "200": {
+            "description": "Successful deletion",
+            "schema": {
+              "$ref": "#/definitions/SuccessResponse"
+            }
           },
           "400": {
             "description": "Bad request",
@@ -2097,6 +2126,17 @@ func init() {
         "MatchNotPresent",
         "MatchCommonPrefix"
       ]
+    },
+    "SuccessResponse": {
+      "type": "object",
+      "required": [
+        "success"
+      ],
+      "properties": {
+        "success": {
+          "type": "boolean"
+        }
+      }
     },
     "Target": {
       "type": "object",
