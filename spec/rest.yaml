@@ -238,7 +238,7 @@ paths:
               basicAcl:
                 type: string
             example:
-              containerId: container
+              containerName: container
               placementPolicy: "REP 3"
               basicAcl: public-read-write
       responses:
@@ -549,7 +549,7 @@ definitions:
       containers:
         type: array
         items:
-          $ref: '#/definitions/ContainerBaseInfo'
+          $ref: '#/definitions/ContainerInfo'
     required:
       - size
       - containers
@@ -582,15 +582,6 @@ definitions:
       - MatchStringNotEqual
       - MatchNotPresent
       - MatchCommonPrefix
-  ContainerBaseInfo:
-    type: object
-    properties:
-      containerId:
-        type: string
-      name:
-        type: string
-    required:
-      - containerId
   ObjectList:
     type: object
     properties:

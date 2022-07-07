@@ -824,12 +824,24 @@ func restContainerList(ctx context.Context, t *testing.T, p *pool.Pool, cnrID *c
 
 	require.Equal(t, len(ids), int(*list.Size))
 
-	expected := &models.ContainerBaseInfo{
-		ContainerID: util.NewString(cnrID.String()),
-		Name:        containerName,
+	require.Truef(t, containsContainer(list.Containers, cnrID.String(), containerName), "list doesn't contain cnr '%s' with name '%s'", cnrID.String(), containerName)
+}
+
+func containsContainer(containers []*models.ContainerInfo, cnrID, cnrName string) bool {
+	for _, cnrInfo := range containers {
+		if *cnrInfo.ContainerID == cnrID {
+			for _, attr := range cnrInfo.Attributes {
+				if *attr.Key == container.AttributeName && *attr.Value == cnrName {
+					return true
+				}
+			}
+
+			fmt.Println("container found but name doesn't match")
+			return false
+		}
 	}
 
-	require.Contains(t, list.Containers, expected)
+	return false
 }
 
 func makeAuthTokenRequest(ctx context.Context, t *testing.T, bearers []*models.Bearer, httpClient *http.Client) []*handlers.BearerToken {

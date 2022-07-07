@@ -67,30 +67,19 @@ func (a *API) PutContainers(params operations.PutContainerParams, principal *mod
 
 // GetContainer handler that returns container info.
 func (a *API) GetContainer(params operations.GetContainerParams) middleware.Responder {
-	cnr, err := getContainer(params.HTTPRequest.Context(), a.pool, params.ContainerID)
+	cnrID, err := parseContainerID(params.ContainerID)
+	if err != nil {
+		resp := a.logAndGetErrorResponse("invalid container id", err)
+		return operations.NewGetContainerBadRequest().WithPayload(resp)
+	}
+
+	cnrInfo, err := getContainerInfo(params.HTTPRequest.Context(), a.pool, *cnrID)
 	if err != nil {
 		resp := a.logAndGetErrorResponse("get container", err)
-		return operations.NewPutContainerBadRequest().WithPayload(resp)
+		return operations.NewGetContainerBadRequest().WithPayload(resp)
 	}
 
-	attrs := make([]*models.Attribute, len(cnr.Attributes()))
-	for i, attr := range cnr.Attributes() {
-		attrs[i] = &models.Attribute{
-			Key:   util.NewString(attr.Key()),
-			Value: util.NewString(attr.Value()),
-		}
-	}
-
-	resp := &models.ContainerInfo{
-		ContainerID:     util.NewString(params.ContainerID),
-		Version:         util.NewString(cnr.Version().String()),
-		OwnerID:         util.NewString(cnr.OwnerID().String()),
-		BasicACL:        util.NewString(acl.BasicACL(cnr.BasicACL()).String()),
-		PlacementPolicy: util.NewString(strings.Join(policy.Encode(cnr.PlacementPolicy()), " ")),
-		Attributes:      attrs,
-	}
-
-	return operations.NewGetContainerOK().WithPayload(resp)
+	return operations.NewGetContainerOK().WithPayload(cnrInfo)
 }
 
 // PutContainerEACL handler that update container eacl.
@@ -165,7 +154,7 @@ func (a *API) ListContainer(params operations.ListContainersParams) middleware.R
 	if offset > len(ids)-1 {
 		res := &models.ContainerList{
 			Size:       util.NewInteger(0),
-			Containers: []*models.ContainerBaseInfo{},
+			Containers: []*models.ContainerInfo{},
 		}
 		return operations.NewListContainersOK().WithPayload(res)
 	}
@@ -176,16 +165,16 @@ func (a *API) ListContainer(params operations.ListContainersParams) middleware.R
 
 	res := &models.ContainerList{
 		Size:       util.NewInteger(int64(size)),
-		Containers: make([]*models.ContainerBaseInfo, 0, size),
+		Containers: make([]*models.ContainerInfo, 0, size),
 	}
 
 	for _, id := range ids[offset : offset+size] {
-		baseInfo, err := getContainerBaseInfo(ctx, a.pool, id)
+		cnrInfo, err := getContainerInfo(ctx, a.pool, id)
 		if err != nil {
 			resp := a.logAndGetErrorResponse("get container", err, zap.String("cid", id.String()))
 			return operations.NewListContainersBadRequest().WithPayload(resp)
 		}
-		res.Containers = append(res.Containers, baseInfo)
+		res.Containers = append(res.Containers, cnrInfo)
 	}
 
 	return operations.NewListContainersOK().WithPayload(res)
@@ -225,7 +214,7 @@ func (a *API) DeleteContainer(params operations.DeleteContainerParams, principal
 	return operations.NewDeleteContainerOK().WithPayload(util.NewSuccessResponse())
 }
 
-func getContainerBaseInfo(ctx context.Context, p *pool.Pool, cnrID cid.ID) (*models.ContainerBaseInfo, error) {
+func getContainerInfo(ctx context.Context, p *pool.Pool, cnrID cid.ID) (*models.ContainerInfo, error) {
 	var prm pool.PrmContainerGet
 	prm.SetContainerID(cnrID)
 
@@ -234,15 +223,22 @@ func getContainerBaseInfo(ctx context.Context, p *pool.Pool, cnrID cid.ID) (*mod
 		return nil, err
 	}
 
-	baseInfo := &models.ContainerBaseInfo{ContainerID: util.NewString(cnrID.String())}
-
-	for _, attr := range cnr.Attributes() {
-		if attr.Key() == container.AttributeName {
-			baseInfo.Name = attr.Value()
+	attrs := make([]*models.Attribute, len(cnr.Attributes()))
+	for i, attr := range cnr.Attributes() {
+		attrs[i] = &models.Attribute{
+			Key:   util.NewString(attr.Key()),
+			Value: util.NewString(attr.Value()),
 		}
 	}
 
-	return baseInfo, nil
+	return &models.ContainerInfo{
+		ContainerID:     util.NewString(cnrID.String()),
+		Version:         util.NewString(cnr.Version().String()),
+		OwnerID:         util.NewString(cnr.OwnerID().String()),
+		BasicACL:        util.NewString(acl.BasicACL(cnr.BasicACL()).String()),
+		PlacementPolicy: util.NewString(strings.Join(policy.Encode(cnr.PlacementPolicy()), " ")),
+		Attributes:      attrs,
+	}, nil
 }
 
 func prepareUserAttributes(header http.Header) map[string]string {
@@ -250,18 +246,6 @@ func prepareUserAttributes(header http.Header) map[string]string {
 	delete(filtered, container.AttributeName)
 	delete(filtered, container.AttributeTimestamp)
 	return filtered
-}
-
-func getContainer(ctx context.Context, p *pool.Pool, containerID string) (*container.Container, error) {
-	cnrID, err := parseContainerID(containerID)
-	if err != nil {
-		return nil, err
-	}
-
-	var prm pool.PrmContainerGet
-	prm.SetContainerID(*cnrID)
-
-	return p.GetContainer(ctx, prm)
 }
 
 func parseContainerID(containerID string) (*cid.ID, error) {
