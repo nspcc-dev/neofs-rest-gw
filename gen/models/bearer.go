@@ -22,6 +22,9 @@ type Bearer struct {
 	// container
 	Container *Rule `json:"container,omitempty"`
 
+	// name
+	Name string `json:"name,omitempty"`
+
 	// object
 	Object []*Record `json:"object"`
 }

@@ -222,9 +222,9 @@ func ToNativeRule(r *models.Rule) (*session.ContainerContext, error) {
 	return &ctx, nil
 }
 
-// ToNativeContainerToken converts models.Bearer to appropriate session.Token.
-func ToNativeContainerToken(b *models.Bearer) (*session.Token, error) {
-	sctx, err := ToNativeRule(b.Container)
+// ToNativeContainerToken converts models.Rule to appropriate session.Token.
+func ToNativeContainerToken(tokenRule *models.Rule) (*session.Token, error) {
+	sctx, err := ToNativeRule(tokenRule)
 	if err != nil {
 		return nil, fmt.Errorf("couldn't transform rule to native: %w", err)
 	}
@@ -365,9 +365,9 @@ func FromNativeTarget(t eacl.Target) (*models.Target, error) {
 	return &target, nil
 }
 
-// ToNativeObjectToken converts Bearer to appropriate token.BearerToken.
-func ToNativeObjectToken(b *models.Bearer) (*token.BearerToken, error) {
-	table, err := ToNativeTable(b.Object)
+// ToNativeObjectToken converts []*models.Record to appropriate token.BearerToken.
+func ToNativeObjectToken(tokenRecords []*models.Record) (*token.BearerToken, error) {
+	table, err := ToNativeTable(tokenRecords)
 	if err != nil {
 		return nil, err
 	}

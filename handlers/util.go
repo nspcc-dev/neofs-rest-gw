@@ -216,3 +216,19 @@ func updateExpirationHeader(headers map[string]string, durations *epochDurations
 	numEpoch := expDuration.Milliseconds() / epochDuration
 	headers[objectv2.SysAttributeExpEpoch] = strconv.FormatInt(int64(durations.currentEpoch)+numEpoch, 10)
 }
+
+// IsObjectToken check that provided token is for object.
+func IsObjectToken(token *models.Bearer) (bool, error) {
+	isObject := len(token.Object) != 0
+	isContainer := token.Container != nil
+
+	if !isObject && !isContainer {
+		return false, fmt.Errorf("token '%s': rules must not be empty", token.Name)
+	}
+
+	if isObject && isContainer {
+		return false, fmt.Errorf("token '%s': only one type rules can be provided: object or container, not both", token.Name)
+	}
+
+	return isObject, nil
+}

@@ -20,6 +20,9 @@ import (
 // swagger:model TokenResponse
 type TokenResponse struct {
 
+	// name
+	Name string `json:"name,omitempty"`
+
 	// token
 	// Required: true
 	Token *string `json:"token"`

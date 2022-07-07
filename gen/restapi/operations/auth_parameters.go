@@ -6,7 +6,6 @@ package operations
 // Editing this file might prove futile when you re-run the swagger generate command
 
 import (
-	"context"
 	"io"
 	"net/http"
 
@@ -54,16 +53,11 @@ type AuthParams struct {
 	  In: header
 	*/
 	XBearerOwnerID string
-	/*Supported operation scope for token
-	  Required: true
-	  In: header
-	*/
-	XBearerScope string
 	/*Bearer token
 	  Required: true
 	  In: body
 	*/
-	Token *models.Bearer
+	Tokens []*models.Bearer
 }
 
 // BindRequest both binds and validates a request, it assumes that complex things implement a Validatable(strfmt.Registry) error interface
@@ -83,36 +77,34 @@ func (o *AuthParams) BindRequest(r *http.Request, route *middleware.MatchedRoute
 		res = append(res, err)
 	}
 
-	if err := o.bindXBearerScope(r.Header[http.CanonicalHeaderKey("X-Bearer-Scope")], true, route.Formats); err != nil {
-		res = append(res, err)
-	}
-
 	if runtime.HasBody(r) {
 		defer r.Body.Close()
-		var body models.Bearer
+		var body []*models.Bearer
 		if err := route.Consumer.Consume(r.Body, &body); err != nil {
 			if err == io.EOF {
-				res = append(res, errors.Required("token", "body", ""))
+				res = append(res, errors.Required("tokens", "body", ""))
 			} else {
-				res = append(res, errors.NewParseError("token", "body", "", err))
+				res = append(res, errors.NewParseError("tokens", "body", "", err))
 			}
 		} else {
-			// validate body object
-			if err := body.Validate(route.Formats); err != nil {
-				res = append(res, err)
-			}
 
-			ctx := validate.WithOperationRequest(context.Background())
-			if err := body.ContextValidate(ctx, route.Formats); err != nil {
-				res = append(res, err)
+			// validate array of body objects
+			for i := range body {
+				if body[i] == nil {
+					continue
+				}
+				if err := body[i].Validate(route.Formats); err != nil {
+					res = append(res, err)
+					break
+				}
 			}
 
 			if len(res) == 0 {
-				o.Token = &body
+				o.Tokens = body
 			}
 		}
 	} else {
-		res = append(res, errors.Required("token", "body", ""))
+		res = append(res, errors.Required("tokens", "body", ""))
 	}
 	if len(res) > 0 {
 		return errors.CompositeValidationError(res...)
@@ -159,40 +151,6 @@ func (o *AuthParams) bindXBearerOwnerID(rawData []string, hasKey bool, formats s
 		return err
 	}
 	o.XBearerOwnerID = raw
-
-	return nil
-}
-
-// bindXBearerScope binds and validates parameter XBearerScope from header.
-func (o *AuthParams) bindXBearerScope(rawData []string, hasKey bool, formats strfmt.Registry) error {
-	if !hasKey {
-		return errors.Required("X-Bearer-Scope", "header", rawData)
-	}
-	var raw string
-	if len(rawData) > 0 {
-		raw = rawData[len(rawData)-1]
-	}
-
-	// Required: true
-
-	if err := validate.RequiredString("X-Bearer-Scope", "header", raw); err != nil {
-		return err
-	}
-	o.XBearerScope = raw
-
-	if err := o.validateXBearerScope(formats); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-// validateXBearerScope carries on validations for parameter XBearerScope
-func (o *AuthParams) validateXBearerScope(formats strfmt.Registry) error {
-
-	if err := validate.EnumCase("X-Bearer-Scope", "header", o.XBearerScope, []interface{}{"object", "container"}, true); err != nil {
-		return err
-	}
 
 	return nil
 }

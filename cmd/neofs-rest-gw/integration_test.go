@@ -57,9 +57,6 @@ const (
 	XBearerSignatureKey = "X-Bearer-Signature-Key"
 	// XBearerOwnerID header contains owner id (wallet address) that corresponds the signature of the token body.
 	XBearerOwnerID = "X-Bearer-Owner-Id"
-	// XBearerScope header contains operation scope for auth (bearer) token.
-	// It corresponds to 'object' or 'container' services in neofs.
-	XBearerScope = "X-Bearer-Scope"
 
 	// tests configuration.
 	useWalletConnect    = false
@@ -118,6 +115,8 @@ func runTests(ctx context.Context, t *testing.T, key *keys.PrivateKey, version s
 	clientPool := getPool(ctx, t, key, node)
 	cnrID := createContainer(ctx, t, clientPool, containerName)
 	restrictByEACL(ctx, t, clientPool, cnrID)
+
+	t.Run("rest auth several tokens "+version, func(t *testing.T) { authTokens(ctx, t) })
 
 	t.Run("rest put object "+version, func(t *testing.T) { restObjectPut(ctx, t, clientPool, cnrID) })
 	t.Run("rest get object "+version, func(t *testing.T) { restObjectGet(ctx, t, clientPool, cnrID) })
@@ -231,6 +230,44 @@ func formRestrictRecord(op models.Operation) *models.Record {
 		}}}
 }
 
+func authTokens(ctx context.Context, t *testing.T) {
+	bearers := []*models.Bearer{
+		{
+			Name: "all-object",
+			Object: []*models.Record{{
+				Operation: models.NewOperation(models.OperationPUT),
+				Action:    models.NewAction(models.ActionALLOW),
+				Filters:   []*models.Filter{},
+				Targets: []*models.Target{{
+					Role: models.NewRole(models.RoleOTHERS),
+					Keys: []string{},
+				}},
+			}},
+		},
+		{
+			Name: "put-container",
+			Container: &models.Rule{
+				Verb: models.NewVerb(models.VerbPUT),
+			},
+		},
+		{
+			Name: "seteacl-container",
+			Container: &models.Rule{
+				Verb: models.NewVerb(models.VerbSETEACL),
+			},
+		},
+		{
+			Name: "delete-container",
+			Container: &models.Rule{
+				Verb: models.NewVerb(models.VerbDELETE),
+			},
+		},
+	}
+
+	httpClient := defaultHTTPClient()
+	makeAuthTokenRequest(ctx, t, bearers, httpClient)
+}
+
 func restObjectPut(ctx context.Context, t *testing.T, clientPool *pool.Pool, cnrID *cid.ID) {
 	bearer := &models.Bearer{
 		Object: []*models.Record{{
@@ -246,7 +283,8 @@ func restObjectPut(ctx context.Context, t *testing.T, clientPool *pool.Pool, cnr
 	bearer.Object = append(bearer.Object, getRestrictBearerRecords()...)
 
 	httpClient := defaultHTTPClient()
-	bearerToken := makeAuthObjectTokenRequest(ctx, t, bearer, httpClient)
+	bearerTokens := makeAuthTokenRequest(ctx, t, []*models.Bearer{bearer}, httpClient)
+	bearerToken := bearerTokens[0]
 
 	content := "content of file"
 	attrKey, attrValue := "User-Attribute", "user value"
@@ -338,7 +376,8 @@ func restObjectGet(ctx context.Context, t *testing.T, p *pool.Pool, cnrID *cid.I
 	bearer.Object = append(bearer.Object, getRestrictBearerRecords()...)
 
 	httpClient := defaultHTTPClient()
-	bearerToken := makeAuthObjectTokenRequest(ctx, t, bearer, httpClient)
+	bearerTokens := makeAuthTokenRequest(ctx, t, []*models.Bearer{bearer}, httpClient)
+	bearerToken := bearerTokens[0]
 
 	query := make(url.Values)
 	query.Add(walletConnectQuery, strconv.FormatBool(useWalletConnect))
@@ -415,7 +454,8 @@ func restObjectDelete(ctx context.Context, t *testing.T, p *pool.Pool, cnrID *ci
 	bearer.Object = append(bearer.Object, getRestrictBearerRecords()...)
 
 	httpClient := defaultHTTPClient()
-	bearerToken := makeAuthObjectTokenRequest(ctx, t, bearer, httpClient)
+	bearerTokens := makeAuthTokenRequest(ctx, t, []*models.Bearer{bearer}, httpClient)
+	bearerToken := bearerTokens[0]
 
 	query := make(url.Values)
 	query.Add(walletConnectQuery, strconv.FormatBool(useWalletConnect))
@@ -473,7 +513,8 @@ func restObjectsSearch(ctx context.Context, t *testing.T, p *pool.Pool, cnrID *c
 	bearer.Object = append(bearer.Object, getRestrictBearerRecords()...)
 
 	httpClient := defaultHTTPClient()
-	bearerToken := makeAuthObjectTokenRequest(ctx, t, bearer, httpClient)
+	bearerTokens := makeAuthTokenRequest(ctx, t, []*models.Bearer{bearer}, httpClient)
+	bearerToken := bearerTokens[0]
 
 	search := &models.SearchFilters{
 		Filters: []*models.SearchFilter{
@@ -553,7 +594,8 @@ func restContainerDelete(ctx context.Context, t *testing.T, clientPool *pool.Poo
 	}
 
 	httpClient := defaultHTTPClient()
-	bearerToken := makeAuthContainerTokenRequest(ctx, t, bearer, httpClient)
+	bearerTokens := makeAuthTokenRequest(ctx, t, []*models.Bearer{bearer}, httpClient)
+	bearerToken := bearerTokens[0]
 
 	query := make(url.Values)
 	query.Add(walletConnectQuery, strconv.FormatBool(useWalletConnect))
@@ -581,7 +623,8 @@ func restContainerEACLPut(ctx context.Context, t *testing.T, clientPool *pool.Po
 			Verb: models.NewVerb(models.VerbSETEACL),
 		},
 	}
-	bearerToken := makeAuthContainerTokenRequest(ctx, t, bearer, httpClient)
+	bearerTokens := makeAuthTokenRequest(ctx, t, []*models.Bearer{bearer}, httpClient)
+	bearerToken := bearerTokens[0]
 
 	req := models.Eacl{
 		Records: []*models.Record{{
@@ -674,28 +717,19 @@ func restContainerList(ctx context.Context, t *testing.T, p *pool.Pool, cnrID *c
 	require.Contains(t, list.Containers, expected)
 }
 
-func makeAuthContainerTokenRequest(ctx context.Context, t *testing.T, bearer *models.Bearer, httpClient *http.Client) *handlers.BearerToken {
-	return makeAuthTokenRequest(ctx, t, bearer, httpClient, models.TokenTypeContainer)
-}
-
-func makeAuthObjectTokenRequest(ctx context.Context, t *testing.T, bearer *models.Bearer, httpClient *http.Client) *handlers.BearerToken {
-	return makeAuthTokenRequest(ctx, t, bearer, httpClient, models.TokenTypeObject)
-}
-
-func makeAuthTokenRequest(ctx context.Context, t *testing.T, bearer *models.Bearer, httpClient *http.Client, tokenType models.TokenType) *handlers.BearerToken {
+func makeAuthTokenRequest(ctx context.Context, t *testing.T, bearers []*models.Bearer, httpClient *http.Client) []*handlers.BearerToken {
 	key, err := keys.NewPrivateKeyFromHex(devenvPrivateKey)
 	require.NoError(t, err)
 
 	ownerID := owner.NewIDFromPublicKey((*ecdsa.PublicKey)(key.PublicKey()))
 
-	data, err := json.Marshal(bearer)
+	data, err := json.Marshal(bearers)
 	require.NoError(t, err)
 
 	request, err := http.NewRequest(http.MethodPost, testHost+"/v1/auth", bytes.NewReader(data))
 	require.NoError(t, err)
 	request = request.WithContext(ctx)
 	request.Header.Add("Content-Type", "application/json")
-	request.Header.Add(XBearerScope, string(tokenType))
 	request.Header.Add(XBearerOwnerID, ownerID.String())
 
 	resp, err := httpClient.Do(request)
@@ -713,24 +747,40 @@ func makeAuthTokenRequest(ctx context.Context, t *testing.T, bearer *models.Bear
 	}
 	require.Equal(t, http.StatusOK, resp.StatusCode)
 
-	stokenResp := &models.TokenResponse{}
-	err = json.Unmarshal(rr, stokenResp)
+	var stokenResp []*models.TokenResponse
+	err = json.Unmarshal(rr, &stokenResp)
 	require.NoError(t, err)
 
-	require.Equal(t, *stokenResp.Type, tokenType)
+	fmt.Println("resp tokens:")
 
-	binaryData, err := base64.StdEncoding.DecodeString(*stokenResp.Token)
-	require.NoError(t, err)
+	respTokens := make([]*handlers.BearerToken, len(stokenResp))
+	for i, tok := range stokenResp {
+		isObject, err := handlers.IsObjectToken(bearers[i])
+		require.NoError(t, err)
 
-	var bt *handlers.BearerToken
-	if useWalletConnect {
-		bt = signTokenWalletConnect(t, key, binaryData)
-	} else {
-		bt = signToken(t, key, binaryData)
+		require.Equal(t, bearers[i].Name, tok.Name)
+
+		if isObject {
+			require.Equal(t, models.TokenTypeObject, *tok.Type)
+		} else {
+			require.Equal(t, models.TokenTypeContainer, *tok.Type)
+		}
+
+		binaryData, err := base64.StdEncoding.DecodeString(*tok.Token)
+		require.NoError(t, err)
+
+		var bt *handlers.BearerToken
+		if useWalletConnect {
+			bt = signTokenWalletConnect(t, key, binaryData)
+		} else {
+			bt = signToken(t, key, binaryData)
+		}
+
+		respTokens[i] = bt
+		fmt.Printf("%+v\n", bt)
 	}
 
-	fmt.Printf("container token:\n%+v\n", bt)
-	return bt
+	return respTokens
 }
 
 func signToken(t *testing.T, key *keys.PrivateKey, data []byte) *handlers.BearerToken {
@@ -765,7 +815,8 @@ func restContainerPut(ctx context.Context, t *testing.T, clientPool *pool.Pool) 
 	}
 
 	httpClient := &http.Client{Timeout: 30 * time.Second}
-	bearerToken := makeAuthContainerTokenRequest(ctx, t, bearer, httpClient)
+	bearerTokens := makeAuthTokenRequest(ctx, t, []*models.Bearer{bearer}, httpClient)
+	bearerToken := bearerTokens[0]
 
 	attrKey, attrValue := "User-Attribute", "user value"
 	userAttributes := map[string]string{
