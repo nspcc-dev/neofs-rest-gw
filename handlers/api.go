@@ -68,6 +68,8 @@ func New(prm *PrmAPI) *API {
 func (a *API) Configure(api *operations.NeofsRestGwAPI) http.Handler {
 	api.ServeError = errors.ServeError
 
+	api.UseSwaggerUI()
+
 	api.AuthHandler = operations.AuthHandlerFunc(a.PostAuth)
 
 	api.PutObjectHandler = operations.PutObjectHandlerFunc(a.PutObjects)
