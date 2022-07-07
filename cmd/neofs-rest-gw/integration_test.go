@@ -117,6 +117,7 @@ func runTests(ctx context.Context, t *testing.T, key *keys.PrivateKey, version s
 	restrictByEACL(ctx, t, clientPool, cnrID)
 
 	t.Run("rest auth several tokens "+version, func(t *testing.T) { authTokens(ctx, t) })
+	t.Run("rest check mix tokens up "+version, func(t *testing.T) { mixTokens(ctx, t, cnrID) })
 
 	t.Run("rest put object "+version, func(t *testing.T) { restObjectPut(ctx, t, clientPool, cnrID) })
 	t.Run("rest get object "+version, func(t *testing.T) { restObjectGet(ctx, t, clientPool, cnrID) })
@@ -267,6 +268,113 @@ func authTokens(ctx context.Context, t *testing.T) {
 
 	httpClient := defaultHTTPClient()
 	makeAuthTokenRequest(ctx, t, bearers, httpClient)
+}
+
+func mixTokens(ctx context.Context, t *testing.T, cnrID *cid.ID) {
+	bearers := []*models.Bearer{
+		{
+			Name: "all-object",
+			Object: []*models.Record{{
+				Operation: models.NewOperation(models.OperationPUT),
+				Action:    models.NewAction(models.ActionALLOW),
+				Filters:   []*models.Filter{},
+				Targets: []*models.Target{{
+					Role: models.NewRole(models.RoleOTHERS),
+					Keys: []string{},
+				}},
+			}},
+		},
+		{
+			Name: "put-container",
+			Container: &models.Rule{
+				Verb: models.NewVerb(models.VerbPUT),
+			},
+		},
+		{
+			Name: "seteacl-container",
+			Container: &models.Rule{
+				Verb: models.NewVerb(models.VerbSETEACL),
+			},
+		},
+	}
+
+	httpClient := defaultHTTPClient()
+	tokens := makeAuthTokenRequest(ctx, t, bearers, httpClient)
+	objectToken := tokens[0]
+	containerPutToken := tokens[1]
+	containerSetEACLToken := tokens[2]
+
+	// check reject object token when container tokens is required
+	checkPutContainerWithError(t, httpClient, objectToken)
+
+	// check reject wrong verb container token
+	checkPutContainerWithError(t, httpClient, containerSetEACLToken)
+
+	// check reject wrong verb container token
+	checkDeleteContainerWithError(t, httpClient, cnrID, containerSetEACLToken)
+
+	// check reject wrong verb container token
+	checkSetEACLContainerWithError(t, httpClient, cnrID, containerPutToken)
+
+	// check reject container token when object tokens is required
+	checkPutObjectWithError(t, httpClient, cnrID, containerSetEACLToken)
+}
+
+func checkPutContainerWithError(t *testing.T, httpClient *http.Client, token *handlers.BearerToken) {
+	reqURL, err := url.Parse(testHost + "/v1/containers")
+	require.NoError(t, err)
+	body, err := json.Marshal(&operations.PutContainerBody{ContainerName: "container"})
+	require.NoError(t, err)
+	request, err := http.NewRequest(http.MethodPut, reqURL.String(), bytes.NewReader(body))
+	require.NoError(t, err)
+	prepareCommonHeaders(request.Header, token)
+
+	checkGWErrorResponse(t, httpClient, request)
+}
+
+func checkDeleteContainerWithError(t *testing.T, httpClient *http.Client, cnrID *cid.ID, token *handlers.BearerToken) {
+	reqURL, err := url.Parse(testHost + "/v1/containers/" + cnrID.String())
+	require.NoError(t, err)
+	request, err := http.NewRequest(http.MethodDelete, reqURL.String(), nil)
+	require.NoError(t, err)
+	prepareCommonHeaders(request.Header, token)
+
+	checkGWErrorResponse(t, httpClient, request)
+}
+
+func checkSetEACLContainerWithError(t *testing.T, httpClient *http.Client, cnrID *cid.ID, token *handlers.BearerToken) {
+	req := models.Eacl{Records: []*models.Record{}}
+	body, err := json.Marshal(&req)
+	require.NoError(t, err)
+	request, err := http.NewRequest(http.MethodPut, testHost+"/v1/containers/"+cnrID.String()+"/eacl", bytes.NewReader(body))
+	require.NoError(t, err)
+	prepareCommonHeaders(request.Header, token)
+
+	checkGWErrorResponse(t, httpClient, request)
+}
+
+func checkPutObjectWithError(t *testing.T, httpClient *http.Client, cnrID *cid.ID, token *handlers.BearerToken) {
+	req := &models.ObjectUpload{
+		ContainerID: util.NewString(cnrID.String()),
+		FileName:    util.NewString("newFile.txt"),
+		Payload:     base64.StdEncoding.EncodeToString([]byte("content")),
+	}
+
+	body, err := json.Marshal(req)
+	require.NoError(t, err)
+
+	request, err := http.NewRequest(http.MethodPut, testHost+"/v1/objects?", bytes.NewReader(body))
+	require.NoError(t, err)
+	prepareCommonHeaders(request.Header, token)
+
+	checkGWErrorResponse(t, httpClient, request)
+}
+
+func checkGWErrorResponse(t *testing.T, httpClient *http.Client, request *http.Request) {
+	resp := &models.ErrorResponse{}
+	doRequest(t, httpClient, request, http.StatusBadRequest, resp)
+	require.Equal(t, int64(0), resp.Code)
+	require.Equal(t, models.ErrorTypeGW, *resp.Type)
 }
 
 func restObjectPut(ctx context.Context, t *testing.T, clientPool *pool.Pool, cnrID *cid.ID) {
