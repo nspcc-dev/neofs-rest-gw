@@ -13,28 +13,48 @@ import (
 	"github.com/nspcc-dev/neofs-rest-gw/gen/models"
 )
 
-// DeleteObjectNoContentCode is the HTTP code returned for type DeleteObjectNoContent
-const DeleteObjectNoContentCode int = 204
+// DeleteObjectOKCode is the HTTP code returned for type DeleteObjectOK
+const DeleteObjectOKCode int = 200
 
-/*DeleteObjectNoContent Successful deletion
+/*DeleteObjectOK Successful deletion
 
-swagger:response deleteObjectNoContent
+swagger:response deleteObjectOK
 */
-type DeleteObjectNoContent struct {
+type DeleteObjectOK struct {
+
+	/*
+	  In: Body
+	*/
+	Payload *models.SuccessResponse `json:"body,omitempty"`
 }
 
-// NewDeleteObjectNoContent creates DeleteObjectNoContent with default headers values
-func NewDeleteObjectNoContent() *DeleteObjectNoContent {
+// NewDeleteObjectOK creates DeleteObjectOK with default headers values
+func NewDeleteObjectOK() *DeleteObjectOK {
 
-	return &DeleteObjectNoContent{}
+	return &DeleteObjectOK{}
+}
+
+// WithPayload adds the payload to the delete object o k response
+func (o *DeleteObjectOK) WithPayload(payload *models.SuccessResponse) *DeleteObjectOK {
+	o.Payload = payload
+	return o
+}
+
+// SetPayload sets the payload to the delete object o k response
+func (o *DeleteObjectOK) SetPayload(payload *models.SuccessResponse) {
+	o.Payload = payload
 }
 
 // WriteResponse to the client
-func (o *DeleteObjectNoContent) WriteResponse(rw http.ResponseWriter, producer runtime.Producer) {
+func (o *DeleteObjectOK) WriteResponse(rw http.ResponseWriter, producer runtime.Producer) {
 
-	rw.Header().Del(runtime.HeaderContentType) //Remove Content-Type on empty responses
-
-	rw.WriteHeader(204)
+	rw.WriteHeader(200)
+	if o.Payload != nil {
+		payload := o.Payload
+		if err := producer.Produce(rw, payload); err != nil {
+			panic(err) // let the recovery middleware deal with this
+		}
+	}
 }
 
 // DeleteObjectBadRequestCode is the HTTP code returned for type DeleteObjectBadRequest

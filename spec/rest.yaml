@@ -202,8 +202,10 @@ paths:
       operationId: deleteObject
       summary: Remove object from NeoFS
       responses:
-        204:
+        200:
           description: Successful deletion
+          schema:
+            $ref: '#/definitions/SuccessResponse'
         400:
           description: Bad request
           schema:
@@ -312,8 +314,10 @@ paths:
         - $ref: '#/parameters/signatureKeyParam'
         - $ref: '#/parameters/signatureScheme'
       responses:
-        204:
-          description: Successul deletion
+        200:
+          description: Successful deletion
+          schema:
+            $ref: '#/definitions/SuccessResponse'
         400:
           description: Bad request
           schema:
@@ -336,7 +340,9 @@ paths:
             $ref: '#/definitions/Eacl'
       responses:
         200:
-          description: Successfule EACL upading
+          description: Successful EACL updating
+          schema:
+            $ref: '#/definitions/SuccessResponse'
         400:
           description: Bad request
           schema:
@@ -706,3 +712,10 @@ definitions:
     type: string
   Error:
     type: string
+  SuccessResponse:
+    type: object
+    properties:
+      success:
+        type: boolean
+    required:
+      - success

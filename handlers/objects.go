@@ -199,7 +199,7 @@ func (a *API) DeleteObject(params operations.DeleteObjectParams, principal *mode
 		return errorResponse.WithPayload(util.NewError(err))
 	}
 
-	return operations.NewDeleteObjectNoContent()
+	return operations.NewDeleteObjectOK().WithPayload(util.NewSuccessResponse())
 }
 
 // SearchObjects handler that removes object from NeoFS.

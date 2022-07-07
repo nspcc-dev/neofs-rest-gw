@@ -109,7 +109,7 @@ func (a *API) PutContainerEACL(params operations.PutContainerEACLParams, princip
 		return operations.NewPutContainerEACLBadRequest().WithPayload(util.NewError(err))
 	}
 
-	return operations.NewPutContainerEACLOK()
+	return operations.NewPutContainerEACLOK().WithPayload(util.NewSuccessResponse())
 }
 
 // GetContainerEACL handler that returns container eacl.
@@ -208,7 +208,7 @@ func (a *API) DeleteContainer(params operations.DeleteContainerParams, principal
 		return operations.NewDeleteContainerBadRequest().WithPayload(util.NewError(err))
 	}
 
-	return operations.NewDeleteContainerNoContent()
+	return operations.NewDeleteContainerOK().WithPayload(util.NewSuccessResponse())
 }
 
 func getContainerBaseInfo(ctx context.Context, p *pool.Pool, cnrID cid.ID) (*models.ContainerBaseInfo, error) {

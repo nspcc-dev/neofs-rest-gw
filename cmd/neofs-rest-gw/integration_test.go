@@ -464,7 +464,9 @@ func restObjectDelete(ctx context.Context, t *testing.T, p *pool.Pool, cnrID *ci
 	require.NoError(t, err)
 	prepareCommonHeaders(request.Header, bearerToken)
 
-	doRequest(t, httpClient, request, http.StatusNoContent, nil)
+	resp := &models.SuccessResponse{}
+	doRequest(t, httpClient, request, http.StatusOK, resp)
+	require.True(t, *resp.Success)
 
 	var addr address.Address
 	addr.SetContainerID(cnrID)
@@ -605,7 +607,9 @@ func restContainerDelete(ctx context.Context, t *testing.T, clientPool *pool.Poo
 	request = request.WithContext(ctx)
 	prepareCommonHeaders(request.Header, bearerToken)
 
-	doRequest(t, httpClient, request, http.StatusNoContent, nil)
+	resp := &models.SuccessResponse{}
+	doRequest(t, httpClient, request, http.StatusOK, resp)
+	require.True(t, *resp.Success)
 
 	var prm pool.PrmContainerGet
 	prm.SetContainerID(*cnrID)
@@ -649,7 +653,9 @@ func restContainerEACLPut(ctx context.Context, t *testing.T, clientPool *pool.Po
 	request = request.WithContext(ctx)
 	prepareCommonHeaders(request.Header, bearerToken)
 
-	doRequest(t, httpClient, request, http.StatusOK, nil)
+	resp := &models.SuccessResponse{}
+	doRequest(t, httpClient, request, http.StatusOK, resp)
+	require.True(t, *resp.Success)
 
 	var prm pool.PrmContainerEACL
 	prm.SetContainerID(*cnrID)

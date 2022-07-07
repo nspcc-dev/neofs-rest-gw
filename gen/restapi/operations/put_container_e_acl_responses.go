@@ -16,11 +16,16 @@ import (
 // PutContainerEACLOKCode is the HTTP code returned for type PutContainerEACLOK
 const PutContainerEACLOKCode int = 200
 
-/*PutContainerEACLOK Successfule EACL upading
+/*PutContainerEACLOK Successful EACL updating
 
 swagger:response putContainerEAclOK
 */
 type PutContainerEACLOK struct {
+
+	/*
+	  In: Body
+	*/
+	Payload *models.SuccessResponse `json:"body,omitempty"`
 }
 
 // NewPutContainerEACLOK creates PutContainerEACLOK with default headers values
@@ -29,12 +34,27 @@ func NewPutContainerEACLOK() *PutContainerEACLOK {
 	return &PutContainerEACLOK{}
 }
 
+// WithPayload adds the payload to the put container e Acl o k response
+func (o *PutContainerEACLOK) WithPayload(payload *models.SuccessResponse) *PutContainerEACLOK {
+	o.Payload = payload
+	return o
+}
+
+// SetPayload sets the payload to the put container e Acl o k response
+func (o *PutContainerEACLOK) SetPayload(payload *models.SuccessResponse) {
+	o.Payload = payload
+}
+
 // WriteResponse to the client
 func (o *PutContainerEACLOK) WriteResponse(rw http.ResponseWriter, producer runtime.Producer) {
 
-	rw.Header().Del(runtime.HeaderContentType) //Remove Content-Type on empty responses
-
 	rw.WriteHeader(200)
+	if o.Payload != nil {
+		payload := o.Payload
+		if err := producer.Produce(rw, payload); err != nil {
+			panic(err) // let the recovery middleware deal with this
+		}
+	}
 }
 
 // PutContainerEACLBadRequestCode is the HTTP code returned for type PutContainerEACLBadRequest
