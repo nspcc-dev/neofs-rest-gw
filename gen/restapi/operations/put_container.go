@@ -76,7 +76,7 @@ func (o *PutContainer) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 }
 
 // PutContainerBody put container body
-// Example: {"basicAcl":"public-read-write","containerId":"container","placementPolicy":"REP 3"}
+// Example: {"basicAcl":"public-read-write","containerName":"container","placementPolicy":"REP 3"}
 //
 // swagger:model PutContainerBody
 type PutContainerBody struct {

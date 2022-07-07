@@ -22,7 +22,7 @@ type ContainerList struct {
 
 	// containers
 	// Required: true
-	Containers []*ContainerBaseInfo `json:"containers"`
+	Containers []*ContainerInfo `json:"containers"`
 
 	// size
 	// Required: true

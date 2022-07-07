@@ -173,7 +173,7 @@ func init() {
               },
               "example": {
                 "basicAcl": "public-read-write",
-                "containerId": "container",
+                "containerName": "container",
                 "placementPolicy": "REP 3"
               }
             }
@@ -570,20 +570,6 @@ func init() {
         }
       }
     },
-    "ContainerBaseInfo": {
-      "type": "object",
-      "required": [
-        "containerId"
-      ],
-      "properties": {
-        "containerId": {
-          "type": "string"
-        },
-        "name": {
-          "type": "string"
-        }
-      }
-    },
     "ContainerInfo": {
       "type": "object",
       "required": [
@@ -645,7 +631,7 @@ func init() {
         "containers": {
           "type": "array",
           "items": {
-            "$ref": "#/definitions/ContainerBaseInfo"
+            "$ref": "#/definitions/ContainerInfo"
           }
         },
         "size": {
@@ -1280,7 +1266,7 @@ func init() {
               },
               "example": {
                 "basicAcl": "public-read-write",
-                "containerId": "container",
+                "containerName": "container",
                 "placementPolicy": "REP 3"
               }
             }
@@ -1760,20 +1746,6 @@ func init() {
         }
       }
     },
-    "ContainerBaseInfo": {
-      "type": "object",
-      "required": [
-        "containerId"
-      ],
-      "properties": {
-        "containerId": {
-          "type": "string"
-        },
-        "name": {
-          "type": "string"
-        }
-      }
-    },
     "ContainerInfo": {
       "type": "object",
       "required": [
@@ -1835,7 +1807,7 @@ func init() {
         "containers": {
           "type": "array",
           "items": {
-            "$ref": "#/definitions/ContainerBaseInfo"
+            "$ref": "#/definitions/ContainerInfo"
           }
         },
         "size": {
