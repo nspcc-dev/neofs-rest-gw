@@ -5,6 +5,7 @@ import (
 	"crypto/ecdsa"
 	"encoding/base64"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"io"
 	"strings"
@@ -33,18 +34,20 @@ func (a *API) PutObjects(params operations.PutObjectParams, principal *models.Pr
 
 	btoken, err := getBearerToken(principal, params.XBearerSignature, params.XBearerSignatureKey, *params.WalletConnect)
 	if err != nil {
-		return errorResponse.WithPayload(models.Error(err.Error()))
+		resp := a.logAndGetErrorResponse("invalid bearer token", err)
+		return errorResponse.WithPayload(resp)
 	}
 
 	var cnrID cid.ID
 	if err = cnrID.Parse(*params.Object.ContainerID); err != nil {
-		a.log.Error("invalid container id", zap.Error(err))
-		return errorResponse.WithPayload("invalid container id")
+		resp := a.logAndGetErrorResponse("invalid container id", err)
+		return errorResponse.WithPayload(resp)
 	}
 
 	payload, err := base64.StdEncoding.DecodeString(params.Object.Payload)
 	if err != nil {
-		return errorResponse.WithPayload(models.Error(err.Error()))
+		resp := a.logAndGetErrorResponse("invalid object payload", err)
+		return errorResponse.WithPayload(resp)
 	}
 
 	prm := PrmAttributes{
@@ -53,7 +56,8 @@ func (a *API) PutObjects(params operations.PutObjectParams, principal *models.Pr
 	}
 	attributes, err := GetObjectAttributes(ctx, a.pool, params.Object.Attributes, prm)
 	if err != nil {
-		return errorResponse.WithPayload(models.Error(err.Error()))
+		resp := a.logAndGetErrorResponse("failed to get object attributes", err)
+		return errorResponse.WithPayload(resp)
 	}
 
 	obj := object.New()
@@ -68,8 +72,8 @@ func (a *API) PutObjects(params operations.PutObjectParams, principal *models.Pr
 
 	objID, err := a.pool.PutObject(ctx, prmPut)
 	if err != nil {
-		a.log.Error("put object", zap.Error(err))
-		return errorResponse.WithPayload(util.NewError(err))
+		resp := a.logAndGetErrorResponse("put object", err)
+		return errorResponse.WithPayload(resp)
 	}
 
 	var resp models.Address
@@ -86,14 +90,14 @@ func (a *API) GetObjectInfo(params operations.GetObjectInfoParams, principal *mo
 
 	addr, err := parseAddress(params.ContainerID, params.ObjectID)
 	if err != nil {
-		a.log.Error("invalid address", zap.Error(err))
-		return errorResponse.WithPayload("invalid address")
+		resp := a.logAndGetErrorResponse("invalid address", err)
+		return errorResponse.WithPayload(resp)
 	}
 
 	btoken, err := getBearerToken(principal, params.XBearerSignature, params.XBearerSignatureKey, *params.WalletConnect)
 	if err != nil {
-		a.log.Error("get bearer token", zap.Error(err))
-		return errorResponse.WithPayload(util.NewError(err))
+		resp := a.logAndGetErrorResponse("get bearer token", err)
+		return errorResponse.WithPayload(resp)
 	}
 
 	var prm pool.PrmObjectHead
@@ -102,8 +106,8 @@ func (a *API) GetObjectInfo(params operations.GetObjectInfoParams, principal *mo
 
 	objInfo, err := a.pool.HeadObject(ctx, prm)
 	if err != nil {
-		a.log.Error("head object", zap.Error(err))
-		return errorResponse.WithPayload(util.NewError(err))
+		resp := a.logAndGetErrorResponse("head object", err)
+		return errorResponse.WithPayload(resp)
 	}
 
 	var resp models.ObjectInfo
@@ -128,8 +132,8 @@ func (a *API) GetObjectInfo(params operations.GetObjectInfoParams, principal *mo
 	var offset, length uint64
 	if params.RangeOffset != nil || params.RangeLength != nil {
 		if params.RangeOffset == nil || params.RangeLength == nil {
-			a.log.Error("both offset and length must be provided")
-			return errorResponse.WithPayload(util.NewError(fmt.Errorf("both offset and length must be provided")))
+			errResp := a.logAndGetErrorResponse("invalid range param", errors.New("both offset and length musded"))
+			return errorResponse.WithPayload(errResp)
 		}
 		offset = uint64(*params.RangeOffset)
 		length = uint64(*params.RangeLength)
@@ -145,8 +149,8 @@ func (a *API) GetObjectInfo(params operations.GetObjectInfoParams, principal *mo
 
 	rangeRes, err := a.pool.ObjectRange(ctx, prmRange)
 	if err != nil {
-		a.log.Error("range object", zap.Error(err))
-		return errorResponse.WithPayload(util.NewError(err))
+		errResp := a.logAndGetErrorResponse("range object", err)
+		return errorResponse.WithPayload(errResp)
 	}
 
 	defer func() {
@@ -159,12 +163,12 @@ func (a *API) GetObjectInfo(params operations.GetObjectInfoParams, principal *mo
 	encoder := base64.NewEncoder(base64.StdEncoding, sb)
 	payloadSize, err := io.Copy(encoder, rangeRes)
 	if err != nil {
-		a.log.Error("encode object payload", zap.Error(err))
-		return errorResponse.WithPayload(util.NewError(err))
+		errResp := a.logAndGetErrorResponse("encode object payload", err)
+		return errorResponse.WithPayload(errResp)
 	}
 	if err = encoder.Close(); err != nil {
-		a.log.Error("close encoder", zap.Error(err))
-		return errorResponse.WithPayload(util.NewError(err))
+		errResp := a.logAndGetErrorResponse("close encoder", err)
+		return errorResponse.WithPayload(errResp)
 	}
 
 	resp.Payload = sb.String()
@@ -180,14 +184,14 @@ func (a *API) DeleteObject(params operations.DeleteObjectParams, principal *mode
 
 	addr, err := parseAddress(params.ContainerID, params.ObjectID)
 	if err != nil {
-		a.log.Error("invalid address", zap.Error(err))
-		return errorResponse.WithPayload("invalid address")
+		resp := a.logAndGetErrorResponse("invalid address", err)
+		return errorResponse.WithPayload(resp)
 	}
 
 	btoken, err := getBearerToken(principal, params.XBearerSignature, params.XBearerSignatureKey, *params.WalletConnect)
 	if err != nil {
-		a.log.Error("failed to get bearer token", zap.Error(err))
-		return errorResponse.WithPayload(util.NewError(err))
+		resp := a.logAndGetErrorResponse("failed to get bearer token", err)
+		return errorResponse.WithPayload(resp)
 	}
 
 	var prm pool.PrmObjectDelete
@@ -195,8 +199,8 @@ func (a *API) DeleteObject(params operations.DeleteObjectParams, principal *mode
 	prm.UseBearer(btoken)
 
 	if err = a.pool.DeleteObject(ctx, prm); err != nil {
-		a.log.Error("failed to delete object", zap.Error(err))
-		return errorResponse.WithPayload(util.NewError(err))
+		resp := a.logAndGetErrorResponse("failed to delete object", err)
+		return errorResponse.WithPayload(resp)
 	}
 
 	return operations.NewDeleteObjectOK().WithPayload(util.NewSuccessResponse())
@@ -209,20 +213,20 @@ func (a *API) SearchObjects(params operations.SearchObjectsParams, principal *mo
 
 	var cnrID cid.ID
 	if err := cnrID.Parse(params.ContainerID); err != nil {
-		a.log.Error("invalid container id", zap.Error(err))
-		return errorResponse.WithPayload("invalid container id")
+		resp := a.logAndGetErrorResponse("invalid container id", err)
+		return errorResponse.WithPayload(resp)
 	}
 
 	btoken, err := getBearerToken(principal, params.XBearerSignature, params.XBearerSignatureKey, *params.WalletConnect)
 	if err != nil {
-		a.log.Error("failed to get bearer token", zap.Error(err))
-		return errorResponse.WithPayload(util.NewError(err))
+		resp := a.logAndGetErrorResponse("failed to get bearer token", err)
+		return errorResponse.WithPayload(resp)
 	}
 
 	filters, err := util.ToNativeFilters(params.SearchFilters)
 	if err != nil {
-		a.log.Error("failed to transform to native", zap.Error(err))
-		return errorResponse.WithPayload(util.NewError(err))
+		resp := a.logAndGetErrorResponse("failed to transform to native", err)
+		return errorResponse.WithPayload(resp)
 	}
 
 	var prm pool.PrmObjectSearch
@@ -232,8 +236,8 @@ func (a *API) SearchObjects(params operations.SearchObjectsParams, principal *mo
 
 	resSearch, err := a.pool.SearchObjects(ctx, prm)
 	if err != nil {
-		a.log.Error("failed to search objects", zap.Error(err))
-		return errorResponse.WithPayload(util.NewError(err))
+		resp := a.logAndGetErrorResponse("failed to search objects", err)
+		return errorResponse.WithPayload(resp)
 	}
 
 	offset := int(*params.Offset)
@@ -262,8 +266,8 @@ func (a *API) SearchObjects(params operations.SearchObjectsParams, principal *mo
 		err = iterateErr
 	}
 	if err != nil {
-		a.log.Error("failed to search objects", zap.Error(err))
-		return errorResponse.WithPayload(util.NewError(err))
+		resp := a.logAndGetErrorResponse("failed to search objects", err)
+		return errorResponse.WithPayload(resp)
 	}
 
 	list := &models.ObjectList{

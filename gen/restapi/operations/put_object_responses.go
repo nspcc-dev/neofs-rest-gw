@@ -69,7 +69,7 @@ type PutObjectBadRequest struct {
 	/*
 	  In: Body
 	*/
-	Payload models.Error `json:"body,omitempty"`
+	Payload *models.ErrorResponse `json:"body,omitempty"`
 }
 
 // NewPutObjectBadRequest creates PutObjectBadRequest with default headers values
@@ -79,13 +79,13 @@ func NewPutObjectBadRequest() *PutObjectBadRequest {
 }
 
 // WithPayload adds the payload to the put object bad request response
-func (o *PutObjectBadRequest) WithPayload(payload models.Error) *PutObjectBadRequest {
+func (o *PutObjectBadRequest) WithPayload(payload *models.ErrorResponse) *PutObjectBadRequest {
 	o.Payload = payload
 	return o
 }
 
 // SetPayload sets the payload to the put object bad request response
-func (o *PutObjectBadRequest) SetPayload(payload models.Error) {
+func (o *PutObjectBadRequest) SetPayload(payload *models.ErrorResponse) {
 	o.Payload = payload
 }
 
@@ -93,8 +93,10 @@ func (o *PutObjectBadRequest) SetPayload(payload models.Error) {
 func (o *PutObjectBadRequest) WriteResponse(rw http.ResponseWriter, producer runtime.Producer) {
 
 	rw.WriteHeader(400)
-	payload := o.Payload
-	if err := producer.Produce(rw, payload); err != nil {
-		panic(err) // let the recovery middleware deal with this
+	if o.Payload != nil {
+		payload := o.Payload
+		if err := producer.Produce(rw, payload); err != nil {
+			panic(err) // let the recovery middleware deal with this
+		}
 	}
 }

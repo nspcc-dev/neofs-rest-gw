@@ -71,13 +71,14 @@ func (a *API) PostAuth(params operations.AuthParams) middleware.Responder {
 	response := make([]*models.TokenResponse, len(params.Tokens))
 	for i, token := range params.Tokens {
 		if _, ok := tokenNames[token.Name]; ok {
-			return operations.NewAuthBadRequest().WithPayload(models.Error(fmt.Sprintf("duplicated token name '%s'", token.Name)))
+			err := fmt.Errorf("duplicated token name '%s'", token.Name)
+			return operations.NewAuthBadRequest().WithPayload(util.NewErrorResponse(err))
 		}
 		tokenNames[token.Name] = struct{}{}
 
 		isObject, err := IsObjectToken(token)
 		if err != nil {
-			return operations.NewAuthBadRequest().WithPayload(models.Error(err.Error()))
+			return operations.NewAuthBadRequest().WithPayload(util.NewErrorResponse(err))
 		}
 
 		if isObject {
@@ -88,7 +89,7 @@ func (a *API) PostAuth(params operations.AuthParams) middleware.Responder {
 			response[i], err = prepareContainerTokens(ctx, prm, a.pool, a.key.PublicKey())
 		}
 		if err != nil {
-			return operations.NewAuthBadRequest().WithPayload(models.Error(err.Error()))
+			return operations.NewAuthBadRequest().WithPayload(util.NewErrorResponse(err))
 		}
 	}
 

@@ -43,14 +43,16 @@ func (a *API) PutContainers(params operations.PutContainerParams, principal *mod
 	}
 	stoken, err := prepareSessionToken(bt, *params.WalletConnect)
 	if err != nil {
-		return wrapError(err)
+		resp := a.logAndGetErrorResponse("invalid session token", err)
+		return operations.NewPutContainerBadRequest().WithPayload(resp)
 	}
 
 	userAttributes := prepareUserAttributes(params.HTTPRequest.Header)
 
 	cnrID, err := createContainer(params.HTTPRequest.Context(), a.pool, stoken, &params, userAttributes)
 	if err != nil {
-		return wrapError(err)
+		resp := a.logAndGetErrorResponse("create container", err)
+		return operations.NewPutContainerBadRequest().WithPayload(resp)
 	}
 
 	var resp operations.PutContainerOKBody
@@ -63,7 +65,8 @@ func (a *API) PutContainers(params operations.PutContainerParams, principal *mod
 func (a *API) GetContainer(params operations.GetContainerParams) middleware.Responder {
 	cnr, err := getContainer(params.HTTPRequest.Context(), a.pool, params.ContainerID)
 	if err != nil {
-		return wrapError(err)
+		resp := a.logAndGetErrorResponse("get container", err)
+		return operations.NewPutContainerBadRequest().WithPayload(resp)
 	}
 
 	attrs := make([]*models.Attribute, len(cnr.Attributes()))
@@ -90,8 +93,8 @@ func (a *API) GetContainer(params operations.GetContainerParams) middleware.Resp
 func (a *API) PutContainerEACL(params operations.PutContainerEACLParams, principal *models.Principal) middleware.Responder {
 	cnrID, err := parseContainerID(params.ContainerID)
 	if err != nil {
-		a.log.Error("invalid container id", zap.Error(err))
-		return operations.NewPutContainerEACLBadRequest().WithPayload("invalid container id")
+		resp := a.logAndGetErrorResponse("invalid container id", err)
+		return operations.NewPutContainerEACLBadRequest().WithPayload(resp)
 	}
 
 	bt := &BearerToken{
@@ -101,12 +104,13 @@ func (a *API) PutContainerEACL(params operations.PutContainerEACLParams, princip
 	}
 	stoken, err := prepareSessionToken(bt, *params.WalletConnect)
 	if err != nil {
-		return wrapError(err)
+		resp := a.logAndGetErrorResponse("invalid session token", err)
+		return operations.NewPutContainerEACLBadRequest().WithPayload(resp)
 	}
 
 	if err = setContainerEACL(params.HTTPRequest.Context(), a.pool, cnrID, stoken, params.Eacl); err != nil {
-		a.log.Error("failed set container eacl", zap.Error(err))
-		return operations.NewPutContainerEACLBadRequest().WithPayload(util.NewError(err))
+		resp := a.logAndGetErrorResponse("failed set container eacl", err)
+		return operations.NewPutContainerEACLBadRequest().WithPayload(resp)
 	}
 
 	return operations.NewPutContainerEACLOK().WithPayload(util.NewSuccessResponse())
@@ -116,14 +120,14 @@ func (a *API) PutContainerEACL(params operations.PutContainerEACLParams, princip
 func (a *API) GetContainerEACL(params operations.GetContainerEACLParams) middleware.Responder {
 	cnrID, err := parseContainerID(params.ContainerID)
 	if err != nil {
-		a.log.Error("invalid container id", zap.Error(err))
-		return operations.NewGetContainerEACLBadRequest().WithPayload("invalid container id")
+		resp := a.logAndGetErrorResponse("invalid container id", err)
+		return operations.NewGetContainerEACLBadRequest().WithPayload(resp)
 	}
 
 	resp, err := getContainerEACL(params.HTTPRequest.Context(), a.pool, cnrID)
 	if err != nil {
-		a.log.Error("failed to get container eacl", zap.Error(err))
-		return operations.NewGetContainerEACLBadRequest().WithPayload("failed to get container eacl")
+		errResp := a.logAndGetErrorResponse("failed to get container eacl", err)
+		return operations.NewGetContainerEACLBadRequest().WithPayload(errResp)
 	}
 
 	return operations.NewGetContainerEACLOK().WithPayload(resp)
@@ -135,8 +139,8 @@ func (a *API) ListContainer(params operations.ListContainersParams) middleware.R
 
 	var ownerID owner.ID
 	if err := ownerID.Parse(params.OwnerID); err != nil {
-		a.log.Error("invalid owner id", zap.Error(err))
-		return operations.NewListContainersBadRequest().WithPayload("invalid owner id")
+		resp := a.logAndGetErrorResponse("invalid owner id", err)
+		return operations.NewListContainersBadRequest().WithPayload(resp)
 	}
 
 	var prm pool.PrmContainerList
@@ -144,8 +148,8 @@ func (a *API) ListContainer(params operations.ListContainersParams) middleware.R
 
 	ids, err := a.pool.ListContainers(ctx, prm)
 	if err != nil {
-		a.log.Error("list containers", zap.Error(err))
-		return operations.NewListContainersBadRequest().WithPayload("failed to get containers")
+		resp := a.logAndGetErrorResponse("list containers", err)
+		return operations.NewListContainersBadRequest().WithPayload(resp)
 	}
 
 	offset := int(*params.Offset)
@@ -171,8 +175,8 @@ func (a *API) ListContainer(params operations.ListContainersParams) middleware.R
 	for _, id := range ids[offset : offset+size] {
 		baseInfo, err := getContainerBaseInfo(ctx, a.pool, id)
 		if err != nil {
-			a.log.Error("get container", zap.String("cid", id.String()), zap.Error(err))
-			return operations.NewListContainersBadRequest().WithPayload("failed to get container")
+			resp := a.logAndGetErrorResponse("get container", err, zap.String("cid", id.String()))
+			return operations.NewListContainersBadRequest().WithPayload(resp)
 		}
 		res.Containers = append(res.Containers, baseInfo)
 	}
@@ -189,14 +193,14 @@ func (a *API) DeleteContainer(params operations.DeleteContainerParams, principal
 	}
 	stoken, err := prepareSessionToken(bt, *params.WalletConnect)
 	if err != nil {
-		a.log.Error("failed parse session token", zap.Error(err))
-		return operations.NewDeleteContainerBadRequest().WithPayload(util.NewError(err))
+		resp := a.logAndGetErrorResponse("invalid session token", err)
+		return operations.NewDeleteContainerBadRequest().WithPayload(resp)
 	}
 
 	cnrID, err := parseContainerID(params.ContainerID)
 	if err != nil {
-		a.log.Error("failed get container id", zap.Error(err))
-		return operations.NewDeleteContainerBadRequest().WithPayload(util.NewError(err))
+		resp := a.logAndGetErrorResponse("invalid container id", err)
+		return operations.NewDeleteContainerBadRequest().WithPayload(resp)
 	}
 
 	var prm pool.PrmContainerDelete
@@ -204,8 +208,8 @@ func (a *API) DeleteContainer(params operations.DeleteContainerParams, principal
 	prm.SetSessionToken(*stoken)
 
 	if err = a.pool.DeleteContainer(params.HTTPRequest.Context(), prm); err != nil {
-		a.log.Error("failed delete container", zap.String("container", params.ContainerID), zap.Error(err))
-		return operations.NewDeleteContainerBadRequest().WithPayload(util.NewError(err))
+		resp := a.logAndGetErrorResponse("delete container", err, zap.String("container", params.ContainerID))
+		return operations.NewDeleteContainerBadRequest().WithPayload(resp)
 	}
 
 	return operations.NewDeleteContainerOK().WithPayload(util.NewSuccessResponse())
@@ -280,7 +284,7 @@ func getContainerEACL(ctx context.Context, p *pool.Pool, cnrID *cid.ID) (*models
 
 	table, err := p.GetEACL(ctx, prm)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("get eacl: %w", err)
 	}
 
 	tableResp := &models.Eacl{
@@ -396,8 +400,4 @@ func prepareSessionToken(bt *BearerToken, isWalletConnect bool) (*session.Token,
 	}
 
 	return stoken, err
-}
-
-func wrapError(err error) middleware.Responder {
-	return operations.NewPutContainerBadRequest().WithPayload(models.Error(err.Error()))
 }

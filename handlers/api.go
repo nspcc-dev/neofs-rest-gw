@@ -11,6 +11,7 @@ import (
 	"github.com/nspcc-dev/neo-go/pkg/crypto/keys"
 	"github.com/nspcc-dev/neofs-rest-gw/gen/models"
 	"github.com/nspcc-dev/neofs-rest-gw/gen/restapi/operations"
+	"github.com/nspcc-dev/neofs-rest-gw/internal/util"
 	"github.com/nspcc-dev/neofs-sdk-go/pool"
 	"go.uber.org/zap"
 )
@@ -112,4 +113,10 @@ func (a *API) setupGlobalMiddleware(handler http.Handler) http.Handler {
 
 		handler.ServeHTTP(w, r.WithContext(ctx))
 	})
+}
+
+func (a *API) logAndGetErrorResponse(msg string, err error, fields ...zap.Field) *models.ErrorResponse {
+	fields = append(fields, zap.Error(err))
+	a.log.Error(msg, fields...)
+	return util.NewErrorResponse(fmt.Errorf("%s: %w", msg, err))
 }

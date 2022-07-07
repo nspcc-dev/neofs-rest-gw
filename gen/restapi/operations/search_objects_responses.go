@@ -69,7 +69,7 @@ type SearchObjectsBadRequest struct {
 	/*
 	  In: Body
 	*/
-	Payload models.Error `json:"body,omitempty"`
+	Payload *models.ErrorResponse `json:"body,omitempty"`
 }
 
 // NewSearchObjectsBadRequest creates SearchObjectsBadRequest with default headers values
@@ -79,13 +79,13 @@ func NewSearchObjectsBadRequest() *SearchObjectsBadRequest {
 }
 
 // WithPayload adds the payload to the search objects bad request response
-func (o *SearchObjectsBadRequest) WithPayload(payload models.Error) *SearchObjectsBadRequest {
+func (o *SearchObjectsBadRequest) WithPayload(payload *models.ErrorResponse) *SearchObjectsBadRequest {
 	o.Payload = payload
 	return o
 }
 
 // SetPayload sets the payload to the search objects bad request response
-func (o *SearchObjectsBadRequest) SetPayload(payload models.Error) {
+func (o *SearchObjectsBadRequest) SetPayload(payload *models.ErrorResponse) {
 	o.Payload = payload
 }
 
@@ -93,8 +93,10 @@ func (o *SearchObjectsBadRequest) SetPayload(payload models.Error) {
 func (o *SearchObjectsBadRequest) WriteResponse(rw http.ResponseWriter, producer runtime.Producer) {
 
 	rw.WriteHeader(400)
-	payload := o.Payload
-	if err := producer.Produce(rw, payload); err != nil {
-		panic(err) // let the recovery middleware deal with this
+	if o.Payload != nil {
+		payload := o.Payload
+		if err := producer.Produce(rw, payload); err != nil {
+			panic(err) // let the recovery middleware deal with this
+		}
 	}
 }

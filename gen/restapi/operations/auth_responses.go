@@ -72,7 +72,7 @@ type AuthBadRequest struct {
 	/*
 	  In: Body
 	*/
-	Payload models.Error `json:"body,omitempty"`
+	Payload *models.ErrorResponse `json:"body,omitempty"`
 }
 
 // NewAuthBadRequest creates AuthBadRequest with default headers values
@@ -82,13 +82,13 @@ func NewAuthBadRequest() *AuthBadRequest {
 }
 
 // WithPayload adds the payload to the auth bad request response
-func (o *AuthBadRequest) WithPayload(payload models.Error) *AuthBadRequest {
+func (o *AuthBadRequest) WithPayload(payload *models.ErrorResponse) *AuthBadRequest {
 	o.Payload = payload
 	return o
 }
 
 // SetPayload sets the payload to the auth bad request response
-func (o *AuthBadRequest) SetPayload(payload models.Error) {
+func (o *AuthBadRequest) SetPayload(payload *models.ErrorResponse) {
 	o.Payload = payload
 }
 
@@ -96,8 +96,10 @@ func (o *AuthBadRequest) SetPayload(payload models.Error) {
 func (o *AuthBadRequest) WriteResponse(rw http.ResponseWriter, producer runtime.Producer) {
 
 	rw.WriteHeader(400)
-	payload := o.Payload
-	if err := producer.Produce(rw, payload); err != nil {
-		panic(err) // let the recovery middleware deal with this
+	if o.Payload != nil {
+		payload := o.Payload
+		if err := producer.Produce(rw, payload); err != nil {
+			panic(err) // let the recovery middleware deal with this
+		}
 	}
 }

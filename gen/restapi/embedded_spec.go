@@ -82,7 +82,7 @@ func init() {
           "400": {
             "description": "Bad request",
             "schema": {
-              "$ref": "#/definitions/Error"
+              "$ref": "#/definitions/ErrorResponse"
             }
           }
         }
@@ -128,7 +128,7 @@ func init() {
           "400": {
             "description": "Bad request",
             "schema": {
-              "$ref": "#/definitions/Error"
+              "$ref": "#/definitions/ErrorResponse"
             }
           }
         }
@@ -200,7 +200,7 @@ func init() {
           "400": {
             "description": "Bad request",
             "schema": {
-              "$ref": "#/definitions/Error"
+              "$ref": "#/definitions/ErrorResponse"
             }
           }
         }
@@ -221,7 +221,7 @@ func init() {
           "400": {
             "description": "Bad request",
             "schema": {
-              "$ref": "#/definitions/Error"
+              "$ref": "#/definitions/ErrorResponse"
             }
           }
         }
@@ -250,7 +250,7 @@ func init() {
           "400": {
             "description": "Bad request",
             "schema": {
-              "$ref": "#/definitions/Error"
+              "$ref": "#/definitions/ErrorResponse"
             }
           }
         }
@@ -276,7 +276,7 @@ func init() {
           "400": {
             "description": "Bad request",
             "schema": {
-              "$ref": "#/definitions/Error"
+              "$ref": "#/definitions/ErrorResponse"
             }
           }
         }
@@ -314,7 +314,7 @@ func init() {
           "400": {
             "description": "Bad request",
             "schema": {
-              "$ref": "#/definitions/Error"
+              "$ref": "#/definitions/ErrorResponse"
             }
           }
         }
@@ -356,7 +356,7 @@ func init() {
           "400": {
             "description": "Bad request",
             "schema": {
-              "$ref": "#/definitions/Error"
+              "$ref": "#/definitions/ErrorResponse"
             }
           }
         }
@@ -414,7 +414,7 @@ func init() {
           "400": {
             "description": "Bad request",
             "schema": {
-              "$ref": "#/definitions/Error"
+              "$ref": "#/definitions/ErrorResponse"
             }
           }
         }
@@ -469,7 +469,7 @@ func init() {
           "400": {
             "description": "Bad request",
             "schema": {
-              "$ref": "#/definitions/Error"
+              "$ref": "#/definitions/ErrorResponse"
             }
           }
         }
@@ -487,7 +487,7 @@ func init() {
           "400": {
             "description": "Bad request",
             "schema": {
-              "$ref": "#/definitions/Error"
+              "$ref": "#/definitions/ErrorResponse"
             }
           }
         }
@@ -671,8 +671,30 @@ func init() {
         }
       }
     },
-    "Error": {
-      "type": "string"
+    "ErrorResponse": {
+      "type": "object",
+      "required": [
+        "type",
+        "message"
+      ],
+      "properties": {
+        "code": {
+          "type": "integer"
+        },
+        "message": {
+          "type": "string"
+        },
+        "type": {
+          "$ref": "#/definitions/ErrorType"
+        }
+      }
+    },
+    "ErrorType": {
+      "type": "string",
+      "enum": [
+        "GW",
+        "API"
+      ]
     },
     "Filter": {
       "type": "object",
@@ -1154,7 +1176,7 @@ func init() {
           "400": {
             "description": "Bad request",
             "schema": {
-              "$ref": "#/definitions/Error"
+              "$ref": "#/definitions/ErrorResponse"
             }
           }
         }
@@ -1201,7 +1223,7 @@ func init() {
           "400": {
             "description": "Bad request",
             "schema": {
-              "$ref": "#/definitions/Error"
+              "$ref": "#/definitions/ErrorResponse"
             }
           }
         }
@@ -1285,7 +1307,7 @@ func init() {
           "400": {
             "description": "Bad request",
             "schema": {
-              "$ref": "#/definitions/Error"
+              "$ref": "#/definitions/ErrorResponse"
             }
           }
         }
@@ -1306,7 +1328,7 @@ func init() {
           "400": {
             "description": "Bad request",
             "schema": {
-              "$ref": "#/definitions/Error"
+              "$ref": "#/definitions/ErrorResponse"
             }
           }
         }
@@ -1347,7 +1369,7 @@ func init() {
           "400": {
             "description": "Bad request",
             "schema": {
-              "$ref": "#/definitions/Error"
+              "$ref": "#/definitions/ErrorResponse"
             }
           }
         }
@@ -1377,7 +1399,7 @@ func init() {
           "400": {
             "description": "Bad request",
             "schema": {
-              "$ref": "#/definitions/Error"
+              "$ref": "#/definitions/ErrorResponse"
             }
           }
         }
@@ -1427,7 +1449,7 @@ func init() {
           "400": {
             "description": "Bad request",
             "schema": {
-              "$ref": "#/definitions/Error"
+              "$ref": "#/definitions/ErrorResponse"
             }
           }
         }
@@ -1473,7 +1495,7 @@ func init() {
           "400": {
             "description": "Bad request",
             "schema": {
-              "$ref": "#/definitions/Error"
+              "$ref": "#/definitions/ErrorResponse"
             }
           }
         }
@@ -1544,7 +1566,7 @@ func init() {
           "400": {
             "description": "Bad request",
             "schema": {
-              "$ref": "#/definitions/Error"
+              "$ref": "#/definitions/ErrorResponse"
             }
           }
         }
@@ -1617,7 +1639,7 @@ func init() {
           "400": {
             "description": "Bad request",
             "schema": {
-              "$ref": "#/definitions/Error"
+              "$ref": "#/definitions/ErrorResponse"
             }
           }
         }
@@ -1635,7 +1657,7 @@ func init() {
           "400": {
             "description": "Bad request",
             "schema": {
-              "$ref": "#/definitions/Error"
+              "$ref": "#/definitions/ErrorResponse"
             }
           }
         }
@@ -1839,8 +1861,30 @@ func init() {
         }
       }
     },
-    "Error": {
-      "type": "string"
+    "ErrorResponse": {
+      "type": "object",
+      "required": [
+        "type",
+        "message"
+      ],
+      "properties": {
+        "code": {
+          "type": "integer"
+        },
+        "message": {
+          "type": "string"
+        },
+        "type": {
+          "$ref": "#/definitions/ErrorType"
+        }
+      }
+    },
+    "ErrorType": {
+      "type": "string",
+      "enum": [
+        "GW",
+        "API"
+      ]
     },
     "Filter": {
       "type": "object",
