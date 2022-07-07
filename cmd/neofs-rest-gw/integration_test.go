@@ -60,7 +60,7 @@ const (
 
 	// tests configuration.
 	useWalletConnect    = false
-	useLocalEnvironment = true
+	useLocalEnvironment = false
 )
 
 func TestIntegration(t *testing.T) {
@@ -123,6 +123,7 @@ func runTests(ctx context.Context, t *testing.T, key *keys.PrivateKey, version s
 	t.Run("rest delete object "+version, func(t *testing.T) { restObjectDelete(ctx, t, clientPool, cnrID) })
 	t.Run("rest search objects "+version, func(t *testing.T) { restObjectsSearch(ctx, t, clientPool, cnrID) })
 
+	t.Run("rest put container invalid "+version, func(t *testing.T) { restContainerPutInvalid(ctx, t) })
 	t.Run("rest put container "+version, func(t *testing.T) { restContainerPut(ctx, t, clientPool) })
 	t.Run("rest get container "+version, func(t *testing.T) { restContainerGet(ctx, t, clientPool, cnrID) })
 	t.Run("rest delete container "+version, func(t *testing.T) { restContainerDelete(ctx, t, clientPool) })
@@ -811,6 +812,36 @@ func signTokenWalletConnect(t *testing.T, key *keys.PrivateKey, data []byte) *ha
 		Signature: hex.EncodeToString(append(sm.Data, sm.Salt...)),
 		Key:       hex.EncodeToString(key.PublicKey().Bytes()),
 	}
+}
+
+func restContainerPutInvalid(ctx context.Context, t *testing.T) {
+	bearer := &models.Bearer{
+		Container: &models.Rule{
+			Verb: models.NewVerb(models.VerbPUT),
+		},
+	}
+
+	httpClient := &http.Client{Timeout: 30 * time.Second}
+	bearerTokens := makeAuthTokenRequest(ctx, t, []*models.Bearer{bearer}, httpClient)
+	bearerToken := bearerTokens[0]
+
+	reqURL, err := url.Parse(testHost + "/v1/containers")
+	require.NoError(t, err)
+	query := reqURL.Query()
+	query.Add("name-scope-global", "true")
+	query.Add(walletConnectQuery, strconv.FormatBool(useWalletConnect))
+	reqURL.RawQuery = query.Encode()
+
+	body, err := json.Marshal(&operations.PutContainerBody{ContainerName: "nameWithCapitalLetters"})
+	require.NoError(t, err)
+	request, err := http.NewRequest(http.MethodPut, reqURL.String(), bytes.NewReader(body))
+	require.NoError(t, err)
+	prepareCommonHeaders(request.Header, bearerToken)
+
+	resp := &models.ErrorResponse{}
+	doRequest(t, httpClient, request, http.StatusBadRequest, resp)
+	require.Equal(t, int64(0), resp.Code)
+	require.Equal(t, models.ErrorTypeGW, *resp.Type)
 }
 
 func restContainerPut(ctx context.Context, t *testing.T, clientPool *pool.Pool) {
