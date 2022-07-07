@@ -24,19 +24,17 @@ func TestSign(t *testing.T) {
 
 	pubKeyHex := hex.EncodeToString(key.PublicKey().Bytes())
 
-	b := &models.Bearer{
-		Object: []*models.Record{{
-			Operation: models.NewOperation(models.OperationPUT),
-			Action:    models.NewAction(models.ActionALLOW),
-			Filters:   []*models.Filter{},
-			Targets: []*models.Target{{
-				Role: models.NewRole(models.RoleOTHERS),
-				Keys: []string{},
-			}},
+	records := []*models.Record{{
+		Operation: models.NewOperation(models.OperationPUT),
+		Action:    models.NewAction(models.ActionALLOW),
+		Filters:   []*models.Filter{},
+		Targets: []*models.Target{{
+			Role: models.NewRole(models.RoleOTHERS),
+			Keys: []string{},
 		}},
-	}
+	}}
 
-	btoken, err := util.ToNativeObjectToken(b)
+	btoken, err := util.ToNativeObjectToken(records)
 	require.NoError(t, err)
 
 	ownerKey, err := keys.NewPublicKeyFromString(pubKeyHex)

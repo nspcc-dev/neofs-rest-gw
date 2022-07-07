@@ -50,17 +50,6 @@ func init() {
             "required": true
           },
           {
-            "enum": [
-              "object",
-              "container"
-            ],
-            "type": "string",
-            "description": "Supported operation scope for token",
-            "name": "X-Bearer-Scope",
-            "in": "header",
-            "required": true
-          },
-          {
             "type": "integer",
             "default": 100,
             "description": "Token lifetime in epoch",
@@ -69,11 +58,14 @@ func init() {
           },
           {
             "description": "Bearer token",
-            "name": "token",
+            "name": "tokens",
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/Bearer"
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/Bearer"
+              }
             }
           }
         ],
@@ -81,7 +73,10 @@ func init() {
           "200": {
             "description": "Base64 encoded stable binary marshaled bearer token",
             "schema": {
-              "$ref": "#/definitions/TokenResponse"
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/TokenResponse"
+              }
             }
           },
           "400": {
@@ -555,6 +550,9 @@ func init() {
         "container": {
           "$ref": "#/definitions/Rule"
         },
+        "name": {
+          "type": "string"
+        },
         "object": {
           "type": "array",
           "items": {
@@ -983,6 +981,9 @@ func init() {
         "token"
       ],
       "properties": {
+        "name": {
+          "type": "string"
+        },
         "token": {
           "type": "string"
         },
@@ -1101,17 +1102,6 @@ func init() {
             "required": true
           },
           {
-            "enum": [
-              "object",
-              "container"
-            ],
-            "type": "string",
-            "description": "Supported operation scope for token",
-            "name": "X-Bearer-Scope",
-            "in": "header",
-            "required": true
-          },
-          {
             "type": "integer",
             "default": 100,
             "description": "Token lifetime in epoch",
@@ -1120,11 +1110,14 @@ func init() {
           },
           {
             "description": "Bearer token",
-            "name": "token",
+            "name": "tokens",
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/Bearer"
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/Bearer"
+              }
             }
           }
         ],
@@ -1132,7 +1125,10 @@ func init() {
           "200": {
             "description": "Base64 encoded stable binary marshaled bearer token",
             "schema": {
-              "$ref": "#/definitions/TokenResponse"
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/TokenResponse"
+              }
             }
           },
           "400": {
@@ -1702,6 +1698,9 @@ func init() {
         "container": {
           "$ref": "#/definitions/Rule"
         },
+        "name": {
+          "type": "string"
+        },
         "object": {
           "type": "array",
           "items": {
@@ -2130,6 +2129,9 @@ func init() {
         "token"
       ],
       "properties": {
+        "name": {
+          "type": "string"
+        },
         "token": {
           "type": "string"
         },

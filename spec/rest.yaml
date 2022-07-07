@@ -65,24 +65,18 @@ paths:
           type: string
           required: true
         - in: header
-          description: Supported operation scope for token
-          name: X-Bearer-Scope
-          type: string
-          enum:
-            - object
-            - container
-          required: true
-        - in: header
           description: Token lifetime in epoch
           name: X-Bearer-Lifetime
           type: integer
           default: 100
         - in: body
-          name: token
+          name: tokens
           required: true
           description: Bearer token
           schema:
-            $ref: '#/definitions/Bearer'
+            type: array
+            items:
+              $ref: '#/definitions/Bearer'
       consumes:
         - application/json
       produces:
@@ -91,7 +85,9 @@ paths:
         200:
           description: Base64 encoded stable binary marshaled bearer token
           schema:
-            $ref: '#/definitions/TokenResponse'
+            type: array
+            items:
+              $ref: '#/definitions/TokenResponse'
         400:
           description: Bad request
           schema:
@@ -363,6 +359,8 @@ definitions:
   Bearer:
     type: object
     properties:
+      name:
+        type: string
       object:
         type: array
         items:
@@ -483,6 +481,8 @@ definitions:
   TokenResponse:
     type: object
     properties:
+      name:
+        type: string
       type:
         $ref: '#/definitions/TokenType'
       token:
