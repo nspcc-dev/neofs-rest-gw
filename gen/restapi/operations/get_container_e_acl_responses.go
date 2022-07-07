@@ -69,7 +69,7 @@ type GetContainerEACLBadRequest struct {
 	/*
 	  In: Body
 	*/
-	Payload models.Error `json:"body,omitempty"`
+	Payload *models.ErrorResponse `json:"body,omitempty"`
 }
 
 // NewGetContainerEACLBadRequest creates GetContainerEACLBadRequest with default headers values
@@ -79,13 +79,13 @@ func NewGetContainerEACLBadRequest() *GetContainerEACLBadRequest {
 }
 
 // WithPayload adds the payload to the get container e Acl bad request response
-func (o *GetContainerEACLBadRequest) WithPayload(payload models.Error) *GetContainerEACLBadRequest {
+func (o *GetContainerEACLBadRequest) WithPayload(payload *models.ErrorResponse) *GetContainerEACLBadRequest {
 	o.Payload = payload
 	return o
 }
 
 // SetPayload sets the payload to the get container e Acl bad request response
-func (o *GetContainerEACLBadRequest) SetPayload(payload models.Error) {
+func (o *GetContainerEACLBadRequest) SetPayload(payload *models.ErrorResponse) {
 	o.Payload = payload
 }
 
@@ -93,8 +93,10 @@ func (o *GetContainerEACLBadRequest) SetPayload(payload models.Error) {
 func (o *GetContainerEACLBadRequest) WriteResponse(rw http.ResponseWriter, producer runtime.Producer) {
 
 	rw.WriteHeader(400)
-	payload := o.Payload
-	if err := producer.Produce(rw, payload); err != nil {
-		panic(err) // let the recovery middleware deal with this
+	if o.Payload != nil {
+		payload := o.Payload
+		if err := producer.Produce(rw, payload); err != nil {
+			panic(err) // let the recovery middleware deal with this
+		}
 	}
 }

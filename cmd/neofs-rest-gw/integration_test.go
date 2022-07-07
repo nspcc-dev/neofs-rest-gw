@@ -60,7 +60,7 @@ const (
 
 	// tests configuration.
 	useWalletConnect    = false
-	useLocalEnvironment = false
+	useLocalEnvironment = true
 )
 
 func TestIntegration(t *testing.T) {

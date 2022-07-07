@@ -69,7 +69,7 @@ type DeleteContainerBadRequest struct {
 	/*
 	  In: Body
 	*/
-	Payload models.Error `json:"body,omitempty"`
+	Payload *models.ErrorResponse `json:"body,omitempty"`
 }
 
 // NewDeleteContainerBadRequest creates DeleteContainerBadRequest with default headers values
@@ -79,13 +79,13 @@ func NewDeleteContainerBadRequest() *DeleteContainerBadRequest {
 }
 
 // WithPayload adds the payload to the delete container bad request response
-func (o *DeleteContainerBadRequest) WithPayload(payload models.Error) *DeleteContainerBadRequest {
+func (o *DeleteContainerBadRequest) WithPayload(payload *models.ErrorResponse) *DeleteContainerBadRequest {
 	o.Payload = payload
 	return o
 }
 
 // SetPayload sets the payload to the delete container bad request response
-func (o *DeleteContainerBadRequest) SetPayload(payload models.Error) {
+func (o *DeleteContainerBadRequest) SetPayload(payload *models.ErrorResponse) {
 	o.Payload = payload
 }
 
@@ -93,8 +93,10 @@ func (o *DeleteContainerBadRequest) SetPayload(payload models.Error) {
 func (o *DeleteContainerBadRequest) WriteResponse(rw http.ResponseWriter, producer runtime.Producer) {
 
 	rw.WriteHeader(400)
-	payload := o.Payload
-	if err := producer.Produce(rw, payload); err != nil {
-		panic(err) // let the recovery middleware deal with this
+	if o.Payload != nil {
+		payload := o.Payload
+		if err := producer.Produce(rw, payload); err != nil {
+			panic(err) // let the recovery middleware deal with this
+		}
 	}
 }

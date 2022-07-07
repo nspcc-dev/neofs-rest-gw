@@ -91,7 +91,7 @@ paths:
         400:
           description: Bad request
           schema:
-            $ref: '#/definitions/Error'
+            $ref: '#/definitions/ErrorResponse'
 
   /objects:
     parameters:
@@ -120,7 +120,7 @@ paths:
         400:
           description: Bad request
           schema:
-            $ref: '#/definitions/Error'
+            $ref: '#/definitions/ErrorResponse'
 
   /objects/{containerId}/search:
     parameters:
@@ -159,7 +159,7 @@ paths:
         400:
           description: Bad request
           schema:
-            $ref: '#/definitions/Error'
+            $ref: '#/definitions/ErrorResponse'
 
   /objects/{containerId}/{objectId}:
     parameters:
@@ -197,7 +197,7 @@ paths:
         400:
           description: Bad request
           schema:
-            $ref: '#/definitions/Error'
+            $ref: '#/definitions/ErrorResponse'
     delete:
       operationId: deleteObject
       summary: Remove object from NeoFS
@@ -209,7 +209,7 @@ paths:
         400:
           description: Bad request
           schema:
-            $ref: '#/definitions/Error'
+            $ref: '#/definitions/ErrorResponse'
 
   /containers:
     put:
@@ -256,7 +256,7 @@ paths:
         400:
           description: Bad request
           schema:
-            $ref: '#/definitions/Error'
+            $ref: '#/definitions/ErrorResponse'
     get:
       operationId: listContainers
       summary: Get list of containers
@@ -288,7 +288,7 @@ paths:
         400:
           description: Bad request
           schema:
-            $ref: '#/definitions/Error'
+            $ref: '#/definitions/ErrorResponse'
 
   /containers/{containerId}:
     parameters:
@@ -305,7 +305,7 @@ paths:
         400:
           description: Bad request
           schema:
-            $ref: '#/definitions/Error'
+            $ref: '#/definitions/ErrorResponse'
     delete:
       operationId: deleteContainer
       summary: Delete container by id
@@ -321,7 +321,7 @@ paths:
         400:
           description: Bad request
           schema:
-            $ref: '#/definitions/Error'
+            $ref: '#/definitions/ErrorResponse'
   /containers/{containerId}/eacl:
     parameters:
       - $ref: '#/parameters/containerId'
@@ -346,7 +346,7 @@ paths:
         400:
           description: Bad request
           schema:
-            $ref: '#/definitions/Error'
+            $ref: '#/definitions/ErrorResponse'
     get:
       operationId: getContainerEACL
       summary: Get container EACL by id
@@ -359,7 +359,7 @@ paths:
         400:
           description: Bad request
           schema:
-            $ref: '#/definitions/Error'
+            $ref: '#/definitions/ErrorResponse'
 
 definitions:
   Bearer:
@@ -710,8 +710,23 @@ definitions:
       - value
   Principal:
     type: string
-  Error:
+  ErrorType:
     type: string
+    enum:
+      - GW
+      - API
+  ErrorResponse:
+    type: object
+    properties:
+      type:
+        $ref: '#/definitions/ErrorType'
+      code:
+        type: integer
+      message:
+        type: string
+    required:
+      - type
+      - message
   SuccessResponse:
     type: object
     properties:

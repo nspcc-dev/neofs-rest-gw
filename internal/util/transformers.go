@@ -2,10 +2,12 @@ package util
 
 import (
 	"encoding/hex"
+	"errors"
 	"fmt"
 
 	sessionv2 "github.com/nspcc-dev/neofs-api-go/v2/session"
 	"github.com/nspcc-dev/neofs-rest-gw/gen/models"
+	apistatus "github.com/nspcc-dev/neofs-sdk-go/client/status"
 	cid "github.com/nspcc-dev/neofs-sdk-go/container/id"
 	"github.com/nspcc-dev/neofs-sdk-go/eacl"
 	"github.com/nspcc-dev/neofs-sdk-go/object"
@@ -455,4 +457,27 @@ func NewSuccessResponse() *models.SuccessResponse {
 	return &models.SuccessResponse{
 		Success: NewBool(true),
 	}
+}
+
+// NewErrorResponse forms model.ErrorResponse.
+func NewErrorResponse(err error) *models.ErrorResponse {
+	var code int64
+	t := models.ErrorTypeGW
+	if status, ok := unwrapErr(err).(apistatus.StatusV2); ok {
+		code = int64(status.ToStatusV2().Code())
+		t = models.ErrorTypeAPI
+	}
+
+	return &models.ErrorResponse{
+		Code:    code,
+		Message: NewString(err.Error()),
+		Type:    models.NewErrorType(t),
+	}
+}
+
+func unwrapErr(err error) error {
+	for e := errors.Unwrap(err); e != nil; e = errors.Unwrap(err) {
+		err = e
+	}
+	return err
 }
