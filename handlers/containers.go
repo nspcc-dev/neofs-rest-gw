@@ -5,6 +5,7 @@ import (
 	"crypto/ecdsa"
 	"encoding/base64"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -36,12 +37,15 @@ const (
 
 // PutContainers handler that creates container in NeoFS.
 func (a *API) PutContainers(params operations.PutContainerParams, principal *models.Principal) middleware.Responder {
-	bt := &BearerToken{
-		Token:     string(*principal),
-		Signature: params.XBearerSignature,
-		Key:       params.XBearerSignatureKey,
+	st := &SessionToken{
+		BearerToken: BearerToken{
+			Token:     string(*principal),
+			Signature: params.XBearerSignature,
+			Key:       params.XBearerSignatureKey,
+		},
+		Verb: sessionv2.ContainerVerbPut,
 	}
-	stoken, err := prepareSessionToken(bt, *params.WalletConnect)
+	stoken, err := prepareSessionToken(st, *params.WalletConnect)
 	if err != nil {
 		resp := a.logAndGetErrorResponse("invalid session token", err)
 		return operations.NewPutContainerBadRequest().WithPayload(resp)
@@ -97,12 +101,15 @@ func (a *API) PutContainerEACL(params operations.PutContainerEACLParams, princip
 		return operations.NewPutContainerEACLBadRequest().WithPayload(resp)
 	}
 
-	bt := &BearerToken{
-		Token:     string(*principal),
-		Signature: params.XBearerSignature,
-		Key:       params.XBearerSignatureKey,
+	st := &SessionToken{
+		BearerToken: BearerToken{
+			Token:     string(*principal),
+			Signature: params.XBearerSignature,
+			Key:       params.XBearerSignatureKey,
+		},
+		Verb: sessionv2.ContainerVerbSetEACL,
 	}
-	stoken, err := prepareSessionToken(bt, *params.WalletConnect)
+	stoken, err := prepareSessionToken(st, *params.WalletConnect)
 	if err != nil {
 		resp := a.logAndGetErrorResponse("invalid session token", err)
 		return operations.NewPutContainerEACLBadRequest().WithPayload(resp)
@@ -186,12 +193,15 @@ func (a *API) ListContainer(params operations.ListContainersParams) middleware.R
 
 // DeleteContainer handler that returns container info.
 func (a *API) DeleteContainer(params operations.DeleteContainerParams, principal *models.Principal) middleware.Responder {
-	bt := &BearerToken{
-		Token:     string(*principal),
-		Signature: params.XBearerSignature,
-		Key:       params.XBearerSignatureKey,
+	st := &SessionToken{
+		BearerToken: BearerToken{
+			Token:     string(*principal),
+			Signature: params.XBearerSignature,
+			Key:       params.XBearerSignatureKey,
+		},
+		Verb: sessionv2.ContainerVerbDelete,
 	}
-	stoken, err := prepareSessionToken(bt, *params.WalletConnect)
+	stoken, err := prepareSessionToken(st, *params.WalletConnect)
 	if err != nil {
 		resp := a.logAndGetErrorResponse("invalid session token", err)
 		return operations.NewDeleteContainerBadRequest().WithPayload(resp)
@@ -389,25 +399,31 @@ func isAlNum(c uint8) bool {
 	return c >= 'a' && c <= 'z' || c >= '0' && c <= '9'
 }
 
-func prepareSessionToken(bt *BearerToken, isWalletConnect bool) (*session.Token, error) {
-	data, err := base64.StdEncoding.DecodeString(bt.Token)
+func prepareSessionToken(st *SessionToken, isWalletConnect bool) (*session.Token, error) {
+	data, err := base64.StdEncoding.DecodeString(st.Token)
 	if err != nil {
-		return nil, fmt.Errorf("can't base64-decode bearer token: %w", err)
+		return nil, fmt.Errorf("can't base64-decode session token: %w", err)
 	}
 
-	signature, err := hex.DecodeString(bt.Signature)
+	signature, err := hex.DecodeString(st.Signature)
 	if err != nil {
-		return nil, fmt.Errorf("couldn't decode bearer signature: %w", err)
+		return nil, fmt.Errorf("couldn't decode signature: %w", err)
 	}
 
-	ownerKey, err := keys.NewPublicKeyFromString(bt.Key)
+	ownerKey, err := keys.NewPublicKeyFromString(st.Key)
 	if err != nil {
-		return nil, fmt.Errorf("couldn't fetch bearer token owner key: %w", err)
+		return nil, fmt.Errorf("couldn't fetch session token owner key: %w", err)
 	}
 
 	body := new(sessionv2.TokenBody)
 	if err = body.Unmarshal(data); err != nil {
-		return nil, fmt.Errorf("can't unmarshal bearer token: %w", err)
+		return nil, fmt.Errorf("can't unmarshal session token: %w", err)
+	}
+
+	if sessionContext, ok := body.GetContext().(*sessionv2.ContainerSessionContext); !ok {
+		return nil, errors.New("expected container session context but got something different")
+	} else if sessionContext.Verb() != st.Verb {
+		return nil, fmt.Errorf("invalid container session verb '%s', expected: '%s'", sessionContext.Verb().String(), st.Verb.String())
 	}
 
 	stoken := new(session.Token)

@@ -9,6 +9,7 @@ import (
 	"github.com/go-openapi/errors"
 	"github.com/google/uuid"
 	"github.com/nspcc-dev/neo-go/pkg/crypto/keys"
+	sessionv2 "github.com/nspcc-dev/neofs-api-go/v2/session"
 	"github.com/nspcc-dev/neofs-rest-gw/gen/models"
 	"github.com/nspcc-dev/neofs-rest-gw/gen/restapi/operations"
 	"github.com/nspcc-dev/neofs-rest-gw/internal/util"
@@ -36,6 +37,11 @@ type BearerToken struct {
 	Token     string
 	Signature string
 	Key       string
+}
+
+type SessionToken struct {
+	BearerToken
+	Verb sessionv2.ContainerSessionVerb
 }
 
 // ContextKey is used for context.Context value. The value requires a key that is not primitive type.
