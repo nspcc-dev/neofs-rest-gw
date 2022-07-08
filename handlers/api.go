@@ -53,6 +53,8 @@ const (
 
 	// ContextKeyRequestID is the ContextKey for RequestID.
 	ContextKeyRequestID ContextKey = "requestID"
+
+	docPrefix = "/doc"
 )
 
 // New creates a new API using specified logger, connection pool and other parameters.
@@ -99,7 +101,7 @@ func (a *API) Configure(api *operations.NeofsRestGwAPI) http.Handler {
 
 	api.ServerShutdown = func() {}
 
-	return a.setupGlobalMiddleware(api.Serve(setupMiddlewares))
+	return a.setupGlobalMiddleware(a.docMiddleware(api.Serve(setupMiddlewares)))
 }
 
 // The middleware configuration is for the handler executors. These do not apply to the swagger.json document.
@@ -120,6 +122,18 @@ func (a *API) setupGlobalMiddleware(handler http.Handler) http.Handler {
 		ctx := context.WithValue(r.Context(), ContextKeyRequestID, requestID)
 
 		handler.ServeHTTP(w, r.WithContext(ctx))
+	})
+}
+
+func (a *API) docMiddleware(handler http.Handler) http.Handler {
+	fh := http.StripPrefix(docPrefix, http.FileServer(http.Dir("static/doc")))
+
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.HasPrefix(r.URL.Path, docPrefix) {
+			fh.ServeHTTP(w, r)
+		} else {
+			handler.ServeHTTP(w, r)
+		}
 	})
 }
 
