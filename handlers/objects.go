@@ -370,7 +370,7 @@ func prepareBearerToken(bt *BearerToken, isWalletConnect bool) (*token.BearerTok
 	btoken.ToV2().SetSignature(v2signature)
 
 	if isWalletConnect {
-		if !walletconnect.Verify((*ecdsa.PublicKey)(ownerKey), data, signature) {
+		if !walletconnect.Verify((*ecdsa.PublicKey)(ownerKey), []byte(bt.Token), signature) {
 			return nil, fmt.Errorf("invalid signature")
 		}
 	} else if err = btoken.VerifySignature(); err != nil {

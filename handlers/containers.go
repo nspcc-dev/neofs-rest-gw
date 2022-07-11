@@ -423,7 +423,7 @@ func prepareSessionToken(st *SessionToken, isWalletConnect bool) (*session.Token
 	stoken.ToV2().SetSignature(v2signature)
 
 	if isWalletConnect {
-		if !walletconnect.Verify((*ecdsa.PublicKey)(ownerKey), data, signature) {
+		if !walletconnect.Verify((*ecdsa.PublicKey)(ownerKey), []byte(st.Token), signature) {
 			return nil, fmt.Errorf("invalid signature")
 		}
 	} else if !stoken.VerifySignature() {

@@ -924,11 +924,13 @@ func signToken(t *testing.T, key *keys.PrivateKey, data []byte) *handlers.Bearer
 }
 
 func signTokenWalletConnect(t *testing.T, key *keys.PrivateKey, data []byte) *handlers.BearerToken {
-	sm, err := walletconnect.SignMessage(&key.PrivateKey, data[:])
+	b64Token := make([]byte, base64.StdEncoding.EncodedLen(len(data)))
+	base64.StdEncoding.Encode(b64Token, data)
+	sm, err := walletconnect.SignMessage(&key.PrivateKey, b64Token[:])
 	require.NoError(t, err)
 
 	return &handlers.BearerToken{
-		Token:     base64.StdEncoding.EncodeToString(data),
+		Token:     string(b64Token),
 		Signature: hex.EncodeToString(append(sm.Data, sm.Salt...)),
 		Key:       hex.EncodeToString(key.PublicKey().Bytes()),
 	}
