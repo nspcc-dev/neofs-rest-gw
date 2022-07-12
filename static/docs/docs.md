@@ -31,7 +31,7 @@ REP 3
 Basic ACL is a part of the container structure, and it is always created simultaneously with the container.
 Therefore, it is never subject to any changes. It is a 32-bit integer with a bit field in the following format:
 
-<img src="doc/acl-basic.svg" alt="acl-basic">
+<img src="docs/acl-basic.svg" alt="acl-basic">
 
 | Symbol | Meaning | Description                                                                                    |
 |--------|:--------|------------------------------------------------------------------------------------------------|

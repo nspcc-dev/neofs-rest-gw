@@ -54,7 +54,7 @@ const (
 	// ContextKeyRequestID is the ContextKey for RequestID.
 	ContextKeyRequestID ContextKey = "requestID"
 
-	docPrefix = "/doc"
+	docsPrefix = "/docs"
 )
 
 // New creates a new API using specified logger, connection pool and other parameters.
@@ -126,10 +126,10 @@ func (a *API) setupGlobalMiddleware(handler http.Handler) http.Handler {
 }
 
 func (a *API) docMiddleware(handler http.Handler) http.Handler {
-	fh := http.StripPrefix(docPrefix, http.FileServer(http.Dir("static/doc")))
+	fh := http.StripPrefix(docsPrefix, http.FileServer(http.Dir("static/docs")))
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if strings.HasPrefix(r.URL.Path, docPrefix) {
+		if strings.HasPrefix(r.URL.Path, docsPrefix) {
 			fh.ServeHTTP(w, r)
 		} else {
 			handler.ServeHTTP(w, r)

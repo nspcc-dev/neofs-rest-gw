@@ -77,3 +77,8 @@ In general, everything available as CLI parameter can also be specified via envi
 specifically mentioned in most cases
 (see `--help` also). If you prefer a config file you can use it in yaml format. See config [examples](./config) for
 details.
+
+## Docs
+You can see additional docs and swagger specification using the following url (suppose you ran rest-gw on `localhost:8090`):
+* http://localhost:8090/docs - rest-gw documentation
+* http://localhost:8090/v1/docs - swagger specification
