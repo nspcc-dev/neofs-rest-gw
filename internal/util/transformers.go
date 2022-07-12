@@ -5,14 +5,13 @@ import (
 	"errors"
 	"fmt"
 
-	sessionv2 "github.com/nspcc-dev/neofs-api-go/v2/session"
 	"github.com/nspcc-dev/neofs-rest-gw/gen/models"
+	"github.com/nspcc-dev/neofs-sdk-go/bearer"
 	apistatus "github.com/nspcc-dev/neofs-sdk-go/client/status"
 	cid "github.com/nspcc-dev/neofs-sdk-go/container/id"
 	"github.com/nspcc-dev/neofs-sdk-go/eacl"
 	"github.com/nspcc-dev/neofs-sdk-go/object"
 	"github.com/nspcc-dev/neofs-sdk-go/session"
-	"github.com/nspcc-dev/neofs-sdk-go/token"
 )
 
 // ToNativeAction converts models.Action to appropriate eacl.Action.
@@ -184,54 +183,40 @@ func FromNativeRole(r eacl.Role) (*models.Role, error) {
 }
 
 // ToNativeVerb converts models.Verb to appropriate session.ContainerSessionVerb.
-func ToNativeVerb(r *models.Verb) (sessionv2.ContainerSessionVerb, error) {
+func ToNativeVerb(r *models.Verb) (session.ContainerVerb, error) {
 	if r == nil {
-		return sessionv2.ContainerVerbUnknown, fmt.Errorf("unsupported empty verb type")
+		return 0, fmt.Errorf("unsupported empty verb type")
 	}
 
 	switch *r {
 	case models.VerbPUT:
-		return sessionv2.ContainerVerbPut, nil
+		return session.VerbContainerPut, nil
 	case models.VerbDELETE:
-		return sessionv2.ContainerVerbDelete, nil
+		return session.VerbContainerDelete, nil
 	case models.VerbSETEACL:
-		return sessionv2.ContainerVerbSetEACL, nil
+		return session.VerbContainerSetEACL, nil
 	default:
-		return sessionv2.ContainerVerbUnknown, fmt.Errorf("unsupported verb type: '%s'", *r)
+		return 0, fmt.Errorf("unsupported verb type: '%s'", *r)
 	}
-}
-
-// ToNativeRule converts models.Rule to appropriate session.ContainerContext.
-func ToNativeRule(r *models.Rule) (*session.ContainerContext, error) {
-	var ctx session.ContainerContext
-
-	verb, err := ToNativeVerb(r.Verb)
-	if err != nil {
-		return nil, err
-	}
-	ctx.ToV2().SetVerb(verb)
-
-	if r.ContainerID == "" {
-		ctx.ApplyTo(nil)
-	} else {
-		var cnrID cid.ID
-		if err = cnrID.Parse(r.ContainerID); err != nil {
-			return nil, fmt.Errorf("couldn't parse container id: %w", err)
-		}
-		ctx.ApplyTo(&cnrID)
-	}
-
-	return &ctx, nil
 }
 
 // ToNativeContainerToken converts models.Rule to appropriate session.Token.
-func ToNativeContainerToken(tokenRule *models.Rule) (*session.Token, error) {
-	sctx, err := ToNativeRule(tokenRule)
-	if err != nil {
-		return nil, fmt.Errorf("couldn't transform rule to native: %w", err)
+func ToNativeContainerToken(tokenRule *models.Rule) (session.Container, error) {
+	var tok session.Container
+
+	if tokenRule.ContainerID != "" {
+		var cnrID cid.ID
+		if err := cnrID.DecodeString(tokenRule.ContainerID); err != nil {
+			return session.Container{}, fmt.Errorf("couldn't parse container id: %w", err)
+		}
+		tok.ApplyOnlyTo(cnrID)
 	}
-	tok := session.NewToken()
-	tok.SetContext(sctx)
+
+	verb, err := ToNativeVerb(tokenRule.Verb)
+	if err != nil {
+		return session.Container{}, err
+	}
+	tok.ForVerb(verb)
 
 	return tok, nil
 }
@@ -368,14 +353,14 @@ func FromNativeTarget(t eacl.Target) (*models.Target, error) {
 }
 
 // ToNativeObjectToken converts []*models.Record to appropriate token.BearerToken.
-func ToNativeObjectToken(tokenRecords []*models.Record) (*token.BearerToken, error) {
+func ToNativeObjectToken(tokenRecords []*models.Record) (*bearer.Token, error) {
 	table, err := ToNativeTable(tokenRecords)
 	if err != nil {
 		return nil, err
 	}
 
-	var btoken token.BearerToken
-	btoken.SetEACLTable(table)
+	var btoken bearer.Token
+	btoken.SetEACLTable(*table)
 
 	return &btoken, nil
 }

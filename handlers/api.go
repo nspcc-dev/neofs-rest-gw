@@ -14,6 +14,7 @@ import (
 	"github.com/nspcc-dev/neofs-rest-gw/gen/restapi/operations"
 	"github.com/nspcc-dev/neofs-rest-gw/internal/util"
 	"github.com/nspcc-dev/neofs-sdk-go/pool"
+	"github.com/nspcc-dev/neofs-sdk-go/user"
 	"go.uber.org/zap"
 )
 
@@ -22,6 +23,7 @@ type API struct {
 	log              *zap.Logger
 	pool             *pool.Pool
 	key              *keys.PrivateKey
+	owner            *user.ID
 	defaultTimestamp bool
 }
 
@@ -59,10 +61,14 @@ const (
 
 // New creates a new API using specified logger, connection pool and other parameters.
 func New(prm *PrmAPI) *API {
+	var owner user.ID
+	user.IDFromKey(&owner, prm.Key.PrivateKey.PublicKey)
+
 	return &API{
 		log:              prm.Logger,
 		pool:             prm.Pool,
 		key:              prm.Key,
+		owner:            &owner,
 		defaultTimestamp: prm.DefaultTimestamp,
 	}
 }

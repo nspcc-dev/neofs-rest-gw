@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"context"
-	"encoding/binary"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -11,7 +10,6 @@ import (
 
 	objectv2 "github.com/nspcc-dev/neofs-api-go/v2/object"
 	"github.com/nspcc-dev/neofs-rest-gw/gen/models"
-	"github.com/nspcc-dev/neofs-sdk-go/netmap"
 	"github.com/nspcc-dev/neofs-sdk-go/object"
 	"github.com/nspcc-dev/neofs-sdk-go/pool"
 )
@@ -134,21 +132,13 @@ func getEpochDurations(ctx context.Context, p *pool.Pool) (*epochDurations, erro
 	}
 
 	res := &epochDurations{
-		currentEpoch: networkInfo.CurrentEpoch(),
-		msPerBlock:   networkInfo.MsPerBlock(),
+		currentEpoch:  networkInfo.CurrentEpoch(),
+		msPerBlock:    networkInfo.MsPerBlock(),
+		blockPerEpoch: networkInfo.EpochDuration(),
 	}
 
-	networkInfo.NetworkConfig().IterateParameters(func(parameter *netmap.NetworkParameter) bool {
-		if string(parameter.Key()) == "EpochDuration" {
-			data := make([]byte, 8)
-			copy(data, parameter.Value())
-			res.blockPerEpoch = binary.LittleEndian.Uint64(data)
-			return true
-		}
-		return false
-	})
 	if res.blockPerEpoch == 0 {
-		return nil, fmt.Errorf("not found param: EpochDuration")
+		return nil, fmt.Errorf("EpochDuration is zero")
 	}
 	return res, nil
 }

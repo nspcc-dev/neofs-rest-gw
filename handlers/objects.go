@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"context"
-	"crypto/ecdsa"
 	"encoding/base64"
 	"encoding/hex"
 	"errors"
@@ -17,13 +16,11 @@ import (
 	"github.com/nspcc-dev/neofs-rest-gw/gen/models"
 	"github.com/nspcc-dev/neofs-rest-gw/gen/restapi/operations"
 	"github.com/nspcc-dev/neofs-rest-gw/internal/util"
-	walletconnect "github.com/nspcc-dev/neofs-rest-gw/internal/wallet-connect"
+	"github.com/nspcc-dev/neofs-sdk-go/bearer"
 	cid "github.com/nspcc-dev/neofs-sdk-go/container/id"
 	"github.com/nspcc-dev/neofs-sdk-go/object"
-	"github.com/nspcc-dev/neofs-sdk-go/object/address"
 	oid "github.com/nspcc-dev/neofs-sdk-go/object/id"
 	"github.com/nspcc-dev/neofs-sdk-go/pool"
-	"github.com/nspcc-dev/neofs-sdk-go/token"
 	"go.uber.org/zap"
 )
 
@@ -39,7 +36,7 @@ func (a *API) PutObjects(params operations.PutObjectParams, principal *models.Pr
 	}
 
 	var cnrID cid.ID
-	if err = cnrID.Parse(*params.Object.ContainerID); err != nil {
+	if err = cnrID.DecodeString(*params.Object.ContainerID); err != nil {
 		resp := a.logAndGetErrorResponse("invalid container id", err)
 		return errorResponse.WithPayload(resp)
 	}
@@ -60,9 +57,11 @@ func (a *API) PutObjects(params operations.PutObjectParams, principal *models.Pr
 		return errorResponse.WithPayload(resp)
 	}
 
+	owner := bearer.ResolveIssuer(btoken)
+
 	obj := object.New()
-	obj.SetContainerID(&cnrID)
-	obj.SetOwnerID(btoken.OwnerID())
+	obj.SetContainerID(cnrID)
+	obj.SetOwnerID(&owner)
 	obj.SetPayload(payload)
 	obj.SetAttributes(attributes...)
 
@@ -101,7 +100,7 @@ func (a *API) GetObjectInfo(params operations.GetObjectInfoParams, principal *mo
 	}
 
 	var prm pool.PrmObjectHead
-	prm.SetAddress(*addr)
+	prm.SetAddress(addr)
 	prm.UseBearer(btoken)
 
 	objInfo, err := a.pool.HeadObject(ctx, prm)
@@ -126,7 +125,7 @@ func (a *API) GetObjectInfo(params operations.GetObjectInfoParams, principal *mo
 	}
 
 	var prmRange pool.PrmObjectRange
-	prmRange.SetAddress(*addr)
+	prmRange.SetAddress(addr)
 	prmRange.UseBearer(btoken)
 
 	var offset, length uint64
@@ -195,7 +194,7 @@ func (a *API) DeleteObject(params operations.DeleteObjectParams, principal *mode
 	}
 
 	var prm pool.PrmObjectDelete
-	prm.SetAddress(*addr)
+	prm.SetAddress(addr)
 	prm.UseBearer(btoken)
 
 	if err = a.pool.DeleteObject(ctx, prm); err != nil {
@@ -212,7 +211,7 @@ func (a *API) SearchObjects(params operations.SearchObjectsParams, principal *mo
 	ctx := params.HTTPRequest.Context()
 
 	var cnrID cid.ID
-	if err := cnrID.Parse(params.ContainerID); err != nil {
+	if err := cnrID.DecodeString(params.ContainerID); err != nil {
 		resp := a.logAndGetErrorResponse("invalid container id", err)
 		return errorResponse.WithPayload(resp)
 	}
@@ -254,7 +253,7 @@ func (a *API) SearchObjects(params operations.SearchObjectsParams, principal *mo
 			return false
 		}
 
-		if obj, iterateErr = headObjectBaseInfo(ctx, a.pool, &cnrID, &id, btoken); iterateErr != nil {
+		if obj, iterateErr = headObjectBaseInfo(ctx, a.pool, cnrID, id, btoken); iterateErr != nil {
 			return true
 		}
 
@@ -278,13 +277,13 @@ func (a *API) SearchObjects(params operations.SearchObjectsParams, principal *mo
 	return operations.NewSearchObjectsOK().WithPayload(list)
 }
 
-func headObjectBaseInfo(ctx context.Context, p *pool.Pool, cnrID *cid.ID, objID *oid.ID, btoken *token.BearerToken) (*models.ObjectBaseInfo, error) {
-	addr := address.NewAddress()
-	addr.SetContainerID(cnrID)
-	addr.SetObjectID(objID)
+func headObjectBaseInfo(ctx context.Context, p *pool.Pool, cnrID cid.ID, objID oid.ID, btoken bearer.Token) (*models.ObjectBaseInfo, error) {
+	var addr oid.Address
+	addr.SetContainer(cnrID)
+	addr.SetObject(objID)
 
 	var prm pool.PrmObjectHead
-	prm.SetAddress(*addr)
+	prm.SetAddress(addr)
 	prm.UseBearer(btoken)
 
 	objInfo, err := p.HeadObject(ctx, prm)
@@ -309,24 +308,24 @@ func headObjectBaseInfo(ctx context.Context, p *pool.Pool, cnrID *cid.ID, objID 
 	return resp, nil
 }
 
-func parseAddress(containerID, objectID string) (*address.Address, error) {
+func parseAddress(containerID, objectID string) (oid.Address, error) {
 	var cnrID cid.ID
-	if err := cnrID.Parse(containerID); err != nil {
-		return nil, fmt.Errorf("invalid container id: %w", err)
+	if err := cnrID.DecodeString(containerID); err != nil {
+		return oid.Address{}, fmt.Errorf("invalid container id: %w", err)
 	}
 	var objID oid.ID
-	if err := objID.Parse(objectID); err != nil {
-		return nil, fmt.Errorf("invalid object id: %w", err)
+	if err := objID.DecodeString(objectID); err != nil {
+		return oid.Address{}, fmt.Errorf("invalid object id: %w", err)
 	}
 
-	addr := address.NewAddress()
-	addr.SetContainerID(&cnrID)
-	addr.SetObjectID(&objID)
+	var addr oid.Address
+	addr.SetContainer(cnrID)
+	addr.SetObject(objID)
 
 	return addr, nil
 }
 
-func getBearerToken(token *models.Principal, signature, key string, isWalletConnect bool) (*token.BearerToken, error) {
+func getBearerToken(token *models.Principal, signature, key string, isWalletConnect bool) (bearer.Token, error) {
 	bt := &BearerToken{
 		Token:     string(*token),
 		Signature: signature,
@@ -336,45 +335,46 @@ func getBearerToken(token *models.Principal, signature, key string, isWalletConn
 	return prepareBearerToken(bt, isWalletConnect)
 }
 
-func prepareBearerToken(bt *BearerToken, isWalletConnect bool) (*token.BearerToken, error) {
+func prepareBearerToken(bt *BearerToken, isWalletConnect bool) (bearer.Token, error) {
 	data, err := base64.StdEncoding.DecodeString(bt.Token)
 	if err != nil {
-		return nil, fmt.Errorf("can't base64-decode bearer token: %w", err)
+		return bearer.Token{}, fmt.Errorf("can't base64-decode bearer token: %w", err)
 	}
 
 	signature, err := hex.DecodeString(bt.Signature)
 	if err != nil {
-		return nil, fmt.Errorf("couldn't decode bearer signature: %w", err)
+		return bearer.Token{}, fmt.Errorf("couldn't decode bearer signature: %w", err)
 	}
 
 	ownerKey, err := keys.NewPublicKeyFromString(bt.Key)
 	if err != nil {
-		return nil, fmt.Errorf("couldn't fetch bearer token owner key: %w", err)
+		return bearer.Token{}, fmt.Errorf("couldn't fetch bearer token owner key: %w", err)
 	}
 
 	body := new(acl.BearerTokenBody)
 	if err = body.Unmarshal(data); err != nil {
-		return nil, fmt.Errorf("can't unmarshal bearer token: %w", err)
+		return bearer.Token{}, fmt.Errorf("can't unmarshal bearer token: %w", err)
 	}
-
-	btoken := new(token.BearerToken)
-	btoken.ToV2().SetBody(body)
 
 	v2signature := new(refs.Signature)
 	v2signature.SetScheme(refs.ECDSA_SHA512)
 	if isWalletConnect {
-		v2signature.SetScheme(2)
+		v2signature.SetScheme(refs.ECDSA_RFC6979_SHA256_WALLET_CONNECT)
 	}
 	v2signature.SetSign(signature)
 	v2signature.SetKey(ownerKey.Bytes())
-	btoken.ToV2().SetSignature(v2signature)
 
-	if isWalletConnect {
-		if !walletconnect.Verify((*ecdsa.PublicKey)(ownerKey), []byte(bt.Token), signature) {
-			return nil, fmt.Errorf("invalid signature")
-		}
-	} else if err = btoken.VerifySignature(); err != nil {
-		return nil, fmt.Errorf("invalid signature")
+	var v2btoken acl.BearerToken
+	v2btoken.SetBody(body)
+	v2btoken.SetSignature(v2signature)
+
+	var btoken bearer.Token
+	if err = btoken.ReadFromV2(v2btoken); err != nil {
+		return bearer.Token{}, fmt.Errorf("read from v2 token: %w", err)
+	}
+
+	if !btoken.VerifySignature() {
+		return bearer.Token{}, fmt.Errorf("invalid signature")
 	}
 
 	return btoken, nil

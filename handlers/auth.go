@@ -8,11 +8,15 @@ import (
 	"github.com/go-openapi/runtime/middleware"
 	"github.com/google/uuid"
 	"github.com/nspcc-dev/neo-go/pkg/crypto/keys"
+	"github.com/nspcc-dev/neofs-api-go/v2/acl"
+	"github.com/nspcc-dev/neofs-api-go/v2/refs"
+	sessionv2 "github.com/nspcc-dev/neofs-api-go/v2/session"
 	"github.com/nspcc-dev/neofs-rest-gw/gen/models"
 	"github.com/nspcc-dev/neofs-rest-gw/gen/restapi/operations"
 	"github.com/nspcc-dev/neofs-rest-gw/internal/util"
-	"github.com/nspcc-dev/neofs-sdk-go/owner"
+	neofsecdsa "github.com/nspcc-dev/neofs-sdk-go/crypto/ecdsa"
 	"github.com/nspcc-dev/neofs-sdk-go/pool"
+	"github.com/nspcc-dev/neofs-sdk-go/user"
 )
 
 const defaultTokenExpDuration = 100 // in epoch
@@ -83,7 +87,7 @@ func (a *API) PostAuth(params operations.AuthParams) middleware.Responder {
 
 		if isObject {
 			prm := newObjectParams(commonPrm, token)
-			response[i], err = prepareObjectToken(ctx, prm, a.pool)
+			response[i], err = prepareObjectToken(ctx, prm, a.pool, *a.owner)
 		} else {
 			prm := newContainerParams(commonPrm, token)
 			response[i], err = prepareContainerTokens(ctx, prm, a.pool, a.key.PublicKey())
@@ -96,23 +100,23 @@ func (a *API) PostAuth(params operations.AuthParams) middleware.Responder {
 	return operations.NewAuthOK().WithPayload(response)
 }
 
-func prepareObjectToken(ctx context.Context, params objectTokenParams, pool *pool.Pool) (*models.TokenResponse, error) {
+func prepareObjectToken(ctx context.Context, params objectTokenParams, pool *pool.Pool, owner user.ID) (*models.TokenResponse, error) {
 	btoken, err := util.ToNativeObjectToken(params.Records)
 	if err != nil {
 		return nil, fmt.Errorf("couldn't transform token to native: %w", err)
 	}
-	btoken.SetOwner(pool.OwnerID())
+	btoken.ForUser(owner)
 
 	iat, exp, err := getTokenLifetime(ctx, pool, params.XBearerLifetime)
 	if err != nil {
 		return nil, fmt.Errorf("couldn't get lifetime: %w", err)
 	}
-	btoken.SetLifetime(exp, 0, iat)
+	btoken.SetIat(iat)
+	btoken.SetExp(exp)
 
-	binaryBearer, err := btoken.ToV2().GetBody().StableMarshal(nil)
-	if err != nil {
-		return nil, fmt.Errorf("couldn't marshal bearer token: %w", err)
-	}
+	var v2token acl.BearerToken
+	btoken.WriteToV2(&v2token)
+	binaryBearer := v2token.GetBody().StableMarshal(nil)
 
 	return &models.TokenResponse{
 		Name:  params.Name,
@@ -127,8 +131,8 @@ func prepareContainerTokens(ctx context.Context, params containerTokenParams, po
 		return nil, fmt.Errorf("couldn't get lifetime: %w", err)
 	}
 
-	var ownerID owner.ID
-	if err = ownerID.Parse(params.XBearerOwnerID); err != nil {
+	var ownerID user.ID
+	if err = ownerID.DecodeString(params.XBearerOwnerID); err != nil {
 		return nil, fmt.Errorf("invalid bearer owner: %w", err)
 	}
 
@@ -137,22 +141,21 @@ func prepareContainerTokens(ctx context.Context, params containerTokenParams, po
 		return nil, fmt.Errorf("couldn't transform rule to native session token: %w", err)
 	}
 
-	uid, err := uuid.New().MarshalBinary()
-	if err != nil {
-		return nil, err
-	}
-	stoken.SetID(uid)
-
-	stoken.SetOwnerID(&ownerID)
-
+	stoken.SetID(uuid.New())
 	stoken.SetIat(iat)
 	stoken.SetExp(exp)
-	stoken.SetSessionKey(key.Bytes())
 
-	binaryToken, err := stoken.ToV2().GetBody().StableMarshal(nil)
-	if err != nil {
-		return nil, fmt.Errorf("couldn't marshal session token: %w", err)
-	}
+	authKey := neofsecdsa.PublicKey(*key)
+	stoken.SetAuthKey(&authKey)
+
+	var v2token sessionv2.Token
+	stoken.WriteToV2(&v2token)
+
+	var issuer refs.OwnerID
+	ownerID.WriteToV2(&issuer)
+	v2token.GetBody().SetOwnerID(&issuer)
+
+	binaryToken := v2token.GetBody().StableMarshal(nil)
 
 	return &models.TokenResponse{
 		Name:  params.Name,

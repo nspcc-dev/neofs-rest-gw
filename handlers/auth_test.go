@@ -7,12 +7,14 @@ import (
 	"crypto/sha512"
 	"encoding/base64"
 	"encoding/hex"
+	"math"
 	"testing"
 
 	"github.com/nspcc-dev/neo-go/pkg/crypto/keys"
+	"github.com/nspcc-dev/neofs-api-go/v2/acl"
 	"github.com/nspcc-dev/neofs-rest-gw/gen/models"
 	"github.com/nspcc-dev/neofs-rest-gw/internal/util"
-	"github.com/nspcc-dev/neofs-sdk-go/owner"
+	"github.com/nspcc-dev/neofs-sdk-go/user"
 	"github.com/stretchr/testify/require"
 )
 
@@ -37,14 +39,19 @@ func TestSign(t *testing.T) {
 	btoken, err := util.ToNativeObjectToken(records)
 	require.NoError(t, err)
 
+	btoken.SetExp(math.MaxInt64)
+
 	ownerKey, err := keys.NewPublicKeyFromString(pubKeyHex)
 	require.NoError(t, err)
 
-	btoken.SetOwner(owner.NewIDFromPublicKey((*ecdsa.PublicKey)(ownerKey)))
+	var owner user.ID
+	user.IDFromKey(&owner, *(*ecdsa.PublicKey)(ownerKey))
+	btoken.ForUser(owner)
 
-	binaryBearer, err := btoken.ToV2().GetBody().StableMarshal(nil)
-	require.NoError(t, err)
+	var v2token acl.BearerToken
+	btoken.WriteToV2(&v2token)
 
+	binaryBearer := v2token.GetBody().StableMarshal(nil)
 	bearerBase64 := base64.StdEncoding.EncodeToString(binaryBearer)
 
 	h := sha512.Sum512(binaryBearer)
