@@ -2,13 +2,11 @@ package handlers
 
 import (
 	"context"
-	"crypto/ecdsa"
 	"encoding/base64"
 	"encoding/hex"
 	"errors"
 	"fmt"
 	"net/http"
-	"strconv"
 	"strings"
 	"time"
 
@@ -19,20 +17,21 @@ import (
 	"github.com/nspcc-dev/neofs-rest-gw/gen/models"
 	"github.com/nspcc-dev/neofs-rest-gw/gen/restapi/operations"
 	"github.com/nspcc-dev/neofs-rest-gw/internal/util"
-	walletconnect "github.com/nspcc-dev/neofs-rest-gw/internal/wallet-connect"
-	"github.com/nspcc-dev/neofs-sdk-go/acl"
 	"github.com/nspcc-dev/neofs-sdk-go/container"
+	"github.com/nspcc-dev/neofs-sdk-go/container/acl"
 	cid "github.com/nspcc-dev/neofs-sdk-go/container/id"
-	"github.com/nspcc-dev/neofs-sdk-go/owner"
-	"github.com/nspcc-dev/neofs-sdk-go/policy"
+	"github.com/nspcc-dev/neofs-sdk-go/netmap"
 	"github.com/nspcc-dev/neofs-sdk-go/pool"
 	"github.com/nspcc-dev/neofs-sdk-go/session"
+	"github.com/nspcc-dev/neofs-sdk-go/user"
 	"go.uber.org/zap"
 )
 
 const (
 	defaultPlacementPolicy = "REP 3"
-	defaultBasicACL        = acl.PrivateBasicName
+	defaultBasicACL        = acl.NamePrivate
+	attributeName          = "Name"
+	attributeTimestamp     = "Timestamp"
 )
 
 // PutContainers handler that creates container in NeoFS.
@@ -60,7 +59,7 @@ func (a *API) PutContainers(params operations.PutContainerParams, principal *mod
 	}
 
 	var resp operations.PutContainerOKBody
-	resp.ContainerID = util.NewString(cnrID.String())
+	resp.ContainerID = util.NewString(cnrID.EncodeToString())
 
 	return operations.NewPutContainerOK().WithPayload(&resp)
 }
@@ -73,7 +72,7 @@ func (a *API) GetContainer(params operations.GetContainerParams) middleware.Resp
 		return operations.NewGetContainerBadRequest().WithPayload(resp)
 	}
 
-	cnrInfo, err := getContainerInfo(params.HTTPRequest.Context(), a.pool, *cnrID)
+	cnrInfo, err := getContainerInfo(params.HTTPRequest.Context(), a.pool, cnrID)
 	if err != nil {
 		resp := a.logAndGetErrorResponse("get container", err)
 		return operations.NewGetContainerBadRequest().WithPayload(resp)
@@ -133,8 +132,8 @@ func (a *API) GetContainerEACL(params operations.GetContainerEACLParams) middlew
 func (a *API) ListContainer(params operations.ListContainersParams) middleware.Responder {
 	ctx := params.HTTPRequest.Context()
 
-	var ownerID owner.ID
-	if err := ownerID.Parse(params.OwnerID); err != nil {
+	var ownerID user.ID
+	if err := ownerID.DecodeString(params.OwnerID); err != nil {
 		resp := a.logAndGetErrorResponse("invalid owner id", err)
 		return operations.NewListContainersBadRequest().WithPayload(resp)
 	}
@@ -203,8 +202,8 @@ func (a *API) DeleteContainer(params operations.DeleteContainerParams, principal
 	}
 
 	var prm pool.PrmContainerDelete
-	prm.SetContainerID(*cnrID)
-	prm.SetSessionToken(*stoken)
+	prm.SetContainerID(cnrID)
+	prm.SetSessionToken(stoken)
 
 	if err = a.pool.DeleteContainer(params.HTTPRequest.Context(), prm); err != nil {
 		resp := a.logAndGetErrorResponse("delete container", err, zap.String("container", params.ContainerID))
@@ -223,58 +222,62 @@ func getContainerInfo(ctx context.Context, p *pool.Pool, cnrID cid.ID) (*models.
 		return nil, err
 	}
 
-	attrs := make([]*models.Attribute, len(cnr.Attributes()))
-	for i, attr := range cnr.Attributes() {
-		attrs[i] = &models.Attribute{
-			Key:   util.NewString(attr.Key()),
-			Value: util.NewString(attr.Value()),
-		}
+	var attrs []*models.Attribute
+	cnr.IterateAttributes(func(key, val string) {
+		attrs = append(attrs, &models.Attribute{
+			Key:   util.NewString(key),
+			Value: util.NewString(val),
+		})
+	})
+
+	var sb strings.Builder
+	if err = cnr.PlacementPolicy().WriteStringTo(&sb); err != nil {
+		return nil, fmt.Errorf("writer policy to string: %w", err)
 	}
 
 	return &models.ContainerInfo{
 		ContainerID:     util.NewString(cnrID.String()),
-		Version:         util.NewString(cnr.Version().String()),
-		OwnerID:         util.NewString(cnr.OwnerID().String()),
-		BasicACL:        util.NewString(acl.BasicACL(cnr.BasicACL()).String()),
-		PlacementPolicy: util.NewString(strings.Join(policy.Encode(cnr.PlacementPolicy()), " ")),
+		OwnerID:         util.NewString(cnr.Owner().String()),
+		BasicACL:        util.NewString(cnr.BasicACL().EncodeToString()),
+		PlacementPolicy: util.NewString(sb.String()),
 		Attributes:      attrs,
 	}, nil
 }
 
 func prepareUserAttributes(header http.Header) map[string]string {
 	filtered := filterHeaders(header)
-	delete(filtered, container.AttributeName)
-	delete(filtered, container.AttributeTimestamp)
+	delete(filtered, attributeName)
+	delete(filtered, attributeTimestamp)
 	return filtered
 }
 
-func parseContainerID(containerID string) (*cid.ID, error) {
+func parseContainerID(containerID string) (cid.ID, error) {
 	var cnrID cid.ID
-	if err := cnrID.Parse(containerID); err != nil {
-		return nil, fmt.Errorf("parse container id '%s': %w", containerID, err)
+	if err := cnrID.DecodeString(containerID); err != nil {
+		return cid.ID{}, fmt.Errorf("parse container id '%s': %w", containerID, err)
 	}
 
-	return &cnrID, nil
+	return cnrID, nil
 }
 
-func setContainerEACL(ctx context.Context, p *pool.Pool, cnrID *cid.ID, stoken *session.Token, eaclPrm *models.Eacl) error {
+func setContainerEACL(ctx context.Context, p *pool.Pool, cnrID cid.ID, stoken session.Container, eaclPrm *models.Eacl) error {
 	table, err := util.ToNativeTable(eaclPrm.Records)
 	if err != nil {
 		return err
 	}
 
 	table.SetCID(cnrID)
-	table.SetSessionToken(stoken)
 
 	var prm pool.PrmContainerSetEACL
 	prm.SetTable(*table)
+	prm.WithinSession(stoken)
 
 	return p.SetEACL(ctx, prm)
 }
 
-func getContainerEACL(ctx context.Context, p *pool.Pool, cnrID *cid.ID) (*models.Eacl, error) {
+func getContainerEACL(ctx context.Context, p *pool.Pool, cnrID cid.ID) (*models.Eacl, error) {
 	var prm pool.PrmContainerEACL
-	prm.SetContainerID(*cnrID)
+	prm.SetContainerID(cnrID)
 
 	table, err := p.GetEACL(ctx, prm)
 	if err != nil {
@@ -282,7 +285,7 @@ func getContainerEACL(ctx context.Context, p *pool.Pool, cnrID *cid.ID) (*models
 	}
 
 	tableResp := &models.Eacl{
-		ContainerID: cnrID.String(),
+		ContainerID: cnrID.EncodeToString(),
 		Records:     make([]*models.Record, len(table.Records())),
 	}
 
@@ -297,59 +300,63 @@ func getContainerEACL(ctx context.Context, p *pool.Pool, cnrID *cid.ID) (*models
 	return tableResp, nil
 }
 
-func createContainer(ctx context.Context, p *pool.Pool, stoken *session.Token, params *operations.PutContainerParams, userAttrs map[string]string) (*cid.ID, error) {
+func createContainer(ctx context.Context, p *pool.Pool, stoken session.Container, params *operations.PutContainerParams, userAttrs map[string]string) (cid.ID, error) {
 	request := params.Container
 
 	if request.PlacementPolicy == "" {
 		request.PlacementPolicy = defaultPlacementPolicy
 	}
-	pp, err := policy.Parse(request.PlacementPolicy)
+	var policy netmap.PlacementPolicy
+	err := policy.DecodeString(request.PlacementPolicy)
 	if err != nil {
-		return nil, fmt.Errorf("couldn't parse placement policy: %w", err)
+		return cid.ID{}, fmt.Errorf("couldn't parse placement policy: %w", err)
 	}
 
 	if request.BasicACL == "" {
 		request.BasicACL = defaultBasicACL
 	}
-	basicACL, err := acl.ParseBasicACL(request.BasicACL)
-	if err != nil {
-		return nil, fmt.Errorf("couldn't parse basic acl: %w", err)
+
+	var basicACL acl.Basic
+	if err = basicACL.DecodeString(request.BasicACL); err != nil {
+		return cid.ID{}, fmt.Errorf("couldn't parse basic acl: %w", err)
 	}
 
-	cnrOptions := []container.Option{
-		container.WithPolicy(pp),
-		container.WithCustomBasicACL(basicACL),
-		container.WithAttribute(container.AttributeTimestamp, strconv.FormatInt(time.Now().Unix(), 10)),
-	}
+	var cnr container.Container
+	cnr.Init()
+	cnr.SetPlacementPolicy(policy)
+	cnr.SetBasicACL(basicACL)
+	cnr.SetOwner(stoken.Issuer())
+
+	container.SetCreationTime(&cnr, time.Now())
 
 	if request.ContainerName != "" {
-		container.WithAttribute(container.AttributeName, request.ContainerName)
+		container.SetName(&cnr, request.ContainerName)
 	}
 
 	for key, val := range userAttrs {
-		cnrOptions = append(cnrOptions, container.WithAttribute(key, val))
+		cnr.SetAttribute(key, val)
 	}
-
-	cnr := container.New(cnrOptions...)
-	cnr.SetOwnerID(stoken.OwnerID())
-	cnr.SetSessionToken(stoken)
 
 	if *params.NameScopeGlobal { // we don't check for nil because there is default false value
 		if err = checkNNSContainerName(request.ContainerName); err != nil {
-			return nil, fmt.Errorf("invalid container name: %w", err)
+			return cid.ID{}, fmt.Errorf("invalid container name: %w", err)
 		}
-		container.SetNativeName(cnr, request.ContainerName)
+
+		var domain container.Domain
+		domain.SetName(request.ContainerName)
+		container.WriteDomain(&cnr, domain)
 	}
 
 	var prm pool.PrmContainerPut
-	prm.SetContainer(*cnr)
+	prm.SetContainer(cnr)
+	prm.WithinSession(stoken)
 
 	cnrID, err := p.PutContainer(ctx, prm)
 	if err != nil {
-		return nil, fmt.Errorf("put container: %w", err)
+		return cid.ID{}, fmt.Errorf("put container: %w", err)
 	}
 
-	return cnrID, nil
+	return *cnrID, nil
 }
 
 func checkNNSContainerName(name string) error {
@@ -383,51 +390,52 @@ func isAlNum(c uint8) bool {
 	return c >= 'a' && c <= 'z' || c >= '0' && c <= '9'
 }
 
-func prepareSessionToken(st *SessionToken, isWalletConnect bool) (*session.Token, error) {
+func prepareSessionToken(st *SessionToken, isWalletConnect bool) (session.Container, error) {
 	data, err := base64.StdEncoding.DecodeString(st.Token)
 	if err != nil {
-		return nil, fmt.Errorf("can't base64-decode session token: %w", err)
+		return session.Container{}, fmt.Errorf("can't base64-decode session token: %w", err)
 	}
 
 	signature, err := hex.DecodeString(st.Signature)
 	if err != nil {
-		return nil, fmt.Errorf("couldn't decode signature: %w", err)
+		return session.Container{}, fmt.Errorf("couldn't decode signature: %w", err)
 	}
 
 	ownerKey, err := keys.NewPublicKeyFromString(st.Key)
 	if err != nil {
-		return nil, fmt.Errorf("couldn't fetch session token owner key: %w", err)
+		return session.Container{}, fmt.Errorf("couldn't fetch session token owner key: %w", err)
 	}
 
 	body := new(sessionv2.TokenBody)
 	if err = body.Unmarshal(data); err != nil {
-		return nil, fmt.Errorf("can't unmarshal session token: %w", err)
+		return session.Container{}, fmt.Errorf("can't unmarshal session token: %w", err)
 	}
 
 	if sessionContext, ok := body.GetContext().(*sessionv2.ContainerSessionContext); !ok {
-		return nil, errors.New("expected container session context but got something different")
+		return session.Container{}, errors.New("expected container session context but got something different")
 	} else if sessionContext.Verb() != st.Verb {
-		return nil, fmt.Errorf("invalid container session verb '%s', expected: '%s'", sessionContext.Verb().String(), st.Verb.String())
+		return session.Container{}, fmt.Errorf("invalid container session verb '%s', expected: '%s'", sessionContext.Verb().String(), st.Verb.String())
 	}
-
-	stoken := new(session.Token)
-	stoken.ToV2().SetBody(body)
 
 	v2signature := new(refs.Signature)
 	v2signature.SetScheme(refs.ECDSA_SHA512)
 	if isWalletConnect {
-		v2signature.SetScheme(2)
+		v2signature.SetScheme(refs.ECDSA_RFC6979_SHA256_WALLET_CONNECT)
 	}
 	v2signature.SetSign(signature)
 	v2signature.SetKey(ownerKey.Bytes())
-	stoken.ToV2().SetSignature(v2signature)
 
-	if isWalletConnect {
-		if !walletconnect.Verify((*ecdsa.PublicKey)(ownerKey), []byte(st.Token), signature) {
-			return nil, fmt.Errorf("invalid signature")
-		}
-	} else if !stoken.VerifySignature() {
-		return nil, fmt.Errorf("invalid signature")
+	var v2token sessionv2.Token
+	v2token.SetBody(body)
+	v2token.SetSignature(v2signature)
+
+	var stoken session.Container
+	if err = stoken.ReadFromV2(v2token); err != nil {
+		return session.Container{}, fmt.Errorf("read from v2 token: %w", err)
+	}
+
+	if !stoken.VerifySignature() {
+		return session.Container{}, fmt.Errorf("invalid signature")
 	}
 
 	return stoken, err

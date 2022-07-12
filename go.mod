@@ -12,8 +12,8 @@ require (
 	github.com/go-openapi/validate v0.21.0
 	github.com/google/uuid v1.3.0
 	github.com/nspcc-dev/neo-go v0.98.2
-	github.com/nspcc-dev/neofs-api-go/v2 v2.12.1
-	github.com/nspcc-dev/neofs-sdk-go v1.0.0-rc.3.0.20220412151250-3e75660802ae
+	github.com/nspcc-dev/neofs-api-go/v2 v2.13.0
+	github.com/nspcc-dev/neofs-sdk-go v1.0.0-rc.5
 	github.com/spf13/pflag v1.0.5
 	github.com/stretchr/testify v1.7.0
 	github.com/testcontainers/testcontainers-go v0.13.0
@@ -64,8 +64,9 @@ require (
 	github.com/morikuni/aec v0.0.0-20170113033406-39771216ff4c // indirect
 	github.com/mr-tron/base58 v1.2.0 // indirect
 	github.com/nspcc-dev/hrw v1.0.9 // indirect
-	github.com/nspcc-dev/neofs-crypto v0.3.0
+	github.com/nspcc-dev/neofs-crypto v0.3.0 // indirect
 	github.com/nspcc-dev/rfc6979 v0.2.0 // indirect
+	github.com/nspcc-dev/tzhash v1.5.2 // indirect
 	github.com/oklog/ulid v1.3.1 // indirect
 	github.com/opencontainers/go-digest v1.0.0 // indirect
 	github.com/opencontainers/image-spec v1.0.2 // indirect
