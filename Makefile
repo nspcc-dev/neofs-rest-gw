@@ -9,7 +9,16 @@ HUB_TAG ?= "$(shell echo ${VERSION} | sed 's/^v//')"
 DOCKER_LIST_VERSION ?= v1.42
 
 SWAGGER_VERSION ?= v0.29.0
-SWAGGER_ARCH ?= linux_amd64
+
+UNAME = "$(shell uname)/$(shell uname -m)"
+SWAGGER_ARCH = linux_amd64
+
+ifeq ($(UNAME), "Darwin/arm64")
+	SWAGGER_ARCH = darwin_arm64
+endif
+ifeq ($(UNAME), "Darwin/x86_64")
+	SWAGGER_ARCH = darwin_amd64
+endif
 
 SWAGGER_URL = "$(shell curl -s https://api.github.com/repos/go-swagger/go-swagger/releases/tags/$(SWAGGER_VERSION) | \
     jq -r '.assets[] | select(.name | contains("swagger_$(SWAGGER_ARCH)")) | .browser_download_url')"
