@@ -33,6 +33,10 @@ type ContainerInfo struct {
 	// Required: true
 	ContainerID *string `json:"containerId"`
 
+	// container name
+	// Required: true
+	ContainerName *string `json:"containerName"`
+
 	// owner Id
 	// Required: true
 	OwnerID *string `json:"ownerId"`
@@ -59,6 +63,10 @@ func (m *ContainerInfo) Validate(formats strfmt.Registry) error {
 	}
 
 	if err := m.validateContainerID(formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.validateContainerName(formats); err != nil {
 		res = append(res, err)
 	}
 
@@ -119,6 +127,15 @@ func (m *ContainerInfo) validateBasicACL(formats strfmt.Registry) error {
 func (m *ContainerInfo) validateContainerID(formats strfmt.Registry) error {
 
 	if err := validate.Required("containerId", "body", m.ContainerID); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (m *ContainerInfo) validateContainerName(formats strfmt.Registry) error {
+
+	if err := validate.Required("containerName", "body", m.ContainerName); err != nil {
 		return err
 	}
 

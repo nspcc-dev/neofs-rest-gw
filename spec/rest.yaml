@@ -229,18 +229,7 @@ paths:
           required: true
           description: Container info
           schema:
-            type: object
-            properties:
-              containerName:
-                type: string
-              placementPolicy:
-                type: string
-              basicAcl:
-                type: string
-            example:
-              containerName: container
-              placementPolicy: "REP 3"
-              basicAcl: public-read-write
+            $ref: '#/definitions/ContainerPutInfo'
       responses:
         200:
           description: Address of uploaded objects
@@ -506,10 +495,33 @@ definitions:
     enum:
       - object
       - container
+  ContainerPutInfo:
+    description: Represent request body to create container. To specify container name use appropriate property (name provided in attributes will be ignored).
+    type: object
+    properties:
+      containerName:
+        type: string
+      placementPolicy:
+        type: string
+      basicAcl:
+        type: string
+      attributes:
+        type: array
+        items:
+          $ref: '#/definitions/Attribute'
+    example:
+      containerName: container
+      placementPolicy: "REP 3"
+      basicAcl: public-read-write
+      attributes:
+        - key: Custom-Attribute
+          value: value
   ContainerInfo:
     type: object
     properties:
       containerId:
+        type: string
+      containerName:
         type: string
       version:
         type: string
@@ -525,6 +537,7 @@ definitions:
           $ref: '#/definitions/Attribute'
     required:
       - containerId
+      - containerName
       - version
       - ownerId
       - basicAcl

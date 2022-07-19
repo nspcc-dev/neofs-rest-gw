@@ -322,7 +322,7 @@ func mixTokens(ctx context.Context, t *testing.T, cnrID cid.ID) {
 func checkPutContainerWithError(t *testing.T, httpClient *http.Client, token *handlers.BearerToken) {
 	reqURL, err := url.Parse(testHost + "/v1/containers")
 	require.NoError(t, err)
-	body, err := json.Marshal(&operations.PutContainerBody{ContainerName: "container"})
+	body, err := json.Marshal(&models.ContainerPutInfo{ContainerName: "container"})
 	require.NoError(t, err)
 	request, err := http.NewRequest(http.MethodPut, reqURL.String(), bytes.NewReader(body))
 	require.NoError(t, err)
@@ -692,6 +692,7 @@ func restContainerGet(ctx context.Context, t *testing.T, owner user.ID, cnrID ci
 
 	require.Equal(t, cnrID.EncodeToString(), *cnrInfo.ContainerID)
 	require.Equal(t, owner.EncodeToString(), *cnrInfo.OwnerID)
+	require.Equal(t, containerName, *cnrInfo.ContainerName)
 }
 
 func restContainerDelete(ctx context.Context, t *testing.T, clientPool *pool.Pool, owner user.ID) {
@@ -953,7 +954,7 @@ func restContainerPutInvalid(ctx context.Context, t *testing.T) {
 	query.Add(walletConnectQuery, strconv.FormatBool(useWalletConnect))
 	reqURL.RawQuery = query.Encode()
 
-	body, err := json.Marshal(&operations.PutContainerBody{ContainerName: "nameWithCapitalLetters"})
+	body, err := json.Marshal(&models.ContainerPutInfo{ContainerName: "nameWithCapitalLetters"})
 	require.NoError(t, err)
 	request, err := http.NewRequest(http.MethodPut, reqURL.String(), bytes.NewReader(body))
 	require.NoError(t, err)
@@ -982,7 +983,7 @@ func restContainerPut(ctx context.Context, t *testing.T, clientPool *pool.Pool) 
 	}
 
 	// try to create container without name but with name-scope-global
-	body, err := json.Marshal(&operations.PutContainerBody{})
+	body, err := json.Marshal(&models.ContainerPutInfo{})
 	require.NoError(t, err)
 
 	reqURL, err := url.Parse(testHost + "/v1/containers")
@@ -999,7 +1000,13 @@ func restContainerPut(ctx context.Context, t *testing.T, clientPool *pool.Pool) 
 	doRequest(t, httpClient, request, http.StatusBadRequest, nil)
 
 	// create container with name in local scope
-	body, err = json.Marshal(&operations.PutContainerBody{})
+	containerPutInfo := &models.ContainerPutInfo{
+		Attributes: []*models.Attribute{{
+			Key:   util.NewString(attrKey),
+			Value: util.NewString(attrValue),
+		}},
+	}
+	body, err = json.Marshal(containerPutInfo)
 	require.NoError(t, err)
 
 	reqURL, err = url.Parse(testHost + "/v1/containers")
@@ -1011,7 +1018,6 @@ func restContainerPut(ctx context.Context, t *testing.T, clientPool *pool.Pool) 
 	request, err = http.NewRequest(http.MethodPut, reqURL.String(), bytes.NewReader(body))
 	require.NoError(t, err)
 	prepareCommonHeaders(request.Header, bearerToken)
-	request.Header.Add("X-Attribute-"+attrKey, attrValue)
 
 	addr := &operations.PutContainerOKBody{}
 	doRequest(t, httpClient, request, http.StatusOK, addr)
