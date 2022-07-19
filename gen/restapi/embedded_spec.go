@@ -159,23 +159,7 @@ func init() {
             "in": "body",
             "required": true,
             "schema": {
-              "type": "object",
-              "properties": {
-                "basicAcl": {
-                  "type": "string"
-                },
-                "containerName": {
-                  "type": "string"
-                },
-                "placementPolicy": {
-                  "type": "string"
-                }
-              },
-              "example": {
-                "basicAcl": "public-read-write",
-                "containerName": "container",
-                "placementPolicy": "REP 3"
-              }
+              "$ref": "#/definitions/ContainerPutInfo"
             }
           }
         ],
@@ -574,6 +558,7 @@ func init() {
       "type": "object",
       "required": [
         "containerId",
+        "containerName",
         "version",
         "ownerId",
         "basicAcl",
@@ -591,6 +576,9 @@ func init() {
           "type": "string"
         },
         "containerId": {
+          "type": "string"
+        },
+        "containerName": {
           "type": "string"
         },
         "ownerId": {
@@ -637,6 +625,38 @@ func init() {
         "size": {
           "type": "integer"
         }
+      }
+    },
+    "ContainerPutInfo": {
+      "description": "Represent request body to create container. To specify container name use appropriate property (name provided in attributes will be ignored).",
+      "type": "object",
+      "properties": {
+        "attributes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Attribute"
+          }
+        },
+        "basicAcl": {
+          "type": "string"
+        },
+        "containerName": {
+          "type": "string"
+        },
+        "placementPolicy": {
+          "type": "string"
+        }
+      },
+      "example": {
+        "attributes": [
+          {
+            "key": "Custom-Attribute",
+            "value": "value"
+          }
+        ],
+        "basicAcl": "public-read-write",
+        "containerName": "container",
+        "placementPolicy": "REP 3"
       }
     },
     "Eacl": {
@@ -1252,23 +1272,7 @@ func init() {
             "in": "body",
             "required": true,
             "schema": {
-              "type": "object",
-              "properties": {
-                "basicAcl": {
-                  "type": "string"
-                },
-                "containerName": {
-                  "type": "string"
-                },
-                "placementPolicy": {
-                  "type": "string"
-                }
-              },
-              "example": {
-                "basicAcl": "public-read-write",
-                "containerName": "container",
-                "placementPolicy": "REP 3"
-              }
+              "$ref": "#/definitions/ContainerPutInfo"
             }
           }
         ],
@@ -1750,6 +1754,7 @@ func init() {
       "type": "object",
       "required": [
         "containerId",
+        "containerName",
         "version",
         "ownerId",
         "basicAcl",
@@ -1767,6 +1772,9 @@ func init() {
           "type": "string"
         },
         "containerId": {
+          "type": "string"
+        },
+        "containerName": {
           "type": "string"
         },
         "ownerId": {
@@ -1813,6 +1821,38 @@ func init() {
         "size": {
           "type": "integer"
         }
+      }
+    },
+    "ContainerPutInfo": {
+      "description": "Represent request body to create container. To specify container name use appropriate property (name provided in attributes will be ignored).",
+      "type": "object",
+      "properties": {
+        "attributes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Attribute"
+          }
+        },
+        "basicAcl": {
+          "type": "string"
+        },
+        "containerName": {
+          "type": "string"
+        },
+        "placementPolicy": {
+          "type": "string"
+        }
+      },
+      "example": {
+        "attributes": [
+          {
+            "key": "Custom-Attribute",
+            "value": "value"
+          }
+        ],
+        "basicAcl": "public-read-write",
+        "containerName": "container",
+        "placementPolicy": "REP 3"
       }
     },
     "Eacl": {

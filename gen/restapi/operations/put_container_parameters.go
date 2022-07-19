@@ -16,6 +16,8 @@ import (
 	"github.com/go-openapi/strfmt"
 	"github.com/go-openapi/swag"
 	"github.com/go-openapi/validate"
+
+	"github.com/nspcc-dev/neofs-rest-gw/gen/models"
 )
 
 // NewPutContainerParams creates a new PutContainerParams object
@@ -59,7 +61,7 @@ type PutContainerParams struct {
 	  Required: true
 	  In: body
 	*/
-	Container PutContainerBody
+	Container *models.ContainerPutInfo
 	/*Provide this parameter to register container name in NNS service
 	  In: query
 	  Default: false
@@ -93,7 +95,7 @@ func (o *PutContainerParams) BindRequest(r *http.Request, route *middleware.Matc
 
 	if runtime.HasBody(r) {
 		defer r.Body.Close()
-		var body PutContainerBody
+		var body models.ContainerPutInfo
 		if err := route.Consumer.Consume(r.Body, &body); err != nil {
 			if err == io.EOF {
 				res = append(res, errors.Required("container", "body", ""))
@@ -112,7 +114,7 @@ func (o *PutContainerParams) BindRequest(r *http.Request, route *middleware.Matc
 			}
 
 			if len(res) == 0 {
-				o.Container = body
+				o.Container = &body
 			}
 		}
 	} else {

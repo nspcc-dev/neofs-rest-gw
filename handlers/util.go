@@ -3,9 +3,7 @@ package handlers
 import (
 	"context"
 	"fmt"
-	"net/http"
 	"strconv"
-	"strings"
 	"time"
 
 	objectv2 "github.com/nspcc-dev/neofs-api-go/v2/object"
@@ -27,61 +25,12 @@ type epochDurations struct {
 }
 
 const (
-	UserAttributeHeaderPrefix = "X-Attribute-"
-	SystemAttributePrefix     = "__NEOFS__"
+	SystemAttributePrefix = "__NEOFS__"
 
 	ExpirationDurationAttr  = SystemAttributePrefix + "EXPIRATION_DURATION"
 	ExpirationTimestampAttr = SystemAttributePrefix + "EXPIRATION_TIMESTAMP"
 	ExpirationRFC3339Attr   = SystemAttributePrefix + "EXPIRATION_RFC3339"
 )
-
-var neofsAttributeHeaderPrefixes = [...]string{"Neofs-", "NEOFS-", "neofs-"}
-
-func systemTranslator(key, prefix string) string {
-	// replace specified prefix with `__NEOFS__`
-	key = strings.Replace(key, prefix, SystemAttributePrefix, 1)
-
-	// replace `-` with `_`
-	key = strings.ReplaceAll(key, "-", "_")
-
-	// replace with uppercase
-	return strings.ToUpper(key)
-}
-
-func filterHeaders(header http.Header) map[string]string {
-	result := make(map[string]string)
-	prefix := UserAttributeHeaderPrefix
-
-	for key, vals := range header {
-		if len(key) == 0 || len(vals) == 0 || len(vals[0]) == 0 {
-			continue
-		}
-		// checks that key has attribute prefix
-		if !strings.HasPrefix(key, prefix) {
-			continue
-		}
-
-		// removing attribute prefix
-		key = strings.TrimPrefix(key, prefix)
-
-		// checks that it's a system NeoFS header
-		for _, system := range neofsAttributeHeaderPrefixes {
-			if strings.HasPrefix(key, system) {
-				key = systemTranslator(key, system)
-				break
-			}
-		}
-
-		// checks that attribute key not empty
-		if len(key) == 0 {
-			continue
-		}
-
-		result[key] = vals[0]
-	}
-
-	return result
-}
 
 // GetObjectAttributes forms object attributes from request headers.
 func GetObjectAttributes(ctx context.Context, pool *pool.Pool, attrs []*models.Attribute, prm PrmAttributes) ([]object.Attribute, error) {

@@ -75,50 +75,6 @@ func (o *PutContainer) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 
 }
 
-// PutContainerBody put container body
-// Example: {"basicAcl":"public-read-write","containerName":"container","placementPolicy":"REP 3"}
-//
-// swagger:model PutContainerBody
-type PutContainerBody struct {
-
-	// basic Acl
-	BasicACL string `json:"basicAcl,omitempty"`
-
-	// container name
-	ContainerName string `json:"containerName,omitempty"`
-
-	// placement policy
-	PlacementPolicy string `json:"placementPolicy,omitempty"`
-}
-
-// Validate validates this put container body
-func (o *PutContainerBody) Validate(formats strfmt.Registry) error {
-	return nil
-}
-
-// ContextValidate validates this put container body based on context it is used
-func (o *PutContainerBody) ContextValidate(ctx context.Context, formats strfmt.Registry) error {
-	return nil
-}
-
-// MarshalBinary interface implementation
-func (o *PutContainerBody) MarshalBinary() ([]byte, error) {
-	if o == nil {
-		return nil, nil
-	}
-	return swag.WriteJSON(o)
-}
-
-// UnmarshalBinary interface implementation
-func (o *PutContainerBody) UnmarshalBinary(b []byte) error {
-	var res PutContainerBody
-	if err := swag.ReadJSON(b, &res); err != nil {
-		return err
-	}
-	*o = res
-	return nil
-}
-
 // PutContainerOKBody put container o k body
 // Example: {"containerId":"5HZTn5qkRnmgSz9gSrw22CEdPPk6nQhkwf2Mgzyvkikv"}
 //

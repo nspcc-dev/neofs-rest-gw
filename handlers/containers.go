@@ -6,12 +6,12 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"net/http"
 	"strings"
 	"time"
 
 	"github.com/go-openapi/runtime/middleware"
 	"github.com/nspcc-dev/neo-go/pkg/crypto/keys"
+	containerv2 "github.com/nspcc-dev/neofs-api-go/v2/container"
 	"github.com/nspcc-dev/neofs-api-go/v2/refs"
 	sessionv2 "github.com/nspcc-dev/neofs-api-go/v2/session"
 	"github.com/nspcc-dev/neofs-rest-gw/gen/models"
@@ -50,9 +50,7 @@ func (a *API) PutContainers(params operations.PutContainerParams, principal *mod
 		return operations.NewPutContainerBadRequest().WithPayload(resp)
 	}
 
-	userAttributes := prepareUserAttributes(params.HTTPRequest.Header)
-
-	cnrID, err := createContainer(params.HTTPRequest.Context(), a.pool, stoken, &params, userAttributes)
+	cnrID, err := createContainer(params.HTTPRequest.Context(), a.pool, stoken, &params)
 	if err != nil {
 		resp := a.logAndGetErrorResponse("create container", err)
 		return operations.NewPutContainerBadRequest().WithPayload(resp)
@@ -237,18 +235,12 @@ func getContainerInfo(ctx context.Context, p *pool.Pool, cnrID cid.ID) (*models.
 
 	return &models.ContainerInfo{
 		ContainerID:     util.NewString(cnrID.String()),
+		ContainerName:   util.NewString(container.Name(*cnr)),
 		OwnerID:         util.NewString(cnr.Owner().String()),
 		BasicACL:        util.NewString(cnr.BasicACL().EncodeToString()),
 		PlacementPolicy: util.NewString(sb.String()),
 		Attributes:      attrs,
 	}, nil
-}
-
-func prepareUserAttributes(header http.Header) map[string]string {
-	filtered := filterHeaders(header)
-	delete(filtered, attributeName)
-	delete(filtered, attributeTimestamp)
-	return filtered
 }
 
 func parseContainerID(containerID string) (cid.ID, error) {
@@ -300,7 +292,7 @@ func getContainerEACL(ctx context.Context, p *pool.Pool, cnrID cid.ID) (*models.
 	return tableResp, nil
 }
 
-func createContainer(ctx context.Context, p *pool.Pool, stoken session.Container, params *operations.PutContainerParams, userAttrs map[string]string) (cid.ID, error) {
+func createContainer(ctx context.Context, p *pool.Pool, stoken session.Container, params *operations.PutContainerParams) (cid.ID, error) {
 	request := params.Container
 
 	if request.PlacementPolicy == "" {
@@ -333,8 +325,13 @@ func createContainer(ctx context.Context, p *pool.Pool, stoken session.Container
 		container.SetName(&cnr, request.ContainerName)
 	}
 
-	for key, val := range userAttrs {
-		cnr.SetAttribute(key, val)
+	for _, attr := range request.Attributes {
+		switch *attr.Key {
+		case attributeName, attributeTimestamp,
+			containerv2.SysAttributeName, containerv2.SysAttributeZone:
+		default:
+			cnr.SetAttribute(*attr.Key, *attr.Value)
+		}
 	}
 
 	if *params.NameScopeGlobal { // we don't check for nil because there is default false value
