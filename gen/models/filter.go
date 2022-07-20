@@ -14,7 +14,7 @@ import (
 	"github.com/go-openapi/validate"
 )
 
-// Filter filter
+// Filter Filter in NeoFS EACL to check particular properties of the request or the object.
 // Example: {"headerType":"OBJECT","key":"FileName","matchType":"STRING_NOT_EQUAL","value":"myfile"}
 //
 // swagger:model Filter

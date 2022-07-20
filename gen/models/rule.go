@@ -14,7 +14,8 @@ import (
 	"github.com/go-openapi/validate"
 )
 
-// Rule rule
+// Rule Container session token rule.
+// Example: {"containerId":"6jvKJCQr6e47Yx8SsbSN3fNgzroUJVkY66Q9wqxYcAjc","verb":"DELETE"}
 //
 // swagger:model Rule
 type Rule struct {

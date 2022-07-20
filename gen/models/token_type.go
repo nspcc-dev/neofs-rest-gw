@@ -14,7 +14,7 @@ import (
 	"github.com/go-openapi/validate"
 )
 
-// TokenType token type
+// TokenType Type of token.
 //
 // swagger:model TokenType
 type TokenType string

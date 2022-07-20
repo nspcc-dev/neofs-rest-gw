@@ -14,7 +14,7 @@ import (
 	"github.com/go-openapi/swag"
 )
 
-// ContainerPutInfo Represent request body to create container. To specify container name use appropriate property (name provided in attributes will be ignored).
+// ContainerPutInfo Request body to create container. To specify container name use appropriate property (name provided in attributes will be ignored).
 // Example: {"attributes":[{"key":"Custom-Attribute","value":"value"}],"basicAcl":"public-read-write","containerName":"container","placementPolicy":"REP 3"}
 //
 // swagger:model ContainerPutInfo

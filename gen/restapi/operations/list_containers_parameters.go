@@ -56,7 +56,7 @@ type ListContainersParams struct {
 	  Default: 0
 	*/
 	Offset *int64
-	/*Base58 encoded owner id
+	/*Base58 encoded owner id.
 	  Required: true
 	  In: query
 	*/

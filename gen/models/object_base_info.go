@@ -14,7 +14,8 @@ import (
 	"github.com/go-openapi/validate"
 )
 
-// ObjectBaseInfo object base info
+// ObjectBaseInfo Basic object information.
+// Example: {"address":{"containerId":"5HZTn5qkRnmgSz9gSrw22CEdPPk6nQhkwf2Mgzyvkikv","objectId":"8N3o7Dtr6T1xteCt6eRwhpmJ7JhME58Hyu1dvaswuTDd"},"name":"/my/object/name"}
 //
 // swagger:model ObjectBaseInfo
 type ObjectBaseInfo struct {

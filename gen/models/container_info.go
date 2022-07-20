@@ -15,8 +15,8 @@ import (
 	"github.com/go-openapi/validate"
 )
 
-// ContainerInfo container info
-// Example: {"attribute":[{"key":"Timestamp","value":"1648810072"},{"key":"Name","value":"container"}],"basicAcl":"0x1fbf9fff","containerId":"5HZTn5qkRnmgSz9gSrw22CEdPPk6nQhkwf2Mgzyvkikv","ownerId":"NbUgTSFvPmsRxmGeWpuuGeJUoRoi6PErcM","placementPolicy":"REP 2","version":"2.11"}
+// ContainerInfo Information about container.
+// Example: {"attribute":[{"key":"Timestamp","value":"1648810072"},{"key":"Name","value":"container"}],"basicAcl":"0x1fbf9fff","containerId":"5HZTn5qkRnmgSz9gSrw22CEdPPk6nQhkwf2Mgzyvkikv","containerName":"container","ownerId":"NbUgTSFvPmsRxmGeWpuuGeJUoRoi6PErcM","placementPolicy":"REP 2","version":"2.11"}
 //
 // swagger:model ContainerInfo
 type ContainerInfo struct {

@@ -14,7 +14,8 @@ import (
 	"github.com/go-openapi/validate"
 )
 
-// Attribute attribute
+// Attribute Attribute is a pair of strings that can be attached to a container or an object.
+// Example: {"key":"User-Defined-Tag","value":"tag value"}
 //
 // swagger:model Attribute
 type Attribute struct {

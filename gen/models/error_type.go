@@ -14,7 +14,7 @@ import (
 	"github.com/go-openapi/validate"
 )
 
-// ErrorType error type
+// ErrorType Error type. Allow determine source of the error.
 //
 // swagger:model ErrorType
 type ErrorType string

@@ -30,7 +30,7 @@ type GetContainerParams struct {
 	// HTTP Request Object
 	HTTPRequest *http.Request `json:"-"`
 
-	/*Base58 encoded container id
+	/*Base58 encoded container id.
 	  Required: true
 	  In: path
 	*/

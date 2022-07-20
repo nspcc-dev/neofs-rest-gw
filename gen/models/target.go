@@ -14,7 +14,7 @@ import (
 	"github.com/go-openapi/validate"
 )
 
-// Target target
+// Target Target to apply the ACL rule. Can be a subject's role class or a list of public keys to match.
 // Example: {"keys":["021dc56fc6d81d581ae7605a8e00e0e0bab6cbad566a924a527339475a97a8e38e"],"role":"USER"}
 //
 // swagger:model Target

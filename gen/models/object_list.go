@@ -15,7 +15,8 @@ import (
 	"github.com/go-openapi/validate"
 )
 
-// ObjectList object list
+// ObjectList List of objects.
+// Example: {"objects":[{"address":{"containerId":"5HZTn5qkRnmgSz9gSrw22CEdPPk6nQhkwf2Mgzyvkikv","objectId":"8N3o7Dtr6T1xteCt6eRwhpmJ7JhME58Hyu1dvaswuTDd"},"name":"/my/object/name"},{"address":{"containerId":"5HZTn5qkRnmgSz9gSrw22CEdPPk6nQhkwf2Mgzyvkikv","objectId":"3GbmMWusaWgMHokWui2zDunxMTzButuQMVLbtL3cDn8s"},"name":"/my/object/some/other/name"}],"size":2}
 //
 // swagger:model ObjectList
 type ObjectList struct {
