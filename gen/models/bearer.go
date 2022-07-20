@@ -14,7 +14,8 @@ import (
 	"github.com/go-openapi/swag"
 )
 
-// Bearer bearer
+// Bearer Bearer token that is expected to be formed.
+// Example: [{"name":"my-bearer-token","object":[{"action":"ALLOW","filters":[],"operation":"GET","targets":[{"keys":[],"role":"OTHERS"}]}]},{"container":{"verb":"PUT"},"name":"my token to create container"}]
 //
 // swagger:model Bearer
 type Bearer struct {

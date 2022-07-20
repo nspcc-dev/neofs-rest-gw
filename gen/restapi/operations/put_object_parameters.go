@@ -44,12 +44,12 @@ type PutObjectParams struct {
 	// HTTP Request Object
 	HTTPRequest *http.Request `json:"-"`
 
-	/*Base64 encoded signature for bearer token
+	/*Base64 encoded signature for bearer token.
 	  Required: true
 	  In: header
 	*/
 	XBearerSignature string
-	/*Hex encoded the public part of the key that signed the bearer token
+	/*Hex encoded the public part of the key that signed the bearer token.
 	  Required: true
 	  In: header
 	*/
@@ -59,7 +59,7 @@ type PutObjectParams struct {
 	  In: body
 	*/
 	Object *models.ObjectUpload
-	/*Use wallect connect signature scheme or not
+	/*Use wallet connect signature scheme or native NeoFS signature.
 	  In: query
 	  Default: false
 	*/

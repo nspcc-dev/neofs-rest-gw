@@ -15,7 +15,8 @@ import (
 	"github.com/go-openapi/validate"
 )
 
-// ContainerList container list
+// ContainerList List of containers info
+// Example: {"containers":[{"attribute":[{"key":"Timestamp","value":"1648810072"},{"key":"Name","value":"container"}],"basicAcl":"0x1fbf9fff","containerId":"5HZTn5qkRnmgSz9gSrw22CEdPPk6nQhkwf2Mgzyvkikv","containerName":"container","ownerId":"NbUgTSFvPmsRxmGeWpuuGeJUoRoi6PErcM","placementPolicy":"REP 2","version":"2.11"},{"attribute":[{"key":"Name","value":"container2"}],"basicAcl":"0x1fbf9fff","containerId":"FsE7HLQBBYc2WFJzuTXMcpspDEmwUxsD5YmNb2r25uUu","containerName":"container2","ownerId":"NbUgTSFvPmsRxmGeWpuuGeJUoRoi6PErcM","placementPolicy":"REP 1","version":"2.11"}],"size":2}
 //
 // swagger:model ContainerList
 type ContainerList struct {

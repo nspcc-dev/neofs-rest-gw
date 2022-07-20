@@ -15,7 +15,7 @@ import (
 	"github.com/go-openapi/validate"
 )
 
-// ObjectInfo object info
+// ObjectInfo Object information.
 // Example: {"attribute":[{"key":"Timestamp","value":"1648810072"},{"key":"Name","value":"object"}],"containerId":"5HZTn5qkRnmgSz9gSrw22CEdPPk6nQhkwf2Mgzyvkikv","objectId":"8N3o7Dtr6T1xteCt6eRwhpmJ7JhME58Hyu1dvaswuTDd","ownerId":"NbUgTSFvPmsRxmGeWpuuGeJUoRoi6PErcM"}
 //
 // swagger:model ObjectInfo

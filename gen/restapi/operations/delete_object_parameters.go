@@ -40,27 +40,27 @@ type DeleteObjectParams struct {
 	// HTTP Request Object
 	HTTPRequest *http.Request `json:"-"`
 
-	/*Base64 encoded signature for bearer token
+	/*Base64 encoded signature for bearer token.
 	  Required: true
 	  In: header
 	*/
 	XBearerSignature string
-	/*Hex encoded the public part of the key that signed the bearer token
+	/*Hex encoded the public part of the key that signed the bearer token.
 	  Required: true
 	  In: header
 	*/
 	XBearerSignatureKey string
-	/*Base58 encoded container id
+	/*Base58 encoded container id.
 	  Required: true
 	  In: path
 	*/
 	ContainerID string
-	/*Base58 encoded object id
+	/*Base58 encoded object id.
 	  Required: true
 	  In: path
 	*/
 	ObjectID string
-	/*Use wallect connect signature scheme or not
+	/*Use wallet connect signature scheme or native NeoFS signature.
 	  In: query
 	  Default: false
 	*/

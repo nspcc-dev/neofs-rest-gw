@@ -14,7 +14,7 @@ import (
 	"github.com/go-openapi/validate"
 )
 
-// Action action
+// Action Rule execution result action in NeoFS EACL. Either allows or denies access if the rule's filters match.
 //
 // swagger:model Action
 type Action string

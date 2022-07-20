@@ -14,7 +14,7 @@ import (
 	"github.com/go-openapi/validate"
 )
 
-// SearchMatch search match
+// SearchMatch Search match type.
 //
 // swagger:model SearchMatch
 type SearchMatch string

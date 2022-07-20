@@ -14,8 +14,8 @@ import (
 	"github.com/go-openapi/validate"
 )
 
-// TokenResponse token response
-// Example: [{"token":"sometoken-todo-add","type":"object"},{"token":"ChCpanIBJCpJuJz42KOmGMSnEhsKGTWquaX2Lq6GhhO4faOYkLD0f9WkXuYJlq4aBAhnGAMiIQJgFcIEghQB5lq3AJZOVswInwc1IGhlQ7NCUh4DFO3UATIECAEQAQ==","type":"container"}]
+// TokenResponse Base64 encoded marshaled token (for container or for object operations).
+// Example: [{"token":"ClYKBAgCEA0aCAgDEAEiAggDGggIARACIgIIAxoICAIQAiICCAMaCAgDEAIiAggDGggIBBACIgIIAxoICAUQAiICCAMaCAgGEAIiAggDGggIBxACIgIIAxIbChk182WEDFuAqq3nssrGOaH0NK0ZhzF8bu+YGgQIaBgE","type":"object"},{"token":"ChCpanIBJCpJuJz42KOmGMSnEhsKGTWquaX2Lq6GhhO4faOYkLD0f9WkXuYJlq4aBAhnGAMiIQJgFcIEghQB5lq3AJZOVswInwc1IGhlQ7NCUh4DFO3UATIECAEQAQ==","type":"container"}]
 //
 // swagger:model TokenResponse
 type TokenResponse struct {

@@ -15,7 +15,8 @@ import (
 	"github.com/go-openapi/validate"
 )
 
-// Eacl eacl
+// Eacl EACL NeoFS table.
+// Example: {"containerId":"5HZTn5qkRnmgSz9gSrw22CEdPPk6nQhkwf2Mgzyvkikv","records":[{"action":"GET","filters":[{"headerType":"OBJECT","key":"FileName","matchType":"STRING_EQUAL","value":"myfile"}],"operation":"ALLOW","targets":[{"role":"OTHERS"}]}]}
 //
 // swagger:model Eacl
 type Eacl struct {

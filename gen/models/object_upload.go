@@ -15,7 +15,7 @@ import (
 	"github.com/go-openapi/validate"
 )
 
-// ObjectUpload object upload
+// ObjectUpload Request body to create object.
 // Example: {"attributes":[{"key":"User-Attribute","value":"some-value"}],"containerId":"5HZTn5qkRnmgSz9gSrw22CEdPPk6nQhkwf2Mgzyvkikv","fileName":"myFile.txt","payload":"Y29udGVudCBvZiBmaWxl"}
 //
 // swagger:model ObjectUpload

@@ -31,7 +31,7 @@ func NewAuth(ctx *middleware.Context, handler AuthHandler) *Auth {
 
 /* Auth swagger:route POST /auth auth
 
-Form bearer token to futher requests
+Form bearer token to further requests
 
 */
 type Auth struct {

@@ -14,7 +14,7 @@ import (
 	"github.com/go-openapi/validate"
 )
 
-// Role role
+// Role Role for target in EACL.
 //
 // swagger:model Role
 type Role string

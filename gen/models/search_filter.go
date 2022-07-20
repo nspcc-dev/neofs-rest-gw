@@ -14,7 +14,8 @@ import (
 	"github.com/go-openapi/validate"
 )
 
-// SearchFilter search filter
+// SearchFilter Search filter to find objects.
+// Example: {"key":"FileName","match":"MatchStringEqual","value":"object-name"}
 //
 // swagger:model SearchFilter
 type SearchFilter struct {

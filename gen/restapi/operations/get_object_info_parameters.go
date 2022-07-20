@@ -44,17 +44,17 @@ type GetObjectInfoParams struct {
 	// HTTP Request Object
 	HTTPRequest *http.Request `json:"-"`
 
-	/*Base64 encoded signature for bearer token
+	/*Base64 encoded signature for bearer token.
 	  Required: true
 	  In: header
 	*/
 	XBearerSignature string
-	/*Hex encoded the public part of the key that signed the bearer token
+	/*Hex encoded the public part of the key that signed the bearer token.
 	  Required: true
 	  In: header
 	*/
 	XBearerSignatureKey string
-	/*Base58 encoded container id
+	/*Base58 encoded container id.
 	  Required: true
 	  In: path
 	*/
@@ -68,22 +68,22 @@ type GetObjectInfoParams struct {
 	  Default: 4.194304e+06
 	*/
 	MaxPayloadSize *int64
-	/*Base58 encoded object id
+	/*Base58 encoded object id.
 	  Required: true
 	  In: path
 	*/
 	ObjectID string
-	/*
+	/*Length of data range.
 	  Minimum: 1
 	  In: query
 	*/
 	RangeLength *int64
-	/*
+	/*Range offset to start reading data.
 	  Minimum: 0
 	  In: query
 	*/
 	RangeOffset *int64
-	/*Use wallect connect signature scheme or not
+	/*Use wallet connect signature scheme or native NeoFS signature.
 	  In: query
 	  Default: false
 	*/

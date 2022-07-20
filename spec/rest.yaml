@@ -1,14 +1,13 @@
 swagger: "2.0"
 info:
   title: REST API NeoFS
-  description: REST API NeoFS
+  description: REST API for native integration with NeoFS.
   version: v1
 
 host: localhost:8090
 basePath: /v1
 schemes:
   - http
-#  - https
 
 securityDefinitions:
   BearerAuth:
@@ -24,19 +23,19 @@ parameters:
   signatureParam:
     in: header
     name: X-Bearer-Signature
-    description: Base64 encoded signature for bearer token
+    description: Base64 encoded signature for bearer token.
     type: string
     required: true
   signatureKeyParam:
     in: header
     name: X-Bearer-Signature-Key
-    description: Hex encoded the public part of the key that signed the bearer token
+    description: Hex encoded the public part of the key that signed the bearer token.
     type: string
     required: true
   signatureScheme:
     in: query
     name: walletConnect
-    description: Use wallect connect signature scheme or not
+    description: Use wallet connect signature scheme or native NeoFS signature.
     type: boolean
     default: false
   containerId:
@@ -44,35 +43,35 @@ parameters:
     name: containerId
     type: string
     required: true
-    description: Base58 encoded container id
+    description: Base58 encoded container id.
   objectId:
     in: path
     name: objectId
     type: string
     required: true
-    description: Base58 encoded object id
+    description: Base58 encoded object id.
 
 paths:
   /auth:
     post:
       operationId: auth
-      summary: Form bearer token to futher requests
+      summary: Form bearer token to further requests
       security: [ ]
       parameters:
         - in: header
           name: X-Bearer-Owner-Id
-          description: Owner Id (wallet address) that will sign the token
+          description: Owner Id (wallet address) that will sign the token.
           type: string
           required: true
         - in: header
-          description: Token lifetime in epoch
+          description: Token lifetime in epoch.
           name: X-Bearer-Lifetime
           type: integer
           default: 100
         - in: body
           name: tokens
           required: true
-          description: Bearer token
+          description: Bearer tokens to form.
           schema:
             type: array
             items:
@@ -83,7 +82,7 @@ paths:
         - application/json
       responses:
         200:
-          description: Base64 encoded stable binary marshaled bearer token
+          description: Base64 encoded stable binary marshaled bearer token.
           schema:
             type: array
             items:
@@ -148,7 +147,7 @@ paths:
         - in: body
           required: true
           name: searchFilters
-          description: Filters to search objects
+          description: Filters to search objects.
           schema:
             $ref: '#/definitions/SearchFilters'
       responses:
@@ -176,10 +175,12 @@ paths:
           name: range-offset
           type: integer
           minimum: 0
+          description: Range offset to start reading data.
         - in: query
           name: range-length
           type: integer
           minimum: 1
+          description: Length of data range.
         - in: query
           name: max-payload-size
           type: integer
@@ -203,11 +204,11 @@ paths:
       summary: Remove object from NeoFS
       responses:
         200:
-          description: Successful deletion
+          description: Successful deletion.
           schema:
             $ref: '#/definitions/SuccessResponse'
         400:
-          description: Bad request
+          description: Bad request.
           schema:
             $ref: '#/definitions/ErrorResponse'
 
@@ -221,7 +222,7 @@ paths:
         - $ref: '#/parameters/signatureScheme'
         - in: query
           name: name-scope-global
-          description: Provide this parameter to register container name in NNS service
+          description: Provide this parameter to register container name in NNS service.
           type: boolean
           default: false
         - in: body
@@ -232,7 +233,7 @@ paths:
             $ref: '#/definitions/ContainerPutInfo'
       responses:
         200:
-          description: Address of uploaded objects
+          description: Identifier of the created container.
           schema:
             type: object
             properties:
@@ -243,7 +244,7 @@ paths:
             example:
               containerId: 5HZTn5qkRnmgSz9gSrw22CEdPPk6nQhkwf2Mgzyvkikv
         400:
-          description: Bad request
+          description: Bad request.
           schema:
             $ref: '#/definitions/ErrorResponse'
     get:
@@ -255,7 +256,7 @@ paths:
           name: ownerId
           required: true
           type: string
-          description: Base58 encoded owner id
+          description: Base58 encoded owner id.
         - in: query
           name: offset
           type: integer
@@ -271,11 +272,11 @@ paths:
           description: The numbers of containers to return.
       responses:
         200:
-          description: Containers info
+          description: Containers info.
           schema:
             $ref: '#/definitions/ContainerList'
         400:
-          description: Bad request
+          description: Bad request.
           schema:
             $ref: '#/definitions/ErrorResponse'
 
@@ -288,11 +289,11 @@ paths:
       security: [ ]
       responses:
         200:
-          description: Container info
+          description: Container info.
           schema:
             $ref: '#/definitions/ContainerInfo'
         400:
-          description: Bad request
+          description: Bad request.
           schema:
             $ref: '#/definitions/ErrorResponse'
     delete:
@@ -304,11 +305,11 @@ paths:
         - $ref: '#/parameters/signatureScheme'
       responses:
         200:
-          description: Successful deletion
+          description: Successful deletion.
           schema:
             $ref: '#/definitions/SuccessResponse'
         400:
-          description: Bad request
+          description: Bad request.
           schema:
             $ref: '#/definitions/ErrorResponse'
   /containers/{containerId}/eacl:
@@ -324,16 +325,16 @@ paths:
         - in: body
           name: eacl
           required: true
-          description: EACL for container
+          description: EACL for container.
           schema:
             $ref: '#/definitions/Eacl'
       responses:
         200:
-          description: Successful EACL updating
+          description: Successful EACL updating.
           schema:
             $ref: '#/definitions/SuccessResponse'
         400:
-          description: Bad request
+          description: Bad request.
           schema:
             $ref: '#/definitions/ErrorResponse'
     get:
@@ -342,16 +343,17 @@ paths:
       security: [ ]
       responses:
         200:
-          description: Container EACL information
+          description: Container EACL information.
           schema:
             $ref: '#/definitions/Eacl'
         400:
-          description: Bad request
+          description: Bad request.
           schema:
             $ref: '#/definitions/ErrorResponse'
 
 definitions:
   Bearer:
+    description: Bearer token that is expected to be formed.
     type: object
     properties:
       name:
@@ -362,7 +364,20 @@ definitions:
           $ref: '#/definitions/Record'
       container:
         $ref: '#/definitions/Rule'
+    example:
+      - name: my-bearer-token
+        object:
+          - operation: GET
+            action: ALLOW
+            filters: [ ]
+            targets:
+              - role: OTHERS
+                keys: [ ]
+      - name: "my token to create container"
+        container:
+          verb: PUT
   Record:
+    description: A single NeoFS EACL rule.
     type: object
     properties:
       action:
@@ -390,11 +405,13 @@ definitions:
         - role: OTHERS
           keys: [ ]
   Action:
+    description: Rule execution result action in NeoFS EACL. Either allows or denies access if the rule's filters match.
     type: string
     enum:
       - ALLOW
       - DENY
   Operation:
+    description: Request's operation type to match in NeoFS EACL if the rule is applicable to a particular request.
     type: string
     enum:
       - GET
@@ -405,6 +422,7 @@ definitions:
       - RANGE
       - RANGEHASH
   Filter:
+    description: Filter in NeoFS EACL to check particular properties of the request or the object.
     type: object
     properties:
       headerType:
@@ -426,17 +444,20 @@ definitions:
       key: FileName
       value: myfile
   HeaderType:
+    description: Enumeration of possible sources of Headers to apply filters in NeoFS EACL.
     type: string
     enum:
       - REQUEST
       - OBJECT
       - SERVICE
   MatchType:
+    description: Match type in NeoFS EACL filter.
     type: string
     enum:
       - STRING_EQUAL
       - STRING_NOT_EQUAL
   Target:
+    description: Target to apply the ACL rule. Can be a subject's role class or a list of public keys to match.
     type: object
     properties:
       role:
@@ -453,12 +474,14 @@ definitions:
       keys:
         - 021dc56fc6d81d581ae7605a8e00e0e0bab6cbad566a924a527339475a97a8e38e
   Role:
+    description: Role for target in EACL.
     type: string
     enum:
       - USER
       - SYSTEM
       - OTHERS
   Rule:
+    description: Container session token rule.
     type: object
     properties:
       verb:
@@ -467,13 +490,18 @@ definitions:
         type: string
     required:
       - verb
+    example:
+      verb: DELETE
+      containerId: 6jvKJCQr6e47Yx8SsbSN3fNgzroUJVkY66Q9wqxYcAjc
   Verb:
+    description: Verb that describes the allowed container operation for token.
     type: string
     enum:
       - PUT
       - DELETE
       - SETEACL
   TokenResponse:
+    description: Base64 encoded marshaled token (for container or for object operations).
     type: object
     properties:
       name:
@@ -487,16 +515,17 @@ definitions:
       - token
     example:
       - type: object
-        token: sometoken-todo-add
+        token: ClYKBAgCEA0aCAgDEAEiAggDGggIARACIgIIAxoICAIQAiICCAMaCAgDEAIiAggDGggIBBACIgIIAxoICAUQAiICCAMaCAgGEAIiAggDGggIBxACIgIIAxIbChk182WEDFuAqq3nssrGOaH0NK0ZhzF8bu+YGgQIaBgE
       - type: container
         token: ChCpanIBJCpJuJz42KOmGMSnEhsKGTWquaX2Lq6GhhO4faOYkLD0f9WkXuYJlq4aBAhnGAMiIQJgFcIEghQB5lq3AJZOVswInwc1IGhlQ7NCUh4DFO3UATIECAEQAQ==
   TokenType:
+    description: Type of token.
     type: string
     enum:
       - object
       - container
   ContainerPutInfo:
-    description: Represent request body to create container. To specify container name use appropriate property (name provided in attributes will be ignored).
+    description: Request body to create container. To specify container name use appropriate property (name provided in attributes will be ignored).
     type: object
     properties:
       containerName:
@@ -517,6 +546,7 @@ definitions:
         - key: Custom-Attribute
           value: value
   ContainerInfo:
+    description: Information about container.
     type: object
     properties:
       containerId:
@@ -545,6 +575,7 @@ definitions:
       - attributes
     example:
       containerId: 5HZTn5qkRnmgSz9gSrw22CEdPPk6nQhkwf2Mgzyvkikv
+      containerName: container
       version: "2.11"
       ownerId: NbUgTSFvPmsRxmGeWpuuGeJUoRoi6PErcM
       basicAcl: "0x1fbf9fff"
@@ -555,6 +586,7 @@ definitions:
         - key: Name
           value: container
   ContainerList:
+    description: List of containers info
     type: object
     properties:
       size:
@@ -566,7 +598,31 @@ definitions:
     required:
       - size
       - containers
+    example:
+      size: 2
+      containers:
+        - containerId: 5HZTn5qkRnmgSz9gSrw22CEdPPk6nQhkwf2Mgzyvkikv
+          containerName: container
+          version: "2.11"
+          ownerId: NbUgTSFvPmsRxmGeWpuuGeJUoRoi6PErcM
+          basicAcl: "0x1fbf9fff"
+          placementPolicy: "REP 2"
+          attribute:
+            - key: Timestamp
+              value: "1648810072"
+            - key: Name
+              value: container
+        - containerId: FsE7HLQBBYc2WFJzuTXMcpspDEmwUxsD5YmNb2r25uUu
+          containerName: container2
+          version: "2.11"
+          ownerId: NbUgTSFvPmsRxmGeWpuuGeJUoRoi6PErcM
+          basicAcl: "0x1fbf9fff"
+          placementPolicy: "REP 1"
+          attribute:
+            - key: Name
+              value: container2
   SearchFilters:
+    description: List of SearchFilter elements.
     type: object
     properties:
       filters:
@@ -575,7 +631,16 @@ definitions:
           $ref: '#/definitions/SearchFilter'
     required:
       - filters
+    example:
+      filters:
+        - key: FileName
+          value: some/prefix
+          match: MatchCommonPrefix
+        - key: CustomAttribute
+          value: tag-value
+          match: MatchStringEqual
   SearchFilter:
+    description: Search filter to find objects.
     type: object
     properties:
       key:
@@ -588,7 +653,12 @@ definitions:
       - key
       - value
       - match
+    example:
+      key: FileName
+      value: object-name
+      match: MatchStringEqual
   SearchMatch:
+    description: Search match type.
     type: string
     enum:
       - MatchStringEqual
@@ -596,6 +666,7 @@ definitions:
       - MatchNotPresent
       - MatchCommonPrefix
   ObjectList:
+    description: List of objects.
     type: object
     properties:
       size:
@@ -607,7 +678,19 @@ definitions:
     required:
       - size
       - objects
+    example:
+      size: 2
+      objects:
+        - name: "/my/object/name"
+          address:
+            objectId: 8N3o7Dtr6T1xteCt6eRwhpmJ7JhME58Hyu1dvaswuTDd
+            containerId: 5HZTn5qkRnmgSz9gSrw22CEdPPk6nQhkwf2Mgzyvkikv
+        - name: "/my/object/some/other/name"
+          address:
+            objectId: 3GbmMWusaWgMHokWui2zDunxMTzButuQMVLbtL3cDn8s
+            containerId: 5HZTn5qkRnmgSz9gSrw22CEdPPk6nQhkwf2Mgzyvkikv
   ObjectBaseInfo:
+    description: Basic object information.
     type: object
     properties:
       address:
@@ -616,7 +699,13 @@ definitions:
         type: string
     required:
       - address
+    example:
+      name: "/my/object/name"
+      address:
+        objectId: 8N3o7Dtr6T1xteCt6eRwhpmJ7JhME58Hyu1dvaswuTDd
+        containerId: 5HZTn5qkRnmgSz9gSrw22CEdPPk6nQhkwf2Mgzyvkikv
   ObjectUpload:
+    description: Request body to create object.
     type: object
     properties:
       containerId:
@@ -640,6 +729,7 @@ definitions:
         - key: User-Attribute
           value: some-value
   ObjectInfo:
+    description: Object information.
     type: object
     properties:
       containerId:
@@ -678,6 +768,7 @@ definitions:
         - key: Name
           value: object
   Address:
+    description: Address of the object in NeoFS.
     type: object
     properties:
       containerId:
@@ -691,6 +782,7 @@ definitions:
       objectId: 8N3o7Dtr6T1xteCt6eRwhpmJ7JhME58Hyu1dvaswuTDd
       containerId: 5HZTn5qkRnmgSz9gSrw22CEdPPk6nQhkwf2Mgzyvkikv
   Eacl:
+    description: EACL NeoFS table.
     type: object
     properties:
       containerId:
@@ -702,7 +794,20 @@ definitions:
           $ref: '#/definitions/Record'
     required:
       - records
+    example:
+      containerId: 5HZTn5qkRnmgSz9gSrw22CEdPPk6nQhkwf2Mgzyvkikv
+      records:
+        - action: GET
+          operation: ALLOW
+          filters:
+            - headerType: OBJECT
+              matchType: STRING_EQUAL
+              key: FileName
+              value: myfile
+          targets:
+            - role: OTHERS
   Attribute:
+    description: Attribute is a pair of strings that can be attached to a container or an object.
     type: object
     properties:
       key:
@@ -712,14 +817,19 @@ definitions:
     required:
       - key
       - value
+    example:
+      key: "User-Defined-Tag"
+      value: "tag value"
   Principal:
     type: string
   ErrorType:
+    description: Error type. Allow determine source of the error.
     type: string
     enum:
       - GW
       - API
   ErrorResponse:
+    description: Error response.
     type: object
     properties:
       type:
@@ -731,10 +841,17 @@ definitions:
     required:
       - type
       - message
+    example:
+      type: API
+      code: 1024
+      message: "incomplete object PUT by placement"
   SuccessResponse:
+    description: Success response.
     type: object
     properties:
       success:
         type: boolean
     required:
       - success
+    example:
+      success: true

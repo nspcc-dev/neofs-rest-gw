@@ -14,7 +14,7 @@ import (
 	"github.com/go-openapi/validate"
 )
 
-// Verb verb
+// Verb Verb that describes the allowed container operation for token.
 //
 // swagger:model Verb
 type Verb string

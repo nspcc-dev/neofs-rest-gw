@@ -43,17 +43,17 @@ type AuthParams struct {
 	// HTTP Request Object
 	HTTPRequest *http.Request `json:"-"`
 
-	/*Token lifetime in epoch
+	/*Token lifetime in epoch.
 	  In: header
 	  Default: 100
 	*/
 	XBearerLifetime *int64
-	/*Owner Id (wallet address) that will sign the token
+	/*Owner Id (wallet address) that will sign the token.
 	  Required: true
 	  In: header
 	*/
 	XBearerOwnerID string
-	/*Bearer token
+	/*Bearer tokens to form.
 	  Required: true
 	  In: body
 	*/

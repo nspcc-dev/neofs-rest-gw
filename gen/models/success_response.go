@@ -14,7 +14,8 @@ import (
 	"github.com/go-openapi/validate"
 )
 
-// SuccessResponse success response
+// SuccessResponse Success response.
+// Example: {"success":true}
 //
 // swagger:model SuccessResponse
 type SuccessResponse struct {

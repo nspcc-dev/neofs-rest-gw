@@ -23,7 +23,7 @@ func init() {
   ],
   "swagger": "2.0",
   "info": {
-    "description": "REST API NeoFS",
+    "description": "REST API for native integration with NeoFS.",
     "title": "REST API NeoFS",
     "version": "v1"
   },
@@ -39,12 +39,12 @@ func init() {
         "produces": [
           "application/json"
         ],
-        "summary": "Form bearer token to futher requests",
+        "summary": "Form bearer token to further requests",
         "operationId": "auth",
         "parameters": [
           {
             "type": "string",
-            "description": "Owner Id (wallet address) that will sign the token",
+            "description": "Owner Id (wallet address) that will sign the token.",
             "name": "X-Bearer-Owner-Id",
             "in": "header",
             "required": true
@@ -52,12 +52,12 @@ func init() {
           {
             "type": "integer",
             "default": 100,
-            "description": "Token lifetime in epoch",
+            "description": "Token lifetime in epoch.",
             "name": "X-Bearer-Lifetime",
             "in": "header"
           },
           {
-            "description": "Bearer token",
+            "description": "Bearer tokens to form.",
             "name": "tokens",
             "in": "body",
             "required": true,
@@ -71,7 +71,7 @@ func init() {
         ],
         "responses": {
           "200": {
-            "description": "Base64 encoded stable binary marshaled bearer token",
+            "description": "Base64 encoded stable binary marshaled bearer token.",
             "schema": {
               "type": "array",
               "items": {
@@ -96,7 +96,7 @@ func init() {
         "parameters": [
           {
             "type": "string",
-            "description": "Base58 encoded owner id",
+            "description": "Base58 encoded owner id.",
             "name": "ownerId",
             "in": "query",
             "required": true
@@ -120,13 +120,13 @@ func init() {
         ],
         "responses": {
           "200": {
-            "description": "Containers info",
+            "description": "Containers info.",
             "schema": {
               "$ref": "#/definitions/ContainerList"
             }
           },
           "400": {
-            "description": "Bad request",
+            "description": "Bad request.",
             "schema": {
               "$ref": "#/definitions/ErrorResponse"
             }
@@ -149,7 +149,7 @@ func init() {
           {
             "type": "boolean",
             "default": false,
-            "description": "Provide this parameter to register container name in NNS service",
+            "description": "Provide this parameter to register container name in NNS service.",
             "name": "name-scope-global",
             "in": "query"
           },
@@ -165,7 +165,7 @@ func init() {
         ],
         "responses": {
           "200": {
-            "description": "Address of uploaded objects",
+            "description": "Identifier of the created container.",
             "schema": {
               "type": "object",
               "required": [
@@ -182,7 +182,7 @@ func init() {
             }
           },
           "400": {
-            "description": "Bad request",
+            "description": "Bad request.",
             "schema": {
               "$ref": "#/definitions/ErrorResponse"
             }
@@ -197,13 +197,13 @@ func init() {
         "operationId": "getContainer",
         "responses": {
           "200": {
-            "description": "Container info",
+            "description": "Container info.",
             "schema": {
               "$ref": "#/definitions/ContainerInfo"
             }
           },
           "400": {
-            "description": "Bad request",
+            "description": "Bad request.",
             "schema": {
               "$ref": "#/definitions/ErrorResponse"
             }
@@ -226,13 +226,13 @@ func init() {
         ],
         "responses": {
           "200": {
-            "description": "Successful deletion",
+            "description": "Successful deletion.",
             "schema": {
               "$ref": "#/definitions/SuccessResponse"
             }
           },
           "400": {
-            "description": "Bad request",
+            "description": "Bad request.",
             "schema": {
               "$ref": "#/definitions/ErrorResponse"
             }
@@ -252,13 +252,13 @@ func init() {
         "operationId": "getContainerEACL",
         "responses": {
           "200": {
-            "description": "Container EACL information",
+            "description": "Container EACL information.",
             "schema": {
               "$ref": "#/definitions/Eacl"
             }
           },
           "400": {
-            "description": "Bad request",
+            "description": "Bad request.",
             "schema": {
               "$ref": "#/definitions/ErrorResponse"
             }
@@ -279,7 +279,7 @@ func init() {
             "$ref": "#/parameters/signatureScheme"
           },
           {
-            "description": "EACL for container",
+            "description": "EACL for container.",
             "name": "eacl",
             "in": "body",
             "required": true,
@@ -290,13 +290,13 @@ func init() {
         ],
         "responses": {
           "200": {
-            "description": "Successful EACL updating",
+            "description": "Successful EACL updating.",
             "schema": {
               "$ref": "#/definitions/SuccessResponse"
             }
           },
           "400": {
-            "description": "Bad request",
+            "description": "Bad request.",
             "schema": {
               "$ref": "#/definitions/ErrorResponse"
             }
@@ -379,7 +379,7 @@ func init() {
             "in": "query"
           },
           {
-            "description": "Filters to search objects",
+            "description": "Filters to search objects.",
             "name": "searchFilters",
             "in": "body",
             "required": true,
@@ -425,12 +425,14 @@ func init() {
         "parameters": [
           {
             "type": "integer",
+            "description": "Range offset to start reading data.",
             "name": "range-offset",
             "in": "query"
           },
           {
             "minimum": 1,
             "type": "integer",
+            "description": "Length of data range.",
             "name": "range-length",
             "in": "query"
           },
@@ -463,13 +465,13 @@ func init() {
         "operationId": "deleteObject",
         "responses": {
           "200": {
-            "description": "Successful deletion",
+            "description": "Successful deletion.",
             "schema": {
               "$ref": "#/definitions/SuccessResponse"
             }
           },
           "400": {
-            "description": "Bad request",
+            "description": "Bad request.",
             "schema": {
               "$ref": "#/definitions/ErrorResponse"
             }
@@ -497,6 +499,7 @@ func init() {
   },
   "definitions": {
     "Action": {
+      "description": "Rule execution result action in NeoFS EACL. Either allows or denies access if the rule's filters match.",
       "type": "string",
       "enum": [
         "ALLOW",
@@ -504,6 +507,7 @@ func init() {
       ]
     },
     "Address": {
+      "description": "Address of the object in NeoFS.",
       "type": "object",
       "required": [
         "containerId",
@@ -523,6 +527,7 @@ func init() {
       }
     },
     "Attribute": {
+      "description": "Attribute is a pair of strings that can be attached to a container or an object.",
       "type": "object",
       "required": [
         "key",
@@ -535,9 +540,14 @@ func init() {
         "value": {
           "type": "string"
         }
+      },
+      "example": {
+        "key": "User-Defined-Tag",
+        "value": "tag value"
       }
     },
     "Bearer": {
+      "description": "Bearer token that is expected to be formed.",
       "type": "object",
       "properties": {
         "container": {
@@ -552,9 +562,34 @@ func init() {
             "$ref": "#/definitions/Record"
           }
         }
-      }
+      },
+      "example": [
+        {
+          "name": "my-bearer-token",
+          "object": [
+            {
+              "action": "ALLOW",
+              "filters": null,
+              "operation": "GET",
+              "targets": [
+                {
+                  "keys": null,
+                  "role": "OTHERS"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "container": {
+            "verb": "PUT"
+          },
+          "name": "my token to create container"
+        }
+      ]
     },
     "ContainerInfo": {
+      "description": "Information about container.",
       "type": "object",
       "required": [
         "containerId",
@@ -604,12 +639,14 @@ func init() {
         ],
         "basicAcl": "0x1fbf9fff",
         "containerId": "5HZTn5qkRnmgSz9gSrw22CEdPPk6nQhkwf2Mgzyvkikv",
+        "containerName": "container",
         "ownerId": "NbUgTSFvPmsRxmGeWpuuGeJUoRoi6PErcM",
         "placementPolicy": "REP 2",
         "version": "2.11"
       }
     },
     "ContainerList": {
+      "description": "List of containers info",
       "type": "object",
       "required": [
         "size",
@@ -625,10 +662,47 @@ func init() {
         "size": {
           "type": "integer"
         }
+      },
+      "example": {
+        "containers": [
+          {
+            "attribute": [
+              {
+                "key": "Timestamp",
+                "value": "1648810072"
+              },
+              {
+                "key": "Name",
+                "value": "container"
+              }
+            ],
+            "basicAcl": "0x1fbf9fff",
+            "containerId": "5HZTn5qkRnmgSz9gSrw22CEdPPk6nQhkwf2Mgzyvkikv",
+            "containerName": "container",
+            "ownerId": "NbUgTSFvPmsRxmGeWpuuGeJUoRoi6PErcM",
+            "placementPolicy": "REP 2",
+            "version": "2.11"
+          },
+          {
+            "attribute": [
+              {
+                "key": "Name",
+                "value": "container2"
+              }
+            ],
+            "basicAcl": "0x1fbf9fff",
+            "containerId": "FsE7HLQBBYc2WFJzuTXMcpspDEmwUxsD5YmNb2r25uUu",
+            "containerName": "container2",
+            "ownerId": "NbUgTSFvPmsRxmGeWpuuGeJUoRoi6PErcM",
+            "placementPolicy": "REP 1",
+            "version": "2.11"
+          }
+        ],
+        "size": 2
       }
     },
     "ContainerPutInfo": {
-      "description": "Represent request body to create container. To specify container name use appropriate property (name provided in attributes will be ignored).",
+      "description": "Request body to create container. To specify container name use appropriate property (name provided in attributes will be ignored).",
       "type": "object",
       "properties": {
         "attributes": {
@@ -660,6 +734,7 @@ func init() {
       }
     },
     "Eacl": {
+      "description": "EACL NeoFS table.",
       "type": "object",
       "required": [
         "records"
@@ -675,9 +750,32 @@ func init() {
             "$ref": "#/definitions/Record"
           }
         }
+      },
+      "example": {
+        "containerId": "5HZTn5qkRnmgSz9gSrw22CEdPPk6nQhkwf2Mgzyvkikv",
+        "records": [
+          {
+            "action": "GET",
+            "filters": [
+              {
+                "headerType": "OBJECT",
+                "key": "FileName",
+                "matchType": "STRING_EQUAL",
+                "value": "myfile"
+              }
+            ],
+            "operation": "ALLOW",
+            "targets": [
+              {
+                "role": "OTHERS"
+              }
+            ]
+          }
+        ]
       }
     },
     "ErrorResponse": {
+      "description": "Error response.",
       "type": "object",
       "required": [
         "type",
@@ -693,9 +791,15 @@ func init() {
         "type": {
           "$ref": "#/definitions/ErrorType"
         }
+      },
+      "example": {
+        "code": 1024,
+        "message": "incomplete object PUT by placement",
+        "type": "API"
       }
     },
     "ErrorType": {
+      "description": "Error type. Allow determine source of the error.",
       "type": "string",
       "enum": [
         "GW",
@@ -703,6 +807,7 @@ func init() {
       ]
     },
     "Filter": {
+      "description": "Filter in NeoFS EACL to check particular properties of the request or the object.",
       "type": "object",
       "required": [
         "headerType",
@@ -732,6 +837,7 @@ func init() {
       }
     },
     "HeaderType": {
+      "description": "Enumeration of possible sources of Headers to apply filters in NeoFS EACL.",
       "type": "string",
       "enum": [
         "REQUEST",
@@ -740,6 +846,7 @@ func init() {
       ]
     },
     "MatchType": {
+      "description": "Match type in NeoFS EACL filter.",
       "type": "string",
       "enum": [
         "STRING_EQUAL",
@@ -747,6 +854,7 @@ func init() {
       ]
     },
     "ObjectBaseInfo": {
+      "description": "Basic object information.",
       "type": "object",
       "required": [
         "address"
@@ -758,9 +866,17 @@ func init() {
         "name": {
           "type": "string"
         }
+      },
+      "example": {
+        "address": {
+          "containerId": "5HZTn5qkRnmgSz9gSrw22CEdPPk6nQhkwf2Mgzyvkikv",
+          "objectId": "8N3o7Dtr6T1xteCt6eRwhpmJ7JhME58Hyu1dvaswuTDd"
+        },
+        "name": "/my/object/name"
       }
     },
     "ObjectInfo": {
+      "description": "Object information.",
       "type": "object",
       "required": [
         "containerId",
@@ -816,6 +932,7 @@ func init() {
       }
     },
     "ObjectList": {
+      "description": "List of objects.",
       "type": "object",
       "required": [
         "size",
@@ -831,9 +948,29 @@ func init() {
         "size": {
           "type": "integer"
         }
+      },
+      "example": {
+        "objects": [
+          {
+            "address": {
+              "containerId": "5HZTn5qkRnmgSz9gSrw22CEdPPk6nQhkwf2Mgzyvkikv",
+              "objectId": "8N3o7Dtr6T1xteCt6eRwhpmJ7JhME58Hyu1dvaswuTDd"
+            },
+            "name": "/my/object/name"
+          },
+          {
+            "address": {
+              "containerId": "5HZTn5qkRnmgSz9gSrw22CEdPPk6nQhkwf2Mgzyvkikv",
+              "objectId": "3GbmMWusaWgMHokWui2zDunxMTzButuQMVLbtL3cDn8s"
+            },
+            "name": "/my/object/some/other/name"
+          }
+        ],
+        "size": 2
       }
     },
     "ObjectUpload": {
+      "description": "Request body to create object.",
       "type": "object",
       "required": [
         "containerId",
@@ -869,6 +1006,7 @@ func init() {
       }
     },
     "Operation": {
+      "description": "Request's operation type to match in NeoFS EACL if the rule is applicable to a particular request.",
       "type": "string",
       "enum": [
         "GET",
@@ -884,6 +1022,7 @@ func init() {
       "type": "string"
     },
     "Record": {
+      "description": "A single NeoFS EACL rule.",
       "type": "object",
       "required": [
         "action",
@@ -924,6 +1063,7 @@ func init() {
       }
     },
     "Role": {
+      "description": "Role for target in EACL.",
       "type": "string",
       "enum": [
         "USER",
@@ -932,6 +1072,7 @@ func init() {
       ]
     },
     "Rule": {
+      "description": "Container session token rule.",
       "type": "object",
       "required": [
         "verb"
@@ -943,9 +1084,14 @@ func init() {
         "verb": {
           "$ref": "#/definitions/Verb"
         }
+      },
+      "example": {
+        "containerId": "6jvKJCQr6e47Yx8SsbSN3fNgzroUJVkY66Q9wqxYcAjc",
+        "verb": "DELETE"
       }
     },
     "SearchFilter": {
+      "description": "Search filter to find objects.",
       "type": "object",
       "required": [
         "key",
@@ -962,9 +1108,15 @@ func init() {
         "value": {
           "type": "string"
         }
+      },
+      "example": {
+        "key": "FileName",
+        "match": "MatchStringEqual",
+        "value": "object-name"
       }
     },
     "SearchFilters": {
+      "description": "List of SearchFilter elements.",
       "type": "object",
       "required": [
         "filters"
@@ -976,9 +1128,24 @@ func init() {
             "$ref": "#/definitions/SearchFilter"
           }
         }
+      },
+      "example": {
+        "filters": [
+          {
+            "key": "FileName",
+            "match": "MatchCommonPrefix",
+            "value": "some/prefix"
+          },
+          {
+            "key": "CustomAttribute",
+            "match": "MatchStringEqual",
+            "value": "tag-value"
+          }
+        ]
       }
     },
     "SearchMatch": {
+      "description": "Search match type.",
       "type": "string",
       "enum": [
         "MatchStringEqual",
@@ -988,6 +1155,7 @@ func init() {
       ]
     },
     "SuccessResponse": {
+      "description": "Success response.",
       "type": "object",
       "required": [
         "success"
@@ -996,9 +1164,13 @@ func init() {
         "success": {
           "type": "boolean"
         }
+      },
+      "example": {
+        "success": true
       }
     },
     "Target": {
+      "description": "Target to apply the ACL rule. Can be a subject's role class or a list of public keys to match.",
       "type": "object",
       "required": [
         "role",
@@ -1023,6 +1195,7 @@ func init() {
       }
     },
     "TokenResponse": {
+      "description": "Base64 encoded marshaled token (for container or for object operations).",
       "type": "object",
       "required": [
         "type",
@@ -1041,7 +1214,7 @@ func init() {
       },
       "example": [
         {
-          "token": "sometoken-todo-add",
+          "token": "ClYKBAgCEA0aCAgDEAEiAggDGggIARACIgIIAxoICAIQAiICCAMaCAgDEAIiAggDGggIBBACIgIIAxoICAUQAiICCAMaCAgGEAIiAggDGggIBxACIgIIAxIbChk182WEDFuAqq3nssrGOaH0NK0ZhzF8bu+YGgQIaBgE",
           "type": "object"
         },
         {
@@ -1051,6 +1224,7 @@ func init() {
       ]
     },
     "TokenType": {
+      "description": "Type of token.",
       "type": "string",
       "enum": [
         "object",
@@ -1058,6 +1232,7 @@ func init() {
       ]
     },
     "Verb": {
+      "description": "Verb that describes the allowed container operation for token.",
       "type": "string",
       "enum": [
         "PUT",
@@ -1069,28 +1244,28 @@ func init() {
   "parameters": {
     "containerId": {
       "type": "string",
-      "description": "Base58 encoded container id",
+      "description": "Base58 encoded container id.",
       "name": "containerId",
       "in": "path",
       "required": true
     },
     "objectId": {
       "type": "string",
-      "description": "Base58 encoded object id",
+      "description": "Base58 encoded object id.",
       "name": "objectId",
       "in": "path",
       "required": true
     },
     "signatureKeyParam": {
       "type": "string",
-      "description": "Hex encoded the public part of the key that signed the bearer token",
+      "description": "Hex encoded the public part of the key that signed the bearer token.",
       "name": "X-Bearer-Signature-Key",
       "in": "header",
       "required": true
     },
     "signatureParam": {
       "type": "string",
-      "description": "Base64 encoded signature for bearer token",
+      "description": "Base64 encoded signature for bearer token.",
       "name": "X-Bearer-Signature",
       "in": "header",
       "required": true
@@ -1098,7 +1273,7 @@ func init() {
     "signatureScheme": {
       "type": "boolean",
       "default": false,
-      "description": "Use wallect connect signature scheme or not",
+      "description": "Use wallet connect signature scheme or native NeoFS signature.",
       "name": "walletConnect",
       "in": "query"
     }
@@ -1123,7 +1298,7 @@ func init() {
   ],
   "swagger": "2.0",
   "info": {
-    "description": "REST API NeoFS",
+    "description": "REST API for native integration with NeoFS.",
     "title": "REST API NeoFS",
     "version": "v1"
   },
@@ -1139,12 +1314,12 @@ func init() {
         "produces": [
           "application/json"
         ],
-        "summary": "Form bearer token to futher requests",
+        "summary": "Form bearer token to further requests",
         "operationId": "auth",
         "parameters": [
           {
             "type": "string",
-            "description": "Owner Id (wallet address) that will sign the token",
+            "description": "Owner Id (wallet address) that will sign the token.",
             "name": "X-Bearer-Owner-Id",
             "in": "header",
             "required": true
@@ -1152,12 +1327,12 @@ func init() {
           {
             "type": "integer",
             "default": 100,
-            "description": "Token lifetime in epoch",
+            "description": "Token lifetime in epoch.",
             "name": "X-Bearer-Lifetime",
             "in": "header"
           },
           {
-            "description": "Bearer token",
+            "description": "Bearer tokens to form.",
             "name": "tokens",
             "in": "body",
             "required": true,
@@ -1171,7 +1346,7 @@ func init() {
         ],
         "responses": {
           "200": {
-            "description": "Base64 encoded stable binary marshaled bearer token",
+            "description": "Base64 encoded stable binary marshaled bearer token.",
             "schema": {
               "type": "array",
               "items": {
@@ -1196,7 +1371,7 @@ func init() {
         "parameters": [
           {
             "type": "string",
-            "description": "Base58 encoded owner id",
+            "description": "Base58 encoded owner id.",
             "name": "ownerId",
             "in": "query",
             "required": true
@@ -1221,13 +1396,13 @@ func init() {
         ],
         "responses": {
           "200": {
-            "description": "Containers info",
+            "description": "Containers info.",
             "schema": {
               "$ref": "#/definitions/ContainerList"
             }
           },
           "400": {
-            "description": "Bad request",
+            "description": "Bad request.",
             "schema": {
               "$ref": "#/definitions/ErrorResponse"
             }
@@ -1240,14 +1415,14 @@ func init() {
         "parameters": [
           {
             "type": "string",
-            "description": "Base64 encoded signature for bearer token",
+            "description": "Base64 encoded signature for bearer token.",
             "name": "X-Bearer-Signature",
             "in": "header",
             "required": true
           },
           {
             "type": "string",
-            "description": "Hex encoded the public part of the key that signed the bearer token",
+            "description": "Hex encoded the public part of the key that signed the bearer token.",
             "name": "X-Bearer-Signature-Key",
             "in": "header",
             "required": true
@@ -1255,14 +1430,14 @@ func init() {
           {
             "type": "boolean",
             "default": false,
-            "description": "Use wallect connect signature scheme or not",
+            "description": "Use wallet connect signature scheme or native NeoFS signature.",
             "name": "walletConnect",
             "in": "query"
           },
           {
             "type": "boolean",
             "default": false,
-            "description": "Provide this parameter to register container name in NNS service",
+            "description": "Provide this parameter to register container name in NNS service.",
             "name": "name-scope-global",
             "in": "query"
           },
@@ -1278,7 +1453,7 @@ func init() {
         ],
         "responses": {
           "200": {
-            "description": "Address of uploaded objects",
+            "description": "Identifier of the created container.",
             "schema": {
               "type": "object",
               "required": [
@@ -1295,7 +1470,7 @@ func init() {
             }
           },
           "400": {
-            "description": "Bad request",
+            "description": "Bad request.",
             "schema": {
               "$ref": "#/definitions/ErrorResponse"
             }
@@ -1310,13 +1485,13 @@ func init() {
         "operationId": "getContainer",
         "responses": {
           "200": {
-            "description": "Container info",
+            "description": "Container info.",
             "schema": {
               "$ref": "#/definitions/ContainerInfo"
             }
           },
           "400": {
-            "description": "Bad request",
+            "description": "Bad request.",
             "schema": {
               "$ref": "#/definitions/ErrorResponse"
             }
@@ -1329,14 +1504,14 @@ func init() {
         "parameters": [
           {
             "type": "string",
-            "description": "Base64 encoded signature for bearer token",
+            "description": "Base64 encoded signature for bearer token.",
             "name": "X-Bearer-Signature",
             "in": "header",
             "required": true
           },
           {
             "type": "string",
-            "description": "Hex encoded the public part of the key that signed the bearer token",
+            "description": "Hex encoded the public part of the key that signed the bearer token.",
             "name": "X-Bearer-Signature-Key",
             "in": "header",
             "required": true
@@ -1344,20 +1519,20 @@ func init() {
           {
             "type": "boolean",
             "default": false,
-            "description": "Use wallect connect signature scheme or not",
+            "description": "Use wallet connect signature scheme or native NeoFS signature.",
             "name": "walletConnect",
             "in": "query"
           }
         ],
         "responses": {
           "200": {
-            "description": "Successful deletion",
+            "description": "Successful deletion.",
             "schema": {
               "$ref": "#/definitions/SuccessResponse"
             }
           },
           "400": {
-            "description": "Bad request",
+            "description": "Bad request.",
             "schema": {
               "$ref": "#/definitions/ErrorResponse"
             }
@@ -1367,7 +1542,7 @@ func init() {
       "parameters": [
         {
           "type": "string",
-          "description": "Base58 encoded container id",
+          "description": "Base58 encoded container id.",
           "name": "containerId",
           "in": "path",
           "required": true
@@ -1381,13 +1556,13 @@ func init() {
         "operationId": "getContainerEACL",
         "responses": {
           "200": {
-            "description": "Container EACL information",
+            "description": "Container EACL information.",
             "schema": {
               "$ref": "#/definitions/Eacl"
             }
           },
           "400": {
-            "description": "Bad request",
+            "description": "Bad request.",
             "schema": {
               "$ref": "#/definitions/ErrorResponse"
             }
@@ -1400,14 +1575,14 @@ func init() {
         "parameters": [
           {
             "type": "string",
-            "description": "Base64 encoded signature for bearer token",
+            "description": "Base64 encoded signature for bearer token.",
             "name": "X-Bearer-Signature",
             "in": "header",
             "required": true
           },
           {
             "type": "string",
-            "description": "Hex encoded the public part of the key that signed the bearer token",
+            "description": "Hex encoded the public part of the key that signed the bearer token.",
             "name": "X-Bearer-Signature-Key",
             "in": "header",
             "required": true
@@ -1415,12 +1590,12 @@ func init() {
           {
             "type": "boolean",
             "default": false,
-            "description": "Use wallect connect signature scheme or not",
+            "description": "Use wallet connect signature scheme or native NeoFS signature.",
             "name": "walletConnect",
             "in": "query"
           },
           {
-            "description": "EACL for container",
+            "description": "EACL for container.",
             "name": "eacl",
             "in": "body",
             "required": true,
@@ -1431,13 +1606,13 @@ func init() {
         ],
         "responses": {
           "200": {
-            "description": "Successful EACL updating",
+            "description": "Successful EACL updating.",
             "schema": {
               "$ref": "#/definitions/SuccessResponse"
             }
           },
           "400": {
-            "description": "Bad request",
+            "description": "Bad request.",
             "schema": {
               "$ref": "#/definitions/ErrorResponse"
             }
@@ -1447,7 +1622,7 @@ func init() {
       "parameters": [
         {
           "type": "string",
-          "description": "Base58 encoded container id",
+          "description": "Base58 encoded container id.",
           "name": "containerId",
           "in": "path",
           "required": true
@@ -1493,14 +1668,14 @@ func init() {
       "parameters": [
         {
           "type": "string",
-          "description": "Base64 encoded signature for bearer token",
+          "description": "Base64 encoded signature for bearer token.",
           "name": "X-Bearer-Signature",
           "in": "header",
           "required": true
         },
         {
           "type": "string",
-          "description": "Hex encoded the public part of the key that signed the bearer token",
+          "description": "Hex encoded the public part of the key that signed the bearer token.",
           "name": "X-Bearer-Signature-Key",
           "in": "header",
           "required": true
@@ -1508,7 +1683,7 @@ func init() {
         {
           "type": "boolean",
           "default": false,
-          "description": "Use wallect connect signature scheme or not",
+          "description": "Use wallet connect signature scheme or native NeoFS signature.",
           "name": "walletConnect",
           "in": "query"
         }
@@ -1537,7 +1712,7 @@ func init() {
             "in": "query"
           },
           {
-            "description": "Filters to search objects",
+            "description": "Filters to search objects.",
             "name": "searchFilters",
             "in": "body",
             "required": true,
@@ -1564,14 +1739,14 @@ func init() {
       "parameters": [
         {
           "type": "string",
-          "description": "Base64 encoded signature for bearer token",
+          "description": "Base64 encoded signature for bearer token.",
           "name": "X-Bearer-Signature",
           "in": "header",
           "required": true
         },
         {
           "type": "string",
-          "description": "Hex encoded the public part of the key that signed the bearer token",
+          "description": "Hex encoded the public part of the key that signed the bearer token.",
           "name": "X-Bearer-Signature-Key",
           "in": "header",
           "required": true
@@ -1579,13 +1754,13 @@ func init() {
         {
           "type": "boolean",
           "default": false,
-          "description": "Use wallect connect signature scheme or not",
+          "description": "Use wallet connect signature scheme or native NeoFS signature.",
           "name": "walletConnect",
           "in": "query"
         },
         {
           "type": "string",
-          "description": "Base58 encoded container id",
+          "description": "Base58 encoded container id.",
           "name": "containerId",
           "in": "path",
           "required": true
@@ -1600,12 +1775,14 @@ func init() {
           {
             "minimum": 0,
             "type": "integer",
+            "description": "Range offset to start reading data.",
             "name": "range-offset",
             "in": "query"
           },
           {
             "minimum": 1,
             "type": "integer",
+            "description": "Length of data range.",
             "name": "range-length",
             "in": "query"
           },
@@ -1639,13 +1816,13 @@ func init() {
         "operationId": "deleteObject",
         "responses": {
           "200": {
-            "description": "Successful deletion",
+            "description": "Successful deletion.",
             "schema": {
               "$ref": "#/definitions/SuccessResponse"
             }
           },
           "400": {
-            "description": "Bad request",
+            "description": "Bad request.",
             "schema": {
               "$ref": "#/definitions/ErrorResponse"
             }
@@ -1655,14 +1832,14 @@ func init() {
       "parameters": [
         {
           "type": "string",
-          "description": "Base64 encoded signature for bearer token",
+          "description": "Base64 encoded signature for bearer token.",
           "name": "X-Bearer-Signature",
           "in": "header",
           "required": true
         },
         {
           "type": "string",
-          "description": "Hex encoded the public part of the key that signed the bearer token",
+          "description": "Hex encoded the public part of the key that signed the bearer token.",
           "name": "X-Bearer-Signature-Key",
           "in": "header",
           "required": true
@@ -1670,20 +1847,20 @@ func init() {
         {
           "type": "boolean",
           "default": false,
-          "description": "Use wallect connect signature scheme or not",
+          "description": "Use wallet connect signature scheme or native NeoFS signature.",
           "name": "walletConnect",
           "in": "query"
         },
         {
           "type": "string",
-          "description": "Base58 encoded container id",
+          "description": "Base58 encoded container id.",
           "name": "containerId",
           "in": "path",
           "required": true
         },
         {
           "type": "string",
-          "description": "Base58 encoded object id",
+          "description": "Base58 encoded object id.",
           "name": "objectId",
           "in": "path",
           "required": true
@@ -1693,6 +1870,7 @@ func init() {
   },
   "definitions": {
     "Action": {
+      "description": "Rule execution result action in NeoFS EACL. Either allows or denies access if the rule's filters match.",
       "type": "string",
       "enum": [
         "ALLOW",
@@ -1700,6 +1878,7 @@ func init() {
       ]
     },
     "Address": {
+      "description": "Address of the object in NeoFS.",
       "type": "object",
       "required": [
         "containerId",
@@ -1719,6 +1898,7 @@ func init() {
       }
     },
     "Attribute": {
+      "description": "Attribute is a pair of strings that can be attached to a container or an object.",
       "type": "object",
       "required": [
         "key",
@@ -1731,9 +1911,14 @@ func init() {
         "value": {
           "type": "string"
         }
+      },
+      "example": {
+        "key": "User-Defined-Tag",
+        "value": "tag value"
       }
     },
     "Bearer": {
+      "description": "Bearer token that is expected to be formed.",
       "type": "object",
       "properties": {
         "container": {
@@ -1748,9 +1933,34 @@ func init() {
             "$ref": "#/definitions/Record"
           }
         }
-      }
+      },
+      "example": [
+        {
+          "name": "my-bearer-token",
+          "object": [
+            {
+              "action": "ALLOW",
+              "filters": [],
+              "operation": "GET",
+              "targets": [
+                {
+                  "keys": [],
+                  "role": "OTHERS"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "container": {
+            "verb": "PUT"
+          },
+          "name": "my token to create container"
+        }
+      ]
     },
     "ContainerInfo": {
+      "description": "Information about container.",
       "type": "object",
       "required": [
         "containerId",
@@ -1800,12 +2010,14 @@ func init() {
         ],
         "basicAcl": "0x1fbf9fff",
         "containerId": "5HZTn5qkRnmgSz9gSrw22CEdPPk6nQhkwf2Mgzyvkikv",
+        "containerName": "container",
         "ownerId": "NbUgTSFvPmsRxmGeWpuuGeJUoRoi6PErcM",
         "placementPolicy": "REP 2",
         "version": "2.11"
       }
     },
     "ContainerList": {
+      "description": "List of containers info",
       "type": "object",
       "required": [
         "size",
@@ -1821,10 +2033,47 @@ func init() {
         "size": {
           "type": "integer"
         }
+      },
+      "example": {
+        "containers": [
+          {
+            "attribute": [
+              {
+                "key": "Timestamp",
+                "value": "1648810072"
+              },
+              {
+                "key": "Name",
+                "value": "container"
+              }
+            ],
+            "basicAcl": "0x1fbf9fff",
+            "containerId": "5HZTn5qkRnmgSz9gSrw22CEdPPk6nQhkwf2Mgzyvkikv",
+            "containerName": "container",
+            "ownerId": "NbUgTSFvPmsRxmGeWpuuGeJUoRoi6PErcM",
+            "placementPolicy": "REP 2",
+            "version": "2.11"
+          },
+          {
+            "attribute": [
+              {
+                "key": "Name",
+                "value": "container2"
+              }
+            ],
+            "basicAcl": "0x1fbf9fff",
+            "containerId": "FsE7HLQBBYc2WFJzuTXMcpspDEmwUxsD5YmNb2r25uUu",
+            "containerName": "container2",
+            "ownerId": "NbUgTSFvPmsRxmGeWpuuGeJUoRoi6PErcM",
+            "placementPolicy": "REP 1",
+            "version": "2.11"
+          }
+        ],
+        "size": 2
       }
     },
     "ContainerPutInfo": {
-      "description": "Represent request body to create container. To specify container name use appropriate property (name provided in attributes will be ignored).",
+      "description": "Request body to create container. To specify container name use appropriate property (name provided in attributes will be ignored).",
       "type": "object",
       "properties": {
         "attributes": {
@@ -1856,6 +2105,7 @@ func init() {
       }
     },
     "Eacl": {
+      "description": "EACL NeoFS table.",
       "type": "object",
       "required": [
         "records"
@@ -1871,9 +2121,32 @@ func init() {
             "$ref": "#/definitions/Record"
           }
         }
+      },
+      "example": {
+        "containerId": "5HZTn5qkRnmgSz9gSrw22CEdPPk6nQhkwf2Mgzyvkikv",
+        "records": [
+          {
+            "action": "GET",
+            "filters": [
+              {
+                "headerType": "OBJECT",
+                "key": "FileName",
+                "matchType": "STRING_EQUAL",
+                "value": "myfile"
+              }
+            ],
+            "operation": "ALLOW",
+            "targets": [
+              {
+                "role": "OTHERS"
+              }
+            ]
+          }
+        ]
       }
     },
     "ErrorResponse": {
+      "description": "Error response.",
       "type": "object",
       "required": [
         "type",
@@ -1889,9 +2162,15 @@ func init() {
         "type": {
           "$ref": "#/definitions/ErrorType"
         }
+      },
+      "example": {
+        "code": 1024,
+        "message": "incomplete object PUT by placement",
+        "type": "API"
       }
     },
     "ErrorType": {
+      "description": "Error type. Allow determine source of the error.",
       "type": "string",
       "enum": [
         "GW",
@@ -1899,6 +2178,7 @@ func init() {
       ]
     },
     "Filter": {
+      "description": "Filter in NeoFS EACL to check particular properties of the request or the object.",
       "type": "object",
       "required": [
         "headerType",
@@ -1928,6 +2208,7 @@ func init() {
       }
     },
     "HeaderType": {
+      "description": "Enumeration of possible sources of Headers to apply filters in NeoFS EACL.",
       "type": "string",
       "enum": [
         "REQUEST",
@@ -1936,6 +2217,7 @@ func init() {
       ]
     },
     "MatchType": {
+      "description": "Match type in NeoFS EACL filter.",
       "type": "string",
       "enum": [
         "STRING_EQUAL",
@@ -1943,6 +2225,7 @@ func init() {
       ]
     },
     "ObjectBaseInfo": {
+      "description": "Basic object information.",
       "type": "object",
       "required": [
         "address"
@@ -1954,9 +2237,17 @@ func init() {
         "name": {
           "type": "string"
         }
+      },
+      "example": {
+        "address": {
+          "containerId": "5HZTn5qkRnmgSz9gSrw22CEdPPk6nQhkwf2Mgzyvkikv",
+          "objectId": "8N3o7Dtr6T1xteCt6eRwhpmJ7JhME58Hyu1dvaswuTDd"
+        },
+        "name": "/my/object/name"
       }
     },
     "ObjectInfo": {
+      "description": "Object information.",
       "type": "object",
       "required": [
         "containerId",
@@ -2012,6 +2303,7 @@ func init() {
       }
     },
     "ObjectList": {
+      "description": "List of objects.",
       "type": "object",
       "required": [
         "size",
@@ -2027,9 +2319,29 @@ func init() {
         "size": {
           "type": "integer"
         }
+      },
+      "example": {
+        "objects": [
+          {
+            "address": {
+              "containerId": "5HZTn5qkRnmgSz9gSrw22CEdPPk6nQhkwf2Mgzyvkikv",
+              "objectId": "8N3o7Dtr6T1xteCt6eRwhpmJ7JhME58Hyu1dvaswuTDd"
+            },
+            "name": "/my/object/name"
+          },
+          {
+            "address": {
+              "containerId": "5HZTn5qkRnmgSz9gSrw22CEdPPk6nQhkwf2Mgzyvkikv",
+              "objectId": "3GbmMWusaWgMHokWui2zDunxMTzButuQMVLbtL3cDn8s"
+            },
+            "name": "/my/object/some/other/name"
+          }
+        ],
+        "size": 2
       }
     },
     "ObjectUpload": {
+      "description": "Request body to create object.",
       "type": "object",
       "required": [
         "containerId",
@@ -2065,6 +2377,7 @@ func init() {
       }
     },
     "Operation": {
+      "description": "Request's operation type to match in NeoFS EACL if the rule is applicable to a particular request.",
       "type": "string",
       "enum": [
         "GET",
@@ -2080,6 +2393,7 @@ func init() {
       "type": "string"
     },
     "Record": {
+      "description": "A single NeoFS EACL rule.",
       "type": "object",
       "required": [
         "action",
@@ -2120,6 +2434,7 @@ func init() {
       }
     },
     "Role": {
+      "description": "Role for target in EACL.",
       "type": "string",
       "enum": [
         "USER",
@@ -2128,6 +2443,7 @@ func init() {
       ]
     },
     "Rule": {
+      "description": "Container session token rule.",
       "type": "object",
       "required": [
         "verb"
@@ -2139,9 +2455,14 @@ func init() {
         "verb": {
           "$ref": "#/definitions/Verb"
         }
+      },
+      "example": {
+        "containerId": "6jvKJCQr6e47Yx8SsbSN3fNgzroUJVkY66Q9wqxYcAjc",
+        "verb": "DELETE"
       }
     },
     "SearchFilter": {
+      "description": "Search filter to find objects.",
       "type": "object",
       "required": [
         "key",
@@ -2158,9 +2479,15 @@ func init() {
         "value": {
           "type": "string"
         }
+      },
+      "example": {
+        "key": "FileName",
+        "match": "MatchStringEqual",
+        "value": "object-name"
       }
     },
     "SearchFilters": {
+      "description": "List of SearchFilter elements.",
       "type": "object",
       "required": [
         "filters"
@@ -2172,9 +2499,24 @@ func init() {
             "$ref": "#/definitions/SearchFilter"
           }
         }
+      },
+      "example": {
+        "filters": [
+          {
+            "key": "FileName",
+            "match": "MatchCommonPrefix",
+            "value": "some/prefix"
+          },
+          {
+            "key": "CustomAttribute",
+            "match": "MatchStringEqual",
+            "value": "tag-value"
+          }
+        ]
       }
     },
     "SearchMatch": {
+      "description": "Search match type.",
       "type": "string",
       "enum": [
         "MatchStringEqual",
@@ -2184,6 +2526,7 @@ func init() {
       ]
     },
     "SuccessResponse": {
+      "description": "Success response.",
       "type": "object",
       "required": [
         "success"
@@ -2192,9 +2535,13 @@ func init() {
         "success": {
           "type": "boolean"
         }
+      },
+      "example": {
+        "success": true
       }
     },
     "Target": {
+      "description": "Target to apply the ACL rule. Can be a subject's role class or a list of public keys to match.",
       "type": "object",
       "required": [
         "role",
@@ -2219,6 +2566,7 @@ func init() {
       }
     },
     "TokenResponse": {
+      "description": "Base64 encoded marshaled token (for container or for object operations).",
       "type": "object",
       "required": [
         "type",
@@ -2237,7 +2585,7 @@ func init() {
       },
       "example": [
         {
-          "token": "sometoken-todo-add",
+          "token": "ClYKBAgCEA0aCAgDEAEiAggDGggIARACIgIIAxoICAIQAiICCAMaCAgDEAIiAggDGggIBBACIgIIAxoICAUQAiICCAMaCAgGEAIiAggDGggIBxACIgIIAxIbChk182WEDFuAqq3nssrGOaH0NK0ZhzF8bu+YGgQIaBgE",
           "type": "object"
         },
         {
@@ -2247,6 +2595,7 @@ func init() {
       ]
     },
     "TokenType": {
+      "description": "Type of token.",
       "type": "string",
       "enum": [
         "object",
@@ -2254,6 +2603,7 @@ func init() {
       ]
     },
     "Verb": {
+      "description": "Verb that describes the allowed container operation for token.",
       "type": "string",
       "enum": [
         "PUT",
@@ -2265,28 +2615,28 @@ func init() {
   "parameters": {
     "containerId": {
       "type": "string",
-      "description": "Base58 encoded container id",
+      "description": "Base58 encoded container id.",
       "name": "containerId",
       "in": "path",
       "required": true
     },
     "objectId": {
       "type": "string",
-      "description": "Base58 encoded object id",
+      "description": "Base58 encoded object id.",
       "name": "objectId",
       "in": "path",
       "required": true
     },
     "signatureKeyParam": {
       "type": "string",
-      "description": "Hex encoded the public part of the key that signed the bearer token",
+      "description": "Hex encoded the public part of the key that signed the bearer token.",
       "name": "X-Bearer-Signature-Key",
       "in": "header",
       "required": true
     },
     "signatureParam": {
       "type": "string",
-      "description": "Base64 encoded signature for bearer token",
+      "description": "Base64 encoded signature for bearer token.",
       "name": "X-Bearer-Signature",
       "in": "header",
       "required": true
@@ -2294,7 +2644,7 @@ func init() {
     "signatureScheme": {
       "type": "boolean",
       "default": false,
-      "description": "Use wallect connect signature scheme or not",
+      "description": "Use wallet connect signature scheme or native NeoFS signature.",
       "name": "walletConnect",
       "in": "query"
     }

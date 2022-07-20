@@ -15,7 +15,8 @@ import (
 	"github.com/go-openapi/validate"
 )
 
-// SearchFilters search filters
+// SearchFilters List of SearchFilter elements.
+// Example: {"filters":[{"key":"FileName","match":"MatchCommonPrefix","value":"some/prefix"},{"key":"CustomAttribute","match":"MatchStringEqual","value":"tag-value"}]}
 //
 // swagger:model SearchFilters
 type SearchFilters struct {

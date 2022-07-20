@@ -2,7 +2,7 @@
 
 // Package restapi REST API NeoFS
 //
-//  REST API NeoFS
+//  REST API for native integration with NeoFS.
 //  Schemes:
 //    http
 //  Host: localhost:8090

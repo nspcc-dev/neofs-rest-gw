@@ -87,7 +87,7 @@ func NewNeofsRestGwAPI(spec *loads.Document) *NeofsRestGwAPI {
 	}
 }
 
-/*NeofsRestGwAPI REST API NeoFS */
+/*NeofsRestGwAPI REST API for native integration with NeoFS. */
 type NeofsRestGwAPI struct {
 	spec            *loads.Document
 	context         *middleware.Context

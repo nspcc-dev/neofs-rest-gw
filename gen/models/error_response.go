@@ -14,7 +14,8 @@ import (
 	"github.com/go-openapi/validate"
 )
 
-// ErrorResponse error response
+// ErrorResponse Error response.
+// Example: {"code":1024,"message":"incomplete object PUT by placement","type":"API"}
 //
 // swagger:model ErrorResponse
 type ErrorResponse struct {
