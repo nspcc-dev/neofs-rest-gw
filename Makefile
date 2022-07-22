@@ -38,7 +38,7 @@ $(BINS): $(DIRS) dep
 	CGO_ENABLED=0 \
 	GO111MODULE=on \
 	go build -v -trimpath \
-	-ldflags "-X cmd/neofs-rest-gw/main.Version=$(VERSION)" \
+	-ldflags "-X main.Version=$(VERSION)" \
 	-o $@ ./cmd/neofs-rest-gw
 
 $(DIRS):
