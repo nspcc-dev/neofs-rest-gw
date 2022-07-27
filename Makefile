@@ -36,7 +36,6 @@ all: generate-server $(BINS)
 $(BINS): $(DIRS) dep
 	@echo "⇒ Build $@"
 	CGO_ENABLED=0 \
-	GO111MODULE=on \
 	go build -v -trimpath \
 	-ldflags "-X main.Version=$(VERSION)" \
 	-o $@ ./cmd/neofs-rest-gw
@@ -49,11 +48,9 @@ $(DIRS):
 dep:
 	@printf "⇒ Download requirements: "
 	@CGO_ENABLED=0 \
-	GO111MODULE=on \
 	go mod download && echo OK
 	@printf "⇒ Tidy requirements: "
 	@CGO_ENABLED=0 \
-	GO111MODULE=on \
 	go mod tidy -v && echo OK
 
 # Install swagger
