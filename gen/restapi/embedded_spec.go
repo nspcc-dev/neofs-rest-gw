@@ -30,6 +30,40 @@ func init() {
   "host": "localhost:8090",
   "basePath": "/v1",
   "paths": {
+    "/accounting/balance/{address}": {
+      "get": {
+        "security": [],
+        "description": "Getting balance of provided wallet address in NeoFS.",
+        "produces": [
+          "application/json"
+        ],
+        "summary": "Get balance in NeoFS",
+        "operationId": "getBalance",
+        "parameters": [
+          {
+            "type": "string",
+            "description": "Base58 encoded wallet address.",
+            "name": "address",
+            "in": "path",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Balance of address in NeoFS",
+            "schema": {
+              "$ref": "#/definitions/Balance"
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        }
+      }
+    },
     "/auth": {
       "post": {
         "security": [],
@@ -544,6 +578,25 @@ func init() {
       "example": {
         "key": "User-Defined-Tag",
         "value": "tag value"
+      }
+    },
+    "Balance": {
+      "type": "object",
+      "required": [
+        "address",
+        "value",
+        "precision"
+      ],
+      "properties": {
+        "address": {
+          "type": "string"
+        },
+        "precision": {
+          "type": "integer"
+        },
+        "value": {
+          "type": "string"
+        }
       }
     },
     "Bearer": {
@@ -1305,6 +1358,40 @@ func init() {
   "host": "localhost:8090",
   "basePath": "/v1",
   "paths": {
+    "/accounting/balance/{address}": {
+      "get": {
+        "security": [],
+        "description": "Getting balance of provided wallet address in NeoFS.",
+        "produces": [
+          "application/json"
+        ],
+        "summary": "Get balance in NeoFS",
+        "operationId": "getBalance",
+        "parameters": [
+          {
+            "type": "string",
+            "description": "Base58 encoded wallet address.",
+            "name": "address",
+            "in": "path",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Balance of address in NeoFS",
+            "schema": {
+              "$ref": "#/definitions/Balance"
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        }
+      }
+    },
     "/auth": {
       "post": {
         "security": [],
@@ -1915,6 +2002,25 @@ func init() {
       "example": {
         "key": "User-Defined-Tag",
         "value": "tag value"
+      }
+    },
+    "Balance": {
+      "type": "object",
+      "required": [
+        "address",
+        "value",
+        "precision"
+      ],
+      "properties": {
+        "address": {
+          "type": "string"
+        },
+        "precision": {
+          "type": "integer"
+        },
+        "value": {
+          "type": "string"
+        }
       }
     },
     "Bearer": {

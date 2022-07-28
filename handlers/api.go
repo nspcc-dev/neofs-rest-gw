@@ -80,6 +80,8 @@ func (a *API) Configure(api *operations.NeofsRestGwAPI) http.Handler {
 
 	api.AuthHandler = operations.AuthHandlerFunc(a.PostAuth)
 
+	api.GetBalanceHandler = operations.GetBalanceHandlerFunc(a.Balance)
+
 	api.PutObjectHandler = operations.PutObjectHandlerFunc(a.PutObjects)
 	api.GetObjectInfoHandler = operations.GetObjectInfoHandlerFunc(a.GetObjectInfo)
 	api.DeleteObjectHandler = operations.DeleteObjectHandlerFunc(a.DeleteObject)
