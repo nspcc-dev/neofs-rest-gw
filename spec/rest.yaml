@@ -92,6 +92,30 @@ paths:
           schema:
             $ref: '#/definitions/ErrorResponse'
 
+  /accounting/balance/{address}:
+    get:
+      operationId: getBalance
+      summary: Get balance in NeoFS
+      description: Getting balance of provided wallet address in NeoFS.
+      security: [ ]
+      parameters:
+        - in: path
+          name: address
+          type: string
+          required: true
+          description: Base58 encoded wallet address.
+      produces:
+        - application/json
+      responses:
+        200:
+          description: Balance of address in NeoFS
+          schema:
+            $ref: '#/definitions/Balance'
+        400:
+          description: Bad request
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+
   /objects:
     parameters:
       - $ref: '#/parameters/signatureParam'
@@ -822,6 +846,19 @@ definitions:
       value: "tag value"
   Principal:
     type: string
+  Balance:
+    type: object
+    properties:
+      address:
+        type: string
+      value:
+        type: string
+      precision:
+        type: integer
+    required:
+      - address
+      - value
+      - precision
   ErrorType:
     description: Error type. Allow determine source of the error.
     type: string

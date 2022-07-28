@@ -53,6 +53,9 @@ func NewNeofsRestGwAPI(spec *loads.Document) *NeofsRestGwAPI {
 		DeleteObjectHandler: DeleteObjectHandlerFunc(func(params DeleteObjectParams, principal *models.Principal) middleware.Responder {
 			return middleware.NotImplemented("operation DeleteObject has not yet been implemented")
 		}),
+		GetBalanceHandler: GetBalanceHandlerFunc(func(params GetBalanceParams) middleware.Responder {
+			return middleware.NotImplemented("operation GetBalance has not yet been implemented")
+		}),
 		GetContainerHandler: GetContainerHandlerFunc(func(params GetContainerParams) middleware.Responder {
 			return middleware.NotImplemented("operation GetContainer has not yet been implemented")
 		}),
@@ -133,6 +136,8 @@ type NeofsRestGwAPI struct {
 	DeleteContainerHandler DeleteContainerHandler
 	// DeleteObjectHandler sets the operation handler for the delete object operation
 	DeleteObjectHandler DeleteObjectHandler
+	// GetBalanceHandler sets the operation handler for the get balance operation
+	GetBalanceHandler GetBalanceHandler
 	// GetContainerHandler sets the operation handler for the get container operation
 	GetContainerHandler GetContainerHandler
 	// GetContainerEACLHandler sets the operation handler for the get container e ACL operation
@@ -238,6 +243,9 @@ func (o *NeofsRestGwAPI) Validate() error {
 	}
 	if o.DeleteObjectHandler == nil {
 		unregistered = append(unregistered, "DeleteObjectHandler")
+	}
+	if o.GetBalanceHandler == nil {
+		unregistered = append(unregistered, "GetBalanceHandler")
 	}
 	if o.GetContainerHandler == nil {
 		unregistered = append(unregistered, "GetContainerHandler")
@@ -374,6 +382,10 @@ func (o *NeofsRestGwAPI) initHandlerCache() {
 		o.handlers["DELETE"] = make(map[string]http.Handler)
 	}
 	o.handlers["DELETE"]["/objects/{containerId}/{objectId}"] = NewDeleteObject(o.context, o.DeleteObjectHandler)
+	if o.handlers["GET"] == nil {
+		o.handlers["GET"] = make(map[string]http.Handler)
+	}
+	o.handlers["GET"]["/accounting/balance/{address}"] = NewGetBalance(o.context, o.GetBalanceHandler)
 	if o.handlers["GET"] == nil {
 		o.handlers["GET"] = make(map[string]http.Handler)
 	}
