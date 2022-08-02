@@ -53,6 +53,9 @@ func NewNeofsRestGwAPI(spec *loads.Document) *NeofsRestGwAPI {
 		DeleteObjectHandler: DeleteObjectHandlerFunc(func(params DeleteObjectParams, principal *models.Principal) middleware.Responder {
 			return middleware.NotImplemented("operation DeleteObject has not yet been implemented")
 		}),
+		DeleteStorageGroupHandler: DeleteStorageGroupHandlerFunc(func(params DeleteStorageGroupParams, principal *models.Principal) middleware.Responder {
+			return middleware.NotImplemented("operation DeleteStorageGroup has not yet been implemented")
+		}),
 		GetBalanceHandler: GetBalanceHandlerFunc(func(params GetBalanceParams) middleware.Responder {
 			return middleware.NotImplemented("operation GetBalance has not yet been implemented")
 		}),
@@ -64,6 +67,9 @@ func NewNeofsRestGwAPI(spec *loads.Document) *NeofsRestGwAPI {
 		}),
 		GetObjectInfoHandler: GetObjectInfoHandlerFunc(func(params GetObjectInfoParams, principal *models.Principal) middleware.Responder {
 			return middleware.NotImplemented("operation GetObjectInfo has not yet been implemented")
+		}),
+		GetStorageGroupHandler: GetStorageGroupHandlerFunc(func(params GetStorageGroupParams, principal *models.Principal) middleware.Responder {
+			return middleware.NotImplemented("operation GetStorageGroup has not yet been implemented")
 		}),
 		ListContainersHandler: ListContainersHandlerFunc(func(params ListContainersParams) middleware.Responder {
 			return middleware.NotImplemented("operation ListContainers has not yet been implemented")
@@ -142,6 +148,8 @@ type NeofsRestGwAPI struct {
 	DeleteContainerHandler DeleteContainerHandler
 	// DeleteObjectHandler sets the operation handler for the delete object operation
 	DeleteObjectHandler DeleteObjectHandler
+	// DeleteStorageGroupHandler sets the operation handler for the delete storage group operation
+	DeleteStorageGroupHandler DeleteStorageGroupHandler
 	// GetBalanceHandler sets the operation handler for the get balance operation
 	GetBalanceHandler GetBalanceHandler
 	// GetContainerHandler sets the operation handler for the get container operation
@@ -150,6 +158,8 @@ type NeofsRestGwAPI struct {
 	GetContainerEACLHandler GetContainerEACLHandler
 	// GetObjectInfoHandler sets the operation handler for the get object info operation
 	GetObjectInfoHandler GetObjectInfoHandler
+	// GetStorageGroupHandler sets the operation handler for the get storage group operation
+	GetStorageGroupHandler GetStorageGroupHandler
 	// ListContainersHandler sets the operation handler for the list containers operation
 	ListContainersHandler ListContainersHandler
 	// ListStorageGroupsHandler sets the operation handler for the list storage groups operation
@@ -254,6 +264,9 @@ func (o *NeofsRestGwAPI) Validate() error {
 	if o.DeleteObjectHandler == nil {
 		unregistered = append(unregistered, "DeleteObjectHandler")
 	}
+	if o.DeleteStorageGroupHandler == nil {
+		unregistered = append(unregistered, "DeleteStorageGroupHandler")
+	}
 	if o.GetBalanceHandler == nil {
 		unregistered = append(unregistered, "GetBalanceHandler")
 	}
@@ -265,6 +278,9 @@ func (o *NeofsRestGwAPI) Validate() error {
 	}
 	if o.GetObjectInfoHandler == nil {
 		unregistered = append(unregistered, "GetObjectInfoHandler")
+	}
+	if o.GetStorageGroupHandler == nil {
+		unregistered = append(unregistered, "GetStorageGroupHandler")
 	}
 	if o.ListContainersHandler == nil {
 		unregistered = append(unregistered, "ListContainersHandler")
@@ -398,6 +414,10 @@ func (o *NeofsRestGwAPI) initHandlerCache() {
 		o.handlers["DELETE"] = make(map[string]http.Handler)
 	}
 	o.handlers["DELETE"]["/objects/{containerId}/{objectId}"] = NewDeleteObject(o.context, o.DeleteObjectHandler)
+	if o.handlers["DELETE"] == nil {
+		o.handlers["DELETE"] = make(map[string]http.Handler)
+	}
+	o.handlers["DELETE"]["/containers/{containerId}/storagegroups/{storageGroupId}"] = NewDeleteStorageGroup(o.context, o.DeleteStorageGroupHandler)
 	if o.handlers["GET"] == nil {
 		o.handlers["GET"] = make(map[string]http.Handler)
 	}
@@ -414,6 +434,10 @@ func (o *NeofsRestGwAPI) initHandlerCache() {
 		o.handlers["GET"] = make(map[string]http.Handler)
 	}
 	o.handlers["GET"]["/objects/{containerId}/{objectId}"] = NewGetObjectInfo(o.context, o.GetObjectInfoHandler)
+	if o.handlers["GET"] == nil {
+		o.handlers["GET"] = make(map[string]http.Handler)
+	}
+	o.handlers["GET"]["/containers/{containerId}/storagegroups/{storageGroupId}"] = NewGetStorageGroup(o.context, o.GetStorageGroupHandler)
 	if o.handlers["GET"] == nil {
 		o.handlers["GET"] = make(map[string]http.Handler)
 	}
