@@ -344,6 +344,35 @@ func init() {
       ]
     },
     "/containers/{containerId}/storagegroups": {
+      "get": {
+        "summary": "Find all storage groups in container.",
+        "operationId": "listStorageGroups",
+        "parameters": [
+          {
+            "$ref": "#/parameters/signatureParam"
+          },
+          {
+            "$ref": "#/parameters/signatureKeyParam"
+          },
+          {
+            "$ref": "#/parameters/signatureScheme"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of storage groups.",
+            "schema": {
+              "$ref": "#/definitions/StorageGroupList"
+            }
+          },
+          "400": {
+            "description": "Bad request.",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        }
+      },
       "put": {
         "summary": "Create a new storage group in container.",
         "operationId": "putStorageGroup",
@@ -1287,6 +1316,44 @@ func init() {
         }
       }
     },
+    "StorageGroupBaseInfo": {
+      "description": "Storage group info for listing.",
+      "type": "object",
+      "required": [
+        "address",
+        "expirationEpoch"
+      ],
+      "properties": {
+        "address": {
+          "$ref": "#/definitions/Address"
+        },
+        "expirationEpoch": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        }
+      }
+    },
+    "StorageGroupList": {
+      "description": "List of storage groups.",
+      "type": "object",
+      "required": [
+        "size",
+        "storageGroups"
+      ],
+      "properties": {
+        "size": {
+          "type": "integer"
+        },
+        "storageGroups": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/StorageGroupBaseInfo"
+          }
+        }
+      }
+    },
     "SuccessResponse": {
       "description": "Success response.",
       "type": "object",
@@ -1797,6 +1864,47 @@ func init() {
       ]
     },
     "/containers/{containerId}/storagegroups": {
+      "get": {
+        "summary": "Find all storage groups in container.",
+        "operationId": "listStorageGroups",
+        "parameters": [
+          {
+            "type": "string",
+            "description": "Base64 encoded signature for bearer token.",
+            "name": "X-Bearer-Signature",
+            "in": "header",
+            "required": true
+          },
+          {
+            "type": "string",
+            "description": "Hex encoded the public part of the key that signed the bearer token.",
+            "name": "X-Bearer-Signature-Key",
+            "in": "header",
+            "required": true
+          },
+          {
+            "type": "boolean",
+            "default": false,
+            "description": "Use wallet connect signature scheme or native NeoFS signature.",
+            "name": "walletConnect",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of storage groups.",
+            "schema": {
+              "$ref": "#/definitions/StorageGroupList"
+            }
+          },
+          "400": {
+            "description": "Bad request.",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        }
+      },
       "put": {
         "summary": "Create a new storage group in container.",
         "operationId": "putStorageGroup",
@@ -2804,6 +2912,44 @@ func init() {
           "description": "Object id of storage group. Set by server.",
           "type": "string",
           "readOnly": true
+        }
+      }
+    },
+    "StorageGroupBaseInfo": {
+      "description": "Storage group info for listing.",
+      "type": "object",
+      "required": [
+        "address",
+        "expirationEpoch"
+      ],
+      "properties": {
+        "address": {
+          "$ref": "#/definitions/Address"
+        },
+        "expirationEpoch": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        }
+      }
+    },
+    "StorageGroupList": {
+      "description": "List of storage groups.",
+      "type": "object",
+      "required": [
+        "size",
+        "storageGroups"
+      ],
+      "properties": {
+        "size": {
+          "type": "integer"
+        },
+        "storageGroups": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/StorageGroupBaseInfo"
+          }
         }
       }
     },

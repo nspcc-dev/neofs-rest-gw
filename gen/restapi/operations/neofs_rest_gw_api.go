@@ -68,6 +68,9 @@ func NewNeofsRestGwAPI(spec *loads.Document) *NeofsRestGwAPI {
 		ListContainersHandler: ListContainersHandlerFunc(func(params ListContainersParams) middleware.Responder {
 			return middleware.NotImplemented("operation ListContainers has not yet been implemented")
 		}),
+		ListStorageGroupsHandler: ListStorageGroupsHandlerFunc(func(params ListStorageGroupsParams, principal *models.Principal) middleware.Responder {
+			return middleware.NotImplemented("operation ListStorageGroups has not yet been implemented")
+		}),
 		PutContainerHandler: PutContainerHandlerFunc(func(params PutContainerParams, principal *models.Principal) middleware.Responder {
 			return middleware.NotImplemented("operation PutContainer has not yet been implemented")
 		}),
@@ -149,6 +152,8 @@ type NeofsRestGwAPI struct {
 	GetObjectInfoHandler GetObjectInfoHandler
 	// ListContainersHandler sets the operation handler for the list containers operation
 	ListContainersHandler ListContainersHandler
+	// ListStorageGroupsHandler sets the operation handler for the list storage groups operation
+	ListStorageGroupsHandler ListStorageGroupsHandler
 	// PutContainerHandler sets the operation handler for the put container operation
 	PutContainerHandler PutContainerHandler
 	// PutContainerEACLHandler sets the operation handler for the put container e ACL operation
@@ -263,6 +268,9 @@ func (o *NeofsRestGwAPI) Validate() error {
 	}
 	if o.ListContainersHandler == nil {
 		unregistered = append(unregistered, "ListContainersHandler")
+	}
+	if o.ListStorageGroupsHandler == nil {
+		unregistered = append(unregistered, "ListStorageGroupsHandler")
 	}
 	if o.PutContainerHandler == nil {
 		unregistered = append(unregistered, "PutContainerHandler")
@@ -410,6 +418,10 @@ func (o *NeofsRestGwAPI) initHandlerCache() {
 		o.handlers["GET"] = make(map[string]http.Handler)
 	}
 	o.handlers["GET"]["/containers"] = NewListContainers(o.context, o.ListContainersHandler)
+	if o.handlers["GET"] == nil {
+		o.handlers["GET"] = make(map[string]http.Handler)
+	}
+	o.handlers["GET"]["/containers/{containerId}/storagegroups"] = NewListStorageGroups(o.context, o.ListStorageGroupsHandler)
 	if o.handlers["PUT"] == nil {
 		o.handlers["PUT"] = make(map[string]http.Handler)
 	}
