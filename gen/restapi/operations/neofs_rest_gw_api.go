@@ -77,6 +77,9 @@ func NewNeofsRestGwAPI(spec *loads.Document) *NeofsRestGwAPI {
 		PutObjectHandler: PutObjectHandlerFunc(func(params PutObjectParams, principal *models.Principal) middleware.Responder {
 			return middleware.NotImplemented("operation PutObject has not yet been implemented")
 		}),
+		PutStorageGroupHandler: PutStorageGroupHandlerFunc(func(params PutStorageGroupParams, principal *models.Principal) middleware.Responder {
+			return middleware.NotImplemented("operation PutStorageGroup has not yet been implemented")
+		}),
 		SearchObjectsHandler: SearchObjectsHandlerFunc(func(params SearchObjectsParams, principal *models.Principal) middleware.Responder {
 			return middleware.NotImplemented("operation SearchObjects has not yet been implemented")
 		}),
@@ -152,6 +155,8 @@ type NeofsRestGwAPI struct {
 	PutContainerEACLHandler PutContainerEACLHandler
 	// PutObjectHandler sets the operation handler for the put object operation
 	PutObjectHandler PutObjectHandler
+	// PutStorageGroupHandler sets the operation handler for the put storage group operation
+	PutStorageGroupHandler PutStorageGroupHandler
 	// SearchObjectsHandler sets the operation handler for the search objects operation
 	SearchObjectsHandler SearchObjectsHandler
 
@@ -267,6 +272,9 @@ func (o *NeofsRestGwAPI) Validate() error {
 	}
 	if o.PutObjectHandler == nil {
 		unregistered = append(unregistered, "PutObjectHandler")
+	}
+	if o.PutStorageGroupHandler == nil {
+		unregistered = append(unregistered, "PutStorageGroupHandler")
 	}
 	if o.SearchObjectsHandler == nil {
 		unregistered = append(unregistered, "SearchObjectsHandler")
@@ -414,6 +422,10 @@ func (o *NeofsRestGwAPI) initHandlerCache() {
 		o.handlers["PUT"] = make(map[string]http.Handler)
 	}
 	o.handlers["PUT"]["/objects"] = NewPutObject(o.context, o.PutObjectHandler)
+	if o.handlers["PUT"] == nil {
+		o.handlers["PUT"] = make(map[string]http.Handler)
+	}
+	o.handlers["PUT"]["/containers/{containerId}/storagegroups"] = NewPutStorageGroup(o.context, o.PutStorageGroupHandler)
 	if o.handlers["POST"] == nil {
 		o.handlers["POST"] = make(map[string]http.Handler)
 	}
