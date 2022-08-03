@@ -53,6 +53,9 @@ func NewNeofsRestGwAPI(spec *loads.Document) *NeofsRestGwAPI {
 		DeleteObjectHandler: DeleteObjectHandlerFunc(func(params DeleteObjectParams, principal *models.Principal) middleware.Responder {
 			return middleware.NotImplemented("operation DeleteObject has not yet been implemented")
 		}),
+		DeleteStorageGroupHandler: DeleteStorageGroupHandlerFunc(func(params DeleteStorageGroupParams, principal *models.Principal) middleware.Responder {
+			return middleware.NotImplemented("operation DeleteStorageGroup has not yet been implemented")
+		}),
 		GetBalanceHandler: GetBalanceHandlerFunc(func(params GetBalanceParams) middleware.Responder {
 			return middleware.NotImplemented("operation GetBalance has not yet been implemented")
 		}),
@@ -65,8 +68,14 @@ func NewNeofsRestGwAPI(spec *loads.Document) *NeofsRestGwAPI {
 		GetObjectInfoHandler: GetObjectInfoHandlerFunc(func(params GetObjectInfoParams, principal *models.Principal) middleware.Responder {
 			return middleware.NotImplemented("operation GetObjectInfo has not yet been implemented")
 		}),
+		GetStorageGroupHandler: GetStorageGroupHandlerFunc(func(params GetStorageGroupParams, principal *models.Principal) middleware.Responder {
+			return middleware.NotImplemented("operation GetStorageGroup has not yet been implemented")
+		}),
 		ListContainersHandler: ListContainersHandlerFunc(func(params ListContainersParams) middleware.Responder {
 			return middleware.NotImplemented("operation ListContainers has not yet been implemented")
+		}),
+		ListStorageGroupsHandler: ListStorageGroupsHandlerFunc(func(params ListStorageGroupsParams, principal *models.Principal) middleware.Responder {
+			return middleware.NotImplemented("operation ListStorageGroups has not yet been implemented")
 		}),
 		PutContainerHandler: PutContainerHandlerFunc(func(params PutContainerParams, principal *models.Principal) middleware.Responder {
 			return middleware.NotImplemented("operation PutContainer has not yet been implemented")
@@ -76,6 +85,9 @@ func NewNeofsRestGwAPI(spec *loads.Document) *NeofsRestGwAPI {
 		}),
 		PutObjectHandler: PutObjectHandlerFunc(func(params PutObjectParams, principal *models.Principal) middleware.Responder {
 			return middleware.NotImplemented("operation PutObject has not yet been implemented")
+		}),
+		PutStorageGroupHandler: PutStorageGroupHandlerFunc(func(params PutStorageGroupParams, principal *models.Principal) middleware.Responder {
+			return middleware.NotImplemented("operation PutStorageGroup has not yet been implemented")
 		}),
 		SearchObjectsHandler: SearchObjectsHandlerFunc(func(params SearchObjectsParams, principal *models.Principal) middleware.Responder {
 			return middleware.NotImplemented("operation SearchObjects has not yet been implemented")
@@ -136,6 +148,8 @@ type NeofsRestGwAPI struct {
 	DeleteContainerHandler DeleteContainerHandler
 	// DeleteObjectHandler sets the operation handler for the delete object operation
 	DeleteObjectHandler DeleteObjectHandler
+	// DeleteStorageGroupHandler sets the operation handler for the delete storage group operation
+	DeleteStorageGroupHandler DeleteStorageGroupHandler
 	// GetBalanceHandler sets the operation handler for the get balance operation
 	GetBalanceHandler GetBalanceHandler
 	// GetContainerHandler sets the operation handler for the get container operation
@@ -144,14 +158,20 @@ type NeofsRestGwAPI struct {
 	GetContainerEACLHandler GetContainerEACLHandler
 	// GetObjectInfoHandler sets the operation handler for the get object info operation
 	GetObjectInfoHandler GetObjectInfoHandler
+	// GetStorageGroupHandler sets the operation handler for the get storage group operation
+	GetStorageGroupHandler GetStorageGroupHandler
 	// ListContainersHandler sets the operation handler for the list containers operation
 	ListContainersHandler ListContainersHandler
+	// ListStorageGroupsHandler sets the operation handler for the list storage groups operation
+	ListStorageGroupsHandler ListStorageGroupsHandler
 	// PutContainerHandler sets the operation handler for the put container operation
 	PutContainerHandler PutContainerHandler
 	// PutContainerEACLHandler sets the operation handler for the put container e ACL operation
 	PutContainerEACLHandler PutContainerEACLHandler
 	// PutObjectHandler sets the operation handler for the put object operation
 	PutObjectHandler PutObjectHandler
+	// PutStorageGroupHandler sets the operation handler for the put storage group operation
+	PutStorageGroupHandler PutStorageGroupHandler
 	// SearchObjectsHandler sets the operation handler for the search objects operation
 	SearchObjectsHandler SearchObjectsHandler
 
@@ -244,6 +264,9 @@ func (o *NeofsRestGwAPI) Validate() error {
 	if o.DeleteObjectHandler == nil {
 		unregistered = append(unregistered, "DeleteObjectHandler")
 	}
+	if o.DeleteStorageGroupHandler == nil {
+		unregistered = append(unregistered, "DeleteStorageGroupHandler")
+	}
 	if o.GetBalanceHandler == nil {
 		unregistered = append(unregistered, "GetBalanceHandler")
 	}
@@ -256,8 +279,14 @@ func (o *NeofsRestGwAPI) Validate() error {
 	if o.GetObjectInfoHandler == nil {
 		unregistered = append(unregistered, "GetObjectInfoHandler")
 	}
+	if o.GetStorageGroupHandler == nil {
+		unregistered = append(unregistered, "GetStorageGroupHandler")
+	}
 	if o.ListContainersHandler == nil {
 		unregistered = append(unregistered, "ListContainersHandler")
+	}
+	if o.ListStorageGroupsHandler == nil {
+		unregistered = append(unregistered, "ListStorageGroupsHandler")
 	}
 	if o.PutContainerHandler == nil {
 		unregistered = append(unregistered, "PutContainerHandler")
@@ -267,6 +296,9 @@ func (o *NeofsRestGwAPI) Validate() error {
 	}
 	if o.PutObjectHandler == nil {
 		unregistered = append(unregistered, "PutObjectHandler")
+	}
+	if o.PutStorageGroupHandler == nil {
+		unregistered = append(unregistered, "PutStorageGroupHandler")
 	}
 	if o.SearchObjectsHandler == nil {
 		unregistered = append(unregistered, "SearchObjectsHandler")
@@ -382,6 +414,10 @@ func (o *NeofsRestGwAPI) initHandlerCache() {
 		o.handlers["DELETE"] = make(map[string]http.Handler)
 	}
 	o.handlers["DELETE"]["/objects/{containerId}/{objectId}"] = NewDeleteObject(o.context, o.DeleteObjectHandler)
+	if o.handlers["DELETE"] == nil {
+		o.handlers["DELETE"] = make(map[string]http.Handler)
+	}
+	o.handlers["DELETE"]["/containers/{containerId}/storagegroups/{storageGroupId}"] = NewDeleteStorageGroup(o.context, o.DeleteStorageGroupHandler)
 	if o.handlers["GET"] == nil {
 		o.handlers["GET"] = make(map[string]http.Handler)
 	}
@@ -401,7 +437,15 @@ func (o *NeofsRestGwAPI) initHandlerCache() {
 	if o.handlers["GET"] == nil {
 		o.handlers["GET"] = make(map[string]http.Handler)
 	}
+	o.handlers["GET"]["/containers/{containerId}/storagegroups/{storageGroupId}"] = NewGetStorageGroup(o.context, o.GetStorageGroupHandler)
+	if o.handlers["GET"] == nil {
+		o.handlers["GET"] = make(map[string]http.Handler)
+	}
 	o.handlers["GET"]["/containers"] = NewListContainers(o.context, o.ListContainersHandler)
+	if o.handlers["GET"] == nil {
+		o.handlers["GET"] = make(map[string]http.Handler)
+	}
+	o.handlers["GET"]["/containers/{containerId}/storagegroups"] = NewListStorageGroups(o.context, o.ListStorageGroupsHandler)
 	if o.handlers["PUT"] == nil {
 		o.handlers["PUT"] = make(map[string]http.Handler)
 	}
@@ -414,6 +458,10 @@ func (o *NeofsRestGwAPI) initHandlerCache() {
 		o.handlers["PUT"] = make(map[string]http.Handler)
 	}
 	o.handlers["PUT"]["/objects"] = NewPutObject(o.context, o.PutObjectHandler)
+	if o.handlers["PUT"] == nil {
+		o.handlers["PUT"] = make(map[string]http.Handler)
+	}
+	o.handlers["PUT"]["/containers/{containerId}/storagegroups"] = NewPutStorageGroup(o.context, o.PutStorageGroupHandler)
 	if o.handlers["POST"] == nil {
 		o.handlers["POST"] = make(map[string]http.Handler)
 	}
