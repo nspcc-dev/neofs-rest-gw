@@ -96,6 +96,8 @@ func (a *API) Configure(api *operations.NeofsRestGwAPI) http.Handler {
 
 	api.PutStorageGroupHandler = operations.PutStorageGroupHandlerFunc(a.PutStorageGroup)
 	api.ListStorageGroupsHandler = operations.ListStorageGroupsHandlerFunc(a.ListStorageGroups)
+	api.GetStorageGroupHandler = operations.GetStorageGroupHandlerFunc(a.GetStorageGroup)
+	api.DeleteStorageGroupHandler = operations.DeleteStorageGroupHandlerFunc(a.DeleteStorageGroup)
 
 	api.BearerAuthAuth = func(s string) (*models.Principal, error) {
 		if !strings.HasPrefix(s, BearerPrefix) {
