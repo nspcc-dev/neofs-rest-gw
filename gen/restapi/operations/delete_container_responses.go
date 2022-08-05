@@ -21,6 +21,10 @@ const DeleteContainerOKCode int = 200
 swagger:response deleteContainerOK
 */
 type DeleteContainerOK struct {
+	/*
+
+	 */
+	AccessControlAllowOrigin string `json:"Access-Control-Allow-Origin"`
 
 	/*
 	  In: Body
@@ -32,6 +36,17 @@ type DeleteContainerOK struct {
 func NewDeleteContainerOK() *DeleteContainerOK {
 
 	return &DeleteContainerOK{}
+}
+
+// WithAccessControlAllowOrigin adds the accessControlAllowOrigin to the delete container o k response
+func (o *DeleteContainerOK) WithAccessControlAllowOrigin(accessControlAllowOrigin string) *DeleteContainerOK {
+	o.AccessControlAllowOrigin = accessControlAllowOrigin
+	return o
+}
+
+// SetAccessControlAllowOrigin sets the accessControlAllowOrigin to the delete container o k response
+func (o *DeleteContainerOK) SetAccessControlAllowOrigin(accessControlAllowOrigin string) {
+	o.AccessControlAllowOrigin = accessControlAllowOrigin
 }
 
 // WithPayload adds the payload to the delete container o k response
@@ -47,6 +62,13 @@ func (o *DeleteContainerOK) SetPayload(payload *models.SuccessResponse) {
 
 // WriteResponse to the client
 func (o *DeleteContainerOK) WriteResponse(rw http.ResponseWriter, producer runtime.Producer) {
+
+	// response header Access-Control-Allow-Origin
+
+	accessControlAllowOrigin := o.AccessControlAllowOrigin
+	if accessControlAllowOrigin != "" {
+		rw.Header().Set("Access-Control-Allow-Origin", accessControlAllowOrigin)
+	}
 
 	rw.WriteHeader(200)
 	if o.Payload != nil {

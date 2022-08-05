@@ -60,7 +60,9 @@ func (a *API) PutContainers(params operations.PutContainerParams, principal *mod
 	var resp operations.PutContainerOKBody
 	resp.ContainerID = util.NewString(cnrID.EncodeToString())
 
-	return operations.NewPutContainerOK().WithPayload(&resp)
+	return operations.NewPutContainerOK().
+		WithPayload(&resp).
+		WithAccessControlAllowOrigin("*")
 }
 
 // GetContainer handler that returns container info.
@@ -77,7 +79,9 @@ func (a *API) GetContainer(params operations.GetContainerParams) middleware.Resp
 		return operations.NewGetContainerBadRequest().WithPayload(resp)
 	}
 
-	return operations.NewGetContainerOK().WithPayload(cnrInfo)
+	return operations.NewGetContainerOK().
+		WithPayload(cnrInfo).
+		WithAccessControlAllowOrigin("*")
 }
 
 // PutContainerEACL handler that update container eacl.
@@ -107,7 +111,9 @@ func (a *API) PutContainerEACL(params operations.PutContainerEACLParams, princip
 		return operations.NewPutContainerEACLBadRequest().WithPayload(resp)
 	}
 
-	return operations.NewPutContainerEACLOK().WithPayload(util.NewSuccessResponse())
+	return operations.NewPutContainerEACLOK().
+		WithPayload(util.NewSuccessResponse()).
+		WithAccessControlAllowOrigin("*")
 }
 
 // GetContainerEACL handler that returns container eacl.
@@ -124,7 +130,9 @@ func (a *API) GetContainerEACL(params operations.GetContainerEACLParams) middlew
 		return operations.NewGetContainerEACLBadRequest().WithPayload(errResp)
 	}
 
-	return operations.NewGetContainerEACLOK().WithPayload(resp)
+	return operations.NewGetContainerEACLOK().
+		WithPayload(resp).
+		WithAccessControlAllowOrigin("*")
 }
 
 // ListContainer handler that returns containers.
@@ -154,7 +162,9 @@ func (a *API) ListContainer(params operations.ListContainersParams) middleware.R
 			Size:       util.NewInteger(0),
 			Containers: []*models.ContainerInfo{},
 		}
-		return operations.NewListContainersOK().WithPayload(res)
+		return operations.NewListContainersOK().
+			WithPayload(res).
+			WithAccessControlAllowOrigin("*")
 	}
 
 	if offset+size > len(ids) {
@@ -175,7 +185,9 @@ func (a *API) ListContainer(params operations.ListContainersParams) middleware.R
 		res.Containers = append(res.Containers, cnrInfo)
 	}
 
-	return operations.NewListContainersOK().WithPayload(res)
+	return operations.NewListContainersOK().
+		WithPayload(res).
+		WithAccessControlAllowOrigin("*")
 }
 
 // DeleteContainer handler that returns container info.
@@ -209,7 +221,9 @@ func (a *API) DeleteContainer(params operations.DeleteContainerParams, principal
 		return operations.NewDeleteContainerBadRequest().WithPayload(resp)
 	}
 
-	return operations.NewDeleteContainerOK().WithPayload(util.NewSuccessResponse())
+	return operations.NewDeleteContainerOK().
+		WithPayload(util.NewSuccessResponse()).
+		WithAccessControlAllowOrigin("*")
 }
 
 func getContainerInfo(ctx context.Context, p *pool.Pool, cnrID cid.ID) (*models.ContainerInfo, error) {

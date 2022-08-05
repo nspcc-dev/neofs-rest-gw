@@ -21,6 +21,10 @@ const ListContainersOKCode int = 200
 swagger:response listContainersOK
 */
 type ListContainersOK struct {
+	/*
+
+	 */
+	AccessControlAllowOrigin string `json:"Access-Control-Allow-Origin"`
 
 	/*
 	  In: Body
@@ -32,6 +36,17 @@ type ListContainersOK struct {
 func NewListContainersOK() *ListContainersOK {
 
 	return &ListContainersOK{}
+}
+
+// WithAccessControlAllowOrigin adds the accessControlAllowOrigin to the list containers o k response
+func (o *ListContainersOK) WithAccessControlAllowOrigin(accessControlAllowOrigin string) *ListContainersOK {
+	o.AccessControlAllowOrigin = accessControlAllowOrigin
+	return o
+}
+
+// SetAccessControlAllowOrigin sets the accessControlAllowOrigin to the list containers o k response
+func (o *ListContainersOK) SetAccessControlAllowOrigin(accessControlAllowOrigin string) {
+	o.AccessControlAllowOrigin = accessControlAllowOrigin
 }
 
 // WithPayload adds the payload to the list containers o k response
@@ -47,6 +62,13 @@ func (o *ListContainersOK) SetPayload(payload *models.ContainerList) {
 
 // WriteResponse to the client
 func (o *ListContainersOK) WriteResponse(rw http.ResponseWriter, producer runtime.Producer) {
+
+	// response header Access-Control-Allow-Origin
+
+	accessControlAllowOrigin := o.AccessControlAllowOrigin
+	if accessControlAllowOrigin != "" {
+		rw.Header().Set("Access-Control-Allow-Origin", accessControlAllowOrigin)
+	}
 
 	rw.WriteHeader(200)
 	if o.Payload != nil {

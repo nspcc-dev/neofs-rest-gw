@@ -21,6 +21,10 @@ const GetContainerEACLOKCode int = 200
 swagger:response getContainerEAclOK
 */
 type GetContainerEACLOK struct {
+	/*
+
+	 */
+	AccessControlAllowOrigin string `json:"Access-Control-Allow-Origin"`
 
 	/*
 	  In: Body
@@ -32,6 +36,17 @@ type GetContainerEACLOK struct {
 func NewGetContainerEACLOK() *GetContainerEACLOK {
 
 	return &GetContainerEACLOK{}
+}
+
+// WithAccessControlAllowOrigin adds the accessControlAllowOrigin to the get container e Acl o k response
+func (o *GetContainerEACLOK) WithAccessControlAllowOrigin(accessControlAllowOrigin string) *GetContainerEACLOK {
+	o.AccessControlAllowOrigin = accessControlAllowOrigin
+	return o
+}
+
+// SetAccessControlAllowOrigin sets the accessControlAllowOrigin to the get container e Acl o k response
+func (o *GetContainerEACLOK) SetAccessControlAllowOrigin(accessControlAllowOrigin string) {
+	o.AccessControlAllowOrigin = accessControlAllowOrigin
 }
 
 // WithPayload adds the payload to the get container e Acl o k response
@@ -47,6 +62,13 @@ func (o *GetContainerEACLOK) SetPayload(payload *models.Eacl) {
 
 // WriteResponse to the client
 func (o *GetContainerEACLOK) WriteResponse(rw http.ResponseWriter, producer runtime.Producer) {
+
+	// response header Access-Control-Allow-Origin
+
+	accessControlAllowOrigin := o.AccessControlAllowOrigin
+	if accessControlAllowOrigin != "" {
+		rw.Header().Set("Access-Control-Allow-Origin", accessControlAllowOrigin)
+	}
 
 	rw.WriteHeader(200)
 	if o.Payload != nil {

@@ -21,6 +21,10 @@ const AuthOKCode int = 200
 swagger:response authOK
 */
 type AuthOK struct {
+	/*
+
+	 */
+	AccessControlAllowOrigin string `json:"Access-Control-Allow-Origin"`
 
 	/*
 	  In: Body
@@ -32,6 +36,17 @@ type AuthOK struct {
 func NewAuthOK() *AuthOK {
 
 	return &AuthOK{}
+}
+
+// WithAccessControlAllowOrigin adds the accessControlAllowOrigin to the auth o k response
+func (o *AuthOK) WithAccessControlAllowOrigin(accessControlAllowOrigin string) *AuthOK {
+	o.AccessControlAllowOrigin = accessControlAllowOrigin
+	return o
+}
+
+// SetAccessControlAllowOrigin sets the accessControlAllowOrigin to the auth o k response
+func (o *AuthOK) SetAccessControlAllowOrigin(accessControlAllowOrigin string) {
+	o.AccessControlAllowOrigin = accessControlAllowOrigin
 }
 
 // WithPayload adds the payload to the auth o k response
@@ -47,6 +62,13 @@ func (o *AuthOK) SetPayload(payload []*models.TokenResponse) {
 
 // WriteResponse to the client
 func (o *AuthOK) WriteResponse(rw http.ResponseWriter, producer runtime.Producer) {
+
+	// response header Access-Control-Allow-Origin
+
+	accessControlAllowOrigin := o.AccessControlAllowOrigin
+	if accessControlAllowOrigin != "" {
+		rw.Header().Set("Access-Control-Allow-Origin", accessControlAllowOrigin)
+	}
 
 	rw.WriteHeader(200)
 	payload := o.Payload

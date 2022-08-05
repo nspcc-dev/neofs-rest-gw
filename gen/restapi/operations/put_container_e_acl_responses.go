@@ -21,6 +21,10 @@ const PutContainerEACLOKCode int = 200
 swagger:response putContainerEAclOK
 */
 type PutContainerEACLOK struct {
+	/*
+
+	 */
+	AccessControlAllowOrigin string `json:"Access-Control-Allow-Origin"`
 
 	/*
 	  In: Body
@@ -32,6 +36,17 @@ type PutContainerEACLOK struct {
 func NewPutContainerEACLOK() *PutContainerEACLOK {
 
 	return &PutContainerEACLOK{}
+}
+
+// WithAccessControlAllowOrigin adds the accessControlAllowOrigin to the put container e Acl o k response
+func (o *PutContainerEACLOK) WithAccessControlAllowOrigin(accessControlAllowOrigin string) *PutContainerEACLOK {
+	o.AccessControlAllowOrigin = accessControlAllowOrigin
+	return o
+}
+
+// SetAccessControlAllowOrigin sets the accessControlAllowOrigin to the put container e Acl o k response
+func (o *PutContainerEACLOK) SetAccessControlAllowOrigin(accessControlAllowOrigin string) {
+	o.AccessControlAllowOrigin = accessControlAllowOrigin
 }
 
 // WithPayload adds the payload to the put container e Acl o k response
@@ -47,6 +62,13 @@ func (o *PutContainerEACLOK) SetPayload(payload *models.SuccessResponse) {
 
 // WriteResponse to the client
 func (o *PutContainerEACLOK) WriteResponse(rw http.ResponseWriter, producer runtime.Producer) {
+
+	// response header Access-Control-Allow-Origin
+
+	accessControlAllowOrigin := o.AccessControlAllowOrigin
+	if accessControlAllowOrigin != "" {
+		rw.Header().Set("Access-Control-Allow-Origin", accessControlAllowOrigin)
+	}
 
 	rw.WriteHeader(200)
 	if o.Payload != nil {

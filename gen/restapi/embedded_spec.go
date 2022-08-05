@@ -53,6 +53,11 @@ func init() {
             "description": "Balance of address in NeoFS",
             "schema": {
               "$ref": "#/definitions/Balance"
+            },
+            "headers": {
+              "Access-Control-Allow-Origin": {
+                "type": "string"
+              }
             }
           },
           "400": {
@@ -111,12 +116,34 @@ func init() {
               "items": {
                 "$ref": "#/definitions/TokenResponse"
               }
+            },
+            "headers": {
+              "Access-Control-Allow-Origin": {
+                "type": "string"
+              }
             }
           },
           "400": {
             "description": "Bad request",
             "schema": {
               "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        }
+      },
+      "options": {
+        "security": [],
+        "operationId": "optionsAuth",
+        "responses": {
+          "200": {
+            "description": "CORS",
+            "headers": {
+              "Access-Control-Allow-Headers": {
+                "type": "string"
+              },
+              "Access-Control-Allow-Origin": {
+                "type": "string"
+              }
             }
           }
         }
@@ -157,6 +184,11 @@ func init() {
             "description": "Containers info.",
             "schema": {
               "$ref": "#/definitions/ContainerList"
+            },
+            "headers": {
+              "Access-Control-Allow-Origin": {
+                "type": "string"
+              }
             }
           },
           "400": {
@@ -213,12 +245,37 @@ func init() {
               "example": {
                 "containerId": "5HZTn5qkRnmgSz9gSrw22CEdPPk6nQhkwf2Mgzyvkikv"
               }
+            },
+            "headers": {
+              "Access-Control-Allow-Origin": {
+                "type": "string"
+              }
             }
           },
           "400": {
             "description": "Bad request.",
             "schema": {
               "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        }
+      },
+      "options": {
+        "security": [],
+        "operationId": "optionsContainersPutList",
+        "responses": {
+          "200": {
+            "description": "CORS",
+            "headers": {
+              "Access-Control-Allow-Headers": {
+                "type": "string"
+              },
+              "Access-Control-Allow-Methods": {
+                "type": "string"
+              },
+              "Access-Control-Allow-Origin": {
+                "type": "string"
+              }
             }
           }
         }
@@ -234,6 +291,11 @@ func init() {
             "description": "Container info.",
             "schema": {
               "$ref": "#/definitions/ContainerInfo"
+            },
+            "headers": {
+              "Access-Control-Allow-Origin": {
+                "type": "string"
+              }
             }
           },
           "400": {
@@ -263,12 +325,37 @@ func init() {
             "description": "Successful deletion.",
             "schema": {
               "$ref": "#/definitions/SuccessResponse"
+            },
+            "headers": {
+              "Access-Control-Allow-Origin": {
+                "type": "string"
+              }
             }
           },
           "400": {
             "description": "Bad request.",
             "schema": {
               "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        }
+      },
+      "options": {
+        "security": [],
+        "operationId": "optionsContainersGetDelete",
+        "responses": {
+          "200": {
+            "description": "CORS",
+            "headers": {
+              "Access-Control-Allow-Headers": {
+                "type": "string"
+              },
+              "Access-Control-Allow-Methods": {
+                "type": "string"
+              },
+              "Access-Control-Allow-Origin": {
+                "type": "string"
+              }
             }
           }
         }
@@ -289,6 +376,11 @@ func init() {
             "description": "Container EACL information.",
             "schema": {
               "$ref": "#/definitions/Eacl"
+            },
+            "headers": {
+              "Access-Control-Allow-Origin": {
+                "type": "string"
+              }
             }
           },
           "400": {
@@ -327,12 +419,37 @@ func init() {
             "description": "Successful EACL updating.",
             "schema": {
               "$ref": "#/definitions/SuccessResponse"
+            },
+            "headers": {
+              "Access-Control-Allow-Origin": {
+                "type": "string"
+              }
             }
           },
           "400": {
             "description": "Bad request.",
             "schema": {
               "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        }
+      },
+      "options": {
+        "security": [],
+        "operationId": "optionsContainersEACL",
+        "responses": {
+          "200": {
+            "description": "CORS",
+            "headers": {
+              "Access-Control-Allow-Headers": {
+                "type": "string"
+              },
+              "Access-Control-Allow-Methods": {
+                "type": "string"
+              },
+              "Access-Control-Allow-Origin": {
+                "type": "string"
+              }
             }
           }
         }
@@ -355,6 +472,15 @@ func init() {
         "operationId": "putObject",
         "parameters": [
           {
+            "$ref": "#/parameters/signatureParam"
+          },
+          {
+            "$ref": "#/parameters/signatureKeyParam"
+          },
+          {
+            "$ref": "#/parameters/signatureScheme"
+          },
+          {
             "description": "Object info to upload",
             "name": "object",
             "in": "body",
@@ -369,6 +495,11 @@ func init() {
             "description": "Address of uploaded objects",
             "schema": {
               "$ref": "#/definitions/Address"
+            },
+            "headers": {
+              "Access-Control-Allow-Origin": {
+                "type": "string"
+              }
             }
           },
           "400": {
@@ -379,23 +510,41 @@ func init() {
           }
         }
       },
-      "parameters": [
-        {
-          "$ref": "#/parameters/signatureParam"
-        },
-        {
-          "$ref": "#/parameters/signatureKeyParam"
-        },
-        {
-          "$ref": "#/parameters/signatureScheme"
+      "options": {
+        "security": [],
+        "operationId": "optionsObjectsPut",
+        "responses": {
+          "200": {
+            "description": "CORS",
+            "headers": {
+              "Access-Control-Allow-Headers": {
+                "type": "string"
+              },
+              "Access-Control-Allow-Methods": {
+                "type": "string"
+              },
+              "Access-Control-Allow-Origin": {
+                "type": "string"
+              }
+            }
+          }
         }
-      ]
+      }
     },
     "/objects/{containerId}/search": {
       "post": {
         "summary": "Search objects by filters",
         "operationId": "searchObjects",
         "parameters": [
+          {
+            "$ref": "#/parameters/signatureParam"
+          },
+          {
+            "$ref": "#/parameters/signatureKeyParam"
+          },
+          {
+            "$ref": "#/parameters/signatureScheme"
+          },
           {
             "type": "integer",
             "default": 0,
@@ -427,6 +576,11 @@ func init() {
             "description": "List of objects",
             "schema": {
               "$ref": "#/definitions/ObjectList"
+            },
+            "headers": {
+              "Access-Control-Allow-Origin": {
+                "type": "string"
+              }
             }
           },
           "400": {
@@ -437,16 +591,24 @@ func init() {
           }
         }
       },
+      "options": {
+        "security": [],
+        "operationId": "optionsObjectsSearch",
+        "responses": {
+          "200": {
+            "description": "Base64 encoded stable binary marshaled bearer token.",
+            "headers": {
+              "Access-Control-Allow-Headers": {
+                "type": "string"
+              },
+              "Access-Control-Allow-Origin": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      },
       "parameters": [
-        {
-          "$ref": "#/parameters/signatureParam"
-        },
-        {
-          "$ref": "#/parameters/signatureKeyParam"
-        },
-        {
-          "$ref": "#/parameters/signatureScheme"
-        },
         {
           "$ref": "#/parameters/containerId"
         }
@@ -457,6 +619,15 @@ func init() {
         "summary": "Get object info by address",
         "operationId": "getObjectInfo",
         "parameters": [
+          {
+            "$ref": "#/parameters/signatureParam"
+          },
+          {
+            "$ref": "#/parameters/signatureKeyParam"
+          },
+          {
+            "$ref": "#/parameters/signatureScheme"
+          },
           {
             "type": "integer",
             "description": "Range offset to start reading data.",
@@ -484,6 +655,11 @@ func init() {
             "description": "Object info",
             "schema": {
               "$ref": "#/definitions/ObjectInfo"
+            },
+            "headers": {
+              "Access-Control-Allow-Origin": {
+                "type": "string"
+              }
             }
           },
           "400": {
@@ -497,11 +673,27 @@ func init() {
       "delete": {
         "summary": "Remove object from NeoFS",
         "operationId": "deleteObject",
+        "parameters": [
+          {
+            "$ref": "#/parameters/signatureParam"
+          },
+          {
+            "$ref": "#/parameters/signatureKeyParam"
+          },
+          {
+            "$ref": "#/parameters/signatureScheme"
+          }
+        ],
         "responses": {
           "200": {
             "description": "Successful deletion.",
             "schema": {
               "$ref": "#/definitions/SuccessResponse"
+            },
+            "headers": {
+              "Access-Control-Allow-Origin": {
+                "type": "string"
+              }
             }
           },
           "400": {
@@ -512,16 +704,27 @@ func init() {
           }
         }
       },
+      "options": {
+        "security": [],
+        "operationId": "optionsObjectsGetDelete",
+        "responses": {
+          "200": {
+            "description": "CORS",
+            "headers": {
+              "Access-Control-Allow-Headers": {
+                "type": "string"
+              },
+              "Access-Control-Allow-Methods": {
+                "type": "string"
+              },
+              "Access-Control-Allow-Origin": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      },
       "parameters": [
-        {
-          "$ref": "#/parameters/signatureParam"
-        },
-        {
-          "$ref": "#/parameters/signatureKeyParam"
-        },
-        {
-          "$ref": "#/parameters/signatureScheme"
-        },
         {
           "$ref": "#/parameters/containerId"
         },
@@ -1381,6 +1584,11 @@ func init() {
             "description": "Balance of address in NeoFS",
             "schema": {
               "$ref": "#/definitions/Balance"
+            },
+            "headers": {
+              "Access-Control-Allow-Origin": {
+                "type": "string"
+              }
             }
           },
           "400": {
@@ -1439,12 +1647,34 @@ func init() {
               "items": {
                 "$ref": "#/definitions/TokenResponse"
               }
+            },
+            "headers": {
+              "Access-Control-Allow-Origin": {
+                "type": "string"
+              }
             }
           },
           "400": {
             "description": "Bad request",
             "schema": {
               "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        }
+      },
+      "options": {
+        "security": [],
+        "operationId": "optionsAuth",
+        "responses": {
+          "200": {
+            "description": "CORS",
+            "headers": {
+              "Access-Control-Allow-Headers": {
+                "type": "string"
+              },
+              "Access-Control-Allow-Origin": {
+                "type": "string"
+              }
             }
           }
         }
@@ -1486,6 +1716,11 @@ func init() {
             "description": "Containers info.",
             "schema": {
               "$ref": "#/definitions/ContainerList"
+            },
+            "headers": {
+              "Access-Control-Allow-Origin": {
+                "type": "string"
+              }
             }
           },
           "400": {
@@ -1554,12 +1789,37 @@ func init() {
               "example": {
                 "containerId": "5HZTn5qkRnmgSz9gSrw22CEdPPk6nQhkwf2Mgzyvkikv"
               }
+            },
+            "headers": {
+              "Access-Control-Allow-Origin": {
+                "type": "string"
+              }
             }
           },
           "400": {
             "description": "Bad request.",
             "schema": {
               "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        }
+      },
+      "options": {
+        "security": [],
+        "operationId": "optionsContainersPutList",
+        "responses": {
+          "200": {
+            "description": "CORS",
+            "headers": {
+              "Access-Control-Allow-Headers": {
+                "type": "string"
+              },
+              "Access-Control-Allow-Methods": {
+                "type": "string"
+              },
+              "Access-Control-Allow-Origin": {
+                "type": "string"
+              }
             }
           }
         }
@@ -1575,6 +1835,11 @@ func init() {
             "description": "Container info.",
             "schema": {
               "$ref": "#/definitions/ContainerInfo"
+            },
+            "headers": {
+              "Access-Control-Allow-Origin": {
+                "type": "string"
+              }
             }
           },
           "400": {
@@ -1616,12 +1881,37 @@ func init() {
             "description": "Successful deletion.",
             "schema": {
               "$ref": "#/definitions/SuccessResponse"
+            },
+            "headers": {
+              "Access-Control-Allow-Origin": {
+                "type": "string"
+              }
             }
           },
           "400": {
             "description": "Bad request.",
             "schema": {
               "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        }
+      },
+      "options": {
+        "security": [],
+        "operationId": "optionsContainersGetDelete",
+        "responses": {
+          "200": {
+            "description": "CORS",
+            "headers": {
+              "Access-Control-Allow-Headers": {
+                "type": "string"
+              },
+              "Access-Control-Allow-Methods": {
+                "type": "string"
+              },
+              "Access-Control-Allow-Origin": {
+                "type": "string"
+              }
             }
           }
         }
@@ -1646,6 +1936,11 @@ func init() {
             "description": "Container EACL information.",
             "schema": {
               "$ref": "#/definitions/Eacl"
+            },
+            "headers": {
+              "Access-Control-Allow-Origin": {
+                "type": "string"
+              }
             }
           },
           "400": {
@@ -1696,12 +1991,37 @@ func init() {
             "description": "Successful EACL updating.",
             "schema": {
               "$ref": "#/definitions/SuccessResponse"
+            },
+            "headers": {
+              "Access-Control-Allow-Origin": {
+                "type": "string"
+              }
             }
           },
           "400": {
             "description": "Bad request.",
             "schema": {
               "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        }
+      },
+      "options": {
+        "security": [],
+        "operationId": "optionsContainersEACL",
+        "responses": {
+          "200": {
+            "description": "CORS",
+            "headers": {
+              "Access-Control-Allow-Headers": {
+                "type": "string"
+              },
+              "Access-Control-Allow-Methods": {
+                "type": "string"
+              },
+              "Access-Control-Allow-Origin": {
+                "type": "string"
+              }
             }
           }
         }
@@ -1728,6 +2048,27 @@ func init() {
         "operationId": "putObject",
         "parameters": [
           {
+            "type": "string",
+            "description": "Base64 encoded signature for bearer token.",
+            "name": "X-Bearer-Signature",
+            "in": "header",
+            "required": true
+          },
+          {
+            "type": "string",
+            "description": "Hex encoded the public part of the key that signed the bearer token.",
+            "name": "X-Bearer-Signature-Key",
+            "in": "header",
+            "required": true
+          },
+          {
+            "type": "boolean",
+            "default": false,
+            "description": "Use wallet connect signature scheme or native NeoFS signature.",
+            "name": "walletConnect",
+            "in": "query"
+          },
+          {
             "description": "Object info to upload",
             "name": "object",
             "in": "body",
@@ -1742,6 +2083,11 @@ func init() {
             "description": "Address of uploaded objects",
             "schema": {
               "$ref": "#/definitions/Address"
+            },
+            "headers": {
+              "Access-Control-Allow-Origin": {
+                "type": "string"
+              }
             }
           },
           "400": {
@@ -1752,35 +2098,53 @@ func init() {
           }
         }
       },
-      "parameters": [
-        {
-          "type": "string",
-          "description": "Base64 encoded signature for bearer token.",
-          "name": "X-Bearer-Signature",
-          "in": "header",
-          "required": true
-        },
-        {
-          "type": "string",
-          "description": "Hex encoded the public part of the key that signed the bearer token.",
-          "name": "X-Bearer-Signature-Key",
-          "in": "header",
-          "required": true
-        },
-        {
-          "type": "boolean",
-          "default": false,
-          "description": "Use wallet connect signature scheme or native NeoFS signature.",
-          "name": "walletConnect",
-          "in": "query"
+      "options": {
+        "security": [],
+        "operationId": "optionsObjectsPut",
+        "responses": {
+          "200": {
+            "description": "CORS",
+            "headers": {
+              "Access-Control-Allow-Headers": {
+                "type": "string"
+              },
+              "Access-Control-Allow-Methods": {
+                "type": "string"
+              },
+              "Access-Control-Allow-Origin": {
+                "type": "string"
+              }
+            }
+          }
         }
-      ]
+      }
     },
     "/objects/{containerId}/search": {
       "post": {
         "summary": "Search objects by filters",
         "operationId": "searchObjects",
         "parameters": [
+          {
+            "type": "string",
+            "description": "Base64 encoded signature for bearer token.",
+            "name": "X-Bearer-Signature",
+            "in": "header",
+            "required": true
+          },
+          {
+            "type": "string",
+            "description": "Hex encoded the public part of the key that signed the bearer token.",
+            "name": "X-Bearer-Signature-Key",
+            "in": "header",
+            "required": true
+          },
+          {
+            "type": "boolean",
+            "default": false,
+            "description": "Use wallet connect signature scheme or native NeoFS signature.",
+            "name": "walletConnect",
+            "in": "query"
+          },
           {
             "minimum": 0,
             "type": "integer",
@@ -1813,6 +2177,11 @@ func init() {
             "description": "List of objects",
             "schema": {
               "$ref": "#/definitions/ObjectList"
+            },
+            "headers": {
+              "Access-Control-Allow-Origin": {
+                "type": "string"
+              }
             }
           },
           "400": {
@@ -1823,28 +2192,24 @@ func init() {
           }
         }
       },
+      "options": {
+        "security": [],
+        "operationId": "optionsObjectsSearch",
+        "responses": {
+          "200": {
+            "description": "Base64 encoded stable binary marshaled bearer token.",
+            "headers": {
+              "Access-Control-Allow-Headers": {
+                "type": "string"
+              },
+              "Access-Control-Allow-Origin": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      },
       "parameters": [
-        {
-          "type": "string",
-          "description": "Base64 encoded signature for bearer token.",
-          "name": "X-Bearer-Signature",
-          "in": "header",
-          "required": true
-        },
-        {
-          "type": "string",
-          "description": "Hex encoded the public part of the key that signed the bearer token.",
-          "name": "X-Bearer-Signature-Key",
-          "in": "header",
-          "required": true
-        },
-        {
-          "type": "boolean",
-          "default": false,
-          "description": "Use wallet connect signature scheme or native NeoFS signature.",
-          "name": "walletConnect",
-          "in": "query"
-        },
         {
           "type": "string",
           "description": "Base58 encoded container id.",
@@ -1859,6 +2224,27 @@ func init() {
         "summary": "Get object info by address",
         "operationId": "getObjectInfo",
         "parameters": [
+          {
+            "type": "string",
+            "description": "Base64 encoded signature for bearer token.",
+            "name": "X-Bearer-Signature",
+            "in": "header",
+            "required": true
+          },
+          {
+            "type": "string",
+            "description": "Hex encoded the public part of the key that signed the bearer token.",
+            "name": "X-Bearer-Signature-Key",
+            "in": "header",
+            "required": true
+          },
+          {
+            "type": "boolean",
+            "default": false,
+            "description": "Use wallet connect signature scheme or native NeoFS signature.",
+            "name": "walletConnect",
+            "in": "query"
+          },
           {
             "minimum": 0,
             "type": "integer",
@@ -1888,6 +2274,11 @@ func init() {
             "description": "Object info",
             "schema": {
               "$ref": "#/definitions/ObjectInfo"
+            },
+            "headers": {
+              "Access-Control-Allow-Origin": {
+                "type": "string"
+              }
             }
           },
           "400": {
@@ -1901,11 +2292,39 @@ func init() {
       "delete": {
         "summary": "Remove object from NeoFS",
         "operationId": "deleteObject",
+        "parameters": [
+          {
+            "type": "string",
+            "description": "Base64 encoded signature for bearer token.",
+            "name": "X-Bearer-Signature",
+            "in": "header",
+            "required": true
+          },
+          {
+            "type": "string",
+            "description": "Hex encoded the public part of the key that signed the bearer token.",
+            "name": "X-Bearer-Signature-Key",
+            "in": "header",
+            "required": true
+          },
+          {
+            "type": "boolean",
+            "default": false,
+            "description": "Use wallet connect signature scheme or native NeoFS signature.",
+            "name": "walletConnect",
+            "in": "query"
+          }
+        ],
         "responses": {
           "200": {
             "description": "Successful deletion.",
             "schema": {
               "$ref": "#/definitions/SuccessResponse"
+            },
+            "headers": {
+              "Access-Control-Allow-Origin": {
+                "type": "string"
+              }
             }
           },
           "400": {
@@ -1916,28 +2335,27 @@ func init() {
           }
         }
       },
+      "options": {
+        "security": [],
+        "operationId": "optionsObjectsGetDelete",
+        "responses": {
+          "200": {
+            "description": "CORS",
+            "headers": {
+              "Access-Control-Allow-Headers": {
+                "type": "string"
+              },
+              "Access-Control-Allow-Methods": {
+                "type": "string"
+              },
+              "Access-Control-Allow-Origin": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      },
       "parameters": [
-        {
-          "type": "string",
-          "description": "Base64 encoded signature for bearer token.",
-          "name": "X-Bearer-Signature",
-          "in": "header",
-          "required": true
-        },
-        {
-          "type": "string",
-          "description": "Hex encoded the public part of the key that signed the bearer token.",
-          "name": "X-Bearer-Signature-Key",
-          "in": "header",
-          "required": true
-        },
-        {
-          "type": "boolean",
-          "default": false,
-          "description": "Use wallet connect signature scheme or native NeoFS signature.",
-          "name": "walletConnect",
-          "in": "query"
-        },
         {
           "type": "string",
           "description": "Base58 encoded container id.",

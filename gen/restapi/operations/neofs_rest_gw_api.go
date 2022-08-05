@@ -68,6 +68,27 @@ func NewNeofsRestGwAPI(spec *loads.Document) *NeofsRestGwAPI {
 		ListContainersHandler: ListContainersHandlerFunc(func(params ListContainersParams) middleware.Responder {
 			return middleware.NotImplemented("operation ListContainers has not yet been implemented")
 		}),
+		OptionsAuthHandler: OptionsAuthHandlerFunc(func(params OptionsAuthParams) middleware.Responder {
+			return middleware.NotImplemented("operation OptionsAuth has not yet been implemented")
+		}),
+		OptionsContainersEACLHandler: OptionsContainersEACLHandlerFunc(func(params OptionsContainersEACLParams) middleware.Responder {
+			return middleware.NotImplemented("operation OptionsContainersEACL has not yet been implemented")
+		}),
+		OptionsContainersGetDeleteHandler: OptionsContainersGetDeleteHandlerFunc(func(params OptionsContainersGetDeleteParams) middleware.Responder {
+			return middleware.NotImplemented("operation OptionsContainersGetDelete has not yet been implemented")
+		}),
+		OptionsContainersPutListHandler: OptionsContainersPutListHandlerFunc(func(params OptionsContainersPutListParams) middleware.Responder {
+			return middleware.NotImplemented("operation OptionsContainersPutList has not yet been implemented")
+		}),
+		OptionsObjectsGetDeleteHandler: OptionsObjectsGetDeleteHandlerFunc(func(params OptionsObjectsGetDeleteParams) middleware.Responder {
+			return middleware.NotImplemented("operation OptionsObjectsGetDelete has not yet been implemented")
+		}),
+		OptionsObjectsPutHandler: OptionsObjectsPutHandlerFunc(func(params OptionsObjectsPutParams) middleware.Responder {
+			return middleware.NotImplemented("operation OptionsObjectsPut has not yet been implemented")
+		}),
+		OptionsObjectsSearchHandler: OptionsObjectsSearchHandlerFunc(func(params OptionsObjectsSearchParams) middleware.Responder {
+			return middleware.NotImplemented("operation OptionsObjectsSearch has not yet been implemented")
+		}),
 		PutContainerHandler: PutContainerHandlerFunc(func(params PutContainerParams, principal *models.Principal) middleware.Responder {
 			return middleware.NotImplemented("operation PutContainer has not yet been implemented")
 		}),
@@ -146,6 +167,20 @@ type NeofsRestGwAPI struct {
 	GetObjectInfoHandler GetObjectInfoHandler
 	// ListContainersHandler sets the operation handler for the list containers operation
 	ListContainersHandler ListContainersHandler
+	// OptionsAuthHandler sets the operation handler for the options auth operation
+	OptionsAuthHandler OptionsAuthHandler
+	// OptionsContainersEACLHandler sets the operation handler for the options containers e ACL operation
+	OptionsContainersEACLHandler OptionsContainersEACLHandler
+	// OptionsContainersGetDeleteHandler sets the operation handler for the options containers get delete operation
+	OptionsContainersGetDeleteHandler OptionsContainersGetDeleteHandler
+	// OptionsContainersPutListHandler sets the operation handler for the options containers put list operation
+	OptionsContainersPutListHandler OptionsContainersPutListHandler
+	// OptionsObjectsGetDeleteHandler sets the operation handler for the options objects get delete operation
+	OptionsObjectsGetDeleteHandler OptionsObjectsGetDeleteHandler
+	// OptionsObjectsPutHandler sets the operation handler for the options objects put operation
+	OptionsObjectsPutHandler OptionsObjectsPutHandler
+	// OptionsObjectsSearchHandler sets the operation handler for the options objects search operation
+	OptionsObjectsSearchHandler OptionsObjectsSearchHandler
 	// PutContainerHandler sets the operation handler for the put container operation
 	PutContainerHandler PutContainerHandler
 	// PutContainerEACLHandler sets the operation handler for the put container e ACL operation
@@ -258,6 +293,27 @@ func (o *NeofsRestGwAPI) Validate() error {
 	}
 	if o.ListContainersHandler == nil {
 		unregistered = append(unregistered, "ListContainersHandler")
+	}
+	if o.OptionsAuthHandler == nil {
+		unregistered = append(unregistered, "OptionsAuthHandler")
+	}
+	if o.OptionsContainersEACLHandler == nil {
+		unregistered = append(unregistered, "OptionsContainersEACLHandler")
+	}
+	if o.OptionsContainersGetDeleteHandler == nil {
+		unregistered = append(unregistered, "OptionsContainersGetDeleteHandler")
+	}
+	if o.OptionsContainersPutListHandler == nil {
+		unregistered = append(unregistered, "OptionsContainersPutListHandler")
+	}
+	if o.OptionsObjectsGetDeleteHandler == nil {
+		unregistered = append(unregistered, "OptionsObjectsGetDeleteHandler")
+	}
+	if o.OptionsObjectsPutHandler == nil {
+		unregistered = append(unregistered, "OptionsObjectsPutHandler")
+	}
+	if o.OptionsObjectsSearchHandler == nil {
+		unregistered = append(unregistered, "OptionsObjectsSearchHandler")
 	}
 	if o.PutContainerHandler == nil {
 		unregistered = append(unregistered, "PutContainerHandler")
@@ -402,6 +458,34 @@ func (o *NeofsRestGwAPI) initHandlerCache() {
 		o.handlers["GET"] = make(map[string]http.Handler)
 	}
 	o.handlers["GET"]["/containers"] = NewListContainers(o.context, o.ListContainersHandler)
+	if o.handlers["OPTIONS"] == nil {
+		o.handlers["OPTIONS"] = make(map[string]http.Handler)
+	}
+	o.handlers["OPTIONS"]["/auth"] = NewOptionsAuth(o.context, o.OptionsAuthHandler)
+	if o.handlers["OPTIONS"] == nil {
+		o.handlers["OPTIONS"] = make(map[string]http.Handler)
+	}
+	o.handlers["OPTIONS"]["/containers/{containerId}/eacl"] = NewOptionsContainersEACL(o.context, o.OptionsContainersEACLHandler)
+	if o.handlers["OPTIONS"] == nil {
+		o.handlers["OPTIONS"] = make(map[string]http.Handler)
+	}
+	o.handlers["OPTIONS"]["/containers/{containerId}"] = NewOptionsContainersGetDelete(o.context, o.OptionsContainersGetDeleteHandler)
+	if o.handlers["OPTIONS"] == nil {
+		o.handlers["OPTIONS"] = make(map[string]http.Handler)
+	}
+	o.handlers["OPTIONS"]["/containers"] = NewOptionsContainersPutList(o.context, o.OptionsContainersPutListHandler)
+	if o.handlers["OPTIONS"] == nil {
+		o.handlers["OPTIONS"] = make(map[string]http.Handler)
+	}
+	o.handlers["OPTIONS"]["/objects/{containerId}/{objectId}"] = NewOptionsObjectsGetDelete(o.context, o.OptionsObjectsGetDeleteHandler)
+	if o.handlers["OPTIONS"] == nil {
+		o.handlers["OPTIONS"] = make(map[string]http.Handler)
+	}
+	o.handlers["OPTIONS"]["/objects"] = NewOptionsObjectsPut(o.context, o.OptionsObjectsPutHandler)
+	if o.handlers["OPTIONS"] == nil {
+		o.handlers["OPTIONS"] = make(map[string]http.Handler)
+	}
+	o.handlers["OPTIONS"]["/objects/{containerId}/search"] = NewOptionsObjectsSearch(o.context, o.OptionsObjectsSearchHandler)
 	if o.handlers["PUT"] == nil {
 		o.handlers["PUT"] = make(map[string]http.Handler)
 	}

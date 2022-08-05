@@ -97,7 +97,9 @@ func (a *API) PostAuth(params operations.AuthParams) middleware.Responder {
 		}
 	}
 
-	return operations.NewAuthOK().WithPayload(response)
+	return operations.NewAuthOK().
+		WithPayload(response).
+		WithAccessControlAllowOrigin("*")
 }
 
 func prepareObjectToken(ctx context.Context, params objectTokenParams, pool *pool.Pool, owner user.ID) (*models.TokenResponse, error) {
