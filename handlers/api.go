@@ -78,21 +78,32 @@ func (a *API) Configure(api *operations.NeofsRestGwAPI) http.Handler {
 
 	api.UseSwaggerUI()
 
+	api.OptionsAuthHandler = operations.OptionsAuthHandlerFunc(a.OptionsAuth)
 	api.AuthHandler = operations.AuthHandlerFunc(a.PostAuth)
 
 	api.GetBalanceHandler = operations.GetBalanceHandlerFunc(a.Balance)
 
+	api.OptionsObjectsPutHandler = operations.OptionsObjectsPutHandlerFunc(a.OptionsObjectsPut)
 	api.PutObjectHandler = operations.PutObjectHandlerFunc(a.PutObjects)
+
+	api.OptionsObjectsGetDeleteHandler = operations.OptionsObjectsGetDeleteHandlerFunc(a.OptionsObjectsGetDelete)
 	api.GetObjectInfoHandler = operations.GetObjectInfoHandlerFunc(a.GetObjectInfo)
 	api.DeleteObjectHandler = operations.DeleteObjectHandlerFunc(a.DeleteObject)
+
+	api.OptionsObjectsSearchHandler = operations.OptionsObjectsSearchHandlerFunc(a.OptionsObjectSearch)
 	api.SearchObjectsHandler = operations.SearchObjectsHandlerFunc(a.SearchObjects)
 
+	api.OptionsContainersPutListHandler = operations.OptionsContainersPutListHandlerFunc(a.OptionsContainersPutList)
 	api.PutContainerHandler = operations.PutContainerHandlerFunc(a.PutContainers)
+	api.ListContainersHandler = operations.ListContainersHandlerFunc(a.ListContainer)
+
+	api.OptionsContainersGetDeleteHandler = operations.OptionsContainersGetDeleteHandlerFunc(a.OptionsContainersGetDelete)
 	api.GetContainerHandler = operations.GetContainerHandlerFunc(a.GetContainer)
 	api.DeleteContainerHandler = operations.DeleteContainerHandlerFunc(a.DeleteContainer)
+
+	api.OptionsContainersEACLHandler = operations.OptionsContainersEACLHandlerFunc(a.OptionsContainersEACL)
 	api.PutContainerEACLHandler = operations.PutContainerEACLHandlerFunc(a.PutContainerEACL)
 	api.GetContainerEACLHandler = operations.GetContainerEACLHandlerFunc(a.GetContainerEACL)
-	api.ListContainersHandler = operations.ListContainersHandlerFunc(a.ListContainer)
 
 	api.BearerAuthAuth = func(s string) (*models.Principal, error) {
 		if !strings.HasPrefix(s, BearerPrefix) {

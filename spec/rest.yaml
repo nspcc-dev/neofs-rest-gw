@@ -53,6 +53,17 @@ parameters:
 
 paths:
   /auth:
+    options:
+      operationId: optionsAuth
+      security: [ ]
+      responses:
+        200:
+          description: CORS
+          headers:
+            Access-Control-Allow-Origin:
+              type: string
+            Access-Control-Allow-Headers:
+              type: string
     post:
       operationId: auth
       summary: Form bearer token to further requests
@@ -83,6 +94,9 @@ paths:
       responses:
         200:
           description: Base64 encoded stable binary marshaled bearer token.
+          headers:
+            Access-Control-Allow-Origin:
+              type: string
           schema:
             type: array
             items:
@@ -111,20 +125,35 @@ paths:
           description: Balance of address in NeoFS
           schema:
             $ref: '#/definitions/Balance'
+          headers:
+            Access-Control-Allow-Origin:
+              type: string
         400:
           description: Bad request
           schema:
             $ref: '#/definitions/ErrorResponse'
 
   /objects:
-    parameters:
-      - $ref: '#/parameters/signatureParam'
-      - $ref: '#/parameters/signatureKeyParam'
-      - $ref: '#/parameters/signatureScheme'
+    options:
+      operationId: optionsObjectsPut
+      security: [ ]
+      responses:
+        200:
+          description: CORS
+          headers:
+            Access-Control-Allow-Origin:
+              type: string
+            Access-Control-Allow-Headers:
+              type: string
+            Access-Control-Allow-Methods:
+              type: string
     put:
       operationId: putObject
       summary: Upload object to NeoFS
       parameters:
+        - $ref: '#/parameters/signatureParam'
+        - $ref: '#/parameters/signatureKeyParam'
+        - $ref: '#/parameters/signatureScheme'
         - in: body
           required: true
           name: object
@@ -137,6 +166,9 @@ paths:
         - application/json
       responses:
         200:
+          headers:
+            Access-Control-Allow-Origin:
+              type: string
           description: Address of uploaded objects
           schema:
             $ref: '#/definitions/Address'
@@ -147,14 +179,25 @@ paths:
 
   /objects/{containerId}/search:
     parameters:
-      - $ref: '#/parameters/signatureParam'
-      - $ref: '#/parameters/signatureKeyParam'
-      - $ref: '#/parameters/signatureScheme'
       - $ref: '#/parameters/containerId'
+    options:
+      operationId: optionsObjectsSearch
+      security: []
+      responses:
+        200:
+          description: Base64 encoded stable binary marshaled bearer token.
+          headers:
+            Access-Control-Allow-Origin:
+              type: string
+            Access-Control-Allow-Headers:
+              type: string
     post:
       operationId: searchObjects
       summary: Search objects by filters
       parameters:
+        - $ref: '#/parameters/signatureParam'
+        - $ref: '#/parameters/signatureKeyParam'
+        - $ref: '#/parameters/signatureScheme'
         - in: query
           name: offset
           type: integer
@@ -176,6 +219,9 @@ paths:
             $ref: '#/definitions/SearchFilters'
       responses:
         200:
+          headers:
+            Access-Control-Allow-Origin:
+              type: string
           description: List of objects
           schema:
             $ref: '#/definitions/ObjectList'
@@ -186,15 +232,28 @@ paths:
 
   /objects/{containerId}/{objectId}:
     parameters:
-      - $ref: '#/parameters/signatureParam'
-      - $ref: '#/parameters/signatureKeyParam'
-      - $ref: '#/parameters/signatureScheme'
       - $ref: '#/parameters/containerId'
       - $ref: '#/parameters/objectId'
+    options:
+      operationId: optionsObjectsGetDelete
+      security: [ ]
+      responses:
+        200:
+          description: CORS
+          headers:
+            Access-Control-Allow-Origin:
+              type: string
+            Access-Control-Allow-Headers:
+              type: string
+            Access-Control-Allow-Methods:
+              type: string
     get:
       operationId: getObjectInfo
       summary: Get object info by address
       parameters:
+        - $ref: '#/parameters/signatureParam'
+        - $ref: '#/parameters/signatureKeyParam'
+        - $ref: '#/parameters/signatureScheme'
         - in: query
           name: range-offset
           type: integer
@@ -216,6 +275,9 @@ paths:
             If the actual size is greater than this params the payload won't be included in the response.
       responses:
         200:
+          headers:
+            Access-Control-Allow-Origin:
+              type: string
           description: Object info
           schema:
             $ref: '#/definitions/ObjectInfo'
@@ -226,8 +288,15 @@ paths:
     delete:
       operationId: deleteObject
       summary: Remove object from NeoFS
+      parameters:
+        - $ref: '#/parameters/signatureParam'
+        - $ref: '#/parameters/signatureKeyParam'
+        - $ref: '#/parameters/signatureScheme'
       responses:
         200:
+          headers:
+            Access-Control-Allow-Origin:
+              type: string
           description: Successful deletion.
           schema:
             $ref: '#/definitions/SuccessResponse'
@@ -237,6 +306,19 @@ paths:
             $ref: '#/definitions/ErrorResponse'
 
   /containers:
+    options:
+      operationId: optionsContainersPutList
+      security: [ ]
+      responses:
+        200:
+          description: CORS
+          headers:
+            Access-Control-Allow-Origin:
+              type: string
+            Access-Control-Allow-Headers:
+              type: string
+            Access-Control-Allow-Methods:
+              type: string
     put:
       operationId: putContainer
       summary: Create new container in NeoFS
@@ -257,6 +339,9 @@ paths:
             $ref: '#/definitions/ContainerPutInfo'
       responses:
         200:
+          headers:
+            Access-Control-Allow-Origin:
+              type: string
           description: Identifier of the created container.
           schema:
             type: object
@@ -296,6 +381,9 @@ paths:
           description: The numbers of containers to return.
       responses:
         200:
+          headers:
+            Access-Control-Allow-Origin:
+              type: string
           description: Containers info.
           schema:
             $ref: '#/definitions/ContainerList'
@@ -307,12 +395,28 @@ paths:
   /containers/{containerId}:
     parameters:
       - $ref: '#/parameters/containerId'
+    options:
+      operationId: optionsContainersGetDelete
+      security: [ ]
+      responses:
+        200:
+          description: CORS
+          headers:
+            Access-Control-Allow-Origin:
+              type: string
+            Access-Control-Allow-Headers:
+              type: string
+            Access-Control-Allow-Methods:
+              type: string
     get:
       operationId: getContainer
       summary: Get container by id
       security: [ ]
       responses:
         200:
+          headers:
+            Access-Control-Allow-Origin:
+              type: string
           description: Container info.
           schema:
             $ref: '#/definitions/ContainerInfo'
@@ -329,6 +433,9 @@ paths:
         - $ref: '#/parameters/signatureScheme'
       responses:
         200:
+          headers:
+            Access-Control-Allow-Origin:
+              type: string
           description: Successful deletion.
           schema:
             $ref: '#/definitions/SuccessResponse'
@@ -336,9 +443,23 @@ paths:
           description: Bad request.
           schema:
             $ref: '#/definitions/ErrorResponse'
+
   /containers/{containerId}/eacl:
     parameters:
       - $ref: '#/parameters/containerId'
+    options:
+      operationId: optionsContainersEACL
+      security: [ ]
+      responses:
+        200:
+          description: CORS
+          headers:
+            Access-Control-Allow-Origin:
+              type: string
+            Access-Control-Allow-Headers:
+              type: string
+            Access-Control-Allow-Methods:
+              type: string
     put:
       operationId: putContainerEACL
       summary: Set container EACL by id
@@ -354,6 +475,9 @@ paths:
             $ref: '#/definitions/Eacl'
       responses:
         200:
+          headers:
+            Access-Control-Allow-Origin:
+              type: string
           description: Successful EACL updating.
           schema:
             $ref: '#/definitions/SuccessResponse'
@@ -367,6 +491,9 @@ paths:
       security: [ ]
       responses:
         200:
+          headers:
+            Access-Control-Allow-Origin:
+              type: string
           description: Container EACL information.
           schema:
             $ref: '#/definitions/Eacl'

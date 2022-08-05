@@ -21,6 +21,10 @@ const GetBalanceOKCode int = 200
 swagger:response getBalanceOK
 */
 type GetBalanceOK struct {
+	/*
+
+	 */
+	AccessControlAllowOrigin string `json:"Access-Control-Allow-Origin"`
 
 	/*
 	  In: Body
@@ -32,6 +36,17 @@ type GetBalanceOK struct {
 func NewGetBalanceOK() *GetBalanceOK {
 
 	return &GetBalanceOK{}
+}
+
+// WithAccessControlAllowOrigin adds the accessControlAllowOrigin to the get balance o k response
+func (o *GetBalanceOK) WithAccessControlAllowOrigin(accessControlAllowOrigin string) *GetBalanceOK {
+	o.AccessControlAllowOrigin = accessControlAllowOrigin
+	return o
+}
+
+// SetAccessControlAllowOrigin sets the accessControlAllowOrigin to the get balance o k response
+func (o *GetBalanceOK) SetAccessControlAllowOrigin(accessControlAllowOrigin string) {
+	o.AccessControlAllowOrigin = accessControlAllowOrigin
 }
 
 // WithPayload adds the payload to the get balance o k response
@@ -47,6 +62,13 @@ func (o *GetBalanceOK) SetPayload(payload *models.Balance) {
 
 // WriteResponse to the client
 func (o *GetBalanceOK) WriteResponse(rw http.ResponseWriter, producer runtime.Producer) {
+
+	// response header Access-Control-Allow-Origin
+
+	accessControlAllowOrigin := o.AccessControlAllowOrigin
+	if accessControlAllowOrigin != "" {
+		rw.Header().Set("Access-Control-Allow-Origin", accessControlAllowOrigin)
+	}
 
 	rw.WriteHeader(200)
 	if o.Payload != nil {

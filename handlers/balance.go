@@ -33,5 +33,7 @@ func (a *API) Balance(params operations.GetBalanceParams) middleware.Responder {
 	resp.Value = util.NewString(strconv.FormatInt(neofsBalance.Value(), 10))
 	resp.Precision = util.NewInteger(int64(neofsBalance.Precision()))
 
-	return operations.NewGetBalanceOK().WithPayload(&resp)
+	return operations.NewGetBalanceOK().
+		WithPayload(&resp).
+		WithAccessControlAllowOrigin("*")
 }

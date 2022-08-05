@@ -21,6 +21,10 @@ const GetObjectInfoOKCode int = 200
 swagger:response getObjectInfoOK
 */
 type GetObjectInfoOK struct {
+	/*
+
+	 */
+	AccessControlAllowOrigin string `json:"Access-Control-Allow-Origin"`
 
 	/*
 	  In: Body
@@ -32,6 +36,17 @@ type GetObjectInfoOK struct {
 func NewGetObjectInfoOK() *GetObjectInfoOK {
 
 	return &GetObjectInfoOK{}
+}
+
+// WithAccessControlAllowOrigin adds the accessControlAllowOrigin to the get object info o k response
+func (o *GetObjectInfoOK) WithAccessControlAllowOrigin(accessControlAllowOrigin string) *GetObjectInfoOK {
+	o.AccessControlAllowOrigin = accessControlAllowOrigin
+	return o
+}
+
+// SetAccessControlAllowOrigin sets the accessControlAllowOrigin to the get object info o k response
+func (o *GetObjectInfoOK) SetAccessControlAllowOrigin(accessControlAllowOrigin string) {
+	o.AccessControlAllowOrigin = accessControlAllowOrigin
 }
 
 // WithPayload adds the payload to the get object info o k response
@@ -47,6 +62,13 @@ func (o *GetObjectInfoOK) SetPayload(payload *models.ObjectInfo) {
 
 // WriteResponse to the client
 func (o *GetObjectInfoOK) WriteResponse(rw http.ResponseWriter, producer runtime.Producer) {
+
+	// response header Access-Control-Allow-Origin
+
+	accessControlAllowOrigin := o.AccessControlAllowOrigin
+	if accessControlAllowOrigin != "" {
+		rw.Header().Set("Access-Control-Allow-Origin", accessControlAllowOrigin)
+	}
 
 	rw.WriteHeader(200)
 	if o.Payload != nil {

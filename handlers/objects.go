@@ -79,7 +79,9 @@ func (a *API) PutObjects(params operations.PutObjectParams, principal *models.Pr
 	resp.ContainerID = params.Object.ContainerID
 	resp.ObjectID = util.NewString(objID.String())
 
-	return operations.NewPutObjectOK().WithPayload(&resp)
+	return operations.NewPutObjectOK().
+		WithPayload(&resp).
+		WithAccessControlAllowOrigin("*")
 }
 
 // GetObjectInfo handler that get object info.
@@ -173,7 +175,9 @@ func (a *API) GetObjectInfo(params operations.GetObjectInfoParams, principal *mo
 	resp.Payload = sb.String()
 	resp.PayloadSize = util.NewInteger(payloadSize)
 
-	return operations.NewGetObjectInfoOK().WithPayload(&resp)
+	return operations.NewGetObjectInfoOK().
+		WithPayload(&resp).
+		WithAccessControlAllowOrigin("*")
 }
 
 // DeleteObject handler that removes object from NeoFS.
@@ -202,7 +206,9 @@ func (a *API) DeleteObject(params operations.DeleteObjectParams, principal *mode
 		return errorResponse.WithPayload(resp)
 	}
 
-	return operations.NewDeleteObjectOK().WithPayload(util.NewSuccessResponse())
+	return operations.NewDeleteObjectOK().
+		WithPayload(util.NewSuccessResponse()).
+		WithAccessControlAllowOrigin("*")
 }
 
 // SearchObjects handler that removes object from NeoFS.
@@ -274,7 +280,9 @@ func (a *API) SearchObjects(params operations.SearchObjectsParams, principal *mo
 		Objects: objects,
 	}
 
-	return operations.NewSearchObjectsOK().WithPayload(list)
+	return operations.NewSearchObjectsOK().
+		WithPayload(list).
+		WithAccessControlAllowOrigin("*")
 }
 
 func headObjectBaseInfo(ctx context.Context, p *pool.Pool, cnrID cid.ID, objID oid.ID, btoken bearer.Token) (*models.ObjectBaseInfo, error) {
