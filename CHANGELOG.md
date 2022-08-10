@@ -2,6 +2,12 @@
 
 This document outlines major changes between releases.
 
+## [Unreleased]
+
+### Added 
+- CORS headers (#39)
+
+
 ## [0.2.1] "Razor Hill" - 2022-07-22
 
 ### Fixed
@@ -28,3 +34,4 @@ Please refer to [GitHub releases](https://github.com/nspcc-dev/neofs-rest-gw/rel
 
 [0.2.1]: https://github.com/nspcc-dev/neofs-rest-gw/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/nspcc-dev/neofs-rest-gw/compare/v0.1.0...v0.2.0
+[Unreleased]: https://github.com/nspcc-dev/neofs-rest-gw/compare/v0.2.0...master
