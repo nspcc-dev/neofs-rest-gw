@@ -1119,6 +1119,9 @@ func init() {
         "address": {
           "$ref": "#/definitions/Address"
         },
+        "filePath": {
+          "type": "string"
+        },
         "name": {
           "type": "string"
         }
@@ -1128,7 +1131,8 @@ func init() {
           "containerId": "5HZTn5qkRnmgSz9gSrw22CEdPPk6nQhkwf2Mgzyvkikv",
           "objectId": "8N3o7Dtr6T1xteCt6eRwhpmJ7JhME58Hyu1dvaswuTDd"
         },
-        "name": "/my/object/name"
+        "filePath": "/my/object/name.txt",
+        "name": "name.txt"
       }
     },
     "ObjectInfo": {
@@ -2758,6 +2762,9 @@ func init() {
         "address": {
           "$ref": "#/definitions/Address"
         },
+        "filePath": {
+          "type": "string"
+        },
         "name": {
           "type": "string"
         }
@@ -2767,7 +2774,8 @@ func init() {
           "containerId": "5HZTn5qkRnmgSz9gSrw22CEdPPk6nQhkwf2Mgzyvkikv",
           "objectId": "8N3o7Dtr6T1xteCt6eRwhpmJ7JhME58Hyu1dvaswuTDd"
         },
-        "name": "/my/object/name"
+        "filePath": "/my/object/name.txt",
+        "name": "name.txt"
       }
     },
     "ObjectInfo": {

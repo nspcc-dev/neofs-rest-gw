@@ -15,7 +15,7 @@ import (
 )
 
 // ObjectBaseInfo Basic object information.
-// Example: {"address":{"containerId":"5HZTn5qkRnmgSz9gSrw22CEdPPk6nQhkwf2Mgzyvkikv","objectId":"8N3o7Dtr6T1xteCt6eRwhpmJ7JhME58Hyu1dvaswuTDd"},"name":"/my/object/name"}
+// Example: {"address":{"containerId":"5HZTn5qkRnmgSz9gSrw22CEdPPk6nQhkwf2Mgzyvkikv","objectId":"8N3o7Dtr6T1xteCt6eRwhpmJ7JhME58Hyu1dvaswuTDd"},"filePath":"/my/object/name.txt","name":"name.txt"}
 //
 // swagger:model ObjectBaseInfo
 type ObjectBaseInfo struct {
@@ -23,6 +23,9 @@ type ObjectBaseInfo struct {
 	// address
 	// Required: true
 	Address *Address `json:"address"`
+
+	// file path
+	FilePath string `json:"filePath,omitempty"`
 
 	// name
 	Name string `json:"name,omitempty"`
