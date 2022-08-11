@@ -82,3 +82,11 @@ details.
 You can see additional docs and swagger specification using the following url (suppose you ran rest-gw on `localhost:8090`):
 * http://localhost:8090/docs - rest-gw documentation
 * http://localhost:8090/v1/docs - swagger specification
+
+## Contributing
+
+Feel free to contribute to this project after reading the [contributing
+guidelines](CONTRIBUTING.md).
+
+Before starting to work on a certain topic, create a new issue first, describing
+the feature/topic you are going to implement.
