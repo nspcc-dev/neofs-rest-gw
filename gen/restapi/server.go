@@ -58,6 +58,8 @@ type ServerConfig struct {
 	TLSCertificate    string
 	TLSCertificateKey string
 	TLSCACertificate  string
+
+	SuccessfulStartCallback func()
 }
 
 // NewServer creates a new api neofs rest gw server but does not configure it
@@ -85,6 +87,7 @@ func NewServer(api *operations.NeofsRestGwAPI, cfg *ServerConfig) *Server {
 	s.TLSWriteTimeout = cfg.TLSWriteTimeout
 	s.shutdown = make(chan struct{})
 	s.api = api
+	s.startCallback = cfg.SuccessfulStartCallback
 	s.interrupt = make(chan os.Signal, 1)
 	return s
 }
@@ -119,6 +122,8 @@ type Server struct {
 	TLSReadTimeout    time.Duration
 	TLSWriteTimeout   time.Duration
 	httpsServerL      net.Listener
+
+	startCallback func()
 
 	cfgTLSFn    func(tlsConfig *tls.Config)
 	cfgServerFn func(s *http.Server, scheme, addr string)
@@ -321,6 +326,10 @@ func (s *Server) Serve() (err error) {
 
 	wg.Add(1)
 	go s.handleShutdown(wg, &servers)
+
+	if s.startCallback != nil {
+		s.startCallback()
+	}
 
 	wg.Wait()
 	return nil

@@ -25,8 +25,11 @@ func main() {
 		logger.Fatal("init spec", zap.Error(err))
 	}
 
+	serverCfg := serverConfig(v)
+	serverCfg.SuccessfulStartCallback = neofsAPI.StartCallback
+
 	api := operations.NewNeofsRestGwAPI(swaggerSpec)
-	server := restapi.NewServer(api, serverConfig(v))
+	server := restapi.NewServer(api, serverCfg)
 	defer func() {
 		if err = server.Shutdown(); err != nil {
 			logger.Error("shutdown", zap.Error(err))
@@ -34,6 +37,7 @@ func main() {
 	}()
 
 	server.ConfigureAPI(neofsAPI.Configure)
+	neofsAPI.RunServices()
 
 	// serve API
 	if err = server.Serve(); err != nil {

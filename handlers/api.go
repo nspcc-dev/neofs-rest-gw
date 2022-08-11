@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/go-openapi/errors"
 	"github.com/google/uuid"
@@ -13,6 +14,7 @@ import (
 	"github.com/nspcc-dev/neofs-rest-gw/gen/models"
 	"github.com/nspcc-dev/neofs-rest-gw/gen/restapi/operations"
 	"github.com/nspcc-dev/neofs-rest-gw/internal/util"
+	"github.com/nspcc-dev/neofs-rest-gw/metrics"
 	"github.com/nspcc-dev/neofs-sdk-go/pool"
 	"github.com/nspcc-dev/neofs-sdk-go/user"
 	"go.uber.org/zap"
@@ -25,6 +27,11 @@ type API struct {
 	key              *keys.PrivateKey
 	owner            *user.ID
 	defaultTimestamp bool
+
+	gateMetric             *metrics.GateMetrics
+	prometheusService      *metrics.Service
+	pprofService           *metrics.Service
+	serviceShutdownTimeout time.Duration
 }
 
 // PrmAPI groups parameters to init rest API.
@@ -33,6 +40,11 @@ type PrmAPI struct {
 	Pool             *pool.Pool
 	Key              *keys.PrivateKey
 	DefaultTimestamp bool
+
+	GateMetric             *metrics.GateMetrics
+	PrometheusService      *metrics.Service
+	PprofService           *metrics.Service
+	ServiceShutdownTimeout time.Duration
 }
 
 type BearerToken struct {
@@ -70,6 +82,11 @@ func New(prm *PrmAPI) *API {
 		key:              prm.Key,
 		owner:            &owner,
 		defaultTimestamp: prm.DefaultTimestamp,
+
+		prometheusService:      prm.PrometheusService,
+		pprofService:           prm.PprofService,
+		gateMetric:             prm.GateMetric,
+		serviceShutdownTimeout: prm.ServiceShutdownTimeout,
 	}
 }
 
@@ -118,7 +135,13 @@ func (a *API) Configure(api *operations.NeofsRestGwAPI) http.Handler {
 
 	api.PreServerShutdown = func() {}
 
-	api.ServerShutdown = func() {}
+	api.ServerShutdown = func() {
+		shutDownCtx, cancel := context.WithTimeout(context.Background(), a.serviceShutdownTimeout)
+		defer cancel()
+
+		a.prometheusService.ShutDown(shutDownCtx)
+		a.pprofService.ShutDown(shutDownCtx)
+	}
 
 	return a.setupGlobalMiddleware(a.docMiddleware(api.Serve(setupMiddlewares)))
 }
@@ -160,4 +183,17 @@ func (a *API) logAndGetErrorResponse(msg string, err error, fields ...zap.Field)
 	fields = append(fields, zap.Error(err))
 	a.log.Error(msg, fields...)
 	return util.NewErrorResponse(fmt.Errorf("%s: %w", msg, err))
+}
+
+func (a API) StartCallback() {
+	if a.gateMetric == nil {
+		return
+	}
+
+	a.gateMetric.SetHealth(1)
+}
+
+func (a API) RunServices() {
+	go a.pprofService.Start()
+	go a.prometheusService.Start()
 }
