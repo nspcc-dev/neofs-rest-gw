@@ -24,6 +24,10 @@ import (
 	"go.uber.org/zap"
 )
 
+const (
+	attributeFilePath = "FilePath"
+)
+
 // PutObjects handler that uploads object to NeoFS.
 func (a *API) PutObjects(params operations.PutObjectParams, principal *models.Principal) middleware.Responder {
 	errorResponse := operations.NewPutObjectBadRequest()
@@ -307,9 +311,11 @@ func headObjectBaseInfo(ctx context.Context, p *pool.Pool, cnrID cid.ID, objID o
 	}
 
 	for _, attr := range objInfo.Attributes() {
-		if attr.Key() == object.AttributeFileName {
+		switch attr.Key() {
+		case object.AttributeFileName:
 			resp.Name = attr.Value()
-			break
+		case attributeFilePath:
+			resp.FilePath = attr.Value()
 		}
 	}
 

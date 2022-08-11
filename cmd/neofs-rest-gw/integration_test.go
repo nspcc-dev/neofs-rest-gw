@@ -590,8 +590,10 @@ func restObjectDelete(ctx context.Context, t *testing.T, p *pool.Pool, owner *us
 func restObjectsSearch(ctx context.Context, t *testing.T, p *pool.Pool, owner *user.ID, cnrID cid.ID) {
 	userKey, userValue := "User-Attribute", "user-attribute-value"
 	objectName := "object-name"
+	filePath := "path/to/object/object-name"
 	headers := map[string]string{
 		object.AttributeFileName: objectName,
+		"FilePath":               filePath,
 		userKey:                  userValue,
 	}
 	objID := createObject(ctx, t, p, owner, cnrID, headers, []byte("some content"))
@@ -656,6 +658,7 @@ func restObjectsSearch(ctx context.Context, t *testing.T, p *pool.Pool, owner *u
 	require.Equal(t, cnrID.EncodeToString(), *objBaseInfo.Address.ContainerID)
 	require.Equal(t, objID.EncodeToString(), *objBaseInfo.Address.ObjectID)
 	require.Equal(t, objectName, objBaseInfo.Name)
+	require.Equal(t, filePath, objBaseInfo.FilePath)
 }
 
 func doRequest(t *testing.T, httpClient *http.Client, request *http.Request, expectedCode int, model interface{}) {

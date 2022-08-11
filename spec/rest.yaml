@@ -848,10 +848,13 @@ definitions:
         $ref: '#/definitions/Address'
       name:
         type: string
+      filePath:
+        type: string
     required:
       - address
     example:
-      name: "/my/object/name"
+      name: "name.txt"
+      filePath: "/my/object/name.txt"
       address:
         objectId: 8N3o7Dtr6T1xteCt6eRwhpmJ7JhME58Hyu1dvaswuTDd
         containerId: 5HZTn5qkRnmgSz9gSrw22CEdPPk6nQhkwf2Mgzyvkikv
