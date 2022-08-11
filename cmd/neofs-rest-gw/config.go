@@ -16,6 +16,7 @@ import (
 	"github.com/nspcc-dev/neo-go/pkg/wallet"
 	"github.com/nspcc-dev/neofs-rest-gw/gen/restapi"
 	"github.com/nspcc-dev/neofs-rest-gw/handlers"
+	"github.com/nspcc-dev/neofs-rest-gw/metrics"
 	"github.com/nspcc-dev/neofs-sdk-go/pool"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
@@ -28,10 +29,18 @@ const (
 	defaultRequestTimeout = 15 * time.Second
 	defaultConnectTimeout = 30 * time.Second
 
+	defaultShutdownTimeout = 15 * time.Second
+
 	// Timeouts.
 	cfgNodeDialTimeout    = "node-dial-timeout"
 	cfgHealthcheckTimeout = "healthcheck-timeout"
 	cfgRebalance          = "rebalance-timer"
+
+	// Metrics / Profiler.
+	cfgPrometheusEnabled = "prometheus.enabled"
+	cfgPrometheusAddress = "prometheus.address"
+	cfgPprofEnabled      = "pprof.enabled"
+	cfgPprofAddress      = "pprof.address"
 
 	// Logger.
 	cfgLoggerLevel = "logger.level"
@@ -97,12 +106,25 @@ func config() *viper.Viper {
 
 	peers := flagSet.StringArrayP(cfgPeers, "p", nil, "NeoFS nodes")
 
+	// init server flags
 	restapi.BindDefaultFlags(flagSet)
 
 	// set defaults:
 
+	// metrics
+	v.SetDefault(cfgPprofAddress, "localhost:8091")
+	v.SetDefault(cfgPrometheusAddress, "localhost:8092")
+
 	// logger:
 	v.SetDefault(cfgLoggerLevel, "debug")
+
+	// Bind flags
+	if err := v.BindPFlag(cfgPprofEnabled, flagSet.Lookup(cmdPprof)); err != nil {
+		panic(err)
+	}
+	if err := v.BindPFlag(cfgPrometheusEnabled, flagSet.Lookup(cmdMetrics)); err != nil {
+		panic(err)
+	}
 
 	if err := v.BindPFlags(flagSet); err != nil {
 		panic(err)
@@ -312,6 +334,17 @@ func newNeofsAPI(ctx context.Context, logger *zap.Logger, v *viper.Viper) (*hand
 	apiPrm.Pool = p
 	apiPrm.Key = key
 	apiPrm.Logger = logger
+
+	pprofConfig := metrics.Config{Enabled: v.GetBool(cfgPprofEnabled), Address: v.GetString(cfgPprofAddress)}
+	apiPrm.PprofService = metrics.NewPprofService(logger, pprofConfig)
+
+	prometheusConfig := metrics.Config{Enabled: v.GetBool(cfgPrometheusEnabled), Address: v.GetString(cfgPrometheusAddress)}
+	apiPrm.PrometheusService = metrics.NewPrometheusService(logger, prometheusConfig)
+	if prometheusConfig.Enabled {
+		apiPrm.GateMetric = metrics.NewGateMetrics(p)
+	}
+
+	apiPrm.ServiceShutdownTimeout = defaultShutdownTimeout
 
 	return handlers.New(&apiPrm), nil
 }

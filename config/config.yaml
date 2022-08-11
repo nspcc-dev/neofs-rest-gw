@@ -6,10 +6,13 @@ wallet:
   # Password to decrypt wallet.
   passphrase: pwd
 
-# Enable metrics.
-metrics: true
-# Enable pprof.
-pprof: true
+pprof:
+  enabled: true # Enable pprof.
+  address: localhost:8091
+prometheus:
+  enabled: true # Enable metrics.
+  address: localhost:8092
+
 logger:
   # Log level.
   level: debug

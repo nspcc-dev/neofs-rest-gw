@@ -6,7 +6,7 @@ This document outlines major changes between releases.
 
 ### Added 
 - CORS headers (#39)
-
+- Expose metrics (#44)
 
 ## [0.2.1] "Razor Hill" - 2022-07-22
 
