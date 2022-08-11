@@ -26,7 +26,6 @@ Before building make sure you have the following tools:
 * git
 * curl
 
-
 To build neofs-rest-gw call `make` the cloned repository (the binary will end up in `bin/neofs-rest-gw`).
 
 Notable make targets:
@@ -59,14 +58,14 @@ an IP address of the node in output of `make hosts` command
 These two commands are functionally equivalent, they run the gate with one backend node (and otherwise default
 settings):
 
-```
+```shell
 $ neofs-rest-gw -p 192.168.130.72:8080
 $ REST_GW_PEERS_0_ADDRESS=192.168.130.72:8080 neofs-rest-gw
 ```
 
 It's also possible to specify uri scheme (grpc or grpcs) when using `-p`:
 
-```
+```shell
 $ neofs-rest-gw -p grpc://192.168.130.72:8080
 $ REST_GW_PEERS_0_ADDRESS=grpcs://192.168.130.72:8080 neofs-rest-gw
 ```
@@ -74,19 +73,24 @@ $ REST_GW_PEERS_0_ADDRESS=grpcs://192.168.130.72:8080 neofs-rest-gw
 ## Configuration
 
 In general, everything available as CLI parameter can also be specified via environment variables, so they're not
-specifically mentioned in most cases
-(see `--help` also). If you prefer a config file you can use it in yaml format. See config [examples](./config) for
-details.
+specifically mentioned in most cases (see `--help` also). If you prefer a config file you can use it in yaml format.
+See [config](./config/config.yaml) and [defaults](./docs/gate-configuration.md) for example.
+
+```shell
+$ neofs-rest-gw --config config.yaml
+```
 
 ## Docs
-You can see additional docs and swagger specification using the following url (suppose you ran rest-gw on `localhost:8090`):
+
+You can see additional docs and swagger specification using the following url
+(suppose you ran rest-gw on `localhost:8090`):
+
 * http://localhost:8090/docs - rest-gw documentation
 * http://localhost:8090/v1/docs - swagger specification
 
 ## Contributing
 
-Feel free to contribute to this project after reading the [contributing
-guidelines](CONTRIBUTING.md).
+Feel free to contribute to this project after reading the [contributing guidelines](CONTRIBUTING.md).
 
 Before starting to work on a certain topic, create a new issue first, describing
 the feature/topic you are going to implement.

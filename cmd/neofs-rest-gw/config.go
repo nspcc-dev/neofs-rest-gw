@@ -25,16 +25,19 @@ import (
 )
 
 const (
-	defaultRebalanceTimer = 15 * time.Second
-	defaultRequestTimeout = 15 * time.Second
-	defaultConnectTimeout = 30 * time.Second
+	defaultConnectTimeout     = 10 * time.Second
+	defaultHealthcheckTimeout = 15 * time.Second
+	defaultRebalanceTimer     = 60 * time.Second
 
 	defaultShutdownTimeout = 15 * time.Second
 
-	// Timeouts.
+	defaultPoolErrorThreshold uint32 = 100
+
+	// Pool config.
 	cfgNodeDialTimeout    = "node-dial-timeout"
 	cfgHealthcheckTimeout = "healthcheck-timeout"
 	cfgRebalance          = "rebalance-timer"
+	cfgPoolErrorThreshold = "pool-error-threshold"
 
 	// Metrics / Profiler.
 	cfgPrometheusEnabled = "prometheus.enabled"
@@ -100,8 +103,8 @@ func config() *viper.Viper {
 	flagSet.StringP(cmdWallet, "w", "", `path to the wallet`)
 	flagSet.String(cmdAddress, "", `address of wallet account`)
 	config := flagSet.String(cmdConfig, "", "config path")
-	flagSet.Duration(cfgNodeDialTimeout, defaultConnectTimeout, "gRPC connect timeout")
-	flagSet.Duration(cfgHealthcheckTimeout, defaultRequestTimeout, "gRPC request timeout")
+	flagSet.Duration(cfgNodeDialTimeout, defaultConnectTimeout, "gRPC node connect timeout")
+	flagSet.Duration(cfgHealthcheckTimeout, defaultHealthcheckTimeout, "gRPC healthcheck timeout")
 	flagSet.Duration(cfgRebalance, defaultRebalanceTimer, "gRPC connection rebalance timer")
 
 	peers := flagSet.StringArrayP(cfgPeers, "p", nil, "NeoFS nodes")
@@ -110,6 +113,8 @@ func config() *viper.Viper {
 	restapi.BindDefaultFlags(flagSet)
 
 	// set defaults:
+	// pool
+	v.SetDefault(cfgPoolErrorThreshold, defaultPoolErrorThreshold)
 
 	// metrics
 	v.SetDefault(cfgPprofAddress, "localhost:8091")
@@ -316,6 +321,7 @@ func newNeofsAPI(ctx context.Context, logger *zap.Logger, v *viper.Viper) (*hand
 	prm.SetNodeDialTimeout(v.GetDuration(cfgNodeDialTimeout))
 	prm.SetHealthcheckTimeout(v.GetDuration(cfgHealthcheckTimeout))
 	prm.SetClientRebalanceInterval(v.GetDuration(cfgRebalance))
+	prm.SetErrorThreshold(v.GetUint32(cfgPoolErrorThreshold))
 
 	for _, peer := range fetchPeers(logger, v) {
 		prm.AddNode(peer)

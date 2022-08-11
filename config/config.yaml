@@ -45,7 +45,9 @@ node-dial-timeout: 5s
 # Timeout to check node health during rebalance.
 healthcheck-timeout: 5s
 # Interval to check nodes health.
-rebalance_timer: 30s
+rebalance-timer: 30s
+# The number of errors on connection after which node is considered as unhealthy.
+pool-error-threshold: 100
 
 # The listeners to enable, this can be repeated and defaults to the schemes in the swagger spec.
 scheme: [ http ]
@@ -86,5 +88,3 @@ tls-keep-alive: 3m
 tls-read-timeout: 30s
 # Maximum duration before timing out write of the response.
 tls-write-timeout: 30s
-
-
