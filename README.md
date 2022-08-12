@@ -22,11 +22,53 @@ Before building make sure you have the following tools:
 
 * go
 * make
-* jq
 * git
 * curl
+* docker
 
-To build neofs-rest-gw call `make` the cloned repository (the binary will end up in `bin/neofs-rest-gw`).
+First clone this repository:
+
+```shell
+$ git clone https://github.com/nspcc-dev/neofs-rest-gw
+```
+
+Then run make to build `bin/neofs-rest-gw` binary:
+
+```shell
+$ make
+```
+
+Or you can build it using docker:
+
+```shell
+$ make docker/all
+```
+
+#### Generate go-swagger boilerplate code
+
+If you change the [spec file](./spec/rest.yaml) you have to re-generate go-swagger server code.
+
+You have several approaches:
+
+1. Run make. It automatically downloads `swagger` and generates boilerplate.
+
+```shell
+$ make
+```
+
+2. Generate code separately:
+
+```shell
+$ make generate-server
+```
+
+Or using docker:
+
+```shell
+$ make docker/generate-server
+```
+
+#### Other targets
 
 Notable make targets:
 

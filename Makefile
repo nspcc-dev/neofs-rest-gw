@@ -3,10 +3,11 @@
 REPO ?= "$(shell go list -m)"
 VERSION ?= "$(shell git describe --tags --match "v*" --dirty --always 2>/dev/null || cat VERSION 2>/dev/null || echo "develop")"
 
+GO_VERSION ?= 1.17
+LINT_VERSION ?= v1.46.2
+
 HUB_IMAGE ?= nspccdev/neofs-rest-gw
 HUB_TAG ?= "$(shell echo ${VERSION} | sed 's/^v//')"
-
-DOCKER_LIST_VERSION ?= v1.42
 
 SWAGGER_VERSION ?= v0.29.0
 
@@ -20,8 +21,7 @@ ifeq ($(UNAME), "Darwin/x86_64")
 	SWAGGER_ARCH = darwin_amd64
 endif
 
-SWAGGER_URL = "$(shell curl -s https://api.github.com/repos/go-swagger/go-swagger/releases/tags/$(SWAGGER_VERSION) | \
-    jq -r '.assets[] | select(.name | contains("swagger_$(SWAGGER_ARCH)")) | .browser_download_url')"
+SWAGGER_URL = "https://github.com/go-swagger/go-swagger/releases/download/$(SWAGGER_VERSION)/swagger_$(SWAGGER_ARCH)"
 
 # List of binaries to build. For now just one.
 BINDIR = bin
@@ -58,9 +58,6 @@ swagger:
 ifeq (,$(wildcard ./bin/swagger))
 	curl --create-dirs -o ./bin/swagger -L'#' $(SWAGGER_URL)
 	chmod +x ./bin/swagger
-
-#	curl --create-dirs -o ./bin/swagger $(SWAGGER_URL)
-#	chmod +x ./bin/swagger
 endif
 
 # Generate server by swagger spec
@@ -114,13 +111,35 @@ image-dirty:
 lint:
 	@golangci-lint --timeout=5m run
 
+# Make all binaries in clean docker environment
+docker/all:
+	@echo "=> Running 'make all' in clean Docker environment" && \
+	docker run --rm -t \
+	  -v `pwd`:/src \
+	  -w /src \
+	  -u `stat -c "%u:%g" .` \
+	  --env HOME=/src \
+	  golang:$(GO_VERSION) make all
+
+# Generate server by swagger spec using swagger docker image
+docker/generate-server:
+	@docker run --rm -t \
+		-v `pwd`:/src \
+		-w /src \
+		-u `stat -c "%u:%g" .` \
+		--env HOME=/src \
+		quay.io/goswagger/swagger:$(SWAGGER_VERSION) generate server \
+			-t gen -f ./spec/rest.yaml --exclude-main \
+			-A neofs-rest-gw -P models.Principal \
+            -C templates/server-config.yaml --template-dir templates
+
 # Run linters in Docker
-docker-lint:
+docker/lint:
 	docker run --rm -it \
 	-v `pwd`:/src \
 	-u `stat -c "%u:%g" .` \
 	--env HOME=/src \
-	golangci/golangci-lint:$(DOCKER_LINT_VERSION) bash -c 'cd /src/ && make lint'
+	golangci/golangci-lint:$(LINT_VERSION) bash -c 'cd /src/ && make lint'
 
 # Print version
 version:
@@ -138,5 +157,5 @@ help:
 
 # Clean up
 clean:
-	rm -rf vendor
+	rm -rf .cache
 	rm -rf $(BINDIR)
