@@ -4,10 +4,18 @@ This document outlines major changes between releases.
 
 ## [Unreleased]
 
+## [0.3.0] "Thunder Bluff" - 2022-08-15
+
 ### Added 
 - CORS headers (#39)
 - Expose metrics (#44)
 - Documentation for default params (#45)
+- Route to get NeoFS balance (#33)
+- New field for object search response (#40)
+- Building in docker (#46)
+
+### Removed
+- Drop GO111MODULE from builds (#34)
 
 ## [0.2.1] "Razor Hill" - 2022-07-22
 
@@ -35,4 +43,5 @@ Please refer to [GitHub releases](https://github.com/nspcc-dev/neofs-rest-gw/rel
 
 [0.2.1]: https://github.com/nspcc-dev/neofs-rest-gw/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/nspcc-dev/neofs-rest-gw/compare/v0.1.0...v0.2.0
-[Unreleased]: https://github.com/nspcc-dev/neofs-rest-gw/compare/v0.2.0...master
+[0.3.0]: https://github.com/nspcc-dev/neofs-rest-gw/compare/v0.2.0...v0.3.0
+[Unreleased]: https://github.com/nspcc-dev/neofs-rest-gw/compare/v0.3.0...master
