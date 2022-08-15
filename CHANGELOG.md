@@ -4,6 +4,9 @@ This document outlines major changes between releases.
 
 ## [Unreleased]
 
+### Changed
+- Unify application version format (#49) 
+
 ## [0.3.0] "Thunder Bluff" - 2022-08-15
 
 ### Added 
