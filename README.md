@@ -2,7 +2,7 @@
 <img src="./.github/logo.svg" width="500px" alt="NeoFS">
 </p>
 <p align="center">
-  <a href="https://fs.neo.org">NeoFS</a> is a decentralized distributed object storage integrated with the <a href="https://neo.org">NEO Blockchain</a>.
+  REST server to interact with <a href="https://fs.neo.org">NeoFS</a>.
 </p>
 
 ---
@@ -94,3 +94,8 @@ Feel free to contribute to this project after reading the [contributing guidelin
 
 Before starting to work on a certain topic, create a new issue first, describing
 the feature/topic you are going to implement.
+
+## License
+
+This project is licensed under the GNU GPL v3 License -
+see the [LICENSE](LICENSE) file for details.
