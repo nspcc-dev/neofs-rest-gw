@@ -710,6 +710,9 @@ definitions:
         type: string
       basicAcl:
         type: string
+      cannedAcl:
+        description: The friendly name for the basicAcl field.
+        type: string
       placementPolicy:
         type: string
       attributes:

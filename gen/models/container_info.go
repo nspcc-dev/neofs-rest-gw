@@ -29,6 +29,9 @@ type ContainerInfo struct {
 	// Required: true
 	BasicACL *string `json:"basicAcl"`
 
+	// The friendly name for the basicAcl field.
+	CannedACL string `json:"cannedAcl,omitempty"`
+
 	// container Id
 	// Required: true
 	ContainerID *string `json:"containerId"`

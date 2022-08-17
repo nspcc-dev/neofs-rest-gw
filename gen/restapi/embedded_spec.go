@@ -866,6 +866,10 @@ func init() {
         "basicAcl": {
           "type": "string"
         },
+        "cannedAcl": {
+          "description": "The friendly name for the basicAcl field.",
+          "type": "string"
+        },
         "containerId": {
           "type": "string"
         },
@@ -2507,6 +2511,10 @@ func init() {
           }
         },
         "basicAcl": {
+          "type": "string"
+        },
+        "cannedAcl": {
+          "description": "The friendly name for the basicAcl field.",
           "type": "string"
         },
         "containerId": {
