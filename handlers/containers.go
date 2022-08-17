@@ -253,10 +253,34 @@ func getContainerInfo(ctx context.Context, p *pool.Pool, cnrID cid.ID) (*models.
 		ContainerName:   util.NewString(container.Name(*cnr)),
 		OwnerID:         util.NewString(cnr.Owner().String()),
 		BasicACL:        util.NewString(cnr.BasicACL().EncodeToString()),
+		CannedACL:       friendlyBasicACL(cnr.BasicACL()),
 		PlacementPolicy: util.NewString(sb.String()),
 		Attributes:      attrs,
 		Version:         util.NewString(getContainerVersion(cnr).String()),
 	}, nil
+}
+
+func friendlyBasicACL(basicACL acl.Basic) string {
+	switch basicACL {
+	case acl.Private:
+		return acl.NamePrivate
+	case acl.PrivateExtended:
+		return acl.NamePrivateExtended
+	case acl.PublicRO:
+		return acl.NamePublicRO
+	case acl.PublicROExtended:
+		return acl.NamePublicROExtended
+	case acl.PublicRW:
+		return acl.NamePublicRW
+	case acl.PublicRWExtended:
+		return acl.NamePublicRWExtended
+	case acl.PublicAppend:
+		return acl.NamePublicAppend
+	case acl.PublicAppendExtended:
+		return acl.NamePublicAppendExtended
+	default:
+		return ""
+	}
 }
 
 func getContainerVersion(cnr *container.Container) version.Version {
