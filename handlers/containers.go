@@ -37,14 +37,12 @@ const (
 
 // PutContainers handler that creates container in NeoFS.
 func (a *API) PutContainers(params operations.PutContainerParams, principal *models.Principal) middleware.Responder {
-	st := &SessionToken{
-		BearerToken: BearerToken{
-			Token:     string(*principal),
-			Signature: params.XBearerSignature,
-			Key:       params.XBearerSignatureKey,
-		},
-		Verb: sessionv2.ContainerVerbPut,
+	st, err := formSessionTokenFromHeaders(principal, params.XBearerSignature, params.XBearerSignatureKey, sessionv2.ContainerVerbPut)
+	if err != nil {
+		resp := a.logAndGetErrorResponse("invalid session token headers", err)
+		return operations.NewPutContainerBadRequest().WithPayload(resp)
 	}
+
 	stoken, err := prepareSessionToken(st, *params.WalletConnect)
 	if err != nil {
 		resp := a.logAndGetErrorResponse("invalid session token", err)
@@ -92,14 +90,12 @@ func (a *API) PutContainerEACL(params operations.PutContainerEACLParams, princip
 		return operations.NewPutContainerEACLBadRequest().WithPayload(resp)
 	}
 
-	st := &SessionToken{
-		BearerToken: BearerToken{
-			Token:     string(*principal),
-			Signature: params.XBearerSignature,
-			Key:       params.XBearerSignatureKey,
-		},
-		Verb: sessionv2.ContainerVerbSetEACL,
+	st, err := formSessionTokenFromHeaders(principal, params.XBearerSignature, params.XBearerSignatureKey, sessionv2.ContainerVerbSetEACL)
+	if err != nil {
+		resp := a.logAndGetErrorResponse("invalid session token headers", err)
+		return operations.NewPutContainerEACLBadRequest().WithPayload(resp)
 	}
+
 	stoken, err := prepareSessionToken(st, *params.WalletConnect)
 	if err != nil {
 		resp := a.logAndGetErrorResponse("invalid session token", err)
@@ -192,14 +188,12 @@ func (a *API) ListContainer(params operations.ListContainersParams) middleware.R
 
 // DeleteContainer handler that returns container info.
 func (a *API) DeleteContainer(params operations.DeleteContainerParams, principal *models.Principal) middleware.Responder {
-	st := &SessionToken{
-		BearerToken: BearerToken{
-			Token:     string(*principal),
-			Signature: params.XBearerSignature,
-			Key:       params.XBearerSignatureKey,
-		},
-		Verb: sessionv2.ContainerVerbDelete,
+	st, err := formSessionTokenFromHeaders(principal, params.XBearerSignature, params.XBearerSignatureKey, sessionv2.ContainerVerbDelete)
+	if err != nil {
+		resp := a.logAndGetErrorResponse("invalid session token headers", err)
+		return operations.NewDeleteContainerBadRequest().WithPayload(resp)
 	}
+
 	stoken, err := prepareSessionToken(st, *params.WalletConnect)
 	if err != nil {
 		resp := a.logAndGetErrorResponse("invalid session token", err)

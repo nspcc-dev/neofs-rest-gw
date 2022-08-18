@@ -33,7 +33,13 @@ func (a *API) PutObjects(params operations.PutObjectParams, principal *models.Pr
 	errorResponse := operations.NewPutObjectBadRequest()
 	ctx := params.HTTPRequest.Context()
 
-	btoken, err := getBearerToken(principal, params.XBearerSignature, params.XBearerSignatureKey, *params.WalletConnect)
+	bearerHeaders, err := prepareBearerTokenHeaders(params.XBearerSignature, params.XBearerSignatureKey, *params.WalletConnect, *params.FullBearer)
+	if err != nil {
+		resp := a.logAndGetErrorResponse("invalid bearer headers", err)
+		return errorResponse.WithPayload(resp)
+	}
+
+	btoken, err := getBearerToken(principal, bearerHeaders)
 	if err != nil {
 		resp := a.logAndGetErrorResponse("invalid bearer token", err)
 		return errorResponse.WithPayload(resp)
@@ -99,7 +105,13 @@ func (a *API) GetObjectInfo(params operations.GetObjectInfoParams, principal *mo
 		return errorResponse.WithPayload(resp)
 	}
 
-	btoken, err := getBearerToken(principal, params.XBearerSignature, params.XBearerSignatureKey, *params.WalletConnect)
+	bearerHeaders, err := prepareBearerTokenHeaders(params.XBearerSignature, params.XBearerSignatureKey, *params.WalletConnect, *params.FullBearer)
+	if err != nil {
+		resp := a.logAndGetErrorResponse("invalid bearer headers", err)
+		return errorResponse.WithPayload(resp)
+	}
+
+	btoken, err := getBearerToken(principal, bearerHeaders)
 	if err != nil {
 		resp := a.logAndGetErrorResponse("get bearer token", err)
 		return errorResponse.WithPayload(resp)
@@ -195,7 +207,13 @@ func (a *API) DeleteObject(params operations.DeleteObjectParams, principal *mode
 		return errorResponse.WithPayload(resp)
 	}
 
-	btoken, err := getBearerToken(principal, params.XBearerSignature, params.XBearerSignatureKey, *params.WalletConnect)
+	bearerHeaders, err := prepareBearerTokenHeaders(params.XBearerSignature, params.XBearerSignatureKey, *params.WalletConnect, *params.FullBearer)
+	if err != nil {
+		resp := a.logAndGetErrorResponse("invalid bearer headers", err)
+		return errorResponse.WithPayload(resp)
+	}
+
+	btoken, err := getBearerToken(principal, bearerHeaders)
 	if err != nil {
 		resp := a.logAndGetErrorResponse("failed to get bearer token", err)
 		return errorResponse.WithPayload(resp)
@@ -226,7 +244,13 @@ func (a *API) SearchObjects(params operations.SearchObjectsParams, principal *mo
 		return errorResponse.WithPayload(resp)
 	}
 
-	btoken, err := getBearerToken(principal, params.XBearerSignature, params.XBearerSignatureKey, *params.WalletConnect)
+	bearerHeaders, err := prepareBearerTokenHeaders(params.XBearerSignature, params.XBearerSignatureKey, *params.WalletConnect, *params.FullBearer)
+	if err != nil {
+		resp := a.logAndGetErrorResponse("invalid bearer headers", err)
+		return errorResponse.WithPayload(resp)
+	}
+
+	btoken, err := getBearerToken(principal, bearerHeaders)
 	if err != nil {
 		resp := a.logAndGetErrorResponse("failed to get bearer token", err)
 		return errorResponse.WithPayload(resp)
@@ -339,20 +363,39 @@ func parseAddress(containerID, objectID string) (oid.Address, error) {
 	return addr, nil
 }
 
-func getBearerToken(token *models.Principal, signature, key string, isWalletConnect bool) (bearer.Token, error) {
-	bt := &BearerToken{
-		Token:     string(*token),
-		Signature: signature,
-		Key:       key,
-	}
-
-	return prepareBearerToken(bt, isWalletConnect)
+type BearerTokenHeaders struct {
+	Signature       string
+	Key             string
+	IsWalletConnect bool
+	IsFullToken     bool
 }
 
-func prepareBearerToken(bt *BearerToken, isWalletConnect bool) (bearer.Token, error) {
+func getBearerToken(token *models.Principal, hdr *BearerTokenHeaders) (bearer.Token, error) {
+	bt := &BearerToken{
+		Token:     string(*token),
+		Signature: hdr.Signature,
+		Key:       hdr.Key,
+	}
+
+	return prepareBearerToken(bt, hdr.IsWalletConnect, hdr.IsFullToken)
+}
+
+func prepareBearerToken(bt *BearerToken, isWalletConnect, isFullToken bool) (bearer.Token, error) {
 	data, err := base64.StdEncoding.DecodeString(bt.Token)
 	if err != nil {
 		return bearer.Token{}, fmt.Errorf("can't base64-decode bearer token: %w", err)
+	}
+
+	if isFullToken {
+		var btoken bearer.Token
+		if err = btoken.Unmarshal(data); err != nil {
+			return bearer.Token{}, fmt.Errorf("couldn't unmarshall bearer token: %w", err)
+		}
+		if !btoken.VerifySignature() {
+			return bearer.Token{}, fmt.Errorf("invalid signature")
+		}
+
+		return btoken, nil
 	}
 
 	signature, err := hex.DecodeString(bt.Signature)
@@ -367,7 +410,7 @@ func prepareBearerToken(bt *BearerToken, isWalletConnect bool) (bearer.Token, er
 
 	body := new(acl.BearerTokenBody)
 	if err = body.Unmarshal(data); err != nil {
-		return bearer.Token{}, fmt.Errorf("can't unmarshal bearer token: %w", err)
+		return bearer.Token{}, fmt.Errorf("can't unmarshal bearer token body: %w", err)
 	}
 
 	v2signature := new(refs.Signature)

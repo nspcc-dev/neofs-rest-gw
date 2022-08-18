@@ -13,7 +13,6 @@ import (
 	"github.com/go-openapi/runtime/middleware"
 	"github.com/go-openapi/strfmt"
 	"github.com/go-openapi/swag"
-	"github.com/go-openapi/validate"
 )
 
 // NewFormBinaryBearerParams creates a new FormBinaryBearerParams object
@@ -41,15 +40,13 @@ type FormBinaryBearerParams struct {
 	HTTPRequest *http.Request `json:"-"`
 
 	/*Base64 encoded signature for bearer token.
-	  Required: true
 	  In: header
 	*/
-	XBearerSignature string
+	XBearerSignature *string
 	/*Hex encoded the public part of the key that signed the bearer token.
-	  Required: true
 	  In: header
 	*/
-	XBearerSignatureKey string
+	XBearerSignatureKey *string
 	/*Use wallet connect signature scheme or native NeoFS signature.
 	  In: query
 	  Default: false
@@ -88,40 +85,34 @@ func (o *FormBinaryBearerParams) BindRequest(r *http.Request, route *middleware.
 
 // bindXBearerSignature binds and validates parameter XBearerSignature from header.
 func (o *FormBinaryBearerParams) bindXBearerSignature(rawData []string, hasKey bool, formats strfmt.Registry) error {
-	if !hasKey {
-		return errors.Required("X-Bearer-Signature", "header", rawData)
-	}
 	var raw string
 	if len(rawData) > 0 {
 		raw = rawData[len(rawData)-1]
 	}
 
-	// Required: true
+	// Required: false
 
-	if err := validate.RequiredString("X-Bearer-Signature", "header", raw); err != nil {
-		return err
+	if raw == "" { // empty values pass all other validations
+		return nil
 	}
-	o.XBearerSignature = raw
+	o.XBearerSignature = &raw
 
 	return nil
 }
 
 // bindXBearerSignatureKey binds and validates parameter XBearerSignatureKey from header.
 func (o *FormBinaryBearerParams) bindXBearerSignatureKey(rawData []string, hasKey bool, formats strfmt.Registry) error {
-	if !hasKey {
-		return errors.Required("X-Bearer-Signature-Key", "header", rawData)
-	}
 	var raw string
 	if len(rawData) > 0 {
 		raw = rawData[len(rawData)-1]
 	}
 
-	// Required: true
+	// Required: false
 
-	if err := validate.RequiredString("X-Bearer-Signature-Key", "header", raw); err != nil {
-		return err
+	if raw == "" { // empty values pass all other validations
+		return nil
 	}
-	o.XBearerSignatureKey = raw
+	o.XBearerSignatureKey = &raw
 
 	return nil
 }

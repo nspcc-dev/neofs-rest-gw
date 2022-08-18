@@ -23,12 +23,15 @@ func NewGetObjectInfoParams() GetObjectInfoParams {
 	var (
 		// initialize parameters with default values
 
+		fullBearerDefault     = bool(false)
 		maxPayloadSizeDefault = int64(4.194304e+06)
 
 		walletConnectDefault = bool(false)
 	)
 
 	return GetObjectInfoParams{
+		FullBearer: &fullBearerDefault,
+
 		MaxPayloadSize: &maxPayloadSizeDefault,
 
 		WalletConnect: &walletConnectDefault,
@@ -45,20 +48,23 @@ type GetObjectInfoParams struct {
 	HTTPRequest *http.Request `json:"-"`
 
 	/*Base64 encoded signature for bearer token.
-	  Required: true
 	  In: header
 	*/
-	XBearerSignature string
+	XBearerSignature *string
 	/*Hex encoded the public part of the key that signed the bearer token.
-	  Required: true
 	  In: header
 	*/
-	XBearerSignatureKey string
+	XBearerSignatureKey *string
 	/*Base58 encoded container id.
 	  Required: true
 	  In: path
 	*/
 	ContainerID string
+	/*Provided bearer token is final or gate should assemble it using signature.
+	  In: query
+	  Default: false
+	*/
+	FullBearer *bool
 	/*Max payload size (in bytes) that can be included in the response.
 	If the actual size is greater than this params the payload won't be included in the response.
 
@@ -114,6 +120,11 @@ func (o *GetObjectInfoParams) BindRequest(r *http.Request, route *middleware.Mat
 		res = append(res, err)
 	}
 
+	qFullBearer, qhkFullBearer, _ := qs.GetOK("fullBearer")
+	if err := o.bindFullBearer(qFullBearer, qhkFullBearer, route.Formats); err != nil {
+		res = append(res, err)
+	}
+
 	qMaxPayloadSize, qhkMaxPayloadSize, _ := qs.GetOK("max-payload-size")
 	if err := o.bindMaxPayloadSize(qMaxPayloadSize, qhkMaxPayloadSize, route.Formats); err != nil {
 		res = append(res, err)
@@ -146,40 +157,34 @@ func (o *GetObjectInfoParams) BindRequest(r *http.Request, route *middleware.Mat
 
 // bindXBearerSignature binds and validates parameter XBearerSignature from header.
 func (o *GetObjectInfoParams) bindXBearerSignature(rawData []string, hasKey bool, formats strfmt.Registry) error {
-	if !hasKey {
-		return errors.Required("X-Bearer-Signature", "header", rawData)
-	}
 	var raw string
 	if len(rawData) > 0 {
 		raw = rawData[len(rawData)-1]
 	}
 
-	// Required: true
+	// Required: false
 
-	if err := validate.RequiredString("X-Bearer-Signature", "header", raw); err != nil {
-		return err
+	if raw == "" { // empty values pass all other validations
+		return nil
 	}
-	o.XBearerSignature = raw
+	o.XBearerSignature = &raw
 
 	return nil
 }
 
 // bindXBearerSignatureKey binds and validates parameter XBearerSignatureKey from header.
 func (o *GetObjectInfoParams) bindXBearerSignatureKey(rawData []string, hasKey bool, formats strfmt.Registry) error {
-	if !hasKey {
-		return errors.Required("X-Bearer-Signature-Key", "header", rawData)
-	}
 	var raw string
 	if len(rawData) > 0 {
 		raw = rawData[len(rawData)-1]
 	}
 
-	// Required: true
+	// Required: false
 
-	if err := validate.RequiredString("X-Bearer-Signature-Key", "header", raw); err != nil {
-		return err
+	if raw == "" { // empty values pass all other validations
+		return nil
 	}
-	o.XBearerSignatureKey = raw
+	o.XBearerSignatureKey = &raw
 
 	return nil
 }
@@ -194,6 +199,30 @@ func (o *GetObjectInfoParams) bindContainerID(rawData []string, hasKey bool, for
 	// Required: true
 	// Parameter is provided by construction from the route
 	o.ContainerID = raw
+
+	return nil
+}
+
+// bindFullBearer binds and validates parameter FullBearer from query.
+func (o *GetObjectInfoParams) bindFullBearer(rawData []string, hasKey bool, formats strfmt.Registry) error {
+	var raw string
+	if len(rawData) > 0 {
+		raw = rawData[len(rawData)-1]
+	}
+
+	// Required: false
+	// AllowEmptyValue: false
+
+	if raw == "" { // empty values pass all other validations
+		// Default values have been previously initialized by NewGetObjectInfoParams()
+		return nil
+	}
+
+	value, err := swag.ConvertBool(raw)
+	if err != nil {
+		return errors.InvalidType("fullBearer", "query", "bool", raw)
+	}
+	o.FullBearer = &value
 
 	return nil
 }
