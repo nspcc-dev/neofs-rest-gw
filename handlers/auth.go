@@ -102,6 +102,21 @@ func (a *API) PostAuth(params operations.AuthParams) middleware.Responder {
 		WithAccessControlAllowOrigin("*")
 }
 
+// FormBinaryBearer handler that forms binary bearer token using headers with body and signature.
+func (a *API) FormBinaryBearer(params operations.FormBinaryBearerParams, principal *models.Principal) middleware.Responder {
+	btoken, err := getBearerToken(principal, params.XBearerSignature, params.XBearerSignatureKey, *params.WalletConnect)
+	if err != nil {
+		resp := a.logAndGetErrorResponse("invalid bearer token", err)
+		return operations.NewFormBinaryBearerBadRequest().WithPayload(resp)
+	}
+
+	resp := &models.BinaryBearer{
+		Token: util.NewString(base64.StdEncoding.EncodeToString(btoken.Marshal())),
+	}
+
+	return operations.NewFormBinaryBearerOK().WithPayload(resp)
+}
+
 func prepareObjectToken(ctx context.Context, params objectTokenParams, pool *pool.Pool, owner user.ID) (*models.TokenResponse, error) {
 	btoken, err := util.ToNativeObjectToken(params.Records)
 	if err != nil {

@@ -16,7 +16,7 @@ import (
 // AuthOKCode is the HTTP code returned for type AuthOK
 const AuthOKCode int = 200
 
-/*AuthOK Base64 encoded stable binary marshaled bearer token.
+/*AuthOK Base64 encoded stable binary marshaled bearer token bodies.
 
 swagger:response authOK
 */

@@ -110,7 +110,7 @@ func init() {
         ],
         "responses": {
           "200": {
-            "description": "Base64 encoded stable binary marshaled bearer token.",
+            "description": "Base64 encoded stable binary marshaled bearer token bodies.",
             "schema": {
               "type": "array",
               "items": {
@@ -144,6 +144,45 @@ func init() {
               "Access-Control-Allow-Origin": {
                 "type": "string"
               }
+            }
+          }
+        }
+      }
+    },
+    "/auth/bearer": {
+      "get": {
+        "produces": [
+          "application/json"
+        ],
+        "summary": "Form binary bearer token",
+        "operationId": "formBinaryBearer",
+        "parameters": [
+          {
+            "$ref": "#/parameters/signatureParam"
+          },
+          {
+            "$ref": "#/parameters/signatureKeyParam"
+          },
+          {
+            "$ref": "#/parameters/signatureScheme"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Base64 encoded stable binary marshaled bearer token.",
+            "schema": {
+              "$ref": "#/definitions/BinaryBearer"
+            },
+            "headers": {
+              "Access-Control-Allow-Origin": {
+                "type": "string"
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
             }
           }
         }
@@ -843,6 +882,22 @@ func init() {
           "name": "my token to create container"
         }
       ]
+    },
+    "BinaryBearer": {
+      "description": "Bearer token for object operations that is represented in binary form.",
+      "type": "object",
+      "required": [
+        "token"
+      ],
+      "properties": {
+        "token": {
+          "description": "Base64 encoded bearer token.",
+          "type": "string"
+        }
+      },
+      "example": {
+        "token": "ChIKDAoAGggIARABIgIIAxoCCGQSZgohA+J5jFWFMiOpyvMZBu9wwPTKsWsG0q206kVe63iuWP/wEkEE4SIV0QngnKppDf54QezUKmar7UQby6HzufT5yVIOvj7QEqZnOavrKW0chCeCwP0khda/j9k00ct6NMEDxQFW+g=="
+      }
     },
     "ContainerInfo": {
       "description": "Information about container.",
@@ -1649,7 +1704,7 @@ func init() {
         ],
         "responses": {
           "200": {
-            "description": "Base64 encoded stable binary marshaled bearer token.",
+            "description": "Base64 encoded stable binary marshaled bearer token bodies.",
             "schema": {
               "type": "array",
               "items": {
@@ -1683,6 +1738,57 @@ func init() {
               "Access-Control-Allow-Origin": {
                 "type": "string"
               }
+            }
+          }
+        }
+      }
+    },
+    "/auth/bearer": {
+      "get": {
+        "produces": [
+          "application/json"
+        ],
+        "summary": "Form binary bearer token",
+        "operationId": "formBinaryBearer",
+        "parameters": [
+          {
+            "type": "string",
+            "description": "Base64 encoded signature for bearer token.",
+            "name": "X-Bearer-Signature",
+            "in": "header",
+            "required": true
+          },
+          {
+            "type": "string",
+            "description": "Hex encoded the public part of the key that signed the bearer token.",
+            "name": "X-Bearer-Signature-Key",
+            "in": "header",
+            "required": true
+          },
+          {
+            "type": "boolean",
+            "default": false,
+            "description": "Use wallet connect signature scheme or native NeoFS signature.",
+            "name": "walletConnect",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Base64 encoded stable binary marshaled bearer token.",
+            "schema": {
+              "$ref": "#/definitions/BinaryBearer"
+            },
+            "headers": {
+              "Access-Control-Allow-Origin": {
+                "type": "string"
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
             }
           }
         }
@@ -2490,6 +2596,22 @@ func init() {
           "name": "my token to create container"
         }
       ]
+    },
+    "BinaryBearer": {
+      "description": "Bearer token for object operations that is represented in binary form.",
+      "type": "object",
+      "required": [
+        "token"
+      ],
+      "properties": {
+        "token": {
+          "description": "Base64 encoded bearer token.",
+          "type": "string"
+        }
+      },
+      "example": {
+        "token": "ChIKDAoAGggIARABIgIIAxoCCGQSZgohA+J5jFWFMiOpyvMZBu9wwPTKsWsG0q206kVe63iuWP/wEkEE4SIV0QngnKppDf54QezUKmar7UQby6HzufT5yVIOvj7QEqZnOavrKW0chCeCwP0khda/j9k00ct6NMEDxQFW+g=="
+      }
     },
     "ContainerInfo": {
       "description": "Information about container.",
