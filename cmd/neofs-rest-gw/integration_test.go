@@ -25,6 +25,7 @@ import (
 	"github.com/nspcc-dev/neofs-rest-gw/gen/restapi/operations"
 	"github.com/nspcc-dev/neofs-rest-gw/handlers"
 	"github.com/nspcc-dev/neofs-rest-gw/internal/util"
+	"github.com/nspcc-dev/neofs-sdk-go/bearer"
 	"github.com/nspcc-dev/neofs-sdk-go/container"
 	"github.com/nspcc-dev/neofs-sdk-go/container/acl"
 	cid "github.com/nspcc-dev/neofs-sdk-go/container/id"
@@ -117,6 +118,7 @@ func runTests(ctx context.Context, t *testing.T, key *keys.PrivateKey, version s
 
 	t.Run("rest auth several tokens "+version, func(t *testing.T) { authTokens(ctx, t) })
 	t.Run("rest check mix tokens up "+version, func(t *testing.T) { mixTokens(ctx, t, cnrID) })
+	t.Run("rest form full binary bearer "+version, func(t *testing.T) { formFullBinaryBearer(ctx, t) })
 
 	t.Run("rest put object "+version, func(t *testing.T) { restObjectPut(ctx, t, clientPool, cnrID) })
 	t.Run("rest get object "+version, func(t *testing.T) { restObjectGet(ctx, t, clientPool, &owner, cnrID) })
@@ -317,6 +319,68 @@ func mixTokens(ctx context.Context, t *testing.T, cnrID cid.ID) {
 
 	// check reject container token when object tokens is required
 	checkPutObjectWithError(t, httpClient, cnrID, containerSetEACLToken)
+}
+
+func formFullBinaryBearer(ctx context.Context, t *testing.T) {
+	bearers := []*models.Bearer{
+		{
+			Name: "all-object",
+			Object: []*models.Record{{
+				Operation: models.NewOperation(models.OperationPUT),
+				Action:    models.NewAction(models.ActionALLOW),
+				Filters:   []*models.Filter{},
+				Targets: []*models.Target{{
+					Role: models.NewRole(models.RoleOTHERS),
+					Keys: []string{},
+				}},
+			}},
+		},
+		{
+			Name: "put-container",
+			Container: &models.Rule{
+				Verb: models.NewVerb(models.VerbPUT),
+			},
+		},
+	}
+
+	httpClient := defaultHTTPClient()
+	tokens := makeAuthTokenRequest(ctx, t, bearers, httpClient)
+	objectToken := tokens[0]
+	containerPutToken := tokens[1]
+
+	query := make(url.Values)
+	query.Add(walletConnectQuery, strconv.FormatBool(useWalletConnect))
+
+	// check that container token isn't valid
+	request, err := http.NewRequest(http.MethodGet, testHost+"/v1/auth/bearer?"+query.Encode(), nil)
+	require.NoError(t, err)
+	prepareCommonHeaders(request.Header, containerPutToken)
+	checkGWErrorResponse(t, httpClient, request)
+
+	// check that object bearer token is valid
+	request, err = http.NewRequest(http.MethodGet, testHost+"/v1/auth/bearer?"+query.Encode(), nil)
+	require.NoError(t, err)
+	prepareCommonHeaders(request.Header, objectToken)
+	resp := &models.BinaryBearer{}
+	doRequest(t, httpClient, request, http.StatusOK, resp)
+
+	actualTokenRaw, err := base64.StdEncoding.DecodeString(*resp.Token)
+	require.NoError(t, err)
+
+	var actualToken bearer.Token
+	err = actualToken.Unmarshal(actualTokenRaw)
+	require.NoError(t, err)
+
+	require.True(t, actualToken.VerifySignature())
+	require.Len(t, actualToken.EACLTable().Records(), 1)
+	actualRecord := actualToken.EACLTable().Records()[0]
+	require.Equal(t, eacl.OperationPut, actualRecord.Operation())
+	require.Equal(t, eacl.ActionAllow, actualRecord.Action())
+	require.Empty(t, actualRecord.Filters())
+	require.Len(t, actualRecord.Targets(), 1)
+	actualTarget := actualRecord.Targets()[0]
+	require.Empty(t, actualTarget.BinaryKeys())
+	require.Equal(t, eacl.RoleOthers, actualTarget.Role())
 }
 
 func checkPutContainerWithError(t *testing.T, httpClient *http.Client, token *handlers.BearerToken) {

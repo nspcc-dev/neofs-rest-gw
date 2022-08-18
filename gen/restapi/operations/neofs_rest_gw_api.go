@@ -53,6 +53,9 @@ func NewNeofsRestGwAPI(spec *loads.Document) *NeofsRestGwAPI {
 		DeleteObjectHandler: DeleteObjectHandlerFunc(func(params DeleteObjectParams, principal *models.Principal) middleware.Responder {
 			return middleware.NotImplemented("operation DeleteObject has not yet been implemented")
 		}),
+		FormBinaryBearerHandler: FormBinaryBearerHandlerFunc(func(params FormBinaryBearerParams, principal *models.Principal) middleware.Responder {
+			return middleware.NotImplemented("operation FormBinaryBearer has not yet been implemented")
+		}),
 		GetBalanceHandler: GetBalanceHandlerFunc(func(params GetBalanceParams) middleware.Responder {
 			return middleware.NotImplemented("operation GetBalance has not yet been implemented")
 		}),
@@ -157,6 +160,8 @@ type NeofsRestGwAPI struct {
 	DeleteContainerHandler DeleteContainerHandler
 	// DeleteObjectHandler sets the operation handler for the delete object operation
 	DeleteObjectHandler DeleteObjectHandler
+	// FormBinaryBearerHandler sets the operation handler for the form binary bearer operation
+	FormBinaryBearerHandler FormBinaryBearerHandler
 	// GetBalanceHandler sets the operation handler for the get balance operation
 	GetBalanceHandler GetBalanceHandler
 	// GetContainerHandler sets the operation handler for the get container operation
@@ -278,6 +283,9 @@ func (o *NeofsRestGwAPI) Validate() error {
 	}
 	if o.DeleteObjectHandler == nil {
 		unregistered = append(unregistered, "DeleteObjectHandler")
+	}
+	if o.FormBinaryBearerHandler == nil {
+		unregistered = append(unregistered, "FormBinaryBearerHandler")
 	}
 	if o.GetBalanceHandler == nil {
 		unregistered = append(unregistered, "GetBalanceHandler")
@@ -438,6 +446,10 @@ func (o *NeofsRestGwAPI) initHandlerCache() {
 		o.handlers["DELETE"] = make(map[string]http.Handler)
 	}
 	o.handlers["DELETE"]["/objects/{containerId}/{objectId}"] = NewDeleteObject(o.context, o.DeleteObjectHandler)
+	if o.handlers["GET"] == nil {
+		o.handlers["GET"] = make(map[string]http.Handler)
+	}
+	o.handlers["GET"]["/auth/bearer"] = NewFormBinaryBearer(o.context, o.FormBinaryBearerHandler)
 	if o.handlers["GET"] == nil {
 		o.handlers["GET"] = make(map[string]http.Handler)
 	}

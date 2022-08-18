@@ -93,7 +93,7 @@ paths:
         - application/json
       responses:
         200:
-          description: Base64 encoded stable binary marshaled bearer token.
+          description: Base64 encoded stable binary marshaled bearer token bodies.
           headers:
             Access-Control-Allow-Origin:
               type: string
@@ -101,6 +101,29 @@ paths:
             type: array
             items:
               $ref: '#/definitions/TokenResponse'
+        400:
+          description: Bad request
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+
+  /auth/bearer:
+    get:
+      operationId: formBinaryBearer
+      summary: Form binary bearer token
+      parameters:
+        - $ref: '#/parameters/signatureParam'
+        - $ref: '#/parameters/signatureKeyParam'
+        - $ref: '#/parameters/signatureScheme'
+      produces:
+        - application/json
+      responses:
+        200:
+          description: Base64 encoded stable binary marshaled bearer token.
+          headers:
+            Access-Control-Allow-Origin:
+              type: string
+          schema:
+            $ref: '#/definitions/BinaryBearer'
         400:
           description: Bad request
           schema:
@@ -182,7 +205,7 @@ paths:
       - $ref: '#/parameters/containerId'
     options:
       operationId: optionsObjectsSearch
-      security: []
+      security: [ ]
       responses:
         200:
           description: Base64 encoded stable binary marshaled bearer token.
@@ -503,6 +526,17 @@ paths:
             $ref: '#/definitions/ErrorResponse'
 
 definitions:
+  BinaryBearer:
+    description: Bearer token for object operations that is represented in binary form.
+    type: object
+    properties:
+      token:
+        description: Base64 encoded bearer token.
+        type: string
+    required:
+      - token
+    example:
+      token: ChIKDAoAGggIARABIgIIAxoCCGQSZgohA+J5jFWFMiOpyvMZBu9wwPTKsWsG0q206kVe63iuWP/wEkEE4SIV0QngnKppDf54QezUKmar7UQby6HzufT5yVIOvj7QEqZnOavrKW0chCeCwP0khda/j9k00ct6NMEDxQFW+g==
   Bearer:
     description: Bearer token that is expected to be formed.
     type: object
