@@ -22,8 +22,9 @@ import (
 const defaultTokenExpDuration = 100 // in epoch
 
 type headersParams struct {
-	XBearerLifetime uint64
-	XBearerOwnerID  string
+	XBearerLifetime    uint64
+	XBearerOwnerID     string
+	XBearerForAllUsers bool
 }
 
 type objectTokenParams struct {
@@ -40,7 +41,8 @@ type containerTokenParams struct {
 
 func newHeaderParams(params operations.AuthParams) headersParams {
 	prm := headersParams{
-		XBearerOwnerID: params.XBearerOwnerID,
+		XBearerOwnerID:     params.XBearerOwnerID,
+		XBearerForAllUsers: *params.XBearerForAllUsers,
 	}
 
 	if params.XBearerLifetime != nil && *params.XBearerLifetime > 0 {
@@ -122,7 +124,10 @@ func prepareObjectToken(ctx context.Context, params objectTokenParams, pool *poo
 	if err != nil {
 		return nil, fmt.Errorf("couldn't transform token to native: %w", err)
 	}
-	btoken.ForUser(owner)
+
+	if !params.XBearerForAllUsers {
+		btoken.ForUser(owner)
+	}
 
 	iat, exp, err := getTokenLifetime(ctx, pool, params.XBearerLifetime)
 	if err != nil {
