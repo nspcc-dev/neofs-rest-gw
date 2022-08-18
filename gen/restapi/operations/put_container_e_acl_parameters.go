@@ -45,15 +45,13 @@ type PutContainerEACLParams struct {
 	HTTPRequest *http.Request `json:"-"`
 
 	/*Base64 encoded signature for bearer token.
-	  Required: true
 	  In: header
 	*/
-	XBearerSignature string
+	XBearerSignature *string
 	/*Hex encoded the public part of the key that signed the bearer token.
-	  Required: true
 	  In: header
 	*/
-	XBearerSignatureKey string
+	XBearerSignatureKey *string
 	/*Base58 encoded container id.
 	  Required: true
 	  In: path
@@ -135,40 +133,34 @@ func (o *PutContainerEACLParams) BindRequest(r *http.Request, route *middleware.
 
 // bindXBearerSignature binds and validates parameter XBearerSignature from header.
 func (o *PutContainerEACLParams) bindXBearerSignature(rawData []string, hasKey bool, formats strfmt.Registry) error {
-	if !hasKey {
-		return errors.Required("X-Bearer-Signature", "header", rawData)
-	}
 	var raw string
 	if len(rawData) > 0 {
 		raw = rawData[len(rawData)-1]
 	}
 
-	// Required: true
+	// Required: false
 
-	if err := validate.RequiredString("X-Bearer-Signature", "header", raw); err != nil {
-		return err
+	if raw == "" { // empty values pass all other validations
+		return nil
 	}
-	o.XBearerSignature = raw
+	o.XBearerSignature = &raw
 
 	return nil
 }
 
 // bindXBearerSignatureKey binds and validates parameter XBearerSignatureKey from header.
 func (o *PutContainerEACLParams) bindXBearerSignatureKey(rawData []string, hasKey bool, formats strfmt.Registry) error {
-	if !hasKey {
-		return errors.Required("X-Bearer-Signature-Key", "header", rawData)
-	}
 	var raw string
 	if len(rawData) > 0 {
 		raw = rawData[len(rawData)-1]
 	}
 
-	// Required: true
+	// Required: false
 
-	if err := validate.RequiredString("X-Bearer-Signature-Key", "header", raw); err != nil {
-		return err
+	if raw == "" { // empty values pass all other validations
+		return nil
 	}
-	o.XBearerSignatureKey = raw
+	o.XBearerSignatureKey = &raw
 
 	return nil
 }

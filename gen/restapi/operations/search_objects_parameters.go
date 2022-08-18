@@ -27,13 +27,16 @@ func NewSearchObjectsParams() SearchObjectsParams {
 	var (
 		// initialize parameters with default values
 
-		limitDefault  = int64(100)
-		offsetDefault = int64(0)
+		fullBearerDefault = bool(false)
+		limitDefault      = int64(100)
+		offsetDefault     = int64(0)
 
 		walletConnectDefault = bool(false)
 	)
 
 	return SearchObjectsParams{
+		FullBearer: &fullBearerDefault,
+
 		Limit: &limitDefault,
 
 		Offset: &offsetDefault,
@@ -52,20 +55,23 @@ type SearchObjectsParams struct {
 	HTTPRequest *http.Request `json:"-"`
 
 	/*Base64 encoded signature for bearer token.
-	  Required: true
 	  In: header
 	*/
-	XBearerSignature string
+	XBearerSignature *string
 	/*Hex encoded the public part of the key that signed the bearer token.
-	  Required: true
 	  In: header
 	*/
-	XBearerSignatureKey string
+	XBearerSignatureKey *string
 	/*Base58 encoded container id.
 	  Required: true
 	  In: path
 	*/
 	ContainerID string
+	/*Provided bearer token is final or gate should assemble it using signature.
+	  In: query
+	  Default: false
+	*/
+	FullBearer *bool
 	/*The numbers of containers to return.
 	  Maximum: 10000
 	  Minimum: 1
@@ -112,6 +118,11 @@ func (o *SearchObjectsParams) BindRequest(r *http.Request, route *middleware.Mat
 
 	rContainerID, rhkContainerID, _ := route.Params.GetOK("containerId")
 	if err := o.bindContainerID(rContainerID, rhkContainerID, route.Formats); err != nil {
+		res = append(res, err)
+	}
+
+	qFullBearer, qhkFullBearer, _ := qs.GetOK("fullBearer")
+	if err := o.bindFullBearer(qFullBearer, qhkFullBearer, route.Formats); err != nil {
 		res = append(res, err)
 	}
 
@@ -165,40 +176,34 @@ func (o *SearchObjectsParams) BindRequest(r *http.Request, route *middleware.Mat
 
 // bindXBearerSignature binds and validates parameter XBearerSignature from header.
 func (o *SearchObjectsParams) bindXBearerSignature(rawData []string, hasKey bool, formats strfmt.Registry) error {
-	if !hasKey {
-		return errors.Required("X-Bearer-Signature", "header", rawData)
-	}
 	var raw string
 	if len(rawData) > 0 {
 		raw = rawData[len(rawData)-1]
 	}
 
-	// Required: true
+	// Required: false
 
-	if err := validate.RequiredString("X-Bearer-Signature", "header", raw); err != nil {
-		return err
+	if raw == "" { // empty values pass all other validations
+		return nil
 	}
-	o.XBearerSignature = raw
+	o.XBearerSignature = &raw
 
 	return nil
 }
 
 // bindXBearerSignatureKey binds and validates parameter XBearerSignatureKey from header.
 func (o *SearchObjectsParams) bindXBearerSignatureKey(rawData []string, hasKey bool, formats strfmt.Registry) error {
-	if !hasKey {
-		return errors.Required("X-Bearer-Signature-Key", "header", rawData)
-	}
 	var raw string
 	if len(rawData) > 0 {
 		raw = rawData[len(rawData)-1]
 	}
 
-	// Required: true
+	// Required: false
 
-	if err := validate.RequiredString("X-Bearer-Signature-Key", "header", raw); err != nil {
-		return err
+	if raw == "" { // empty values pass all other validations
+		return nil
 	}
-	o.XBearerSignatureKey = raw
+	o.XBearerSignatureKey = &raw
 
 	return nil
 }
@@ -213,6 +218,30 @@ func (o *SearchObjectsParams) bindContainerID(rawData []string, hasKey bool, for
 	// Required: true
 	// Parameter is provided by construction from the route
 	o.ContainerID = raw
+
+	return nil
+}
+
+// bindFullBearer binds and validates parameter FullBearer from query.
+func (o *SearchObjectsParams) bindFullBearer(rawData []string, hasKey bool, formats strfmt.Registry) error {
+	var raw string
+	if len(rawData) > 0 {
+		raw = rawData[len(rawData)-1]
+	}
+
+	// Required: false
+	// AllowEmptyValue: false
+
+	if raw == "" { // empty values pass all other validations
+		// Default values have been previously initialized by NewSearchObjectsParams()
+		return nil
+	}
+
+	value, err := swag.ConvertBool(raw)
+	if err != nil {
+		return errors.InvalidType("fullBearer", "query", "bool", raw)
+	}
+	o.FullBearer = &value
 
 	return nil
 }

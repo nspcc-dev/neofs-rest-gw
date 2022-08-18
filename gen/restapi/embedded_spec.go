@@ -527,6 +527,9 @@ func init() {
             "$ref": "#/parameters/signatureScheme"
           },
           {
+            "$ref": "#/parameters/fullBearerToken"
+          },
+          {
             "description": "Object info to upload",
             "name": "object",
             "in": "body",
@@ -590,6 +593,9 @@ func init() {
           },
           {
             "$ref": "#/parameters/signatureScheme"
+          },
+          {
+            "$ref": "#/parameters/fullBearerToken"
           },
           {
             "type": "integer",
@@ -675,6 +681,9 @@ func init() {
             "$ref": "#/parameters/signatureScheme"
           },
           {
+            "$ref": "#/parameters/fullBearerToken"
+          },
+          {
             "type": "integer",
             "description": "Range offset to start reading data.",
             "name": "range-offset",
@@ -728,6 +737,9 @@ func init() {
           },
           {
             "$ref": "#/parameters/signatureScheme"
+          },
+          {
+            "$ref": "#/parameters/fullBearerToken"
           }
         ],
         "responses": {
@@ -1575,6 +1587,13 @@ func init() {
       "in": "path",
       "required": true
     },
+    "fullBearerToken": {
+      "type": "boolean",
+      "default": false,
+      "description": "Provided bearer token is final or gate should assemble it using signature.",
+      "name": "fullBearer",
+      "in": "query"
+    },
     "objectId": {
       "type": "string",
       "description": "Base58 encoded object id.",
@@ -1586,15 +1605,13 @@ func init() {
       "type": "string",
       "description": "Hex encoded the public part of the key that signed the bearer token.",
       "name": "X-Bearer-Signature-Key",
-      "in": "header",
-      "required": true
+      "in": "header"
     },
     "signatureParam": {
       "type": "string",
       "description": "Base64 encoded signature for bearer token.",
       "name": "X-Bearer-Signature",
-      "in": "header",
-      "required": true
+      "in": "header"
     },
     "signatureScheme": {
       "type": "boolean",
@@ -1769,15 +1786,13 @@ func init() {
             "type": "string",
             "description": "Base64 encoded signature for bearer token.",
             "name": "X-Bearer-Signature",
-            "in": "header",
-            "required": true
+            "in": "header"
           },
           {
             "type": "string",
             "description": "Hex encoded the public part of the key that signed the bearer token.",
             "name": "X-Bearer-Signature-Key",
-            "in": "header",
-            "required": true
+            "in": "header"
           },
           {
             "type": "boolean",
@@ -1867,15 +1882,13 @@ func init() {
             "type": "string",
             "description": "Base64 encoded signature for bearer token.",
             "name": "X-Bearer-Signature",
-            "in": "header",
-            "required": true
+            "in": "header"
           },
           {
             "type": "string",
             "description": "Hex encoded the public part of the key that signed the bearer token.",
             "name": "X-Bearer-Signature-Key",
-            "in": "header",
-            "required": true
+            "in": "header"
           },
           {
             "type": "boolean",
@@ -1986,15 +1999,13 @@ func init() {
             "type": "string",
             "description": "Base64 encoded signature for bearer token.",
             "name": "X-Bearer-Signature",
-            "in": "header",
-            "required": true
+            "in": "header"
           },
           {
             "type": "string",
             "description": "Hex encoded the public part of the key that signed the bearer token.",
             "name": "X-Bearer-Signature-Key",
-            "in": "header",
-            "required": true
+            "in": "header"
           },
           {
             "type": "boolean",
@@ -2087,15 +2098,13 @@ func init() {
             "type": "string",
             "description": "Base64 encoded signature for bearer token.",
             "name": "X-Bearer-Signature",
-            "in": "header",
-            "required": true
+            "in": "header"
           },
           {
             "type": "string",
             "description": "Hex encoded the public part of the key that signed the bearer token.",
             "name": "X-Bearer-Signature-Key",
-            "in": "header",
-            "required": true
+            "in": "header"
           },
           {
             "type": "boolean",
@@ -2179,21 +2188,26 @@ func init() {
             "type": "string",
             "description": "Base64 encoded signature for bearer token.",
             "name": "X-Bearer-Signature",
-            "in": "header",
-            "required": true
+            "in": "header"
           },
           {
             "type": "string",
             "description": "Hex encoded the public part of the key that signed the bearer token.",
             "name": "X-Bearer-Signature-Key",
-            "in": "header",
-            "required": true
+            "in": "header"
           },
           {
             "type": "boolean",
             "default": false,
             "description": "Use wallet connect signature scheme or native NeoFS signature.",
             "name": "walletConnect",
+            "in": "query"
+          },
+          {
+            "type": "boolean",
+            "default": false,
+            "description": "Provided bearer token is final or gate should assemble it using signature.",
+            "name": "fullBearer",
             "in": "query"
           },
           {
@@ -2256,21 +2270,26 @@ func init() {
             "type": "string",
             "description": "Base64 encoded signature for bearer token.",
             "name": "X-Bearer-Signature",
-            "in": "header",
-            "required": true
+            "in": "header"
           },
           {
             "type": "string",
             "description": "Hex encoded the public part of the key that signed the bearer token.",
             "name": "X-Bearer-Signature-Key",
-            "in": "header",
-            "required": true
+            "in": "header"
           },
           {
             "type": "boolean",
             "default": false,
             "description": "Use wallet connect signature scheme or native NeoFS signature.",
             "name": "walletConnect",
+            "in": "query"
+          },
+          {
+            "type": "boolean",
+            "default": false,
+            "description": "Provided bearer token is final or gate should assemble it using signature.",
+            "name": "fullBearer",
             "in": "query"
           },
           {
@@ -2356,21 +2375,26 @@ func init() {
             "type": "string",
             "description": "Base64 encoded signature for bearer token.",
             "name": "X-Bearer-Signature",
-            "in": "header",
-            "required": true
+            "in": "header"
           },
           {
             "type": "string",
             "description": "Hex encoded the public part of the key that signed the bearer token.",
             "name": "X-Bearer-Signature-Key",
-            "in": "header",
-            "required": true
+            "in": "header"
           },
           {
             "type": "boolean",
             "default": false,
             "description": "Use wallet connect signature scheme or native NeoFS signature.",
             "name": "walletConnect",
+            "in": "query"
+          },
+          {
+            "type": "boolean",
+            "default": false,
+            "description": "Provided bearer token is final or gate should assemble it using signature.",
+            "name": "fullBearer",
             "in": "query"
           },
           {
@@ -2425,21 +2449,26 @@ func init() {
             "type": "string",
             "description": "Base64 encoded signature for bearer token.",
             "name": "X-Bearer-Signature",
-            "in": "header",
-            "required": true
+            "in": "header"
           },
           {
             "type": "string",
             "description": "Hex encoded the public part of the key that signed the bearer token.",
             "name": "X-Bearer-Signature-Key",
-            "in": "header",
-            "required": true
+            "in": "header"
           },
           {
             "type": "boolean",
             "default": false,
             "description": "Use wallet connect signature scheme or native NeoFS signature.",
             "name": "walletConnect",
+            "in": "query"
+          },
+          {
+            "type": "boolean",
+            "default": false,
+            "description": "Provided bearer token is final or gate should assemble it using signature.",
+            "name": "fullBearer",
             "in": "query"
           }
         ],
@@ -3296,6 +3325,13 @@ func init() {
       "in": "path",
       "required": true
     },
+    "fullBearerToken": {
+      "type": "boolean",
+      "default": false,
+      "description": "Provided bearer token is final or gate should assemble it using signature.",
+      "name": "fullBearer",
+      "in": "query"
+    },
     "objectId": {
       "type": "string",
       "description": "Base58 encoded object id.",
@@ -3307,15 +3343,13 @@ func init() {
       "type": "string",
       "description": "Hex encoded the public part of the key that signed the bearer token.",
       "name": "X-Bearer-Signature-Key",
-      "in": "header",
-      "required": true
+      "in": "header"
     },
     "signatureParam": {
       "type": "string",
       "description": "Base64 encoded signature for bearer token.",
       "name": "X-Bearer-Signature",
-      "in": "header",
-      "required": true
+      "in": "header"
     },
     "signatureScheme": {
       "type": "boolean",

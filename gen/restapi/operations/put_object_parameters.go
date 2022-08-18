@@ -27,10 +27,14 @@ func NewPutObjectParams() PutObjectParams {
 	var (
 		// initialize parameters with default values
 
+		fullBearerDefault = bool(false)
+
 		walletConnectDefault = bool(false)
 	)
 
 	return PutObjectParams{
+		FullBearer: &fullBearerDefault,
+
 		WalletConnect: &walletConnectDefault,
 	}
 }
@@ -45,15 +49,18 @@ type PutObjectParams struct {
 	HTTPRequest *http.Request `json:"-"`
 
 	/*Base64 encoded signature for bearer token.
-	  Required: true
 	  In: header
 	*/
-	XBearerSignature string
+	XBearerSignature *string
 	/*Hex encoded the public part of the key that signed the bearer token.
-	  Required: true
 	  In: header
 	*/
-	XBearerSignatureKey string
+	XBearerSignatureKey *string
+	/*Provided bearer token is final or gate should assemble it using signature.
+	  In: query
+	  Default: false
+	*/
+	FullBearer *bool
 	/*Object info to upload
 	  Required: true
 	  In: body
@@ -82,6 +89,11 @@ func (o *PutObjectParams) BindRequest(r *http.Request, route *middleware.Matched
 	}
 
 	if err := o.bindXBearerSignatureKey(r.Header[http.CanonicalHeaderKey("X-Bearer-Signature-Key")], true, route.Formats); err != nil {
+		res = append(res, err)
+	}
+
+	qFullBearer, qhkFullBearer, _ := qs.GetOK("fullBearer")
+	if err := o.bindFullBearer(qFullBearer, qhkFullBearer, route.Formats); err != nil {
 		res = append(res, err)
 	}
 
@@ -125,40 +137,58 @@ func (o *PutObjectParams) BindRequest(r *http.Request, route *middleware.Matched
 
 // bindXBearerSignature binds and validates parameter XBearerSignature from header.
 func (o *PutObjectParams) bindXBearerSignature(rawData []string, hasKey bool, formats strfmt.Registry) error {
-	if !hasKey {
-		return errors.Required("X-Bearer-Signature", "header", rawData)
-	}
 	var raw string
 	if len(rawData) > 0 {
 		raw = rawData[len(rawData)-1]
 	}
 
-	// Required: true
+	// Required: false
 
-	if err := validate.RequiredString("X-Bearer-Signature", "header", raw); err != nil {
-		return err
+	if raw == "" { // empty values pass all other validations
+		return nil
 	}
-	o.XBearerSignature = raw
+	o.XBearerSignature = &raw
 
 	return nil
 }
 
 // bindXBearerSignatureKey binds and validates parameter XBearerSignatureKey from header.
 func (o *PutObjectParams) bindXBearerSignatureKey(rawData []string, hasKey bool, formats strfmt.Registry) error {
-	if !hasKey {
-		return errors.Required("X-Bearer-Signature-Key", "header", rawData)
-	}
 	var raw string
 	if len(rawData) > 0 {
 		raw = rawData[len(rawData)-1]
 	}
 
-	// Required: true
+	// Required: false
 
-	if err := validate.RequiredString("X-Bearer-Signature-Key", "header", raw); err != nil {
-		return err
+	if raw == "" { // empty values pass all other validations
+		return nil
 	}
-	o.XBearerSignatureKey = raw
+	o.XBearerSignatureKey = &raw
+
+	return nil
+}
+
+// bindFullBearer binds and validates parameter FullBearer from query.
+func (o *PutObjectParams) bindFullBearer(rawData []string, hasKey bool, formats strfmt.Registry) error {
+	var raw string
+	if len(rawData) > 0 {
+		raw = rawData[len(rawData)-1]
+	}
+
+	// Required: false
+	// AllowEmptyValue: false
+
+	if raw == "" { // empty values pass all other validations
+		// Default values have been previously initialized by NewPutObjectParams()
+		return nil
+	}
+
+	value, err := swag.ConvertBool(raw)
+	if err != nil {
+		return errors.InvalidType("fullBearer", "query", "bool", raw)
+	}
+	o.FullBearer = &value
 
 	return nil
 }

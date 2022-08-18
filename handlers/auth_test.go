@@ -70,7 +70,7 @@ func TestSign(t *testing.T) {
 		Key:       pubKeyHex,
 	}
 
-	_, err = prepareBearerToken(bt, false)
+	_, err = prepareBearerToken(bt, false, false)
 	require.NoError(t, err)
 }
 

@@ -25,17 +25,23 @@ parameters:
     name: X-Bearer-Signature
     description: Base64 encoded signature for bearer token.
     type: string
-    required: true
+    required: false
   signatureKeyParam:
     in: header
     name: X-Bearer-Signature-Key
     description: Hex encoded the public part of the key that signed the bearer token.
     type: string
-    required: true
+    required: false
   signatureScheme:
     in: query
     name: walletConnect
     description: Use wallet connect signature scheme or native NeoFS signature.
+    type: boolean
+    default: false
+  fullBearerToken:
+    in: query
+    name: fullBearer
+    description: Provided bearer token is final or gate should assemble it using signature.
     type: boolean
     default: false
   containerId:
@@ -182,6 +188,7 @@ paths:
         - $ref: '#/parameters/signatureParam'
         - $ref: '#/parameters/signatureKeyParam'
         - $ref: '#/parameters/signatureScheme'
+        - $ref: '#/parameters/fullBearerToken'
         - in: body
           required: true
           name: object
@@ -226,6 +233,7 @@ paths:
         - $ref: '#/parameters/signatureParam'
         - $ref: '#/parameters/signatureKeyParam'
         - $ref: '#/parameters/signatureScheme'
+        - $ref: '#/parameters/fullBearerToken'
         - in: query
           name: offset
           type: integer
@@ -282,6 +290,7 @@ paths:
         - $ref: '#/parameters/signatureParam'
         - $ref: '#/parameters/signatureKeyParam'
         - $ref: '#/parameters/signatureScheme'
+        - $ref: '#/parameters/fullBearerToken'
         - in: query
           name: range-offset
           type: integer
@@ -320,6 +329,7 @@ paths:
         - $ref: '#/parameters/signatureParam'
         - $ref: '#/parameters/signatureKeyParam'
         - $ref: '#/parameters/signatureScheme'
+        - $ref: '#/parameters/fullBearerToken'
       responses:
         200:
           headers:
