@@ -26,10 +26,13 @@ func NewAuthParams() AuthParams {
 	var (
 		// initialize parameters with default values
 
-		xBearerLifetimeDefault = int64(100)
+		xBearerForAllUsersDefault = bool(false)
+		xBearerLifetimeDefault    = int64(100)
 	)
 
 	return AuthParams{
+		XBearerForAllUsers: &xBearerForAllUsersDefault,
+
 		XBearerLifetime: &xBearerLifetimeDefault,
 	}
 }
@@ -43,6 +46,11 @@ type AuthParams struct {
 	// HTTP Request Object
 	HTTPRequest *http.Request `json:"-"`
 
+	/*Form token for all users or only for this gate.
+	  In: header
+	  Default: false
+	*/
+	XBearerForAllUsers *bool
 	/*Token lifetime in epoch.
 	  In: header
 	  Default: 100
@@ -68,6 +76,10 @@ func (o *AuthParams) BindRequest(r *http.Request, route *middleware.MatchedRoute
 	var res []error
 
 	o.HTTPRequest = r
+
+	if err := o.bindXBearerForAllUsers(r.Header[http.CanonicalHeaderKey("X-Bearer-For-All-Users")], true, route.Formats); err != nil {
+		res = append(res, err)
+	}
 
 	if err := o.bindXBearerLifetime(r.Header[http.CanonicalHeaderKey("X-Bearer-Lifetime")], true, route.Formats); err != nil {
 		res = append(res, err)
@@ -109,6 +121,29 @@ func (o *AuthParams) BindRequest(r *http.Request, route *middleware.MatchedRoute
 	if len(res) > 0 {
 		return errors.CompositeValidationError(res...)
 	}
+	return nil
+}
+
+// bindXBearerForAllUsers binds and validates parameter XBearerForAllUsers from header.
+func (o *AuthParams) bindXBearerForAllUsers(rawData []string, hasKey bool, formats strfmt.Registry) error {
+	var raw string
+	if len(rawData) > 0 {
+		raw = rawData[len(rawData)-1]
+	}
+
+	// Required: false
+
+	if raw == "" { // empty values pass all other validations
+		// Default values have been previously initialized by NewAuthParams()
+		return nil
+	}
+
+	value, err := swag.ConvertBool(raw)
+	if err != nil {
+		return errors.InvalidType("X-Bearer-For-All-Users", "header", "bool", raw)
+	}
+	o.XBearerForAllUsers = &value
+
 	return nil
 }
 

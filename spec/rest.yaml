@@ -79,6 +79,11 @@ paths:
           name: X-Bearer-Lifetime
           type: integer
           default: 100
+        - in: header
+          description: Form token for all users or only for this gate.
+          name: X-Bearer-For-All-Users
+          type: boolean
+          default: false
         - in: body
           name: tokens
           required: true

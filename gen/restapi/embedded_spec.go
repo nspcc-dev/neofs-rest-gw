@@ -96,6 +96,13 @@ func init() {
             "in": "header"
           },
           {
+            "type": "boolean",
+            "default": false,
+            "description": "Form token for all users or only for this gate.",
+            "name": "X-Bearer-For-All-Users",
+            "in": "header"
+          },
+          {
             "description": "Bearer tokens to form.",
             "name": "tokens",
             "in": "body",
@@ -1687,6 +1694,13 @@ func init() {
             "default": 100,
             "description": "Token lifetime in epoch.",
             "name": "X-Bearer-Lifetime",
+            "in": "header"
+          },
+          {
+            "type": "boolean",
+            "default": false,
+            "description": "Form token for all users or only for this gate.",
+            "name": "X-Bearer-For-All-Users",
             "in": "header"
           },
           {
