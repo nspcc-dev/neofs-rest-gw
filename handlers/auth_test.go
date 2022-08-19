@@ -7,7 +7,6 @@ import (
 	"crypto/sha512"
 	"encoding/base64"
 	"encoding/hex"
-	"fmt"
 	"math"
 	"testing"
 
@@ -15,8 +14,6 @@ import (
 	"github.com/nspcc-dev/neofs-api-go/v2/acl"
 	"github.com/nspcc-dev/neofs-rest-gw/gen/models"
 	"github.com/nspcc-dev/neofs-rest-gw/internal/util"
-	"github.com/nspcc-dev/neofs-sdk-go/bearer"
-	"github.com/nspcc-dev/neofs-sdk-go/eacl"
 	"github.com/nspcc-dev/neofs-sdk-go/user"
 	"github.com/stretchr/testify/require"
 )
@@ -72,32 +69,4 @@ func TestSign(t *testing.T) {
 
 	_, err = prepareBearerToken(bt, false, false)
 	require.NoError(t, err)
-}
-
-func TestName(t *testing.T) {
-	//bt := "Cq4BCokBCgASIgog1WV5EUB4P+vBDntpIRfpfqU9vFbfqYCLVQxeGiN4We4aVwgDEAEaTQgCEAEaBUVtYWlsIkA2NGJhM2FkNDdjYmVlNWY1Mjg4ZTZjOTZiNWUwNjg1NjZmMzM2MGMyOGIyODNiN2M2NmM0MmFiZTczNTFjNDQ5IgIIAxoICAMQAiICCAMSGwoZNaq5pfYuroaGE7h9o5iQsPR/1aRe5gmWrhoDCLcGEmYKIQMabG+73wLKNRdF+oa5ulqUUteFrE9/wrdUjKKkbE/PShJBBEGKRnVy4jfvBuNMspDwI6/fynIkqql4p+wKe/BgOKgDFkX83h6Q13J8eakV4RzZR+31JLgyM37GVp57ndZk9w4="
-	//
-	//btRaw, err := base64.StdEncoding.DecodeString(bt)
-	//require.NoError(t, err)
-
-	key, err := keys.NewPrivateKey()
-	require.NoError(t, err)
-
-	var btoken bearer.Token
-
-	var table eacl.Table
-	var r eacl.Record
-	r.SetAction(eacl.ActionAllow)
-	r.SetOperation(eacl.OperationGet)
-	eacl.AddFormedTarget(&r, eacl.RoleOthers)
-
-	table.AddRecord(&r)
-
-	btoken.SetExp(100)
-	btoken.SetEACLTable(table)
-	err = btoken.Sign(key.PrivateKey)
-	require.NoError(t, err)
-
-	bytes := btoken.Marshal()
-	fmt.Println(base64.StdEncoding.EncodeToString(bytes))
 }
