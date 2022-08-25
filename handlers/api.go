@@ -69,6 +69,8 @@ const (
 	ContextKeyRequestID ContextKey = "requestID"
 
 	docsPrefix = "/docs"
+
+	accessControlAllowOriginHeader = "Access-Control-Allow-Origin"
 )
 
 // New creates a new API using specified logger, connection pool and other parameters.
@@ -164,6 +166,8 @@ func (a *API) setupGlobalMiddleware(handler http.Handler) http.Handler {
 			zap.String("id", requestID))
 
 		ctx := context.WithValue(r.Context(), ContextKeyRequestID, requestID)
+
+		w.Header().Set(accessControlAllowOriginHeader, allOrigins)
 
 		handler.ServeHTTP(w, r.WithContext(ctx))
 	})
