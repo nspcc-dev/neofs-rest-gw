@@ -178,7 +178,7 @@ func (a *API) GetObjectInfo(params operations.GetObjectInfoParams, principal *mo
 
 	sb := new(strings.Builder)
 	encoder := base64.NewEncoder(base64.StdEncoding, sb)
-	payloadSize, err := io.Copy(encoder, rangeRes)
+	payloadSize, err := io.Copy(encoder, &rangeRes)
 	if err != nil {
 		errResp := a.logAndGetErrorResponse("encode object payload", err)
 		return errorResponse.WithPayload(errResp)

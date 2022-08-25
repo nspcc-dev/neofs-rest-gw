@@ -244,7 +244,7 @@ func getContainerInfo(ctx context.Context, p *pool.Pool, cnrID cid.ID) (*models.
 
 	return &models.ContainerInfo{
 		ContainerID:     util.NewString(cnrID.String()),
-		ContainerName:   util.NewString(container.Name(*cnr)),
+		ContainerName:   util.NewString(container.Name(cnr)),
 		OwnerID:         util.NewString(cnr.Owner().String()),
 		BasicACL:        util.NewString(cnr.BasicACL().EncodeToString()),
 		CannedACL:       friendlyBasicACL(cnr.BasicACL()),
@@ -277,7 +277,7 @@ func friendlyBasicACL(basicACL acl.Basic) string {
 	}
 }
 
-func getContainerVersion(cnr *container.Container) version.Version {
+func getContainerVersion(cnr container.Container) version.Version {
 	var v2cnr containerv2.Container
 	cnr.WriteToV2(&v2cnr)
 
@@ -400,7 +400,7 @@ func createContainer(ctx context.Context, p *pool.Pool, stoken session.Container
 		return cid.ID{}, fmt.Errorf("put container: %w", err)
 	}
 
-	return *cnrID, nil
+	return cnrID, nil
 }
 
 func checkNNSContainerName(name string) error {
