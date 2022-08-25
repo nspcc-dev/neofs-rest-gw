@@ -914,7 +914,7 @@ func restContainerEACLPut(ctx context.Context, t *testing.T, clientPool *pool.Po
 	require.NoError(t, err)
 	expectedTable.SetCID(cnrID)
 
-	require.True(t, eacl.EqualTables(*expectedTable, *table))
+	require.True(t, eacl.EqualTables(*expectedTable, table))
 }
 
 func restContainerEACLGet(ctx context.Context, t *testing.T, p *pool.Pool, cnrID cid.ID) {
@@ -938,7 +938,7 @@ func restContainerEACLGet(ctx context.Context, t *testing.T, p *pool.Pool, cnrID
 	require.NoError(t, err)
 	actualTable.SetCID(cnrID)
 
-	require.True(t, eacl.EqualTables(*expectedTable, *actualTable))
+	require.True(t, eacl.EqualTables(expectedTable, *actualTable))
 }
 
 func restContainerList(ctx context.Context, t *testing.T, p *pool.Pool, owner user.ID, cnrID cid.ID) {
@@ -1217,7 +1217,7 @@ func createContainer(ctx context.Context, t *testing.T, clientPool *pool.Pool, o
 	CID, err := clientPool.PutContainer(ctx, prm)
 	require.NoError(t, err)
 
-	return *CID
+	return CID
 }
 
 func createObject(ctx context.Context, t *testing.T, p *pool.Pool, ownerID *user.ID, cnrID cid.ID, headers map[string]string, payload []byte) oid.ID {
@@ -1242,7 +1242,7 @@ func createObject(ctx context.Context, t *testing.T, p *pool.Pool, ownerID *user
 	objID, err := p.PutObject(ctx, prm)
 	require.NoError(t, err)
 
-	return *objID
+	return objID
 }
 
 func restrictByEACL(ctx context.Context, t *testing.T, clientPool *pool.Pool, cnrID cid.ID) *eacl.Table {
