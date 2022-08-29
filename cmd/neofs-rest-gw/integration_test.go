@@ -883,25 +883,26 @@ func restContainerEACLPut(ctx context.Context, t *testing.T, clientPool *pool.Po
 			Filters:   []*models.Filter{},
 			Operation: models.NewOperation(models.OperationDELETE),
 			Targets: []*models.Target{{
-				Keys: []string{},
+				Keys: []string{"031a6c6fbbdf02ca351745fa86b9ba5a9452d785ac4f7fc2b7548ca2a46c4fcf4a"},
 				Role: models.NewRole(models.RoleOTHERS),
 			}},
 		}},
 	}
 
+	invalidBody, err := json.Marshal(&req)
+	require.NoError(t, err)
+
+	req.Records[0].Targets[0].Role = models.NewRole(models.RoleKEYS)
 	body, err := json.Marshal(&req)
 	require.NoError(t, err)
 
 	query := make(url.Values)
 	query.Add(walletConnectQuery, strconv.FormatBool(useWalletConnect))
 
-	request, err := http.NewRequest(http.MethodPut, testHost+"/v1/containers/"+cnrID.EncodeToString()+"/eacl?"+query.Encode(), bytes.NewReader(body))
-	require.NoError(t, err)
-	request = request.WithContext(ctx)
-	prepareCommonHeaders(request.Header, bearerToken)
+	doSetEACLRequest(ctx, t, httpClient, cnrID, query, bearerToken, invalidBody, http.StatusBadRequest, nil)
 
 	resp := &models.SuccessResponse{}
-	doRequest(t, httpClient, request, http.StatusOK, resp)
+	doSetEACLRequest(ctx, t, httpClient, cnrID, query, bearerToken, body, http.StatusOK, resp)
 	require.True(t, *resp.Success)
 
 	var prm pool.PrmContainerEACL
@@ -915,6 +916,15 @@ func restContainerEACLPut(ctx context.Context, t *testing.T, clientPool *pool.Po
 	expectedTable.SetCID(cnrID)
 
 	require.True(t, eacl.EqualTables(*expectedTable, table))
+}
+
+func doSetEACLRequest(ctx context.Context, t *testing.T, httpClient *http.Client, cnrID cid.ID, query url.Values, bearerToken *handlers.BearerToken, body []byte, status int, model interface{}) {
+	request, err := http.NewRequest(http.MethodPut, testHost+"/v1/containers/"+cnrID.EncodeToString()+"/eacl?"+query.Encode(), bytes.NewReader(body))
+	require.NoError(t, err)
+	request = request.WithContext(ctx)
+	prepareCommonHeaders(request.Header, bearerToken)
+
+	doRequest(t, httpClient, request, status, model)
 }
 
 func restContainerEACLGet(ctx context.Context, t *testing.T, p *pool.Pool, cnrID cid.ID) {

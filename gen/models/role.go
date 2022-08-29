@@ -38,6 +38,9 @@ const (
 
 	// RoleOTHERS captures enum value "OTHERS"
 	RoleOTHERS Role = "OTHERS"
+
+	// RoleKEYS captures enum value "KEYS"
+	RoleKEYS Role = "KEYS"
 )
 
 // for schema
@@ -45,7 +48,7 @@ var roleEnum []interface{}
 
 func init() {
 	var res []Role
-	if err := json.Unmarshal([]byte(`["USER","SYSTEM","OTHERS"]`), &res); err != nil {
+	if err := json.Unmarshal([]byte(`["USER","SYSTEM","OTHERS","KEYS"]`), &res); err != nil {
 		panic(err)
 	}
 	for _, v := range res {
