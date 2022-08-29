@@ -163,8 +163,10 @@ func ToNativeRole(r *models.Role) (eacl.Role, error) {
 		return eacl.RoleSystem, nil
 	case models.RoleOTHERS:
 		return eacl.RoleOthers, nil
+	case models.RoleKEYS:
+		return eacl.RoleUnknown, nil
 	default:
-		return eacl.RoleUnknown, fmt.Errorf("unsupported role type: '%s'", *r)
+		return 0, fmt.Errorf("unsupported role type: '%s'", *r)
 	}
 }
 
@@ -177,6 +179,8 @@ func FromNativeRole(r eacl.Role) (*models.Role, error) {
 		return models.NewRole(models.RoleSYSTEM), nil
 	case eacl.RoleOthers:
 		return models.NewRole(models.RoleOTHERS), nil
+	case eacl.RoleUnknown:
+		return models.NewRole(models.RoleKEYS), nil
 	default:
 		return nil, fmt.Errorf("unsupported role type: '%s'", r)
 	}
@@ -314,6 +318,10 @@ func FromNativeRecord(r eacl.Record) (*models.Record, error) {
 // ToNativeTarget converts models.Target to appropriate eacl.Target.
 func ToNativeTarget(t *models.Target) (*eacl.Target, error) {
 	var target eacl.Target
+
+	if len(t.Keys) > 0 && *t.Role != models.RoleKEYS {
+		return nil, fmt.Errorf("you cannot set binary keys with role other than '%s'", models.RoleKEYS)
+	}
 
 	role, err := ToNativeRole(t.Role)
 	if err != nil {

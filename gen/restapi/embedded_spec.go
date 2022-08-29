@@ -1406,7 +1406,8 @@ func init() {
       "enum": [
         "USER",
         "SYSTEM",
-        "OTHERS"
+        "OTHERS",
+        "KEYS"
       ]
     },
     "Rule": {
@@ -1508,7 +1509,7 @@ func init() {
       }
     },
     "Target": {
-      "description": "Target to apply the ACL rule. Can be a subject's role class or a list of public keys to match.",
+      "description": "Target to apply the ACL rule. Can be a subject's role class or a list of public keys to match (KEYS role).",
       "type": "object",
       "required": [
         "role",
@@ -1529,7 +1530,7 @@ func init() {
         "keys": [
           "021dc56fc6d81d581ae7605a8e00e0e0bab6cbad566a924a527339475a97a8e38e"
         ],
-        "role": "USER"
+        "role": "KEYS"
       }
     },
     "TokenResponse": {
@@ -3144,7 +3145,8 @@ func init() {
       "enum": [
         "USER",
         "SYSTEM",
-        "OTHERS"
+        "OTHERS",
+        "KEYS"
       ]
     },
     "Rule": {
@@ -3246,7 +3248,7 @@ func init() {
       }
     },
     "Target": {
-      "description": "Target to apply the ACL rule. Can be a subject's role class or a list of public keys to match.",
+      "description": "Target to apply the ACL rule. Can be a subject's role class or a list of public keys to match (KEYS role).",
       "type": "object",
       "required": [
         "role",
@@ -3267,7 +3269,7 @@ func init() {
         "keys": [
           "021dc56fc6d81d581ae7605a8e00e0e0bab6cbad566a924a527339475a97a8e38e"
         ],
-        "role": "USER"
+        "role": "KEYS"
       }
     },
     "TokenResponse": {

@@ -657,7 +657,7 @@ definitions:
       - STRING_EQUAL
       - STRING_NOT_EQUAL
   Target:
-    description: Target to apply the ACL rule. Can be a subject's role class or a list of public keys to match.
+    description: Target to apply the ACL rule. Can be a subject's role class or a list of public keys to match (KEYS role).
     type: object
     properties:
       role:
@@ -670,7 +670,7 @@ definitions:
       - role
       - keys
     example:
-      role: USER
+      role: KEYS
       keys:
         - 021dc56fc6d81d581ae7605a8e00e0e0bab6cbad566a924a527339475a97a8e38e
   Role:
@@ -680,6 +680,7 @@ definitions:
       - USER
       - SYSTEM
       - OTHERS
+      - KEYS
   Rule:
     description: Container session token rule.
     type: object
