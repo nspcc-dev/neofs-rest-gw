@@ -4,6 +4,9 @@ This document outlines major changes between releases.
 
 ## [Unreleased]
 
+### Changed
+- Update go version for build to 1.19 (#61)
+
 ## [0.4.0] "Shadowglen" - 2022-08-30
 
 ### Fixed
