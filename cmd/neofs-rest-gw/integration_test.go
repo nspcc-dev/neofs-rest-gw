@@ -3,10 +3,6 @@ package main
 import (
 	"bytes"
 	"context"
-	"crypto/ecdsa"
-	"crypto/elliptic"
-	"crypto/rand"
-	"crypto/sha512"
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
@@ -1061,10 +1057,9 @@ func makeAuthTokenRequest(ctx context.Context, t *testing.T, bearers []*models.B
 }
 
 func signToken(t *testing.T, key *keys.PrivateKey, data []byte) *handlers.BearerToken {
-	h := sha512.Sum512(data)
-	x, y, err := ecdsa.Sign(rand.Reader, &key.PrivateKey, h[:])
+	signer := neofsecdsa.Signer(key.PrivateKey)
+	sign, err := signer.Sign(data)
 	require.NoError(t, err)
-	sign := elliptic.Marshal(elliptic.P256(), x, y)
 
 	return &handlers.BearerToken{
 		Token:     base64.StdEncoding.EncodeToString(data),
