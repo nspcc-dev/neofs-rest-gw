@@ -4,7 +4,7 @@ REPO ?= "$(shell go list -m)"
 VERSION ?= "$(shell git describe --tags --match "v*" --dirty --always 2>/dev/null || cat VERSION 2>/dev/null || echo "develop")"
 
 GO_VERSION ?= 1.19
-LINT_VERSION ?= v1.46.2
+LINT_VERSION ?= v1.49.0
 
 HUB_IMAGE ?= nspccdev/neofs-rest-gw
 HUB_TAG ?= "$(shell echo ${VERSION} | sed 's/^v//')"
