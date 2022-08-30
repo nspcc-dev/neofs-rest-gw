@@ -2,9 +2,6 @@ package handlers
 
 import (
 	"crypto/ecdsa"
-	"crypto/elliptic"
-	"crypto/rand"
-	"crypto/sha512"
 	"encoding/base64"
 	"encoding/hex"
 	"math"
@@ -12,6 +9,7 @@ import (
 
 	"github.com/nspcc-dev/neo-go/pkg/crypto/keys"
 	"github.com/nspcc-dev/neofs-api-go/v2/acl"
+	crypto "github.com/nspcc-dev/neofs-crypto"
 	"github.com/nspcc-dev/neofs-rest-gw/gen/models"
 	"github.com/nspcc-dev/neofs-rest-gw/internal/util"
 	"github.com/nspcc-dev/neofs-sdk-go/user"
@@ -54,12 +52,8 @@ func TestSign(t *testing.T) {
 	binaryBearer := v2token.GetBody().StableMarshal(nil)
 	bearerBase64 := base64.StdEncoding.EncodeToString(binaryBearer)
 
-	h := sha512.Sum512(binaryBearer)
-	x, y, err := ecdsa.Sign(rand.Reader, &key.PrivateKey, h[:])
-	if err != nil {
-		panic(err)
-	}
-	signatureData := elliptic.Marshal(elliptic.P256(), x, y)
+	signatureData, err := crypto.Sign(&key.PrivateKey, binaryBearer)
+	require.NoError(t, err)
 
 	bt := &BearerToken{
 		Token:     bearerBase64,
