@@ -4,6 +4,9 @@ This document outlines major changes between releases.
 
 ## [Unreleased]
 
+### Fixed
+- Fix expiration epoch calculation (#62)
+
 ### Changed
 - Update go version for build to 1.19 (#61)
 
