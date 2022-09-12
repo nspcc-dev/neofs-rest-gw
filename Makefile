@@ -21,7 +21,7 @@ ifeq ($(UNAME), "Darwin/x86_64")
 	SWAGGER_ARCH = darwin_amd64
 endif
 
-SWAGGER_URL = "https://github.com/go-swagger/go-swagger/releases/download/$(SWAGGER_VERSION)/swagger_$(SWAGGER_ARCH)"
+SWAGGER_URL ?= "https://github.com/go-swagger/go-swagger/releases/download/$(SWAGGER_VERSION)/swagger_$(SWAGGER_ARCH)"
 
 # List of binaries to build. For now just one.
 BINDIR = bin
@@ -63,8 +63,8 @@ endif
 # Generate server by swagger spec
 generate-server: swagger
 	./bin/swagger generate server -t gen -f ./spec/rest.yaml --exclude-main \
- 		-A neofs-rest-gw -P models.Principal \
- 		-C templates/server-config.yaml --template-dir templates
+		-A neofs-rest-gw -P models.Principal \
+		-C templates/server-config.yaml --template-dir templates
 
 # Run tests
 test:
@@ -115,11 +115,11 @@ lint:
 docker/all:
 	@echo "=> Running 'make all' in clean Docker environment" && \
 	docker run --rm -t \
-	  -v `pwd`:/src \
-	  -w /src \
-	  -u `stat -c "%u:%g" .` \
-	  --env HOME=/src \
-	  golang:$(GO_VERSION) make all
+		-v `pwd`:/src \
+		-w /src \
+		-u `stat -c "%u:%g" .` \
+		--env HOME=/src \
+		golang:$(GO_VERSION) make all
 
 # Generate server by swagger spec using swagger docker image
 docker/generate-server:
@@ -131,7 +131,7 @@ docker/generate-server:
 		quay.io/goswagger/swagger:$(SWAGGER_VERSION) generate server \
 			-t gen -f ./spec/rest.yaml --exclude-main \
 			-A neofs-rest-gw -P models.Principal \
-            -C templates/server-config.yaml --template-dir templates
+			-C templates/server-config.yaml --template-dir templates
 
 # Run linters in Docker
 docker/lint:
