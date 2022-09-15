@@ -39,12 +39,6 @@ jobs:
       - name: Check version
         run: if [[ $(make version) == *"dirty"* ]]; then exit 1; fi
 
-      - name: Save binary
-        uses: actions/upload-artifact@v2
-        with:
-          name: neofs-rest-gw
-          path: bin/neofs-rest-gw
-
   build_image:
     needs: build_cli
     name: Build Docker image
