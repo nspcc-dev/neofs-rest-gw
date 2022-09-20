@@ -90,6 +90,11 @@ func (a *API) PutContainerEACL(params operations.PutContainerEACLParams, princip
 		return operations.NewPutContainerEACLBadRequest().WithPayload(resp)
 	}
 
+	if err = checkContainerExtendable(params.HTTPRequest.Context(), a.pool, cnrID); err != nil {
+		resp := a.logAndGetErrorResponse("check acl allowance", err)
+		return operations.NewPutContainerEACLBadRequest().WithPayload(resp)
+	}
+
 	st, err := formSessionTokenFromHeaders(principal, params.XBearerSignature, params.XBearerSignatureKey, sessionv2.ContainerVerbSetEACL)
 	if err != nil {
 		resp := a.logAndGetErrorResponse("invalid session token headers", err)
@@ -220,11 +225,28 @@ func (a *API) DeleteContainer(params operations.DeleteContainerParams, principal
 		WithAccessControlAllowOrigin("*")
 }
 
-func getContainerInfo(ctx context.Context, p *pool.Pool, cnrID cid.ID) (*models.ContainerInfo, error) {
+func checkContainerExtendable(ctx context.Context, p *pool.Pool, cnrID cid.ID) error {
+	cnr, err := getContainer(ctx, p, cnrID)
+	if err != nil {
+		return fmt.Errorf("get container: %w", err)
+	}
+
+	if !cnr.BasicACL().Extendable() {
+		return fmt.Errorf("container acl isn't extendable")
+	}
+
+	return nil
+}
+
+func getContainer(ctx context.Context, p *pool.Pool, cnrID cid.ID) (container.Container, error) {
 	var prm pool.PrmContainerGet
 	prm.SetContainerID(cnrID)
 
-	cnr, err := p.GetContainer(ctx, prm)
+	return p.GetContainer(ctx, prm)
+}
+
+func getContainerInfo(ctx context.Context, p *pool.Pool, cnrID cid.ID) (*models.ContainerInfo, error) {
+	cnr, err := getContainer(ctx, p, cnrID)
 	if err != nil {
 		return nil, err
 	}
