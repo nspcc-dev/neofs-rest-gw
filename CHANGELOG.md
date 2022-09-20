@@ -4,6 +4,9 @@ This document outlines major changes between releases.
 
 ## [Unreleased]
 
+### Added
+- ACL sanity checks (#68, #69)
+
 ### Fixed
 - Fix expiration epoch calculation (#62)
 
