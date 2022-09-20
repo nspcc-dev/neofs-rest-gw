@@ -355,8 +355,8 @@ func createContainer(ctx context.Context, p *pool.Pool, stoken session.Container
 		request.BasicACL = defaultBasicACL
 	}
 
-	var basicACL acl.Basic
-	if err = basicACL.DecodeString(request.BasicACL); err != nil {
+	basicACL, err := decodeBasicACL(request.BasicACL)
+	if err != nil {
 		return cid.ID{}, fmt.Errorf("couldn't parse basic acl: %w", err)
 	}
 
