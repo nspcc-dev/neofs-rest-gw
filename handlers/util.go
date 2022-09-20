@@ -6,11 +6,13 @@ import (
 	"fmt"
 	"math"
 	"strconv"
+	"strings"
 	"time"
 
 	objectv2 "github.com/nspcc-dev/neofs-api-go/v2/object"
 	sessionv2 "github.com/nspcc-dev/neofs-api-go/v2/session"
 	"github.com/nspcc-dev/neofs-rest-gw/gen/models"
+	"github.com/nspcc-dev/neofs-sdk-go/container/acl"
 	"github.com/nspcc-dev/neofs-sdk-go/object"
 	"github.com/nspcc-dev/neofs-sdk-go/pool"
 )
@@ -218,4 +220,41 @@ func formSessionTokenFromHeaders(principal *models.Principal, signature, key *st
 		},
 		Verb: verb,
 	}, nil
+}
+
+// decodeBasicACL is the same as DecodeString on acl.Basic but
+// it also checks length for hex formatted acl.
+func decodeBasicACL(input string) (acl.Basic, error) {
+	switch input {
+	case acl.NamePrivate:
+		return acl.Private, nil
+	case acl.NamePrivateExtended:
+		return acl.PrivateExtended, nil
+	case acl.NamePublicRO:
+		return acl.PublicRO, nil
+	case acl.NamePublicROExtended:
+		return acl.PublicROExtended, nil
+	case acl.NamePublicRW:
+		return acl.PublicRW, nil
+	case acl.NamePublicRWExtended:
+		return acl.PublicRWExtended, nil
+	case acl.NamePublicAppend:
+		return acl.PublicAppend, nil
+	case acl.NamePublicAppendExtended:
+		return acl.PublicAppendExtended, nil
+	default:
+		trimmedInput := strings.TrimPrefix(strings.ToLower(input), "0x")
+		if len(trimmedInput) != 8 {
+			return 0, fmt.Errorf("invalid basic ACL size: %s", input)
+		}
+
+		v, err := strconv.ParseUint(trimmedInput, 16, 32)
+		if err != nil {
+			return 0, fmt.Errorf("parse hex: %w", err)
+		}
+
+		var res acl.Basic
+		res.FromBits(uint32(v))
+		return res, nil
+	}
 }
