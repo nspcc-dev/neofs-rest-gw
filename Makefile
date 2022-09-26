@@ -3,6 +3,8 @@
 REPO ?= "$(shell go list -m)"
 VERSION ?= "$(shell git describe --tags --match "v*" --dirty --always --abbrev=8 2>/dev/null || cat VERSION 2>/dev/null || echo "develop")"
 
+BUILD_OS ?= linux
+BUILD_ARCH ?= amd64
 GO_VERSION ?= 1.19
 LINT_VERSION ?= v1.49.0
 
@@ -16,9 +18,12 @@ SWAGGER_ARCH = linux_amd64
 
 ifeq ($(UNAME), "Darwin/arm64")
 	SWAGGER_ARCH = darwin_arm64
+	BUILD_OS=darwin
+	BUILD_ARCH=arm64
 endif
 ifeq ($(UNAME), "Darwin/x86_64")
 	SWAGGER_ARCH = darwin_amd64
+	BUILD_OS=darwin
 endif
 
 SWAGGER_URL ?= "https://github.com/go-swagger/go-swagger/releases/download/$(SWAGGER_VERSION)/swagger_$(SWAGGER_ARCH)"
@@ -36,6 +41,8 @@ all: generate-server $(BINS)
 $(BINS): $(DIRS) dep
 	@echo "⇒ Build $@"
 	CGO_ENABLED=0 \
+	GOOS=$(BUILD_OS) \
+	GOARCH=$(BUILD_ARCH) \
 	go build -v -trimpath \
 	-ldflags "-X main.Version=$(VERSION)" \
 	-o $@ ./cmd/neofs-rest-gw
@@ -119,6 +126,8 @@ docker/all:
 		-w /src \
 		-u `stat -c "%u:%g" .` \
 		--env HOME=/src \
+		--env BUILD_OS=$(BUILD_OS) \
+		--env BUILD_ARCH=$(BUILD_ARCH) \
 		golang:$(GO_VERSION) make all
 
 # Generate server by swagger spec using swagger docker image
