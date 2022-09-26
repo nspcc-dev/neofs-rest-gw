@@ -13,6 +13,10 @@ jobs:
   build_cli:
     name: Build CLI
     runs-on: ubuntu-20.04
+    strategy:
+      matrix:
+        go_os: [ linux, darwin ]
+        go_arch: [ amd64, arm64 ]
 
     steps:
       - uses: actions/checkout@v2
@@ -34,7 +38,7 @@ jobs:
         run: make dep
 
       - name: Build CLI
-        run: make
+        run: BUILD_OS=${{ matrix.go_os }} BUILD_ARCH=${{ matrix.go_arch }} make
 
       - name: Check version
         run: if [[ $(make version) == *"dirty"* ]]; then exit 1; fi
