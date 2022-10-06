@@ -118,6 +118,17 @@ paths:
             $ref: '#/definitions/ErrorResponse'
 
   /auth/bearer:
+    options:
+      operationId: optionsAuthBearer
+      security: [ ]
+      responses:
+        200:
+          description: CORS
+          headers:
+            Access-Control-Allow-Origin:
+              type: string
+            Access-Control-Allow-Headers:
+              type: string
     get:
       operationId: formBinaryBearer
       summary: Form binary bearer token

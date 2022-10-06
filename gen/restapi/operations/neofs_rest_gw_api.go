@@ -74,6 +74,9 @@ func NewNeofsRestGwAPI(spec *loads.Document) *NeofsRestGwAPI {
 		OptionsAuthHandler: OptionsAuthHandlerFunc(func(params OptionsAuthParams) middleware.Responder {
 			return middleware.NotImplemented("operation OptionsAuth has not yet been implemented")
 		}),
+		OptionsAuthBearerHandler: OptionsAuthBearerHandlerFunc(func(params OptionsAuthBearerParams) middleware.Responder {
+			return middleware.NotImplemented("operation OptionsAuthBearer has not yet been implemented")
+		}),
 		OptionsContainersEACLHandler: OptionsContainersEACLHandlerFunc(func(params OptionsContainersEACLParams) middleware.Responder {
 			return middleware.NotImplemented("operation OptionsContainersEACL has not yet been implemented")
 		}),
@@ -174,6 +177,8 @@ type NeofsRestGwAPI struct {
 	ListContainersHandler ListContainersHandler
 	// OptionsAuthHandler sets the operation handler for the options auth operation
 	OptionsAuthHandler OptionsAuthHandler
+	// OptionsAuthBearerHandler sets the operation handler for the options auth bearer operation
+	OptionsAuthBearerHandler OptionsAuthBearerHandler
 	// OptionsContainersEACLHandler sets the operation handler for the options containers e ACL operation
 	OptionsContainersEACLHandler OptionsContainersEACLHandler
 	// OptionsContainersGetDeleteHandler sets the operation handler for the options containers get delete operation
@@ -304,6 +309,9 @@ func (o *NeofsRestGwAPI) Validate() error {
 	}
 	if o.OptionsAuthHandler == nil {
 		unregistered = append(unregistered, "OptionsAuthHandler")
+	}
+	if o.OptionsAuthBearerHandler == nil {
+		unregistered = append(unregistered, "OptionsAuthBearerHandler")
 	}
 	if o.OptionsContainersEACLHandler == nil {
 		unregistered = append(unregistered, "OptionsContainersEACLHandler")
@@ -474,6 +482,10 @@ func (o *NeofsRestGwAPI) initHandlerCache() {
 		o.handlers["OPTIONS"] = make(map[string]http.Handler)
 	}
 	o.handlers["OPTIONS"]["/auth"] = NewOptionsAuth(o.context, o.OptionsAuthHandler)
+	if o.handlers["OPTIONS"] == nil {
+		o.handlers["OPTIONS"] = make(map[string]http.Handler)
+	}
+	o.handlers["OPTIONS"]["/auth/bearer"] = NewOptionsAuthBearer(o.context, o.OptionsAuthBearerHandler)
 	if o.handlers["OPTIONS"] == nil {
 		o.handlers["OPTIONS"] = make(map[string]http.Handler)
 	}
