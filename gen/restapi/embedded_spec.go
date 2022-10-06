@@ -193,6 +193,23 @@ func init() {
             }
           }
         }
+      },
+      "options": {
+        "security": [],
+        "operationId": "optionsAuthBearer",
+        "responses": {
+          "200": {
+            "description": "CORS",
+            "headers": {
+              "Access-Control-Allow-Headers": {
+                "type": "string"
+              },
+              "Access-Control-Allow-Origin": {
+                "type": "string"
+              }
+            }
+          }
+        }
       }
     },
     "/containers": {
@@ -1819,6 +1836,23 @@ func init() {
             "description": "Bad request",
             "schema": {
               "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        }
+      },
+      "options": {
+        "security": [],
+        "operationId": "optionsAuthBearer",
+        "responses": {
+          "200": {
+            "description": "CORS",
+            "headers": {
+              "Access-Control-Allow-Headers": {
+                "type": "string"
+              },
+              "Access-Control-Allow-Origin": {
+                "type": "string"
+              }
             }
           }
         }

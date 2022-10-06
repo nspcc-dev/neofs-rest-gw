@@ -8,11 +8,17 @@ import (
 const (
 	allOrigins   = "*"
 	allowMethods = "PUT, DELETE"
-	allowHeaders = "X-Bearer-Owner-Id, X-Bearer-Signature, X-Bearer-Signature-Key, Content-Type, Authorization"
+	allowHeaders = "X-Bearer-For-All-Users, X-Bearer-Lifetime, X-Bearer-Owner-Id, X-Bearer-Signature, X-Bearer-Signature-Key, Content-Type, Authorization"
 )
 
 func (a *API) OptionsAuth(operations.OptionsAuthParams) middleware.Responder {
 	return operations.NewOptionsAuthOK().
+		WithAccessControlAllowOrigin(allOrigins).
+		WithAccessControlAllowHeaders(allowHeaders)
+}
+
+func (a *API) OptionsAuthBearer(operations.OptionsAuthBearerParams) middleware.Responder {
+	return operations.NewOptionsAuthBearerOK().
 		WithAccessControlAllowOrigin(allOrigins).
 		WithAccessControlAllowHeaders(allowHeaders)
 }
