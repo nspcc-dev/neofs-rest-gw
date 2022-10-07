@@ -4,11 +4,16 @@ This document outlines major changes between releases.
 
 ## [Unreleased]
 
+## [0.5.0] "Undercity" - 2022-10-07
+
 ### Added
 - ACL sanity checks (#68, #69)
+- Cross platform builds (#26)
 
 ### Fixed
 - Fix expiration epoch calculation (#62)
+- Typos in Makefile (#65)
+- CORS for authentication (#73)
 
 ### Changed
 - Update go version for build to 1.19 (#61)
@@ -69,4 +74,5 @@ Please refer to [GitHub releases](https://github.com/nspcc-dev/neofs-rest-gw/rel
 [0.2.0]: https://github.com/nspcc-dev/neofs-rest-gw/compare/v0.1.0...v0.2.0
 [0.3.0]: https://github.com/nspcc-dev/neofs-rest-gw/compare/v0.2.0...v0.3.0
 [0.4.0]: https://github.com/nspcc-dev/neofs-rest-gw/compare/v0.3.0...v0.4.0
-[Unreleased]: https://github.com/nspcc-dev/neofs-rest-gw/compare/v0.4.0...master
+[0.5.0]: https://github.com/nspcc-dev/neofs-rest-gw/compare/v0.4.0...v0.5.0
+[Unreleased]: https://github.com/nspcc-dev/neofs-rest-gw/compare/v0.5.0...master
