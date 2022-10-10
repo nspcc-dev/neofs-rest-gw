@@ -2,6 +2,8 @@ package main
 
 import (
 	"context"
+	"os/signal"
+	"syscall"
 
 	"github.com/go-openapi/loads"
 	"github.com/nspcc-dev/neofs-rest-gw/gen/restapi"
@@ -10,7 +12,7 @@ import (
 )
 
 func main() {
-	ctx := context.Background()
+	ctx, _ := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 
 	v := config()
 	logger := newLogger(v)
