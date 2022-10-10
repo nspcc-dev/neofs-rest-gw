@@ -4,6 +4,9 @@ This document outlines major changes between releases.
 
 ## [Unreleased]
 
+### Added
+- Stop pool dial on SIGINT (#76)
+
 ## [0.5.0] "Undercity" - 2022-10-07
 
 ### Added
