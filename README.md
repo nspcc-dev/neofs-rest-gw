@@ -90,8 +90,8 @@ Or you can also use a [Docker image](https://hub.docker.com/r/nspccdev/neofs-res
 ## Execution
 
 REST gateway itself is not a NeoFS node, so to access NeoFS it uses node's gRPC interface and you need to provide some
-node that it will connect to. This can be done either via `-p` parameter or via `REST_GW_PEERS_<N>_ADDRESS` and
-`REST_GW_PEERS_<N>_WEIGHT` environment variables (the gate supports multiple NeoFS nodes with weighted load balancing).
+node that it will connect to. This can be done either via `-p` parameter or via `REST_GW_POOL_PEERS_<N>_ADDRESS` and
+`REST_GW_POOL_PEERS_<N>_WEIGHT` environment variables (the gate supports multiple NeoFS nodes with weighted load balancing).
 
 If you're launching REST gateway in bundle with [neofs-dev-env](https://github.com/nspcc-dev/neofs-dev-env), you can get
 an IP address of the node in output of `make hosts` command
@@ -102,14 +102,14 @@ settings):
 
 ```shell
 $ neofs-rest-gw -p 192.168.130.72:8080
-$ REST_GW_PEERS_0_ADDRESS=192.168.130.72:8080 neofs-rest-gw
+$ REST_GW_POOL_PEERS_0_ADDRESS=192.168.130.72:8080 neofs-rest-gw
 ```
 
 It's also possible to specify uri scheme (grpc or grpcs) when using `-p`:
 
 ```shell
 $ neofs-rest-gw -p grpc://192.168.130.72:8080
-$ REST_GW_PEERS_0_ADDRESS=grpcs://192.168.130.72:8080 neofs-rest-gw
+$ REST_GW_POOL_PEERS_0_ADDRESS=grpcs://192.168.130.72:8080 neofs-rest-gw
 ```
 
 ## Configuration

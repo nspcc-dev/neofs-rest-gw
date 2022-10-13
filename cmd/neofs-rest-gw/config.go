@@ -35,10 +35,15 @@ const (
 	defaultPoolErrorThreshold uint32 = 100
 
 	// Pool config.
-	cfgNodeDialTimeout    = "node-dial-timeout"
-	cfgHealthcheckTimeout = "healthcheck-timeout"
-	cfgRebalance          = "rebalance-timer"
-	cfgPoolErrorThreshold = "pool-error-threshold"
+	cmdNodeDialTimeout    = "node-dial-timeout"
+	cfgNodeDialTimeout    = "pool." + cmdNodeDialTimeout
+	cmdHealthcheckTimeout = "healthcheck-timeout"
+	cfgHealthcheckTimeout = "pool." + cmdHealthcheckTimeout
+	cmdRebalance          = "rebalance-timer"
+	cfgRebalance          = "pool." + cmdRebalance
+	cfgPoolErrorThreshold = "pool.error-threshold"
+	cmdPeers              = "peers"
+	cfgPeers              = "pool." + cmdPeers
 
 	// Metrics / Profiler.
 	cfgPrometheusEnabled = "prometheus.enabled"
@@ -53,9 +58,6 @@ const (
 	cfgWalletPath       = "wallet.path"
 	cfgWalletAddress    = "wallet.address"
 	cfgWalletPassphrase = "wallet.passphrase"
-
-	// Peers.
-	cfgPeers = "peers"
 
 	// Command line args.
 	cmdHelp    = "help"
@@ -104,11 +106,11 @@ func config() *viper.Viper {
 	flagSet.StringP(cmdWallet, "w", "", `path to the wallet`)
 	flagSet.String(cmdAddress, "", `address of wallet account`)
 	config := flagSet.String(cmdConfig, "", "config path")
-	flagSet.Duration(cfgNodeDialTimeout, defaultConnectTimeout, "gRPC node connect timeout")
-	flagSet.Duration(cfgHealthcheckTimeout, defaultHealthcheckTimeout, "gRPC healthcheck timeout")
-	flagSet.Duration(cfgRebalance, defaultRebalanceTimer, "gRPC connection rebalance timer")
+	flagSet.Duration(cmdNodeDialTimeout, defaultConnectTimeout, "gRPC node connect timeout")
+	flagSet.Duration(cmdHealthcheckTimeout, defaultHealthcheckTimeout, "gRPC healthcheck timeout")
+	flagSet.Duration(cmdRebalance, defaultRebalanceTimer, "gRPC connection rebalance timer")
 
-	peers := flagSet.StringArrayP(cfgPeers, "p", nil, "NeoFS nodes")
+	peers := flagSet.StringArrayP(cmdPeers, "p", nil, "NeoFS nodes")
 
 	// init server flags
 	restapi.BindDefaultFlags(flagSet)
@@ -129,6 +131,15 @@ func config() *viper.Viper {
 		panic(err)
 	}
 	if err := v.BindPFlag(cfgPrometheusEnabled, flagSet.Lookup(cmdMetrics)); err != nil {
+		panic(err)
+	}
+	if err := v.BindPFlag(cfgNodeDialTimeout, flagSet.Lookup(cmdNodeDialTimeout)); err != nil {
+		panic(err)
+	}
+	if err := v.BindPFlag(cfgHealthcheckTimeout, flagSet.Lookup(cmdHealthcheckTimeout)); err != nil {
+		panic(err)
+	}
+	if err := v.BindPFlag(cfgRebalance, flagSet.Lookup(cmdRebalance)); err != nil {
 		panic(err)
 	}
 

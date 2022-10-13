@@ -7,6 +7,19 @@ This document outlines major changes between releases.
 ### Added
 - Stop pool dial on SIGINT (#76)
 
+### Changed
+- Pool configuration parameters (#66)
+
+### Updating from v0.5.0
+
+Now all pool config parameters moved to `pool` section. So you need to change:
+
+* `peers` -> `pool.peers` (`REST_GW_PEERS` -> `REST_GW_POOL_PEERS`)
+* `node-dial-timeout` -> `pool.node-dial-timeout` (`REST_GW_NODE_DIAL_TIMEOUT` -> `REST_GW_POOL_NODE_DIAL_TIMEOUT`)
+* `healthcheck-timeout` -> `pool.healthcheck-timeout` (`REST_GW_HEALTHCHECK_TIMEOUT` -> `REST_GW_POOL_HEALTHCHECK_TIMEOUT`)
+* `rebalance-timer` -> `pool.rebalance-timer` (`REST_GW_REBALANCE_TIMER` -> `REST_GW_POOL_REBALANCE_TIMER`)
+* `pool-error-threshold` -> `pool.error-threshold` 
+
 ## [0.5.0] "Undercity" - 2022-10-07
 
 ### Added
