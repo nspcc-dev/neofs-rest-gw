@@ -142,27 +142,25 @@ func (a *API) GetObjectInfo(params operations.GetObjectInfoParams, principal *mo
 		}
 	}
 
-	var prmRange pool.PrmObjectRange
-	prmRange.SetAddress(addr)
-	prmRange.UseBearer(btoken)
-
-	var offset, length uint64
-	if params.RangeOffset != nil || params.RangeLength != nil {
-		if params.RangeOffset == nil || params.RangeLength == nil {
-			errResp := a.logAndGetErrorResponse("invalid range param", errors.New("both offset and length musded"))
-			return errorResponse.WithPayload(errResp)
-		}
-		offset = uint64(*params.RangeOffset)
-		length = uint64(*params.RangeLength)
-	} else {
-		length = objInfo.PayloadSize()
+	if objInfo.PayloadSize() == 0 {
+		return operations.NewGetObjectInfoOK().WithPayload(&resp)
 	}
-	prmRange.SetOffset(offset)
-	prmRange.SetLength(length)
+
+	offset, length, err := prepareOffsetLength(params, objInfo.PayloadSize())
+	if err != nil {
+		errResp := a.logAndGetErrorResponse("invalid range param", err)
+		return errorResponse.WithPayload(errResp)
+	}
 
 	if uint64(*params.MaxPayloadSize) < length {
 		return operations.NewGetObjectInfoOK().WithPayload(&resp)
 	}
+
+	var prmRange pool.PrmObjectRange
+	prmRange.SetAddress(addr)
+	prmRange.UseBearer(btoken)
+	prmRange.SetOffset(offset)
+	prmRange.SetLength(length)
 
 	rangeRes, err := a.pool.ObjectRange(ctx, prmRange)
 	if err != nil {
@@ -435,4 +433,27 @@ func prepareBearerToken(bt *BearerToken, isWalletConnect, isFullToken bool) (bea
 	}
 
 	return btoken, nil
+}
+
+func prepareOffsetLength(params operations.GetObjectInfoParams, objSize uint64) (uint64, uint64, error) {
+	var offset, length uint64
+	if params.RangeOffset != nil || params.RangeLength != nil {
+		if params.RangeOffset == nil || params.RangeLength == nil {
+			return 0, 0, errors.New("both offset and length must be provided")
+		}
+		offset = uint64(*params.RangeOffset)
+		length = uint64(*params.RangeLength)
+	} else {
+		length = objSize
+	}
+
+	if offset >= objSize {
+		return 0, 0, fmt.Errorf("offset '%d' must be less than object size '%d'", offset, objSize)
+	}
+
+	if offset+length > objSize {
+		return 0, 0, fmt.Errorf("end of range '%d' must be less or equal object size '%d'", offset+length, objSize)
+	}
+
+	return offset, length, nil
 }
