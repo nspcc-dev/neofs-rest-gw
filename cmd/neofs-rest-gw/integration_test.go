@@ -83,7 +83,9 @@ func runTestInContainer(rootCtx context.Context, t *testing.T, key *keys.Private
 	aioImage := "nspccdev/neofs-aio-testcontainer:"
 	versions := []string{
 		"0.29.0",
-		//"latest",
+		"0.30.0",
+		"0.32.0",
+		"latest",
 	}
 
 	for _, version := range versions {
@@ -607,6 +609,25 @@ func restObjectGet(ctx context.Context, t *testing.T, p *pool.Pool, ownerID *use
 	contentData, err = base64.StdEncoding.DecodeString(objInfo.Payload)
 	require.NoError(t, err)
 	require.Equal(t, content[:rangeLength], contentData)
+
+	// check empty object
+	objID2 := createObject(ctx, t, p, ownerID, cnrID, map[string]string{}, []byte{})
+
+	query2 := make(url.Values)
+	query2.Add(walletConnectQuery, strconv.FormatBool(useWalletConnect))
+
+	request2, err := http.NewRequest(http.MethodGet, testHost+"/v1/objects/"+cnrID.EncodeToString()+"/"+objID2.EncodeToString()+"?"+query2.Encode(), nil)
+	require.NoError(t, err)
+	prepareCommonHeaders(request2.Header, bearerToken)
+
+	objInfo2 := &models.ObjectInfo{}
+	doRequest(t, httpClient, request2, http.StatusOK, objInfo2)
+
+	require.Equal(t, cnrID.EncodeToString(), *objInfo2.ContainerID)
+	require.Equal(t, objID2.EncodeToString(), *objInfo2.ObjectID)
+	require.Equal(t, ownerID.EncodeToString(), *objInfo2.OwnerID)
+	require.Equal(t, 0, len(objInfo2.Attributes))
+	require.Equal(t, int64(0), *objInfo2.ObjectSize)
 }
 
 func restObjectGetFullBearer(ctx context.Context, t *testing.T, p *pool.Pool, ownerID *user.ID, cnrID cid.ID) {
