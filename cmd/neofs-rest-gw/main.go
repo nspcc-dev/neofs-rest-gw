@@ -16,6 +16,7 @@ func main() {
 
 	v := config()
 	logger := newLogger(v)
+	validateConfig(v, logger)
 
 	neofsAPI, err := newNeofsAPI(ctx, logger, v)
 	if err != nil {
