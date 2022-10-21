@@ -8,7 +8,7 @@ This document outlines major changes between releases.
 - Stop pool dial on SIGINT (#76)
 
 ### Changed
-- Pool configuration parameters (#66)
+- Configuration parameters (#66, #71)
 
 ### Updating from v0.5.0
 
@@ -19,6 +19,17 @@ Now all pool config parameters moved to `pool` section. So you need to change:
 * `healthcheck-timeout` -> `pool.healthcheck-timeout` (`REST_GW_HEALTHCHECK_TIMEOUT` -> `REST_GW_POOL_HEALTHCHECK_TIMEOUT`)
 * `rebalance-timer` -> `pool.rebalance-timer` (`REST_GW_REBALANCE_TIMER` -> `REST_GW_POOL_REBALANCE_TIMER`)
 * `pool-error-threshold` -> `pool.error-threshold` 
+
+Besides all other parameters that doesn't belong any section, now in `server` section:
+* `listen-address` -> `server.listen-address`
+
+The same should be done for the following parameters as well:
+```
+scheme, cleanup-timeout, graceful-timeout, max-header-size, listen-limit, keep-alive, read-timeout, write-timeout, 
+tls-listen-address, tls-certificate, tls-key, tls-ca, tls-listen-limit, tls-keep-alive, tls-read-timeout, tls-write-timeout
+```
+
+Environment variables should be changed appropriately.
 
 ## [0.5.0] "Undercity" - 2022-10-07
 
