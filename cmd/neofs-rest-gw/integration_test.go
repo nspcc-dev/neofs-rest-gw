@@ -192,8 +192,8 @@ func getDefaultConfig(node string) *viper.Viper {
 	v.SetDefault(cfgPeers+".0.address", node)
 	v.SetDefault(cfgPeers+".0.weight", 1)
 	v.SetDefault(cfgPeers+".0.priority", 1)
-	v.SetDefault(restapi.FlagListenAddress, testListenAddress)
-	v.SetDefault(restapi.FlagWriteTimeout, 60*time.Second)
+	v.SetDefault(cfgServerSection+restapi.FlagListenAddress, testListenAddress)
+	v.SetDefault(cfgServerSection+restapi.FlagWriteTimeout, 60*time.Second)
 
 	return v
 }

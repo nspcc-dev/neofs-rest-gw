@@ -50,42 +50,43 @@ pool:
       priority: 2
       weight: 9
 
-# The listeners to enable, this can be repeated and defaults to the schemes in the swagger spec.
-scheme: [ http ]
-# Grace period for which to wait before killing idle connections
-cleanup-timeout: 10s
-# Grace period for which to wait before shutting down the server
-graceful-timeout: 15s
-# Controls the maximum number of bytes the server will read parsing the request header's keys and values,
-# including the request line. It does not limit the size of the request body.
-max-header-size: 1000000
+server:
+  # The listeners to enable, this can be repeated and defaults to the schemes in the swagger spec.
+  scheme: [ http ]
+  # Grace period for which to wait before killing idle connections
+  cleanup-timeout: 10s
+  # Grace period for which to wait before shutting down the server
+  graceful-timeout: 15s
+  # Controls the maximum number of bytes the server will read parsing the request header's keys and values,
+  # including the request line. It does not limit the size of the request body.
+  max-header-size: 1000000
 
-# The IP and port to listen on.
-listen-address: localhost:8080
-# Limit the number of outstanding requests.
-listen-limit: 0
-# Sets the TCP keep-alive timeouts on accepted connections.
-# It prunes dead TCP connections ( e.g. closing laptop mid-download).
-keep-alive: 3m
-# Maximum duration before timing out read of the request.
-read-timeout: 30s
-# Maximum duration before timing out write of the response.
-write-timeout: 30s
+  # The IP and port to listen on.
+  listen-address: localhost:8080
+  # Limit the number of outstanding requests.
+  listen-limit: 0
+  # Sets the TCP keep-alive timeouts on accepted connections.
+  # It prunes dead TCP connections ( e.g. closing laptop mid-download).
+  keep-alive: 3m
+  # Maximum duration before timing out read of the request.
+  read-timeout: 30s
+  # Maximum duration before timing out write of the response.
+  write-timeout: 30s
 
-# The IP and port to listen on.
-tls-listen-address: localhost:8081
-# The certificate file to use for secure connections.
-tls-certificate: /path/to/tls/cert
-# The private key file to use for secure connections (without passphrase).
-tls-key: /path/to/tls/key
-# The certificate authority certificate file to be used with mutual tls auth.
-tls-ca: /path/to/tls/ca
-# Limit the number of outstanding requests.
-tls-listen-limit: 0
-# Sets the TCP keep-alive timeouts on accepted connections.
-# It prunes dead TCP connections ( e.g. closing laptop mid-download).
-tls-keep-alive: 3m
-# Maximum duration before timing out read of the request.
-tls-read-timeout: 30s
-# Maximum duration before timing out write of the response.
-tls-write-timeout: 30s
+  # The IP and port to listen on.
+  tls-listen-address: localhost:8081
+  # The certificate file to use for secure connections.
+  tls-certificate: /path/to/tls/cert
+  # The private key file to use for secure connections (without passphrase).
+  tls-key: /path/to/tls/key
+  # The certificate authority certificate file to be used with mutual tls auth.
+  tls-ca: /path/to/tls/ca
+  # Limit the number of outstanding requests.
+  tls-listen-limit: 0
+  # Sets the TCP keep-alive timeouts on accepted connections.
+  # It prunes dead TCP connections ( e.g. closing laptop mid-download).
+  tls-keep-alive: 3m
+  # Maximum duration before timing out read of the request.
+  tls-read-timeout: 30s
+  # Maximum duration before timing out write of the response.
+  tls-write-timeout: 30s

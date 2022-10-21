@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/spf13/pflag"
+	"github.com/spf13/viper"
 )
 
 const (
@@ -50,4 +51,64 @@ func BindDefaultFlags(flagSet *pflag.FlagSet) {
 	flagSet.Duration(FlagTLSKeepAlive, 3*time.Minute, "sets the TCP keep-alive timeouts on accepted connections. It prunes dead TCP connections ( e.g. closing laptop mid-download)")
 	flagSet.Duration(FlagTLSReadTimeout, 30*time.Second, "maximum duration before timing out read of the request")
 	flagSet.Duration(FlagTLSWriteTimeout, 30*time.Second, "maximum duration before timing out write of the response")
+}
+
+// BindFlagsToConfig maps flags to viper config in specific section.
+func BindFlagsToConfig(v *viper.Viper, flagSet *pflag.FlagSet, section string) error {
+	if err := v.BindPFlag(section+FlagScheme, flagSet.Lookup(FlagScheme)); err != nil {
+		return err
+	}
+
+	if err := v.BindPFlag(section+FlagCleanupTimeout, flagSet.Lookup(FlagCleanupTimeout)); err != nil {
+		return err
+	}
+	if err := v.BindPFlag(section+FlagGracefulTimeout, flagSet.Lookup(FlagGracefulTimeout)); err != nil {
+		return err
+	}
+	if err := v.BindPFlag(section+FlagMaxHeaderSize, flagSet.Lookup(FlagMaxHeaderSize)); err != nil {
+		return err
+	}
+
+	if err := v.BindPFlag(section+FlagListenAddress, flagSet.Lookup(FlagListenAddress)); err != nil {
+		return err
+	}
+	if err := v.BindPFlag(section+FlagListenLimit, flagSet.Lookup(FlagListenLimit)); err != nil {
+		return err
+	}
+	if err := v.BindPFlag(section+FlagKeepAlive, flagSet.Lookup(FlagKeepAlive)); err != nil {
+		return err
+	}
+	if err := v.BindPFlag(section+FlagReadTimeout, flagSet.Lookup(FlagReadTimeout)); err != nil {
+		return err
+	}
+	if err := v.BindPFlag(section+FlagWriteTimeout, flagSet.Lookup(FlagWriteTimeout)); err != nil {
+		return err
+	}
+
+	if err := v.BindPFlag(section+FlagTLSListenAddress, flagSet.Lookup(FlagTLSListenAddress)); err != nil {
+		return err
+	}
+	if err := v.BindPFlag(section+FlagTLSCertificate, flagSet.Lookup(FlagTLSCertificate)); err != nil {
+		return err
+	}
+	if err := v.BindPFlag(section+FlagTLSKey, flagSet.Lookup(FlagTLSKey)); err != nil {
+		return err
+	}
+	if err := v.BindPFlag(section+FlagTLSCa, flagSet.Lookup(FlagTLSCa)); err != nil {
+		return err
+	}
+	if err := v.BindPFlag(section+FlagTLSListenLimit, flagSet.Lookup(FlagTLSListenLimit)); err != nil {
+		return err
+	}
+	if err := v.BindPFlag(section+FlagTLSKeepAlive, flagSet.Lookup(FlagTLSKeepAlive)); err != nil {
+		return err
+	}
+	if err := v.BindPFlag(section+FlagTLSReadTimeout, flagSet.Lookup(FlagTLSReadTimeout)); err != nil {
+		return err
+	}
+	if err := v.BindPFlag(section+FlagTLSWriteTimeout, flagSet.Lookup(FlagTLSWriteTimeout)); err != nil {
+		return err
+	}
+
+	return nil
 }
