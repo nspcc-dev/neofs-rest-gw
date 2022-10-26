@@ -599,6 +599,12 @@ func init() {
     },
     "/objects/{containerId}/search": {
       "post": {
+        "security": [
+          {},
+          {
+            "BearerAuth": []
+          }
+        ],
         "summary": "Search objects by filters",
         "operationId": "searchObjects",
         "parameters": [
@@ -685,6 +691,12 @@ func init() {
     },
     "/objects/{containerId}/{objectId}": {
       "get": {
+        "security": [
+          {},
+          {
+            "BearerAuth": []
+          }
+        ],
         "summary": "Get object info by address",
         "operationId": "getObjectInfo",
         "parameters": [
@@ -2298,6 +2310,12 @@ func init() {
     },
     "/objects/{containerId}/search": {
       "post": {
+        "security": [
+          {},
+          {
+            "BearerAuth": []
+          }
+        ],
         "summary": "Search objects by filters",
         "operationId": "searchObjects",
         "parameters": [
@@ -2403,6 +2421,12 @@ func init() {
     },
     "/objects/{containerId}/{objectId}": {
       "get": {
+        "security": [
+          {},
+          {
+            "BearerAuth": []
+          }
+        ],
         "summary": "Get object info by address",
         "operationId": "getObjectInfo",
         "parameters": [

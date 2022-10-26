@@ -188,25 +188,6 @@ func IsObjectToken(token *models.Bearer) (bool, error) {
 	return isObject, nil
 }
 
-func prepareBearerTokenHeaders(signature, key *string, isWalletConnect, isFullToken bool) (*BearerTokenHeaders, error) {
-	bearerHeaders := &BearerTokenHeaders{
-		IsWalletConnect: isWalletConnect,
-		IsFullToken:     isFullToken,
-	}
-	if isFullToken {
-		return bearerHeaders, nil
-	}
-
-	if signature == nil || key == nil {
-		return nil, errors.New("missed signature or key header")
-	}
-
-	bearerHeaders.Signature = *signature
-	bearerHeaders.Key = *key
-
-	return bearerHeaders, nil
-}
-
 func formSessionTokenFromHeaders(principal *models.Principal, signature, key *string, verb sessionv2.ContainerSessionVerb) (*SessionToken, error) {
 	if signature == nil || key == nil {
 		return nil, errors.New("missed signature or key header")

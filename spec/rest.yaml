@@ -240,6 +240,9 @@ paths:
     post:
       operationId: searchObjects
       summary: Search objects by filters
+      security:
+        - {}
+        - BearerAuth: [ ]
       parameters:
         - $ref: '#/parameters/signatureParam'
         - $ref: '#/parameters/signatureKeyParam'
@@ -297,6 +300,9 @@ paths:
     get:
       operationId: getObjectInfo
       summary: Get object info by address
+      security:
+        - {}
+        - BearerAuth: [ ]
       parameters:
         - $ref: '#/parameters/signatureParam'
         - $ref: '#/parameters/signatureKeyParam'
