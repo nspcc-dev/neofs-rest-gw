@@ -123,6 +123,7 @@ func runTests(ctx context.Context, t *testing.T, key *keys.PrivateKey, version s
 
 	t.Run("rest put object "+version, func(t *testing.T) { restObjectPut(ctx, t, clientPool, cnrID) })
 	t.Run("rest get object "+version, func(t *testing.T) { restObjectGet(ctx, t, clientPool, &owner, cnrID) })
+	t.Run("rest get object unauthenticated "+version, func(t *testing.T) { restObjectGetUnauthenticated(ctx, t, clientPool, &owner, cnrID) })
 	t.Run("rest get object full bearer "+version, func(t *testing.T) { restObjectGetFullBearer(ctx, t, clientPool, &owner, cnrID) })
 	t.Run("rest delete object "+version, func(t *testing.T) { restObjectDelete(ctx, t, clientPool, &owner, cnrID) })
 	t.Run("rest search objects "+version, func(t *testing.T) { restObjectsSearch(ctx, t, clientPool, &owner, cnrID) })
@@ -628,6 +629,53 @@ func restObjectGet(ctx context.Context, t *testing.T, p *pool.Pool, ownerID *use
 	require.Equal(t, ownerID.EncodeToString(), *objInfo2.OwnerID)
 	require.Equal(t, 0, len(objInfo2.Attributes))
 	require.Equal(t, int64(0), *objInfo2.ObjectSize)
+}
+
+func restObjectGetUnauthenticated(ctx context.Context, t *testing.T, p *pool.Pool, ownerID *user.ID, cnrID cid.ID) {
+	content := []byte("some content")
+	attributes := map[string]string{
+		object.AttributeFileName: "get-obj-unauth-name",
+		"user-attribute":         "user value",
+	}
+
+	objID := createObject(ctx, t, p, ownerID, cnrID, attributes, content)
+
+	httpClient := defaultHTTPClient()
+
+	request, err := http.NewRequest(http.MethodGet, testHost+"/v1/objects/"+cnrID.EncodeToString()+"/"+objID.EncodeToString(), nil)
+	require.NoError(t, err)
+
+	request.Header.Add("Content-Type", "application/json")
+
+	resp := &models.ErrorResponse{}
+	doRequest(t, httpClient, request, http.StatusBadRequest, resp)
+	require.Equal(t, int64(2048), resp.Code)
+	require.Equal(t, models.ErrorTypeAPI, *resp.Type)
+
+	// set empty eacl table to be able to do unauthenticated request
+	allowByEACL(ctx, t, p, cnrID)
+
+	request, err = http.NewRequest(http.MethodGet, testHost+"/v1/objects/"+cnrID.EncodeToString()+"/"+objID.EncodeToString(), nil)
+	require.NoError(t, err)
+	objInfo := &models.ObjectInfo{}
+	doRequest(t, httpClient, request, http.StatusOK, objInfo)
+
+	require.Equal(t, cnrID.EncodeToString(), *objInfo.ContainerID)
+	require.Equal(t, objID.EncodeToString(), *objInfo.ObjectID)
+	require.Equal(t, ownerID.EncodeToString(), *objInfo.OwnerID)
+	require.Equal(t, len(attributes), len(objInfo.Attributes))
+	require.Equal(t, int64(len(content)), *objInfo.ObjectSize)
+
+	contentData, err := base64.StdEncoding.DecodeString(objInfo.Payload)
+	require.NoError(t, err)
+	require.Equal(t, content, contentData)
+
+	for _, attr := range objInfo.Attributes {
+		require.Equal(t, attributes[*attr.Key], *attr.Value)
+	}
+
+	// set eacl the same as was before test started
+	restrictByEACL(ctx, t, p, cnrID)
 }
 
 func restObjectGetFullBearer(ctx context.Context, t *testing.T, p *pool.Pool, ownerID *user.ID, cnrID cid.ID) {
@@ -1284,6 +1332,24 @@ func restrictByEACL(ctx context.Context, t *testing.T, clientPool *pool.Pool, cn
 		record.SetTargets(*target)
 		table.AddRecord(record)
 	}
+
+	var waitPrm pool.WaitParams
+	waitPrm.SetPollInterval(3 * time.Second)
+	waitPrm.SetTimeout(15 * time.Second)
+
+	var prm pool.PrmContainerSetEACL
+	prm.SetTable(*table)
+	prm.SetWaitParams(waitPrm)
+
+	err := clientPool.SetEACL(ctx, prm)
+	require.NoError(t, err)
+
+	return table
+}
+
+func allowByEACL(ctx context.Context, t *testing.T, clientPool *pool.Pool, cnrID cid.ID) *eacl.Table {
+	table := eacl.NewTable()
+	table.SetCID(cnrID)
 
 	var waitPrm pool.WaitParams
 	waitPrm.SetPollInterval(3 * time.Second)
