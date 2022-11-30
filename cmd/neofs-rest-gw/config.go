@@ -134,8 +134,10 @@ func config() *viper.Viper {
 	v.SetDefault(cfgLoggerLevel, "debug")
 
 	// Bind flags
-	if err := bindFlags(v, flagSet); err != nil {
-		panic(fmt.Errorf("bind flags: %w", err))
+	for cfg, cmd := range bindings {
+		if err := v.BindPFlag(cfg, flagSet.Lookup(cmd)); err != nil {
+			panic(fmt.Errorf("bind flags: %w", err))
+		}
 	}
 
 	if err := flagSet.Parse(os.Args); err != nil {
@@ -185,34 +187,42 @@ func config() *viper.Viper {
 	return v
 }
 
-func bindFlags(v *viper.Viper, flagSet *pflag.FlagSet) error {
-	if err := v.BindPFlag(cfgPprofEnabled, flagSet.Lookup(cmdPprof)); err != nil {
-		return err
+func init() {
+	for _, flagName := range serverFlags {
+		cfgName := cfgServerSection + flagName
+		bindings[cfgName] = flagName
+		knownConfigParams[cfgName] = struct{}{}
 	}
-	if err := v.BindPFlag(cfgPrometheusEnabled, flagSet.Lookup(cmdMetrics)); err != nil {
-		return err
-	}
-	if err := v.BindPFlag(cfgNodeDialTimeout, flagSet.Lookup(cmdNodeDialTimeout)); err != nil {
-		return err
-	}
-	if err := v.BindPFlag(cfgHealthcheckTimeout, flagSet.Lookup(cmdHealthcheckTimeout)); err != nil {
-		return err
-	}
-	if err := v.BindPFlag(cfgRebalance, flagSet.Lookup(cmdRebalance)); err != nil {
-		return err
-	}
-	if err := v.BindPFlag(cfgWalletPath, flagSet.Lookup(cmdWallet)); err != nil {
-		return err
-	}
-	if err := v.BindPFlag(cfgWalletAddress, flagSet.Lookup(cmdAddress)); err != nil {
-		return err
-	}
+}
 
-	if err := restapi.BindFlagsToConfig(v, flagSet, cfgServerSection); err != nil {
-		return err
-	}
+var serverFlags = []string{
+	restapi.FlagScheme,
+	restapi.FlagCleanupTimeout,
+	restapi.FlagGracefulTimeout,
+	restapi.FlagMaxHeaderSize,
+	restapi.FlagListenAddress,
+	restapi.FlagListenLimit,
+	restapi.FlagKeepAlive,
+	restapi.FlagReadTimeout,
+	restapi.FlagWriteTimeout,
+	restapi.FlagTLSListenAddress,
+	restapi.FlagTLSCertificate,
+	restapi.FlagTLSKey,
+	restapi.FlagTLSCa,
+	restapi.FlagTLSListenLimit,
+	restapi.FlagTLSKeepAlive,
+	restapi.FlagTLSReadTimeout,
+	restapi.FlagTLSWriteTimeout,
+}
 
-	return nil
+var bindings = map[string]string{
+	cfgPprofEnabled:       cmdPprof,
+	cfgPrometheusEnabled:  cmdMetrics,
+	cfgNodeDialTimeout:    cmdNodeDialTimeout,
+	cfgHealthcheckTimeout: cmdHealthcheckTimeout,
+	cfgRebalance:          cmdRebalance,
+	cfgWalletPath:         cmdWallet,
+	cfgWalletAddress:      cmdAddress,
 }
 
 var knownConfigParams = map[string]struct{}{
@@ -228,24 +238,6 @@ var knownConfigParams = map[string]struct{}{
 	cfgPrometheusAddress:  {},
 	cfgPprofEnabled:       {},
 	cfgPprofAddress:       {},
-
-	cfgServerSection + restapi.FlagScheme:           {},
-	cfgServerSection + restapi.FlagCleanupTimeout:   {},
-	cfgServerSection + restapi.FlagGracefulTimeout:  {},
-	cfgServerSection + restapi.FlagMaxHeaderSize:    {},
-	cfgServerSection + restapi.FlagListenAddress:    {},
-	cfgServerSection + restapi.FlagListenLimit:      {},
-	cfgServerSection + restapi.FlagKeepAlive:        {},
-	cfgServerSection + restapi.FlagReadTimeout:      {},
-	cfgServerSection + restapi.FlagWriteTimeout:     {},
-	cfgServerSection + restapi.FlagTLSListenAddress: {},
-	cfgServerSection + restapi.FlagTLSCertificate:   {},
-	cfgServerSection + restapi.FlagTLSKey:           {},
-	cfgServerSection + restapi.FlagTLSCa:            {},
-	cfgServerSection + restapi.FlagTLSListenLimit:   {},
-	cfgServerSection + restapi.FlagTLSKeepAlive:     {},
-	cfgServerSection + restapi.FlagTLSReadTimeout:   {},
-	cfgServerSection + restapi.FlagTLSWriteTimeout:  {},
 }
 
 func validateConfig(cfg *viper.Viper, logger *zap.Logger) {
