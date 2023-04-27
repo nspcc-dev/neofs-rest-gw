@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"context"
+	"crypto/elliptic"
 	"fmt"
 	"net/http"
 	"strings"
@@ -76,7 +77,8 @@ const (
 // New creates a new API using specified logger, connection pool and other parameters.
 func New(prm *PrmAPI) *API {
 	var owner user.ID
-	user.IDFromKey(&owner, prm.Key.PrivateKey.PublicKey)
+	var pk = prm.Key.PrivateKey.PublicKey
+	_ = user.IDFromKey(&owner, elliptic.MarshalCompressed(pk.Curve, pk.X, pk.Y)) // Can't fail for valid key.
 
 	return &API{
 		log:              prm.Logger,

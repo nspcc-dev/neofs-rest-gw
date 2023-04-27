@@ -111,7 +111,7 @@ func runTests(ctx context.Context, t *testing.T, key *keys.PrivateKey, version s
 	defer cancel()
 
 	var owner user.ID
-	user.IDFromKey(&owner, key.PrivateKey.PublicKey)
+	require.NoError(t, user.IDFromSigner(&owner, neofsecdsa.Signer(key.PrivateKey)))
 
 	clientPool := getPool(ctx, t, key, node)
 	cnrID := createContainer(ctx, t, clientPool, owner, containerName)
@@ -201,7 +201,7 @@ func getDefaultConfig(node string) *viper.Viper {
 func getPool(ctx context.Context, t *testing.T, key *keys.PrivateKey, node string) *pool.Pool {
 	var prm pool.InitParameters
 	prm.AddNode(pool.NewNodeParam(1, node, 1))
-	prm.SetKey(&key.PrivateKey)
+	prm.SetSigner(neofsecdsa.SignerRFC6979(key.PrivateKey))
 	prm.SetHealthcheckTimeout(5 * time.Second)
 	prm.SetNodeDialTimeout(5 * time.Second)
 
@@ -1070,7 +1070,7 @@ func makeAuthTokenRequest(ctx context.Context, t *testing.T, bearers []*models.B
 	require.NoError(t, err)
 
 	var ownerID user.ID
-	user.IDFromKey(&ownerID, key.PrivateKey.PublicKey)
+	require.NoError(t, user.IDFromSigner(&ownerID, neofsecdsa.Signer(key.PrivateKey)))
 
 	data, err := json.Marshal(bearers)
 	require.NoError(t, err)
