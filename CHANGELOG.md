@@ -10,6 +10,7 @@ This document outlines major changes between releases.
 ### Changed
 - Configuration parameters (#66, #71)
 - Build releases with Go 1.20
+- Drop support for Go 1.17
 
 ### Updating from v0.5.0
 

@@ -860,7 +860,7 @@ func restObjectsSearch(ctx context.Context, t *testing.T, p *pool.Pool, owner *u
 	require.Equal(t, filePath, objBaseInfo.FilePath)
 }
 
-func doRequest(t *testing.T, httpClient *http.Client, request *http.Request, expectedCode int, model interface{}) {
+func doRequest(t *testing.T, httpClient *http.Client, request *http.Request, expectedCode int, model any) {
 	resp, err := httpClient.Do(request)
 	require.NoError(t, err)
 	defer func() {
@@ -983,7 +983,7 @@ func restContainerEACLPut(ctx context.Context, t *testing.T, clientPool *pool.Po
 	require.True(t, eacl.EqualTables(*expectedTable, table))
 }
 
-func doSetEACLRequest(ctx context.Context, t *testing.T, httpClient *http.Client, cnrID cid.ID, query url.Values, bearerToken *handlers.BearerToken, body []byte, status int, model interface{}) {
+func doSetEACLRequest(ctx context.Context, t *testing.T, httpClient *http.Client, cnrID cid.ID, query url.Values, bearerToken *handlers.BearerToken, body []byte, status int, model any) {
 	request, err := http.NewRequest(http.MethodPut, testHost+"/v1/containers/"+cnrID.EncodeToString()+"/eacl?"+query.Encode(), bytes.NewReader(body))
 	require.NoError(t, err)
 	request = request.WithContext(ctx)
