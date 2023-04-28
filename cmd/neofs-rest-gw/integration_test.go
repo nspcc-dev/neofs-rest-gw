@@ -756,6 +756,14 @@ func restObjectDelete(ctx context.Context, t *testing.T, p *pool.Pool, owner *us
 				Role: models.NewRole(models.RoleOTHERS),
 				Keys: []string{},
 			}},
+		}, {
+			Operation: models.NewOperation(models.OperationHEAD),
+			Action:    models.NewAction(models.ActionALLOW),
+			Filters:   []*models.Filter{},
+			Targets: []*models.Target{{
+				Role: models.NewRole(models.RoleOTHERS),
+				Keys: []string{},
+			}},
 		}},
 	}
 	bearer.Object = append(bearer.Object, getRestrictBearerRecords()...)
