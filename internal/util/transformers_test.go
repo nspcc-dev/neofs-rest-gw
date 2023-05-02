@@ -16,7 +16,7 @@ func TestErrors(t *testing.T) {
 	resp := NewErrorResponse(apiErr)
 	data, err := json.Marshal(resp)
 	require.NoError(t, err)
-	require.Equal(t, `{"code":3072,"message":"some context: status: code = 3072","type":"API"}`, string(data))
+	require.Equal(t, `{"code":3072,"message":"some context: status: code = 3072 message = container not found","type":"API"}`, string(data))
 
 	gwErr := fmt.Errorf("some context: %w", errors.New("sanity check error"))
 

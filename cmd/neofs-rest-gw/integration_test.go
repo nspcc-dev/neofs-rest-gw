@@ -45,7 +45,6 @@ const (
 	testContainerNode = "localhost:8080"
 	testLocalNode     = "s01.neofs.devenv:8080"
 	containerName     = "test-container"
-	localVersion      = "local"
 
 	walletConnectQuery = "walletConnect"
 	fullBearerQuery    = "fullBearer"
@@ -76,7 +75,7 @@ func TestIntegration(t *testing.T) {
 }
 
 func runLocalTests(ctx context.Context, t *testing.T, key *keys.PrivateKey) {
-	runTests(ctx, t, key, localVersion)
+	t.Run("local", func(t *testing.T) { runTests(ctx, t, key, testLocalNode) })
 }
 
 func runTestInContainer(rootCtx context.Context, t *testing.T, key *keys.PrivateKey) {
@@ -89,52 +88,49 @@ func runTestInContainer(rootCtx context.Context, t *testing.T, key *keys.Private
 	}
 
 	for _, version := range versions {
-		ctx, cancel := context.WithCancel(rootCtx)
-		aioContainer := createDockerContainer(ctx, t, aioImage+version)
+		t.Run(version, func(t *testing.T) {
+			ctx, cancel := context.WithCancel(rootCtx)
+			aioContainer := createDockerContainer(ctx, t, aioImage+version)
 
-		runTests(ctx, t, key, version)
+			runTests(ctx, t, key, testContainerNode)
 
-		err := aioContainer.Terminate(ctx)
-		require.NoError(t, err)
-		cancel()
-		<-ctx.Done()
+			err := aioContainer.Terminate(ctx)
+			require.NoError(t, err)
+			cancel()
+			<-ctx.Done()
+		})
 	}
 }
 
-func runTests(ctx context.Context, t *testing.T, key *keys.PrivateKey, version string) {
-	node := testContainerNode
-	if version == localVersion {
-		node = testLocalNode
-	}
-
+func runTests(ctx context.Context, t *testing.T, key *keys.PrivateKey, node string) {
 	cancel := runServer(ctx, t, node)
 	defer cancel()
 
 	var owner user.ID
-	user.IDFromKey(&owner, key.PrivateKey.PublicKey)
+	require.NoError(t, user.IDFromSigner(&owner, neofsecdsa.Signer(key.PrivateKey)))
 
 	clientPool := getPool(ctx, t, key, node)
 	cnrID := createContainer(ctx, t, clientPool, owner, containerName)
 	restrictByEACL(ctx, t, clientPool, cnrID)
 
-	t.Run("rest auth several tokens "+version, func(t *testing.T) { authTokens(ctx, t) })
-	t.Run("rest check mix tokens up "+version, func(t *testing.T) { mixTokens(ctx, t, cnrID) })
-	t.Run("rest form full binary bearer "+version, func(t *testing.T) { formFullBinaryBearer(ctx, t) })
+	t.Run("rest auth several tokens", func(t *testing.T) { authTokens(ctx, t) })
+	t.Run("rest check mix tokens up", func(t *testing.T) { mixTokens(ctx, t, cnrID) })
+	t.Run("rest form full binary bearer", func(t *testing.T) { formFullBinaryBearer(ctx, t) })
 
-	t.Run("rest put object "+version, func(t *testing.T) { restObjectPut(ctx, t, clientPool, cnrID) })
-	t.Run("rest get object "+version, func(t *testing.T) { restObjectGet(ctx, t, clientPool, &owner, cnrID) })
-	t.Run("rest get object unauthenticated "+version, func(t *testing.T) { restObjectGetUnauthenticated(ctx, t, clientPool, &owner, cnrID) })
-	t.Run("rest get object full bearer "+version, func(t *testing.T) { restObjectGetFullBearer(ctx, t, clientPool, &owner, cnrID) })
-	t.Run("rest delete object "+version, func(t *testing.T) { restObjectDelete(ctx, t, clientPool, &owner, cnrID) })
-	t.Run("rest search objects "+version, func(t *testing.T) { restObjectsSearch(ctx, t, clientPool, &owner, cnrID) })
+	t.Run("rest put object", func(t *testing.T) { restObjectPut(ctx, t, clientPool, cnrID) })
+	t.Run("rest get object", func(t *testing.T) { restObjectGet(ctx, t, clientPool, &owner, cnrID) })
+	t.Run("rest get object unauthenticated", func(t *testing.T) { restObjectGetUnauthenticated(ctx, t, clientPool, &owner, cnrID) })
+	t.Run("rest get object full bearer", func(t *testing.T) { restObjectGetFullBearer(ctx, t, clientPool, &owner, cnrID) })
+	t.Run("rest delete object", func(t *testing.T) { restObjectDelete(ctx, t, clientPool, &owner, cnrID) })
+	t.Run("rest search objects", func(t *testing.T) { restObjectsSearch(ctx, t, clientPool, &owner, cnrID) })
 
-	t.Run("rest put container invalid "+version, func(t *testing.T) { restContainerPutInvalid(ctx, t) })
-	t.Run("rest put container "+version, func(t *testing.T) { restContainerPut(ctx, t, clientPool) })
-	t.Run("rest get container "+version, func(t *testing.T) { restContainerGet(ctx, t, owner, cnrID) })
-	t.Run("rest delete container "+version, func(t *testing.T) { restContainerDelete(ctx, t, clientPool, owner) })
-	t.Run("rest put container eacl "+version, func(t *testing.T) { restContainerEACLPut(ctx, t, clientPool, owner) })
-	t.Run("rest get container eacl "+version, func(t *testing.T) { restContainerEACLGet(ctx, t, clientPool, cnrID) })
-	t.Run("rest list containers	"+version, func(t *testing.T) { restContainerList(ctx, t, clientPool, owner, cnrID) })
+	t.Run("rest put container invalid", func(t *testing.T) { restContainerPutInvalid(ctx, t) })
+	t.Run("rest put container", func(t *testing.T) { restContainerPut(ctx, t, clientPool) })
+	t.Run("rest get container", func(t *testing.T) { restContainerGet(ctx, t, owner, cnrID) })
+	t.Run("rest delete container", func(t *testing.T) { restContainerDelete(ctx, t, clientPool, owner) })
+	t.Run("rest put container eacl", func(t *testing.T) { restContainerEACLPut(ctx, t, clientPool, owner) })
+	t.Run("rest get container eacl", func(t *testing.T) { restContainerEACLGet(ctx, t, clientPool, cnrID) })
+	t.Run("rest list containers", func(t *testing.T) { restContainerList(ctx, t, clientPool, owner, cnrID) })
 }
 
 func createDockerContainer(ctx context.Context, t *testing.T, image string) testcontainers.Container {
@@ -201,7 +197,7 @@ func getDefaultConfig(node string) *viper.Viper {
 func getPool(ctx context.Context, t *testing.T, key *keys.PrivateKey, node string) *pool.Pool {
 	var prm pool.InitParameters
 	prm.AddNode(pool.NewNodeParam(1, node, 1))
-	prm.SetKey(&key.PrivateKey)
+	prm.SetSigner(neofsecdsa.SignerRFC6979(key.PrivateKey))
 	prm.SetHealthcheckTimeout(5 * time.Second)
 	prm.SetNodeDialTimeout(5 * time.Second)
 
@@ -756,6 +752,14 @@ func restObjectDelete(ctx context.Context, t *testing.T, p *pool.Pool, owner *us
 				Role: models.NewRole(models.RoleOTHERS),
 				Keys: []string{},
 			}},
+		}, {
+			Operation: models.NewOperation(models.OperationHEAD),
+			Action:    models.NewAction(models.ActionALLOW),
+			Filters:   []*models.Filter{},
+			Targets: []*models.Target{{
+				Role: models.NewRole(models.RoleOTHERS),
+				Keys: []string{},
+			}},
 		}},
 	}
 	bearer.Object = append(bearer.Object, getRestrictBearerRecords()...)
@@ -860,7 +864,7 @@ func restObjectsSearch(ctx context.Context, t *testing.T, p *pool.Pool, owner *u
 	require.Equal(t, filePath, objBaseInfo.FilePath)
 }
 
-func doRequest(t *testing.T, httpClient *http.Client, request *http.Request, expectedCode int, model interface{}) {
+func doRequest(t *testing.T, httpClient *http.Client, request *http.Request, expectedCode int, model any) {
 	resp, err := httpClient.Do(request)
 	require.NoError(t, err)
 	defer func() {
@@ -983,7 +987,7 @@ func restContainerEACLPut(ctx context.Context, t *testing.T, clientPool *pool.Po
 	require.True(t, eacl.EqualTables(*expectedTable, table))
 }
 
-func doSetEACLRequest(ctx context.Context, t *testing.T, httpClient *http.Client, cnrID cid.ID, query url.Values, bearerToken *handlers.BearerToken, body []byte, status int, model interface{}) {
+func doSetEACLRequest(ctx context.Context, t *testing.T, httpClient *http.Client, cnrID cid.ID, query url.Values, bearerToken *handlers.BearerToken, body []byte, status int, model any) {
 	request, err := http.NewRequest(http.MethodPut, testHost+"/v1/containers/"+cnrID.EncodeToString()+"/eacl?"+query.Encode(), bytes.NewReader(body))
 	require.NoError(t, err)
 	request = request.WithContext(ctx)
@@ -1062,7 +1066,7 @@ func makeAuthTokenRequest(ctx context.Context, t *testing.T, bearers []*models.B
 	require.NoError(t, err)
 
 	var ownerID user.ID
-	user.IDFromKey(&ownerID, key.PrivateKey.PublicKey)
+	require.NoError(t, user.IDFromSigner(&ownerID, neofsecdsa.Signer(key.PrivateKey)))
 
 	data, err := json.Marshal(bearers)
 	require.NoError(t, err)
