@@ -146,10 +146,7 @@ func (a *API) ListContainer(params operations.ListContainersParams) middleware.R
 		return operations.NewListContainersBadRequest().WithPayload(resp)
 	}
 
-	var prm pool.PrmContainerList
-	prm.SetOwnerID(ownerID)
-
-	ids, err := a.pool.ListContainers(ctx, prm)
+	ids, err := a.pool.ListContainers(ctx, ownerID)
 	if err != nil {
 		resp := a.logAndGetErrorResponse("list containers", err)
 		return operations.NewListContainersBadRequest().WithPayload(resp)
@@ -212,10 +209,9 @@ func (a *API) DeleteContainer(params operations.DeleteContainerParams, principal
 	}
 
 	var prm pool.PrmContainerDelete
-	prm.SetContainerID(cnrID)
 	prm.SetSessionToken(stoken)
 
-	if err = a.pool.DeleteContainer(params.HTTPRequest.Context(), prm); err != nil {
+	if err = a.pool.DeleteContainer(params.HTTPRequest.Context(), cnrID, prm); err != nil {
 		resp := a.logAndGetErrorResponse("delete container", err, zap.String("container", params.ContainerID))
 		return operations.NewDeleteContainerBadRequest().WithPayload(resp)
 	}
@@ -239,10 +235,7 @@ func checkContainerExtendable(ctx context.Context, p *pool.Pool, cnrID cid.ID) e
 }
 
 func getContainer(ctx context.Context, p *pool.Pool, cnrID cid.ID) (container.Container, error) {
-	var prm pool.PrmContainerGet
-	prm.SetContainerID(cnrID)
-
-	return p.GetContainer(ctx, prm)
+	return p.GetContainer(ctx, cnrID)
 }
 
 func getContainerInfo(ctx context.Context, p *pool.Pool, cnrID cid.ID) (*models.ContainerInfo, error) {
@@ -330,17 +323,13 @@ func setContainerEACL(ctx context.Context, p *pool.Pool, cnrID cid.ID, stoken se
 	table.SetCID(cnrID)
 
 	var prm pool.PrmContainerSetEACL
-	prm.SetTable(*table)
 	prm.WithinSession(stoken)
 
-	return p.SetEACL(ctx, prm)
+	return p.SetEACL(ctx, *table, prm)
 }
 
 func getContainerEACL(ctx context.Context, p *pool.Pool, cnrID cid.ID) (*models.Eacl, error) {
-	var prm pool.PrmContainerEACL
-	prm.SetContainerID(cnrID)
-
-	table, err := p.GetEACL(ctx, prm)
+	table, err := p.GetEACL(ctx, cnrID)
 	if err != nil {
 		return nil, fmt.Errorf("get eacl: %w", err)
 	}
@@ -414,10 +403,9 @@ func createContainer(ctx context.Context, p *pool.Pool, stoken session.Container
 	}
 
 	var prm pool.PrmContainerPut
-	prm.SetContainer(cnr)
 	prm.WithinSession(stoken)
 
-	cnrID, err := p.PutContainer(ctx, prm)
+	cnrID, err := p.PutContainer(ctx, cnr, prm)
 	if err != nil {
 		return cid.ID{}, fmt.Errorf("put container: %w", err)
 	}
