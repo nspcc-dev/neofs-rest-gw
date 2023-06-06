@@ -17,6 +17,7 @@ import (
 	"github.com/nspcc-dev/neofs-rest-gw/gen/restapi/operations"
 	"github.com/nspcc-dev/neofs-rest-gw/internal/util"
 	"github.com/nspcc-dev/neofs-sdk-go/bearer"
+	"github.com/nspcc-dev/neofs-sdk-go/client"
 	cid "github.com/nspcc-dev/neofs-sdk-go/container/id"
 	"github.com/nspcc-dev/neofs-sdk-go/object"
 	oid "github.com/nspcc-dev/neofs-sdk-go/object/id"
@@ -104,10 +105,9 @@ func (a *API) GetObjectInfo(params operations.GetObjectInfoParams, principal *mo
 	}
 
 	var prm pool.PrmObjectHead
-	prm.SetAddress(addr)
 	attachBearer(&prm, btoken)
 
-	objInfo, err := a.pool.HeadObject(ctx, prm)
+	objInfo, err := a.pool.HeadObject(ctx, addr.Container(), addr.Object(), prm)
 	if err != nil {
 		resp := a.logAndGetErrorResponse("head object", err)
 		return errorResponse.WithPayload(resp)
@@ -143,12 +143,9 @@ func (a *API) GetObjectInfo(params operations.GetObjectInfoParams, principal *mo
 	}
 
 	var prmRange pool.PrmObjectRange
-	prmRange.SetAddress(addr)
 	attachBearer(&prmRange, btoken)
-	prmRange.SetOffset(offset)
-	prmRange.SetLength(length)
 
-	rangeRes, err := a.pool.ObjectRange(ctx, prmRange)
+	rangeRes, err := a.pool.ObjectRange(ctx, addr.Container(), addr.Object(), offset, length, prmRange)
 	if err != nil {
 		errResp := a.logAndGetErrorResponse("range object", err)
 		return errorResponse.WithPayload(errResp)
@@ -197,11 +194,16 @@ func (a *API) DeleteObject(params operations.DeleteObjectParams, principal *mode
 		return errorResponse.WithPayload(resp)
 	}
 
-	var prm pool.PrmObjectDelete
-	prm.SetAddress(addr)
-	attachBearer(&prm, btoken)
+	var prm client.PrmObjectDelete
+	prm.WithBearerToken(*btoken)
 
-	if err = a.pool.DeleteObject(ctx, prm); err != nil {
+	cl, err := a.pool.RawClient()
+	if err != nil {
+		resp := a.logAndGetErrorResponse("failed to get client", err)
+		return errorResponse.WithPayload(resp)
+	}
+
+	if _, err = cl.ObjectDelete(ctx, addr.Container(), addr.Object(), prm); err != nil {
 		resp := a.logAndGetErrorResponse("failed to delete object", err)
 		return errorResponse.WithPayload(resp)
 	}
@@ -235,11 +237,10 @@ func (a *API) SearchObjects(params operations.SearchObjectsParams, principal *mo
 	}
 
 	var prm pool.PrmObjectSearch
-	prm.SetContainerID(cnrID)
 	attachBearer(&prm, btoken)
 	prm.SetFilters(filters)
 
-	resSearch, err := a.pool.SearchObjects(ctx, prm)
+	resSearch, err := a.pool.SearchObjects(ctx, cnrID, prm)
 	if err != nil {
 		resp := a.logAndGetErrorResponse("failed to search objects", err)
 		return errorResponse.WithPayload(resp)
@@ -286,15 +287,10 @@ func (a *API) SearchObjects(params operations.SearchObjectsParams, principal *mo
 }
 
 func headObjectBaseInfo(ctx context.Context, p *pool.Pool, cnrID cid.ID, objID oid.ID, btoken *bearer.Token) (*models.ObjectBaseInfo, error) {
-	var addr oid.Address
-	addr.SetContainer(cnrID)
-	addr.SetObject(objID)
-
 	var prm pool.PrmObjectHead
-	prm.SetAddress(addr)
 	attachBearer(&prm, btoken)
 
-	objInfo, err := p.HeadObject(ctx, prm)
+	objInfo, err := p.HeadObject(ctx, cnrID, objID, prm)
 	if err != nil {
 		return nil, err
 	}

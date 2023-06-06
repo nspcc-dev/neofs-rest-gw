@@ -81,8 +81,6 @@ func runLocalTests(ctx context.Context, t *testing.T, key *keys.PrivateKey) {
 func runTestInContainer(rootCtx context.Context, t *testing.T, key *keys.PrivateKey) {
 	aioImage := "nspccdev/neofs-aio-testcontainer:"
 	versions := []string{
-		"0.29.0",
-		"0.30.0",
 		"0.32.0",
 		"latest",
 	}
@@ -494,13 +492,9 @@ func restObjectPut(ctx context.Context, t *testing.T, clientPool *pool.Pool, cnr
 	var id oid.ID
 	err = id.DecodeString(*addr.ObjectID)
 	require.NoError(t, err)
-	var objectAddress oid.Address
-	objectAddress.SetContainer(CID)
-	objectAddress.SetObject(id)
 
 	var prm pool.PrmObjectGet
-	prm.SetAddress(objectAddress)
-	res, err := clientPool.GetObject(ctx, prm)
+	res, err := clientPool.GetObject(ctx, CID, id, prm)
 	require.NoError(t, err)
 
 	payload := bytes.NewBuffer(nil)
@@ -779,14 +773,9 @@ func restObjectDelete(ctx context.Context, t *testing.T, p *pool.Pool, owner *us
 	doRequest(t, httpClient, request, http.StatusOK, resp)
 	require.True(t, *resp.Success)
 
-	var addr oid.Address
-	addr.SetContainer(cnrID)
-	addr.SetObject(objID)
-
 	var prm pool.PrmObjectHead
-	prm.SetAddress(addr)
 
-	_, err = p.HeadObject(ctx, prm)
+	_, err = p.HeadObject(ctx, cnrID, objID, prm)
 	require.Error(t, err)
 }
 
@@ -927,10 +916,7 @@ func restContainerDelete(ctx context.Context, t *testing.T, clientPool *pool.Poo
 	doRequest(t, httpClient, request, http.StatusOK, resp)
 	require.True(t, *resp.Success)
 
-	var prm pool.PrmContainerGet
-	prm.SetContainerID(cnrID)
-
-	_, err = clientPool.GetContainer(ctx, prm)
+	_, err = clientPool.GetContainer(ctx, cnrID)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "not found")
 }
@@ -974,10 +960,7 @@ func restContainerEACLPut(ctx context.Context, t *testing.T, clientPool *pool.Po
 	doSetEACLRequest(ctx, t, httpClient, cnrID, query, bearerToken, body, http.StatusOK, resp)
 	require.True(t, *resp.Success)
 
-	var prm pool.PrmContainerEACL
-	prm.SetContainerID(cnrID)
-
-	table, err := clientPool.GetEACL(ctx, prm)
+	table, err := clientPool.GetEACL(ctx, cnrID)
 	require.NoError(t, err)
 
 	expectedTable, err := util.ToNativeTable(req.Records)
@@ -997,9 +980,7 @@ func doSetEACLRequest(ctx context.Context, t *testing.T, httpClient *http.Client
 }
 
 func restContainerEACLGet(ctx context.Context, t *testing.T, p *pool.Pool, cnrID cid.ID) {
-	var prm pool.PrmContainerEACL
-	prm.SetContainerID(cnrID)
-	expectedTable, err := p.GetEACL(ctx, prm)
+	expectedTable, err := p.GetEACL(ctx, cnrID)
 	require.NoError(t, err)
 
 	httpClient := &http.Client{Timeout: 60 * time.Second}
@@ -1021,10 +1002,7 @@ func restContainerEACLGet(ctx context.Context, t *testing.T, p *pool.Pool, cnrID
 }
 
 func restContainerList(ctx context.Context, t *testing.T, p *pool.Pool, owner user.ID, cnrID cid.ID) {
-	var prm pool.PrmContainerList
-	prm.SetOwnerID(owner)
-
-	ids, err := p.ListContainers(ctx, prm)
+	ids, err := p.ListContainers(ctx, owner)
 	require.NoError(t, err)
 
 	httpClient := defaultHTTPClient()
@@ -1244,10 +1222,7 @@ func restContainerPut(ctx context.Context, t *testing.T, clientPool *pool.Pool) 
 	require.NoError(t, err)
 	fmt.Println(CID.String())
 
-	var prm pool.PrmContainerGet
-	prm.SetContainerID(CID)
-
-	cnr, err := clientPool.GetContainer(ctx, prm)
+	cnr, err := clientPool.GetContainer(ctx, CID)
 	require.NoError(t, err)
 
 	cnrAttr := make(map[string]string)
@@ -1289,10 +1264,9 @@ func createContainer(ctx context.Context, t *testing.T, clientPool *pool.Pool, o
 	waitPrm.SetTimeout(15 * time.Second)
 
 	var prm pool.PrmContainerPut
-	prm.SetContainer(cnr)
 	prm.SetWaitParams(waitPrm)
 
-	CID, err := clientPool.PutContainer(ctx, prm)
+	CID, err := clientPool.PutContainer(ctx, cnr, prm)
 	require.NoError(t, err)
 
 	return CID
@@ -1342,10 +1316,9 @@ func restrictByEACL(ctx context.Context, t *testing.T, clientPool *pool.Pool, cn
 	waitPrm.SetTimeout(15 * time.Second)
 
 	var prm pool.PrmContainerSetEACL
-	prm.SetTable(*table)
 	prm.SetWaitParams(waitPrm)
 
-	err := clientPool.SetEACL(ctx, prm)
+	err := clientPool.SetEACL(ctx, *table, prm)
 	require.NoError(t, err)
 
 	return table
@@ -1360,10 +1333,9 @@ func allowByEACL(ctx context.Context, t *testing.T, clientPool *pool.Pool, cnrID
 	waitPrm.SetTimeout(15 * time.Second)
 
 	var prm pool.PrmContainerSetEACL
-	prm.SetTable(*table)
 	prm.SetWaitParams(waitPrm)
 
-	err := clientPool.SetEACL(ctx, prm)
+	err := clientPool.SetEACL(ctx, *table, prm)
 	require.NoError(t, err)
 
 	return table

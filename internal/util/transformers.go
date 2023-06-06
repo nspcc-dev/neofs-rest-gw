@@ -452,7 +452,7 @@ func NewErrorResponse(err error) *models.ErrorResponse {
 	var code int64
 	t := models.ErrorTypeGW
 	if status, ok := unwrapErr(err).(apistatus.StatusV2); ok {
-		code = int64(status.ToStatusV2().Code())
+		code = int64(status.ErrorToV2().Code())
 		t = models.ErrorTypeAPI
 	}
 
