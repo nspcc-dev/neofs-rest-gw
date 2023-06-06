@@ -81,8 +81,6 @@ func runLocalTests(ctx context.Context, t *testing.T, key *keys.PrivateKey) {
 func runTestInContainer(rootCtx context.Context, t *testing.T, key *keys.PrivateKey) {
 	aioImage := "nspccdev/neofs-aio-testcontainer:"
 	versions := []string{
-		"0.29.0",
-		"0.30.0",
 		"0.32.0",
 		"latest",
 	}
