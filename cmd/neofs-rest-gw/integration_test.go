@@ -14,6 +14,7 @@ import (
 	"testing"
 	"time"
 
+	dockerContainer "github.com/docker/docker/api/types/container"
 	"github.com/go-openapi/loads"
 	"github.com/nspcc-dev/neo-go/pkg/crypto/keys"
 	"github.com/nspcc-dev/neofs-rest-gw/gen/models"
@@ -62,6 +63,20 @@ const (
 	useLocalEnvironment = false
 )
 
+type dockerImage struct {
+	image   string
+	version string
+}
+
+var (
+	tickEpoch = []string{
+		"neo-go", "contract", "invokefunction", "--wallet-config", "/config/node-config.yaml",
+		"-a", "NfgHwwTi3wHAS8aFAN243C5vGbkYDpqLHP", "--force", "-r", "http://localhost:30333",
+		"707516630852f4179af43366917a36b9a78b93a5", "newEpoch", "int:10",
+		"--", "NfgHwwTi3wHAS8aFAN243C5vGbkYDpqLHP:Global",
+	}
+)
+
 func TestIntegration(t *testing.T) {
 	ctx := context.Background()
 	key, err := keys.NewPrivateKeyFromHex(devenvPrivateKey)
@@ -79,16 +94,18 @@ func runLocalTests(ctx context.Context, t *testing.T, key *keys.PrivateKey) {
 }
 
 func runTestInContainer(rootCtx context.Context, t *testing.T, key *keys.PrivateKey) {
-	aioImage := "nspccdev/neofs-aio-testcontainer:"
-	versions := []string{
-		"0.32.0",
-		"latest",
+	versions := []dockerImage{
+		{image: "nspccdev/neofs-aio-testcontainer", version: "0.34.0"},
+		{image: "nspccdev/neofs-aio", version: "0.36.0"},
+		{image: "nspccdev/neofs-aio", version: "latest"},
 	}
 
 	for _, version := range versions {
-		t.Run(version, func(t *testing.T) {
+		image := fmt.Sprintf("%s:%s", version.image, version.version)
+
+		t.Run(image, func(t *testing.T) {
 			ctx, cancel := context.WithCancel(rootCtx)
-			aioContainer := createDockerContainer(ctx, t, aioImage+version)
+			aioContainer := createDockerContainer(ctx, t, image, version.version)
 
 			runTests(ctx, t, key, testContainerNode)
 
@@ -131,19 +148,37 @@ func runTests(ctx context.Context, t *testing.T, key *keys.PrivateKey, node stri
 	t.Run("rest list containers", func(t *testing.T) { restContainerList(ctx, t, clientPool, owner, cnrID) })
 }
 
-func createDockerContainer(ctx context.Context, t *testing.T, image string) testcontainers.Container {
+func createDockerContainer(ctx context.Context, t *testing.T, image, version string) testcontainers.Container {
 	req := testcontainers.ContainerRequest{
-		Image:       image,
-		WaitingFor:  wait.NewLogStrategy("aio container started").WithStartupTimeout(30 * time.Second),
-		Name:        "aio",
-		Hostname:    "aio",
-		NetworkMode: "host",
+		Image:      image,
+		WaitingFor: wait.NewLogStrategy("aio container started").WithStartupTimeout(30 * time.Second),
+		Name:       "restgw-aio-test-" + version,
+		Hostname:   "aio",
+		Env: map[string]string{
+			"REST_GW_WALLET_PATH":       "/config/wallet-rest.json",
+			"REST_GW_WALLET_PASSPHRASE": "one",
+			"REST_GW_WALLET_ADDRESS":    "NPFCqWHfi9ixCJRu7DABRbVfXRbkSEr9Vo",
+			"REST_GW_PEERS_0_ADDRESS":   "localhost:8080",
+			"REST_GW_LISTEN_ADDRESS":    "0.0.0.0:8090",
+		},
+		HostConfigModifier: func(hostConfig *dockerContainer.HostConfig) {
+			hostConfig.NetworkMode = "host"
+		},
 	}
 	aioC, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
 		ContainerRequest: req,
 		Started:          true,
 	})
 	require.NoError(t, err)
+
+	// Have to wait this time. Required for new tick event processing.
+	// Should be removed after fix epochs in AIO start.
+	<-time.After(3 * time.Second)
+
+	_, _, err = aioC.Exec(ctx, tickEpoch)
+	require.NoError(t, err)
+
+	<-time.After(3 * time.Second)
 
 	return aioC
 }
