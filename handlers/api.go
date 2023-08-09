@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"context"
-	"crypto/elliptic"
 	"fmt"
 	"net/http"
 	"strings"
@@ -27,6 +26,7 @@ type API struct {
 	pool             *pool.Pool
 	key              *keys.PrivateKey
 	owner            *user.ID
+	signer           user.Signer
 	defaultTimestamp bool
 
 	gateMetric             *metrics.GateMetrics
@@ -76,14 +76,14 @@ const (
 
 // New creates a new API using specified logger, connection pool and other parameters.
 func New(prm *PrmAPI) *API {
-	var owner user.ID
-	var pk = prm.Key.PrivateKey.PublicKey
-	_ = user.IDFromKey(&owner, elliptic.MarshalCompressed(pk.Curve, pk.X, pk.Y)) // Can't fail for valid key.
+	signer := user.NewAutoIDSignerRFC6979(prm.Key.PrivateKey)
+	owner := signer.UserID()
 
 	return &API{
 		log:              prm.Logger,
 		pool:             prm.Pool,
 		key:              prm.Key,
+		signer:           signer,
 		owner:            &owner,
 		defaultTimestamp: prm.DefaultTimestamp,
 

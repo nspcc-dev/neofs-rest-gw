@@ -18,8 +18,9 @@ import (
 	"github.com/nspcc-dev/neofs-rest-gw/gen/restapi"
 	"github.com/nspcc-dev/neofs-rest-gw/handlers"
 	"github.com/nspcc-dev/neofs-rest-gw/metrics"
-	neofsecdsa "github.com/nspcc-dev/neofs-sdk-go/crypto/ecdsa"
 	"github.com/nspcc-dev/neofs-sdk-go/pool"
+	"github.com/nspcc-dev/neofs-sdk-go/stat"
+	"github.com/nspcc-dev/neofs-sdk-go/user"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
 	"go.uber.org/zap"
@@ -426,11 +427,14 @@ func newNeofsAPI(ctx context.Context, logger *zap.Logger, v *viper.Viper) (*hand
 	}
 
 	var prm pool.InitParameters
-	prm.SetSigner(neofsecdsa.SignerRFC6979(key.PrivateKey))
+	prm.SetSigner(user.NewAutoIDSignerRFC6979(key.PrivateKey))
 	prm.SetNodeDialTimeout(v.GetDuration(cfgNodeDialTimeout))
 	prm.SetHealthcheckTimeout(v.GetDuration(cfgHealthcheckTimeout))
 	prm.SetClientRebalanceInterval(v.GetDuration(cfgRebalance))
 	prm.SetErrorThreshold(v.GetUint32(cfgPoolErrorThreshold))
+
+	poolStat := stat.NewPoolStatistic()
+	prm.SetStatisticCallback(poolStat.OperationCallback)
 
 	for _, peer := range fetchPeers(logger, v) {
 		prm.AddNode(peer)
@@ -456,7 +460,7 @@ func newNeofsAPI(ctx context.Context, logger *zap.Logger, v *viper.Viper) (*hand
 	prometheusConfig := metrics.Config{Enabled: v.GetBool(cfgPrometheusEnabled), Address: v.GetString(cfgPrometheusAddress)}
 	apiPrm.PrometheusService = metrics.NewPrometheusService(logger, prometheusConfig)
 	if prometheusConfig.Enabled {
-		apiPrm.GateMetric = metrics.NewGateMetrics(p)
+		apiPrm.GateMetric = metrics.NewGateMetrics(poolStat)
 	}
 
 	apiPrm.ServiceShutdownTimeout = defaultShutdownTimeout

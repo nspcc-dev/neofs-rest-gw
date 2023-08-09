@@ -12,6 +12,7 @@ import (
 	objectv2 "github.com/nspcc-dev/neofs-api-go/v2/object"
 	sessionv2 "github.com/nspcc-dev/neofs-api-go/v2/session"
 	"github.com/nspcc-dev/neofs-rest-gw/gen/models"
+	"github.com/nspcc-dev/neofs-sdk-go/client"
 	"github.com/nspcc-dev/neofs-sdk-go/container/acl"
 	"github.com/nspcc-dev/neofs-sdk-go/object"
 	"github.com/nspcc-dev/neofs-sdk-go/pool"
@@ -80,7 +81,7 @@ func GetObjectAttributes(ctx context.Context, pool *pool.Pool, attrs []*models.A
 }
 
 func getEpochDurations(ctx context.Context, p *pool.Pool) (*epochDurations, error) {
-	networkInfo, err := p.NetworkInfo(ctx)
+	networkInfo, err := p.NetworkInfo(ctx, client.PrmNetworkInfo{})
 	if err != nil {
 		return nil, err
 	}

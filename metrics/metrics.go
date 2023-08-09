@@ -3,7 +3,7 @@ package metrics
 import (
 	"net/http"
 
-	"github.com/nspcc-dev/neofs-sdk-go/pool"
+	"github.com/nspcc-dev/neofs-sdk-go/stat"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"go.uber.org/zap"
@@ -41,7 +41,7 @@ type stateMetrics struct {
 }
 
 type poolMetricsCollector struct {
-	pool                *pool.Pool
+	poolStat            *stat.PoolStat
 	overallErrors       prometheus.Gauge
 	overallNodeErrors   *prometheus.GaugeVec
 	overallNodeRequests *prometheus.GaugeVec
@@ -50,11 +50,11 @@ type poolMetricsCollector struct {
 }
 
 // NewGateMetrics creates new metrics for rest gate.
-func NewGateMetrics(p *pool.Pool) *GateMetrics {
+func NewGateMetrics(poolStat *stat.PoolStat) *GateMetrics {
 	stateMetric := newStateMetrics()
 	stateMetric.register()
 
-	poolMetric := newPoolMetricsCollector(p)
+	poolMetric := newPoolMetricsCollector(poolStat)
 	poolMetric.register()
 
 	return &GateMetrics{
@@ -82,7 +82,7 @@ func (m stateMetrics) SetHealth(s int32) {
 	m.healthCheck.Set(float64(s))
 }
 
-func newPoolMetricsCollector(p *pool.Pool) *poolMetricsCollector {
+func newPoolMetricsCollector(poolStat *stat.PoolStat) *poolMetricsCollector {
 	overallErrors := prometheus.NewGauge(
 		prometheus.GaugeOpts{
 			Namespace: namespace,
@@ -142,7 +142,7 @@ func newPoolMetricsCollector(p *pool.Pool) *poolMetricsCollector {
 	)
 
 	return &poolMetricsCollector{
-		pool:                p,
+		poolStat:            poolStat,
 		overallErrors:       overallErrors,
 		overallNodeErrors:   overallNodeErrors,
 		overallNodeRequests: overallNodeRequests,
@@ -173,25 +173,24 @@ func (m *poolMetricsCollector) register() {
 }
 
 func (m *poolMetricsCollector) updateStatistic() {
-	stat := m.pool.Statistic()
+	poolStat := m.poolStat.Statistic()
 
 	m.overallNodeErrors.Reset()
 	m.overallNodeRequests.Reset()
 	m.currentErrors.Reset()
 	m.requestDuration.Reset()
 
-	for _, node := range stat.Nodes() {
+	for _, node := range poolStat.Nodes() {
 		m.overallNodeErrors.WithLabelValues(node.Address()).Set(float64(node.OverallErrors()))
 		m.overallNodeRequests.WithLabelValues(node.Address()).Set(float64(node.Requests()))
 
-		m.currentErrors.WithLabelValues(node.Address()).Set(float64(node.CurrentErrors()))
 		m.updateRequestsDuration(node)
 	}
 
-	m.overallErrors.Set(float64(stat.OverallErrors()))
+	m.overallErrors.Set(float64(poolStat.OverallErrors()))
 }
 
-func (m *poolMetricsCollector) updateRequestsDuration(node pool.NodeStatistic) {
+func (m *poolMetricsCollector) updateRequestsDuration(node stat.NodeStatistic) {
 	m.requestDuration.WithLabelValues(node.Address(), methodGetBalance).Set(float64(node.AverageGetBalance().Milliseconds()))
 	m.requestDuration.WithLabelValues(node.Address(), methodPutContainer).Set(float64(node.AveragePutContainer().Milliseconds()))
 	m.requestDuration.WithLabelValues(node.Address(), methodGetContainer).Set(float64(node.AverageGetContainer().Milliseconds()))

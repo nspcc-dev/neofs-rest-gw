@@ -23,6 +23,7 @@ import (
 	"github.com/nspcc-dev/neofs-rest-gw/handlers"
 	"github.com/nspcc-dev/neofs-rest-gw/internal/util"
 	"github.com/nspcc-dev/neofs-sdk-go/bearer"
+	"github.com/nspcc-dev/neofs-sdk-go/client"
 	"github.com/nspcc-dev/neofs-sdk-go/container"
 	"github.com/nspcc-dev/neofs-sdk-go/container/acl"
 	cid "github.com/nspcc-dev/neofs-sdk-go/container/id"
@@ -121,12 +122,12 @@ func runTests(ctx context.Context, t *testing.T, key *keys.PrivateKey, node stri
 	cancel := runServer(ctx, t, node)
 	defer cancel()
 
-	var owner user.ID
-	require.NoError(t, user.IDFromSigner(&owner, neofsecdsa.Signer(key.PrivateKey)))
+	signer := user.NewAutoIDSignerRFC6979(key.PrivateKey)
+	owner := signer.UserID()
 
 	clientPool := getPool(ctx, t, key, node)
-	cnrID := createContainer(ctx, t, clientPool, owner, containerName)
-	restrictByEACL(ctx, t, clientPool, cnrID)
+	cnrID := createContainer(ctx, t, clientPool, owner, containerName, signer)
+	restrictByEACL(ctx, t, clientPool, cnrID, signer)
 
 	t.Run("rest auth several tokens", func(t *testing.T) { authTokens(ctx, t) })
 	t.Run("rest check mix tokens up", func(t *testing.T) { mixTokens(ctx, t, cnrID) })
@@ -134,7 +135,7 @@ func runTests(ctx context.Context, t *testing.T, key *keys.PrivateKey, node stri
 
 	t.Run("rest put object", func(t *testing.T) { restObjectPut(ctx, t, clientPool, cnrID) })
 	t.Run("rest get object", func(t *testing.T) { restObjectGet(ctx, t, clientPool, &owner, cnrID) })
-	t.Run("rest get object unauthenticated", func(t *testing.T) { restObjectGetUnauthenticated(ctx, t, clientPool, &owner, cnrID) })
+	t.Run("rest get object unauthenticated", func(t *testing.T) { restObjectGetUnauthenticated(ctx, t, clientPool, &owner, cnrID, signer) })
 	t.Run("rest get object full bearer", func(t *testing.T) { restObjectGetFullBearer(ctx, t, clientPool, &owner, cnrID) })
 	t.Run("rest delete object", func(t *testing.T) { restObjectDelete(ctx, t, clientPool, &owner, cnrID) })
 	t.Run("rest search objects", func(t *testing.T) { restObjectsSearch(ctx, t, clientPool, &owner, cnrID) })
@@ -142,8 +143,8 @@ func runTests(ctx context.Context, t *testing.T, key *keys.PrivateKey, node stri
 	t.Run("rest put container invalid", func(t *testing.T) { restContainerPutInvalid(ctx, t) })
 	t.Run("rest put container", func(t *testing.T) { restContainerPut(ctx, t, clientPool) })
 	t.Run("rest get container", func(t *testing.T) { restContainerGet(ctx, t, owner, cnrID) })
-	t.Run("rest delete container", func(t *testing.T) { restContainerDelete(ctx, t, clientPool, owner) })
-	t.Run("rest put container eacl", func(t *testing.T) { restContainerEACLPut(ctx, t, clientPool, owner) })
+	t.Run("rest delete container", func(t *testing.T) { restContainerDelete(ctx, t, clientPool, owner, signer) })
+	t.Run("rest put container eacl", func(t *testing.T) { restContainerEACLPut(ctx, t, clientPool, owner, signer) })
 	t.Run("rest get container eacl", func(t *testing.T) { restContainerEACLGet(ctx, t, clientPool, cnrID) })
 	t.Run("rest list containers", func(t *testing.T) { restContainerList(ctx, t, clientPool, owner, cnrID) })
 }
@@ -230,7 +231,7 @@ func getDefaultConfig(node string) *viper.Viper {
 func getPool(ctx context.Context, t *testing.T, key *keys.PrivateKey, node string) *pool.Pool {
 	var prm pool.InitParameters
 	prm.AddNode(pool.NewNodeParam(1, node, 1))
-	prm.SetSigner(neofsecdsa.SignerRFC6979(key.PrivateKey))
+	prm.SetSigner(user.NewAutoIDSignerRFC6979(key.PrivateKey))
 	prm.SetHealthcheckTimeout(5 * time.Second)
 	prm.SetNodeDialTimeout(5 * time.Second)
 
@@ -656,7 +657,7 @@ func restObjectGet(ctx context.Context, t *testing.T, p *pool.Pool, ownerID *use
 	require.Equal(t, int64(0), *objInfo2.ObjectSize)
 }
 
-func restObjectGetUnauthenticated(ctx context.Context, t *testing.T, p *pool.Pool, ownerID *user.ID, cnrID cid.ID) {
+func restObjectGetUnauthenticated(ctx context.Context, t *testing.T, p *pool.Pool, ownerID *user.ID, cnrID cid.ID, signer user.Signer) {
 	content := []byte("some content")
 	attributes := map[string]string{
 		object.AttributeFileName: "get-obj-unauth-name",
@@ -678,7 +679,7 @@ func restObjectGetUnauthenticated(ctx context.Context, t *testing.T, p *pool.Poo
 	require.Equal(t, models.ErrorTypeAPI, *resp.Type)
 
 	// set empty eacl table to be able to do unauthenticated request
-	allowByEACL(ctx, t, p, cnrID)
+	allowByEACL(ctx, t, p, cnrID, signer)
 
 	request, err = http.NewRequest(http.MethodGet, testHost+"/v1/objects/"+cnrID.EncodeToString()+"/"+objID.EncodeToString(), nil)
 	require.NoError(t, err)
@@ -700,7 +701,7 @@ func restObjectGetUnauthenticated(ctx context.Context, t *testing.T, p *pool.Poo
 	}
 
 	// set eacl the same as was before test started
-	restrictByEACL(ctx, t, p, cnrID)
+	restrictByEACL(ctx, t, p, cnrID, signer)
 }
 
 func restObjectGetFullBearer(ctx context.Context, t *testing.T, p *pool.Pool, ownerID *user.ID, cnrID cid.ID) {
@@ -926,8 +927,8 @@ func restContainerGet(ctx context.Context, t *testing.T, owner user.ID, cnrID ci
 	require.NotEmpty(t, *cnrInfo.Version)
 }
 
-func restContainerDelete(ctx context.Context, t *testing.T, clientPool *pool.Pool, owner user.ID) {
-	cnrID := createContainer(ctx, t, clientPool, owner, "for-delete")
+func restContainerDelete(ctx context.Context, t *testing.T, clientPool *pool.Pool, owner user.ID, signer user.Signer) {
+	cnrID := createContainer(ctx, t, clientPool, owner, "for-delete", signer)
 
 	bearer := &models.Bearer{
 		Container: &models.Rule{
@@ -956,8 +957,8 @@ func restContainerDelete(ctx context.Context, t *testing.T, clientPool *pool.Poo
 	require.Contains(t, err.Error(), "not found")
 }
 
-func restContainerEACLPut(ctx context.Context, t *testing.T, clientPool *pool.Pool, owner user.ID) {
-	cnrID := createContainer(ctx, t, clientPool, owner, "for-eacl-put")
+func restContainerEACLPut(ctx context.Context, t *testing.T, clientPool *pool.Pool, owner user.ID, signer user.Signer) {
+	cnrID := createContainer(ctx, t, clientPool, owner, "for-eacl-put", signer)
 	httpClient := &http.Client{Timeout: 60 * time.Second}
 	bearer := &models.Bearer{
 		Container: &models.Rule{
@@ -1078,8 +1079,8 @@ func makeAuthTokenRequest(ctx context.Context, t *testing.T, bearers []*models.B
 	key, err := keys.NewPrivateKeyFromHex(devenvPrivateKey)
 	require.NoError(t, err)
 
-	var ownerID user.ID
-	require.NoError(t, user.IDFromSigner(&ownerID, neofsecdsa.Signer(key.PrivateKey)))
+	signer := user.NewAutoIDSignerRFC6979(key.PrivateKey)
+	ownerID := signer.UserID()
 
 	data, err := json.Marshal(bearers)
 	require.NoError(t, err)
@@ -1277,7 +1278,7 @@ func prepareCommonHeaders(header http.Header, bearerToken *handlers.BearerToken)
 	header.Add(XBearerSignatureKey, bearerToken.Key)
 }
 
-func createContainer(ctx context.Context, t *testing.T, clientPool *pool.Pool, owner user.ID, name string) cid.ID {
+func createContainer(ctx context.Context, t *testing.T, clientPool *pool.Pool, owner user.ID, name string, signer user.Signer) cid.ID {
 	var policy netmap.PlacementPolicy
 	err := policy.DecodeString("REP 1")
 	require.NoError(t, err)
@@ -1288,10 +1289,10 @@ func createContainer(ctx context.Context, t *testing.T, clientPool *pool.Pool, o
 	cnr.SetPlacementPolicy(policy)
 	cnr.SetBasicACL(acl.PublicRWExtended)
 
-	container.SetName(&cnr, name)
-	container.SetCreationTime(&cnr, time.Now())
+	cnr.SetName(name)
+	cnr.SetCreationTime(time.Now())
 
-	err = pool.SyncContainerWithNetwork(ctx, &cnr, clientPool)
+	err = client.SyncContainerWithNetwork(ctx, &cnr, clientPool)
 	require.NoError(t, err)
 
 	var waitPrm pool.WaitParams
@@ -1301,7 +1302,7 @@ func createContainer(ctx context.Context, t *testing.T, clientPool *pool.Pool, o
 	var prm pool.PrmContainerPut
 	prm.SetWaitParams(waitPrm)
 
-	CID, err := clientPool.PutContainer(ctx, cnr, prm)
+	CID, err := clientPool.PutContainer(ctx, cnr, signer, prm)
 	require.NoError(t, err)
 
 	return CID
@@ -1332,7 +1333,7 @@ func createObject(ctx context.Context, t *testing.T, p *pool.Pool, ownerID *user
 	return objID
 }
 
-func restrictByEACL(ctx context.Context, t *testing.T, clientPool *pool.Pool, cnrID cid.ID) *eacl.Table {
+func restrictByEACL(ctx context.Context, t *testing.T, clientPool *pool.Pool, cnrID cid.ID, signer user.Signer) *eacl.Table {
 	table := eacl.NewTable()
 	table.SetCID(cnrID)
 
@@ -1353,13 +1354,13 @@ func restrictByEACL(ctx context.Context, t *testing.T, clientPool *pool.Pool, cn
 	var prm pool.PrmContainerSetEACL
 	prm.SetWaitParams(waitPrm)
 
-	err := clientPool.SetEACL(ctx, *table, prm)
+	err := clientPool.SetEACL(ctx, *table, signer, prm)
 	require.NoError(t, err)
 
 	return table
 }
 
-func allowByEACL(ctx context.Context, t *testing.T, clientPool *pool.Pool, cnrID cid.ID) *eacl.Table {
+func allowByEACL(ctx context.Context, t *testing.T, clientPool *pool.Pool, cnrID cid.ID, signer user.Signer) *eacl.Table {
 	table := eacl.NewTable()
 	table.SetCID(cnrID)
 
@@ -1370,7 +1371,7 @@ func allowByEACL(ctx context.Context, t *testing.T, clientPool *pool.Pool, cnrID
 	var prm pool.PrmContainerSetEACL
 	prm.SetWaitParams(waitPrm)
 
-	err := clientPool.SetEACL(ctx, *table, prm)
+	err := clientPool.SetEACL(ctx, *table, signer, prm)
 	require.NoError(t, err)
 
 	return table

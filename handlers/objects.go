@@ -203,7 +203,7 @@ func (a *API) DeleteObject(params operations.DeleteObjectParams, principal *mode
 		return errorResponse.WithPayload(resp)
 	}
 
-	if _, err = cl.ObjectDelete(ctx, addr.Container(), addr.Object(), prm); err != nil {
+	if _, err = cl.ObjectDelete(ctx, addr.Container(), addr.Object(), a.signer, prm); err != nil {
 		resp := a.logAndGetErrorResponse("failed to delete object", err)
 		return errorResponse.WithPayload(resp)
 	}
@@ -441,7 +441,7 @@ func attachBearer(prm prmWithBearer, btoken *bearer.Token) {
 }
 func attachOwner(obj *object.Object, btoken *bearer.Token) {
 	if btoken != nil {
-		owner := bearer.ResolveIssuer(*btoken)
+		owner := btoken.ResolveIssuer()
 		obj.SetOwnerID(&owner)
 	}
 }

@@ -14,6 +14,7 @@ import (
 	"github.com/nspcc-dev/neofs-rest-gw/gen/models"
 	"github.com/nspcc-dev/neofs-rest-gw/gen/restapi/operations"
 	"github.com/nspcc-dev/neofs-rest-gw/internal/util"
+	"github.com/nspcc-dev/neofs-sdk-go/client"
 	neofsecdsa "github.com/nspcc-dev/neofs-sdk-go/crypto/ecdsa"
 	"github.com/nspcc-dev/neofs-sdk-go/pool"
 	"github.com/nspcc-dev/neofs-sdk-go/user"
@@ -187,7 +188,7 @@ func prepareContainerTokens(ctx context.Context, params containerTokenParams, po
 }
 
 func getCurrentEpoch(ctx context.Context, p *pool.Pool) (uint64, error) {
-	netInfo, err := p.NetworkInfo(ctx)
+	netInfo, err := p.NetworkInfo(ctx, client.PrmNetworkInfo{})
 	if err != nil {
 		return 0, fmt.Errorf("couldn't get netwokr info: %w", err)
 	}
