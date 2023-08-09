@@ -24,7 +24,6 @@ import (
 type API struct {
 	log              *zap.Logger
 	pool             *pool.Pool
-	owner            *user.ID
 	signer           user.Signer
 	defaultTimestamp bool
 
@@ -76,13 +75,11 @@ const (
 // New creates a new API using specified logger, connection pool and other parameters.
 func New(prm *PrmAPI) *API {
 	signer := user.NewAutoIDSignerRFC6979(prm.Key.PrivateKey)
-	owner := signer.UserID()
 
 	return &API{
 		log:              prm.Logger,
 		pool:             prm.Pool,
 		signer:           signer,
-		owner:            &owner,
 		defaultTimestamp: prm.DefaultTimestamp,
 
 		prometheusService:      prm.PrometheusService,

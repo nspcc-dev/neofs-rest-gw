@@ -89,7 +89,7 @@ func (a *API) PostAuth(params operations.AuthParams) middleware.Responder {
 
 		if isObject {
 			prm := newObjectParams(commonPrm, token)
-			response[i], err = prepareObjectToken(ctx, prm, a.pool, *a.owner)
+			response[i], err = prepareObjectToken(ctx, prm, a.pool, a.signer.UserID())
 		} else {
 			prm := newContainerParams(commonPrm, token)
 			response[i], err = prepareContainerTokens(ctx, prm, a.pool, a.signer.Public())
