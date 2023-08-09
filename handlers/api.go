@@ -24,7 +24,6 @@ import (
 type API struct {
 	log              *zap.Logger
 	pool             *pool.Pool
-	key              *keys.PrivateKey
 	owner            *user.ID
 	signer           user.Signer
 	defaultTimestamp bool
@@ -82,7 +81,6 @@ func New(prm *PrmAPI) *API {
 	return &API{
 		log:              prm.Logger,
 		pool:             prm.Pool,
-		key:              prm.Key,
 		signer:           signer,
 		owner:            &owner,
 		defaultTimestamp: prm.DefaultTimestamp,

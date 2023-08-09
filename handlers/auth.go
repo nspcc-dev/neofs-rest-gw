@@ -7,7 +7,6 @@ import (
 
 	"github.com/go-openapi/runtime/middleware"
 	"github.com/google/uuid"
-	"github.com/nspcc-dev/neo-go/pkg/crypto/keys"
 	"github.com/nspcc-dev/neofs-api-go/v2/acl"
 	"github.com/nspcc-dev/neofs-api-go/v2/refs"
 	sessionv2 "github.com/nspcc-dev/neofs-api-go/v2/session"
@@ -15,7 +14,7 @@ import (
 	"github.com/nspcc-dev/neofs-rest-gw/gen/restapi/operations"
 	"github.com/nspcc-dev/neofs-rest-gw/internal/util"
 	"github.com/nspcc-dev/neofs-sdk-go/client"
-	neofsecdsa "github.com/nspcc-dev/neofs-sdk-go/crypto/ecdsa"
+	neofscrypto "github.com/nspcc-dev/neofs-sdk-go/crypto"
 	"github.com/nspcc-dev/neofs-sdk-go/pool"
 	"github.com/nspcc-dev/neofs-sdk-go/user"
 )
@@ -93,7 +92,7 @@ func (a *API) PostAuth(params operations.AuthParams) middleware.Responder {
 			response[i], err = prepareObjectToken(ctx, prm, a.pool, *a.owner)
 		} else {
 			prm := newContainerParams(commonPrm, token)
-			response[i], err = prepareContainerTokens(ctx, prm, a.pool, a.key.PublicKey())
+			response[i], err = prepareContainerTokens(ctx, prm, a.pool, a.signer.Public())
 		}
 		if err != nil {
 			return operations.NewAuthBadRequest().WithPayload(util.NewErrorResponse(err))
@@ -148,7 +147,7 @@ func prepareObjectToken(ctx context.Context, params objectTokenParams, pool *poo
 	}, nil
 }
 
-func prepareContainerTokens(ctx context.Context, params containerTokenParams, pool *pool.Pool, key *keys.PublicKey) (*models.TokenResponse, error) {
+func prepareContainerTokens(ctx context.Context, params containerTokenParams, pool *pool.Pool, pubKey neofscrypto.PublicKey) (*models.TokenResponse, error) {
 	iat, exp, err := getTokenLifetime(ctx, pool, params.XBearerLifetime)
 	if err != nil {
 		return nil, fmt.Errorf("couldn't get lifetime: %w", err)
@@ -168,8 +167,7 @@ func prepareContainerTokens(ctx context.Context, params containerTokenParams, po
 	stoken.SetIat(iat)
 	stoken.SetExp(exp)
 
-	authKey := neofsecdsa.PublicKey(*key)
-	stoken.SetAuthKey(&authKey)
+	stoken.SetAuthKey(pubKey)
 
 	var v2token sessionv2.Token
 	stoken.WriteToV2(&v2token)
