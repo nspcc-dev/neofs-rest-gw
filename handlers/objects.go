@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"bytes"
 	"context"
 	"encoding/base64"
 	"encoding/hex"
@@ -22,6 +23,7 @@ import (
 	"github.com/nspcc-dev/neofs-sdk-go/object"
 	oid "github.com/nspcc-dev/neofs-sdk-go/object/id"
 	"github.com/nspcc-dev/neofs-sdk-go/pool"
+	"github.com/nspcc-dev/neofs-sdk-go/user"
 	"go.uber.org/zap"
 )
 
@@ -62,21 +64,44 @@ func (a *API) PutObjects(params operations.PutObjectParams, principal *models.Pr
 		return errorResponse.WithPayload(resp)
 	}
 
-	obj := object.New()
-	obj.SetContainerID(cnrID)
-	attachOwner(obj, btoken)
-	obj.SetPayload(payload)
-	obj.SetAttributes(attributes...)
-
-	var prmPut pool.PrmObjectPut
-	prmPut.SetHeader(*obj)
-	attachBearer(&prmPut, btoken)
-
-	objID, err := a.pool.PutObject(ctx, prmPut)
+	ni, err := a.pool.NetworkInfo(ctx, client.PrmNetworkInfo{})
 	if err != nil {
-		resp := a.logAndGetErrorResponse("put object", err)
+		resp := a.logAndGetErrorResponse("failed to get networkInfo", err)
 		return errorResponse.WithPayload(resp)
 	}
+
+	var obj object.Object
+	obj.SetContainerID(cnrID)
+	attachOwner(&obj, btoken)
+	obj.SetAttributes(attributes...)
+
+	var prmPutInit client.PrmObjectPutInit
+	if btoken != nil {
+		prmPutInit.WithBearerToken(*btoken)
+	}
+
+	writer, err := a.pool.ObjectPutInit(ctx, obj, a.signer, prmPutInit)
+	if err != nil {
+		resp := a.logAndGetErrorResponse("put object init", err)
+		return errorResponse.WithPayload(resp)
+	}
+
+	var objID oid.ID
+
+	data := bytes.NewReader(payload)
+	chunk := make([]byte, ni.MaxObjectSize())
+	_, err = io.CopyBuffer(writer, data, chunk)
+	if err != nil {
+		resp := a.logAndGetErrorResponse("write", err)
+		return errorResponse.WithPayload(resp)
+	}
+
+	if err = writer.Close(); err != nil {
+		resp := a.logAndGetErrorResponse("writer close", err)
+		return errorResponse.WithPayload(resp)
+	}
+
+	objID = writer.GetResult().StoredObjectID()
 
 	var resp models.Address
 	resp.ContainerID = params.Object.ContainerID
@@ -104,35 +129,41 @@ func (a *API) GetObjectInfo(params operations.GetObjectInfoParams, principal *mo
 		return errorResponse.WithPayload(resp)
 	}
 
-	var prm pool.PrmObjectHead
+	var prm client.PrmObjectHead
 	attachBearer(&prm, btoken)
 
-	objInfo, err := a.pool.HeadObject(ctx, addr.Container(), addr.Object(), prm)
+	objInfo, err := a.pool.ObjectHead(ctx, addr.Container(), addr.Object(), a.signer, prm)
 	if err != nil {
 		resp := a.logAndGetErrorResponse("head object", err)
+		return errorResponse.WithPayload(resp)
+	}
+
+	var header object.Object
+	if !objInfo.ReadHeader(&header) {
+		resp := a.logAndGetErrorResponse("header is empty", nil)
 		return errorResponse.WithPayload(resp)
 	}
 
 	var resp models.ObjectInfo
 	resp.ContainerID = util.NewString(params.ContainerID)
 	resp.ObjectID = util.NewString(params.ObjectID)
-	resp.OwnerID = util.NewString(objInfo.OwnerID().String())
-	resp.Attributes = make([]*models.Attribute, len(objInfo.Attributes()))
-	resp.ObjectSize = util.NewInteger(int64(objInfo.PayloadSize()))
+	resp.OwnerID = util.NewString(header.OwnerID().String())
+	resp.Attributes = make([]*models.Attribute, len(header.Attributes()))
+	resp.ObjectSize = util.NewInteger(int64(header.PayloadSize()))
 	resp.PayloadSize = util.NewInteger(0)
 
-	for i, attr := range objInfo.Attributes() {
+	for i, attr := range header.Attributes() {
 		resp.Attributes[i] = &models.Attribute{
 			Key:   util.NewString(attr.Key()),
 			Value: util.NewString(attr.Value()),
 		}
 	}
 
-	if objInfo.PayloadSize() == 0 {
+	if header.PayloadSize() == 0 {
 		return operations.NewGetObjectInfoOK().WithPayload(&resp)
 	}
 
-	offset, length, err := prepareOffsetLength(params, objInfo.PayloadSize())
+	offset, length, err := prepareOffsetLength(params, header.PayloadSize())
 	if err != nil {
 		errResp := a.logAndGetErrorResponse("invalid range param", err)
 		return errorResponse.WithPayload(errResp)
@@ -142,10 +173,10 @@ func (a *API) GetObjectInfo(params operations.GetObjectInfoParams, principal *mo
 		return operations.NewGetObjectInfoOK().WithPayload(&resp)
 	}
 
-	var prmRange pool.PrmObjectRange
+	var prmRange client.PrmObjectRange
 	attachBearer(&prmRange, btoken)
 
-	rangeRes, err := a.pool.ObjectRange(ctx, addr.Container(), addr.Object(), offset, length, prmRange)
+	rangeRes, err := a.pool.ObjectRangeInit(ctx, addr.Container(), addr.Object(), offset, length, a.signer, prmRange)
 	if err != nil {
 		errResp := a.logAndGetErrorResponse("range object", err)
 		return errorResponse.WithPayload(errResp)
@@ -159,7 +190,7 @@ func (a *API) GetObjectInfo(params operations.GetObjectInfoParams, principal *mo
 
 	sb := new(strings.Builder)
 	encoder := base64.NewEncoder(base64.StdEncoding, sb)
-	payloadSize, err := io.Copy(encoder, &rangeRes)
+	payloadSize, err := io.Copy(encoder, rangeRes)
 	if err != nil {
 		errResp := a.logAndGetErrorResponse("encode object payload", err)
 		return errorResponse.WithPayload(errResp)
@@ -236,11 +267,11 @@ func (a *API) SearchObjects(params operations.SearchObjectsParams, principal *mo
 		return errorResponse.WithPayload(resp)
 	}
 
-	var prm pool.PrmObjectSearch
+	var prm client.PrmObjectSearch
 	attachBearer(&prm, btoken)
 	prm.SetFilters(filters)
 
-	resSearch, err := a.pool.SearchObjects(ctx, cnrID, prm)
+	resSearch, err := a.pool.ObjectSearchInit(ctx, cnrID, a.signer, prm)
 	if err != nil {
 		resp := a.logAndGetErrorResponse("failed to search objects", err)
 		return errorResponse.WithPayload(resp)
@@ -260,7 +291,7 @@ func (a *API) SearchObjects(params operations.SearchObjectsParams, principal *mo
 			return false
 		}
 
-		if obj, iterateErr = headObjectBaseInfo(ctx, a.pool, cnrID, id, btoken); iterateErr != nil {
+		if obj, iterateErr = headObjectBaseInfo(ctx, a.pool, cnrID, id, btoken, a.signer); iterateErr != nil {
 			return true
 		}
 
@@ -286,13 +317,18 @@ func (a *API) SearchObjects(params operations.SearchObjectsParams, principal *mo
 		WithAccessControlAllowOrigin("*")
 }
 
-func headObjectBaseInfo(ctx context.Context, p *pool.Pool, cnrID cid.ID, objID oid.ID, btoken *bearer.Token) (*models.ObjectBaseInfo, error) {
-	var prm pool.PrmObjectHead
+func headObjectBaseInfo(ctx context.Context, p *pool.Pool, cnrID cid.ID, objID oid.ID, btoken *bearer.Token, signer user.Signer) (*models.ObjectBaseInfo, error) {
+	var prm client.PrmObjectHead
 	attachBearer(&prm, btoken)
 
-	objInfo, err := p.HeadObject(ctx, cnrID, objID, prm)
+	objInfo, err := p.ObjectHead(ctx, cnrID, objID, signer, prm)
 	if err != nil {
 		return nil, err
+	}
+
+	var header object.Object
+	if !objInfo.ReadHeader(&header) {
+		return nil, errors.New("header is empty")
 	}
 
 	resp := &models.ObjectBaseInfo{
@@ -302,7 +338,7 @@ func headObjectBaseInfo(ctx context.Context, p *pool.Pool, cnrID cid.ID, objID o
 		},
 	}
 
-	for _, attr := range objInfo.Attributes() {
+	for _, attr := range header.Attributes() {
 		switch attr.Key() {
 		case object.AttributeFileName:
 			resp.Name = attr.Value()
@@ -431,12 +467,12 @@ func prepareOffsetLength(params operations.GetObjectInfoParams, objSize uint64) 
 }
 
 type prmWithBearer interface {
-	UseBearer(token bearer.Token)
+	WithBearerToken(t bearer.Token)
 }
 
 func attachBearer(prm prmWithBearer, btoken *bearer.Token) {
 	if btoken != nil {
-		prm.UseBearer(*btoken)
+		prm.WithBearerToken(*btoken)
 	}
 }
 func attachOwner(obj *object.Object, btoken *bearer.Token) {

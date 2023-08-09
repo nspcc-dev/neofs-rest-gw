@@ -32,8 +32,10 @@ import (
 	"github.com/nspcc-dev/neofs-sdk-go/netmap"
 	"github.com/nspcc-dev/neofs-sdk-go/object"
 	oid "github.com/nspcc-dev/neofs-sdk-go/object/id"
+	"github.com/nspcc-dev/neofs-sdk-go/object/slicer"
 	"github.com/nspcc-dev/neofs-sdk-go/pool"
 	"github.com/nspcc-dev/neofs-sdk-go/user"
+	"github.com/nspcc-dev/neofs-sdk-go/waiter"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/require"
 	"github.com/testcontainers/testcontainers-go"
@@ -133,12 +135,12 @@ func runTests(ctx context.Context, t *testing.T, key *keys.PrivateKey, node stri
 	t.Run("rest check mix tokens up", func(t *testing.T) { mixTokens(ctx, t, cnrID) })
 	t.Run("rest form full binary bearer", func(t *testing.T) { formFullBinaryBearer(ctx, t) })
 
-	t.Run("rest put object", func(t *testing.T) { restObjectPut(ctx, t, clientPool, cnrID) })
-	t.Run("rest get object", func(t *testing.T) { restObjectGet(ctx, t, clientPool, &owner, cnrID) })
+	t.Run("rest put object", func(t *testing.T) { restObjectPut(ctx, t, clientPool, cnrID, signer) })
+	t.Run("rest get object", func(t *testing.T) { restObjectGet(ctx, t, clientPool, &owner, cnrID, signer) })
 	t.Run("rest get object unauthenticated", func(t *testing.T) { restObjectGetUnauthenticated(ctx, t, clientPool, &owner, cnrID, signer) })
-	t.Run("rest get object full bearer", func(t *testing.T) { restObjectGetFullBearer(ctx, t, clientPool, &owner, cnrID) })
-	t.Run("rest delete object", func(t *testing.T) { restObjectDelete(ctx, t, clientPool, &owner, cnrID) })
-	t.Run("rest search objects", func(t *testing.T) { restObjectsSearch(ctx, t, clientPool, &owner, cnrID) })
+	t.Run("rest get object full bearer", func(t *testing.T) { restObjectGetFullBearer(ctx, t, clientPool, &owner, cnrID, signer) })
+	t.Run("rest delete object", func(t *testing.T) { restObjectDelete(ctx, t, clientPool, &owner, cnrID, signer) })
+	t.Run("rest search objects", func(t *testing.T) { restObjectsSearch(ctx, t, clientPool, &owner, cnrID, signer) })
 
 	t.Run("rest put container invalid", func(t *testing.T) { restContainerPutInvalid(ctx, t) })
 	t.Run("rest put container", func(t *testing.T) { restContainerPut(ctx, t, clientPool) })
@@ -473,7 +475,7 @@ func checkGWErrorResponse(t *testing.T, httpClient *http.Client, request *http.R
 	require.Equal(t, models.ErrorTypeGW, *resp.Type)
 }
 
-func restObjectPut(ctx context.Context, t *testing.T, clientPool *pool.Pool, cnrID cid.ID) {
+func restObjectPut(ctx context.Context, t *testing.T, clientPool *pool.Pool, cnrID cid.ID, signer user.Signer) {
 	bearer := &models.Bearer{
 		Object: []*models.Record{{
 			Operation: models.NewOperation(models.OperationPUT),
@@ -529,28 +531,28 @@ func restObjectPut(ctx context.Context, t *testing.T, clientPool *pool.Pool, cnr
 	err = id.DecodeString(*addr.ObjectID)
 	require.NoError(t, err)
 
-	var prm pool.PrmObjectGet
-	res, err := clientPool.GetObject(ctx, CID, id, prm)
+	var prm client.PrmObjectGet
+	res, payloadReader, err := clientPool.ObjectGetInit(ctx, CID, id, signer, prm)
 	require.NoError(t, err)
 
 	payload := bytes.NewBuffer(nil)
-	_, err = io.Copy(payload, res.Payload)
+	_, err = io.Copy(payload, payloadReader)
 	require.NoError(t, err)
 	require.Equal(t, content, payload.String())
 
-	for _, attribute := range res.Header.Attributes() {
+	for _, attribute := range res.Attributes() {
 		require.Equal(t, attributes[attribute.Key()], attribute.Value(), attribute.Key())
 	}
 }
 
-func restObjectGet(ctx context.Context, t *testing.T, p *pool.Pool, ownerID *user.ID, cnrID cid.ID) {
+func restObjectGet(ctx context.Context, t *testing.T, p *pool.Pool, ownerID *user.ID, cnrID cid.ID, signer user.Signer) {
 	content := []byte("some content")
 	attributes := map[string]string{
 		object.AttributeFileName: "get-obj-name",
 		"user-attribute":         "user value",
 	}
 
-	objID := createObject(ctx, t, p, ownerID, cnrID, attributes, content)
+	objID := createObject(ctx, t, p, ownerID, cnrID, attributes, content, signer)
 
 	bearer := &models.Bearer{
 		Object: []*models.Record{
@@ -638,7 +640,7 @@ func restObjectGet(ctx context.Context, t *testing.T, p *pool.Pool, ownerID *use
 	require.Equal(t, content[:rangeLength], contentData)
 
 	// check empty object
-	objID2 := createObject(ctx, t, p, ownerID, cnrID, map[string]string{}, []byte{})
+	objID2 := createObject(ctx, t, p, ownerID, cnrID, map[string]string{}, []byte{}, signer)
 
 	query2 := make(url.Values)
 	query2.Add(walletConnectQuery, strconv.FormatBool(useWalletConnect))
@@ -664,7 +666,7 @@ func restObjectGetUnauthenticated(ctx context.Context, t *testing.T, p *pool.Poo
 		"user-attribute":         "user value",
 	}
 
-	objID := createObject(ctx, t, p, ownerID, cnrID, attributes, content)
+	objID := createObject(ctx, t, p, ownerID, cnrID, attributes, content, signer)
 
 	httpClient := defaultHTTPClient()
 
@@ -704,14 +706,14 @@ func restObjectGetUnauthenticated(ctx context.Context, t *testing.T, p *pool.Poo
 	restrictByEACL(ctx, t, p, cnrID, signer)
 }
 
-func restObjectGetFullBearer(ctx context.Context, t *testing.T, p *pool.Pool, ownerID *user.ID, cnrID cid.ID) {
+func restObjectGetFullBearer(ctx context.Context, t *testing.T, p *pool.Pool, ownerID *user.ID, cnrID cid.ID, signer user.Signer) {
 	content := []byte("some content")
 	attributes := map[string]string{
 		object.AttributeFileName: "get-obj-name",
 		"user-attribute":         "user value",
 	}
 
-	objID := createObject(ctx, t, p, ownerID, cnrID, attributes, content)
+	objID := createObject(ctx, t, p, ownerID, cnrID, attributes, content, signer)
 
 	bearers := &models.Bearer{
 		Object: []*models.Record{
@@ -770,8 +772,8 @@ func restObjectGetFullBearer(ctx context.Context, t *testing.T, p *pool.Pool, ow
 	require.Equal(t, content, contentData)
 }
 
-func restObjectDelete(ctx context.Context, t *testing.T, p *pool.Pool, owner *user.ID, cnrID cid.ID) {
-	objID := createObject(ctx, t, p, owner, cnrID, nil, []byte("some content"))
+func restObjectDelete(ctx context.Context, t *testing.T, p *pool.Pool, owner *user.ID, cnrID cid.ID, signer user.Signer) {
+	objID := createObject(ctx, t, p, owner, cnrID, nil, []byte("some content"), signer)
 
 	bearer := &models.Bearer{
 		Object: []*models.Record{{
@@ -809,13 +811,13 @@ func restObjectDelete(ctx context.Context, t *testing.T, p *pool.Pool, owner *us
 	doRequest(t, httpClient, request, http.StatusOK, resp)
 	require.True(t, *resp.Success)
 
-	var prm pool.PrmObjectHead
+	var prm client.PrmObjectHead
 
-	_, err = p.HeadObject(ctx, cnrID, objID, prm)
+	_, err = p.ObjectHead(ctx, cnrID, objID, signer, prm)
 	require.Error(t, err)
 }
 
-func restObjectsSearch(ctx context.Context, t *testing.T, p *pool.Pool, owner *user.ID, cnrID cid.ID) {
+func restObjectsSearch(ctx context.Context, t *testing.T, p *pool.Pool, owner *user.ID, cnrID cid.ID, signer user.Signer) {
 	userKey, userValue := "User-Attribute", "user-attribute-value"
 	objectName := "object-name"
 	filePath := "path/to/object/object-name"
@@ -824,9 +826,9 @@ func restObjectsSearch(ctx context.Context, t *testing.T, p *pool.Pool, owner *u
 		"FilePath":               filePath,
 		userKey:                  userValue,
 	}
-	objID := createObject(ctx, t, p, owner, cnrID, headers, []byte("some content"))
+	objID := createObject(ctx, t, p, owner, cnrID, headers, []byte("some content"), signer)
 	headers[userKey] = "dummy"
-	_ = createObject(ctx, t, p, owner, cnrID, headers, []byte("some content"))
+	_ = createObject(ctx, t, p, owner, cnrID, headers, []byte("some content"), signer)
 
 	bearer := &models.Bearer{
 		Object: []*models.Record{
@@ -952,7 +954,7 @@ func restContainerDelete(ctx context.Context, t *testing.T, clientPool *pool.Poo
 	doRequest(t, httpClient, request, http.StatusOK, resp)
 	require.True(t, *resp.Success)
 
-	_, err = clientPool.GetContainer(ctx, cnrID)
+	_, err = clientPool.ContainerGet(ctx, cnrID, client.PrmContainerGet{})
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "not found")
 }
@@ -996,7 +998,7 @@ func restContainerEACLPut(ctx context.Context, t *testing.T, clientPool *pool.Po
 	doSetEACLRequest(ctx, t, httpClient, cnrID, query, bearerToken, body, http.StatusOK, resp)
 	require.True(t, *resp.Success)
 
-	table, err := clientPool.GetEACL(ctx, cnrID)
+	table, err := clientPool.ContainerEACL(ctx, cnrID, client.PrmContainerEACL{})
 	require.NoError(t, err)
 
 	expectedTable, err := util.ToNativeTable(req.Records)
@@ -1016,7 +1018,7 @@ func doSetEACLRequest(ctx context.Context, t *testing.T, httpClient *http.Client
 }
 
 func restContainerEACLGet(ctx context.Context, t *testing.T, p *pool.Pool, cnrID cid.ID) {
-	expectedTable, err := p.GetEACL(ctx, cnrID)
+	expectedTable, err := p.ContainerEACL(ctx, cnrID, client.PrmContainerEACL{})
 	require.NoError(t, err)
 
 	httpClient := &http.Client{Timeout: 60 * time.Second}
@@ -1038,7 +1040,8 @@ func restContainerEACLGet(ctx context.Context, t *testing.T, p *pool.Pool, cnrID
 }
 
 func restContainerList(ctx context.Context, t *testing.T, p *pool.Pool, owner user.ID, cnrID cid.ID) {
-	ids, err := p.ListContainers(ctx, owner)
+	var prm client.PrmContainerList
+	ids, err := p.ContainerList(ctx, owner, prm)
 	require.NoError(t, err)
 
 	httpClient := defaultHTTPClient()
@@ -1258,7 +1261,7 @@ func restContainerPut(ctx context.Context, t *testing.T, clientPool *pool.Pool) 
 	require.NoError(t, err)
 	fmt.Println(CID.String())
 
-	cnr, err := clientPool.GetContainer(ctx, CID)
+	cnr, err := clientPool.ContainerGet(ctx, CID, client.PrmContainerGet{})
 	require.NoError(t, err)
 
 	cnrAttr := make(map[string]string)
@@ -1295,20 +1298,16 @@ func createContainer(ctx context.Context, t *testing.T, clientPool *pool.Pool, o
 	err = client.SyncContainerWithNetwork(ctx, &cnr, clientPool)
 	require.NoError(t, err)
 
-	var waitPrm pool.WaitParams
-	waitPrm.SetPollInterval(3 * time.Second)
-	waitPrm.SetTimeout(15 * time.Second)
+	var prm client.PrmContainerPut
 
-	var prm pool.PrmContainerPut
-	prm.SetWaitParams(waitPrm)
-
-	CID, err := clientPool.PutContainer(ctx, cnr, signer, prm)
+	w := waiter.NewContainerPutWaiter(clientPool, waiter.DefaultPollInterval)
+	CID, err := w.ContainerPut(ctx, cnr, signer, prm)
 	require.NoError(t, err)
 
 	return CID
 }
 
-func createObject(ctx context.Context, t *testing.T, p *pool.Pool, ownerID *user.ID, cnrID cid.ID, headers map[string]string, payload []byte) oid.ID {
+func createObject(ctx context.Context, t *testing.T, p *pool.Pool, ownerID *user.ID, cnrID cid.ID, headers map[string]string, payload []byte, signer user.Signer) oid.ID {
 	attributes := make([]object.Attribute, 0, len(headers))
 
 	for key, val := range headers {
@@ -1318,16 +1317,14 @@ func createObject(ctx context.Context, t *testing.T, p *pool.Pool, ownerID *user
 		attributes = append(attributes, *attr)
 	}
 
-	obj := object.New()
+	var obj object.Object
 	obj.SetOwnerID(ownerID)
 	obj.SetContainerID(cnrID)
 	obj.SetAttributes(attributes...)
 	obj.SetPayload(payload)
 
-	var prm pool.PrmObjectPut
-	prm.SetHeader(*obj)
-
-	objID, err := p.PutObject(ctx, prm)
+	var opts slicer.Options
+	objID, err := slicer.Put(ctx, p, obj, signer, bytes.NewReader(payload), opts)
 	require.NoError(t, err)
 
 	return objID
@@ -1347,14 +1344,10 @@ func restrictByEACL(ctx context.Context, t *testing.T, clientPool *pool.Pool, cn
 		table.AddRecord(record)
 	}
 
-	var waitPrm pool.WaitParams
-	waitPrm.SetPollInterval(3 * time.Second)
-	waitPrm.SetTimeout(15 * time.Second)
+	var prm client.PrmContainerSetEACL
+	w := waiter.NewContainerSetEACLWaiter(clientPool, waiter.DefaultPollInterval)
 
-	var prm pool.PrmContainerSetEACL
-	prm.SetWaitParams(waitPrm)
-
-	err := clientPool.SetEACL(ctx, *table, signer, prm)
+	err := w.ContainerSetEACL(ctx, *table, signer, prm)
 	require.NoError(t, err)
 
 	return table
@@ -1364,14 +1357,11 @@ func allowByEACL(ctx context.Context, t *testing.T, clientPool *pool.Pool, cnrID
 	table := eacl.NewTable()
 	table.SetCID(cnrID)
 
-	var waitPrm pool.WaitParams
-	waitPrm.SetPollInterval(3 * time.Second)
-	waitPrm.SetTimeout(15 * time.Second)
+	var prm client.PrmContainerSetEACL
+	w := waiter.NewContainerSetEACLWaiter(clientPool, waiter.DefaultPollInterval)
 
-	var prm pool.PrmContainerSetEACL
-	prm.SetWaitParams(waitPrm)
+	err := w.ContainerSetEACL(ctx, *table, signer, prm)
 
-	err := clientPool.SetEACL(ctx, *table, signer, prm)
 	require.NoError(t, err)
 
 	return table
