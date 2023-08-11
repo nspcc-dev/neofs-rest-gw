@@ -18,6 +18,7 @@ import (
 	"github.com/nspcc-dev/neofs-rest-gw/gen/restapi"
 	"github.com/nspcc-dev/neofs-rest-gw/handlers"
 	"github.com/nspcc-dev/neofs-rest-gw/metrics"
+	"github.com/nspcc-dev/neofs-sdk-go/client"
 	"github.com/nspcc-dev/neofs-sdk-go/pool"
 	"github.com/nspcc-dev/neofs-sdk-go/stat"
 	"github.com/nspcc-dev/neofs-sdk-go/user"
@@ -449,6 +450,11 @@ func newNeofsAPI(ctx context.Context, logger *zap.Logger, v *viper.Viper) (*hand
 		return nil, err
 	}
 
+	ni, err := p.NetworkInfo(ctx, client.PrmNetworkInfo{})
+	if err != nil {
+		return nil, fmt.Errorf("networkInfo: %w", err)
+	}
+
 	var apiPrm handlers.PrmAPI
 	apiPrm.Pool = p
 	apiPrm.Key = key
@@ -464,6 +470,7 @@ func newNeofsAPI(ctx context.Context, logger *zap.Logger, v *viper.Viper) (*hand
 	}
 
 	apiPrm.ServiceShutdownTimeout = defaultShutdownTimeout
+	apiPrm.MaxObjectSize = int64(ni.MaxObjectSize())
 
 	return handlers.New(&apiPrm), nil
 }

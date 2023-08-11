@@ -64,12 +64,6 @@ func (a *API) PutObjects(params operations.PutObjectParams, principal *models.Pr
 		return errorResponse.WithPayload(resp)
 	}
 
-	ni, err := a.pool.NetworkInfo(ctx, client.PrmNetworkInfo{})
-	if err != nil {
-		resp := a.logAndGetErrorResponse("failed to get networkInfo", err)
-		return errorResponse.WithPayload(resp)
-	}
-
 	var obj object.Object
 	obj.SetContainerID(cnrID)
 	attachOwner(&obj, btoken)
@@ -89,7 +83,7 @@ func (a *API) PutObjects(params operations.PutObjectParams, principal *models.Pr
 	var objID oid.ID
 
 	data := bytes.NewReader(payload)
-	chunk := make([]byte, ni.MaxObjectSize())
+	chunk := make([]byte, a.maxObjectSize)
 	_, err = io.CopyBuffer(writer, data, chunk)
 	if err != nil {
 		resp := a.logAndGetErrorResponse("write", err)

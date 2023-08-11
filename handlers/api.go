@@ -26,6 +26,7 @@ type API struct {
 	pool             *pool.Pool
 	signer           user.Signer
 	defaultTimestamp bool
+	maxObjectSize    int64
 
 	gateMetric             *metrics.GateMetrics
 	prometheusService      *metrics.Service
@@ -39,6 +40,7 @@ type PrmAPI struct {
 	Pool             *pool.Pool
 	Key              *keys.PrivateKey
 	DefaultTimestamp bool
+	MaxObjectSize    int64
 
 	GateMetric             *metrics.GateMetrics
 	PrometheusService      *metrics.Service
@@ -81,6 +83,7 @@ func New(prm *PrmAPI) *API {
 		pool:             prm.Pool,
 		signer:           signer,
 		defaultTimestamp: prm.DefaultTimestamp,
+		maxObjectSize:    prm.MaxObjectSize,
 
 		prometheusService:      prm.PrometheusService,
 		pprofService:           prm.PprofService,
