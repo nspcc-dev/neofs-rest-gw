@@ -7,7 +7,7 @@ import (
 	"github.com/nspcc-dev/neofs-rest-gw/gen/models"
 	"github.com/nspcc-dev/neofs-rest-gw/gen/restapi/operations"
 	"github.com/nspcc-dev/neofs-rest-gw/internal/util"
-	"github.com/nspcc-dev/neofs-sdk-go/pool"
+	"github.com/nspcc-dev/neofs-sdk-go/client"
 	"github.com/nspcc-dev/neofs-sdk-go/user"
 )
 
@@ -19,10 +19,10 @@ func (a *API) Balance(params operations.GetBalanceParams) middleware.Responder {
 		return operations.NewGetBalanceBadRequest().WithPayload(resp)
 	}
 
-	var prm pool.PrmBalanceGet
+	var prm client.PrmBalanceGet
 	prm.SetAccount(ownerID)
 
-	neofsBalance, err := a.pool.Balance(params.HTTPRequest.Context(), prm)
+	neofsBalance, err := a.pool.BalanceGet(params.HTTPRequest.Context(), prm)
 	if err != nil {
 		resp := a.logAndGetErrorResponse("get balance", err)
 		return operations.NewGetBalanceBadRequest().WithPayload(resp)

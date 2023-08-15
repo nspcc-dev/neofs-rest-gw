@@ -1,8 +1,6 @@
 package handlers
 
 import (
-	"crypto/ecdsa"
-	"crypto/elliptic"
 	"encoding/base64"
 	"encoding/hex"
 	"math"
@@ -40,12 +38,8 @@ func TestSign(t *testing.T) {
 
 	btoken.SetExp(math.MaxInt64)
 
-	ownerKey, err := keys.NewPublicKeyFromString(pubKeyHex)
-	require.NoError(t, err)
-
-	var owner user.ID
-	var pk = (*ecdsa.PublicKey)(ownerKey)
-	require.NoError(t, user.IDFromKey(&owner, elliptic.MarshalCompressed(pk.Curve, pk.X, pk.Y)))
+	signer := user.NewAutoIDSignerRFC6979(key.PrivateKey)
+	owner := signer.UserID()
 	btoken.ForUser(owner)
 
 	var v2token acl.BearerToken

@@ -17,6 +17,7 @@ import (
 	"github.com/nspcc-dev/neofs-rest-gw/gen/models"
 	"github.com/nspcc-dev/neofs-rest-gw/gen/restapi/operations"
 	"github.com/nspcc-dev/neofs-rest-gw/internal/util"
+	"github.com/nspcc-dev/neofs-sdk-go/client"
 	"github.com/nspcc-dev/neofs-sdk-go/container"
 	"github.com/nspcc-dev/neofs-sdk-go/container/acl"
 	cid "github.com/nspcc-dev/neofs-sdk-go/container/id"
@@ -25,6 +26,7 @@ import (
 	"github.com/nspcc-dev/neofs-sdk-go/session"
 	"github.com/nspcc-dev/neofs-sdk-go/user"
 	"github.com/nspcc-dev/neofs-sdk-go/version"
+	"github.com/nspcc-dev/neofs-sdk-go/waiter"
 	"go.uber.org/zap"
 )
 
@@ -49,7 +51,7 @@ func (a *API) PutContainers(params operations.PutContainerParams, principal *mod
 		return operations.NewPutContainerBadRequest().WithPayload(resp)
 	}
 
-	cnrID, err := createContainer(params.HTTPRequest.Context(), a.pool, stoken, &params)
+	cnrID, err := createContainer(params.HTTPRequest.Context(), a.pool, stoken, &params, a.signer)
 	if err != nil {
 		resp := a.logAndGetErrorResponse("create container", err)
 		return operations.NewPutContainerBadRequest().WithPayload(resp)
@@ -107,7 +109,7 @@ func (a *API) PutContainerEACL(params operations.PutContainerEACLParams, princip
 		return operations.NewPutContainerEACLBadRequest().WithPayload(resp)
 	}
 
-	if err = setContainerEACL(params.HTTPRequest.Context(), a.pool, cnrID, stoken, params.Eacl); err != nil {
+	if err = setContainerEACL(params.HTTPRequest.Context(), a.pool, cnrID, stoken, params.Eacl, a.signer); err != nil {
 		resp := a.logAndGetErrorResponse("failed set container eacl", err)
 		return operations.NewPutContainerEACLBadRequest().WithPayload(resp)
 	}
@@ -146,7 +148,9 @@ func (a *API) ListContainer(params operations.ListContainersParams) middleware.R
 		return operations.NewListContainersBadRequest().WithPayload(resp)
 	}
 
-	ids, err := a.pool.ListContainers(ctx, ownerID)
+	var prm client.PrmContainerList
+
+	ids, err := a.pool.ContainerList(ctx, ownerID, prm)
 	if err != nil {
 		resp := a.logAndGetErrorResponse("list containers", err)
 		return operations.NewListContainersBadRequest().WithPayload(resp)
@@ -208,10 +212,11 @@ func (a *API) DeleteContainer(params operations.DeleteContainerParams, principal
 		return operations.NewDeleteContainerBadRequest().WithPayload(resp)
 	}
 
-	var prm pool.PrmContainerDelete
-	prm.SetSessionToken(stoken)
+	var prm client.PrmContainerDelete
+	prm.WithinSession(stoken)
 
-	if err = a.pool.DeleteContainer(params.HTTPRequest.Context(), cnrID, prm); err != nil {
+	wait := waiter.NewContainerDeleteWaiter(a.pool, waiter.DefaultPollInterval)
+	if err = wait.ContainerDelete(params.HTTPRequest.Context(), cnrID, a.signer, prm); err != nil {
 		resp := a.logAndGetErrorResponse("delete container", err, zap.String("container", params.ContainerID))
 		return operations.NewDeleteContainerBadRequest().WithPayload(resp)
 	}
@@ -235,7 +240,7 @@ func checkContainerExtendable(ctx context.Context, p *pool.Pool, cnrID cid.ID) e
 }
 
 func getContainer(ctx context.Context, p *pool.Pool, cnrID cid.ID) (container.Container, error) {
-	return p.GetContainer(ctx, cnrID)
+	return p.ContainerGet(ctx, cnrID, client.PrmContainerGet{})
 }
 
 func getContainerInfo(ctx context.Context, p *pool.Pool, cnrID cid.ID) (*models.ContainerInfo, error) {
@@ -259,7 +264,7 @@ func getContainerInfo(ctx context.Context, p *pool.Pool, cnrID cid.ID) (*models.
 
 	return &models.ContainerInfo{
 		ContainerID:     util.NewString(cnrID.String()),
-		ContainerName:   util.NewString(container.Name(cnr)),
+		ContainerName:   util.NewString(cnr.Name()),
 		OwnerID:         util.NewString(cnr.Owner().String()),
 		BasicACL:        util.NewString(cnr.BasicACL().EncodeToString()),
 		CannedACL:       friendlyBasicACL(cnr.BasicACL()),
@@ -314,7 +319,7 @@ func parseContainerID(containerID string) (cid.ID, error) {
 	return cnrID, nil
 }
 
-func setContainerEACL(ctx context.Context, p *pool.Pool, cnrID cid.ID, stoken session.Container, eaclPrm *models.Eacl) error {
+func setContainerEACL(ctx context.Context, p *pool.Pool, cnrID cid.ID, stoken session.Container, eaclPrm *models.Eacl, signer user.Signer) error {
 	table, err := util.ToNativeTable(eaclPrm.Records)
 	if err != nil {
 		return err
@@ -322,14 +327,15 @@ func setContainerEACL(ctx context.Context, p *pool.Pool, cnrID cid.ID, stoken se
 
 	table.SetCID(cnrID)
 
-	var prm pool.PrmContainerSetEACL
+	var prm client.PrmContainerSetEACL
 	prm.WithinSession(stoken)
 
-	return p.SetEACL(ctx, *table, prm)
+	wait := waiter.NewContainerSetEACLWaiter(p, waiter.DefaultPollInterval)
+	return wait.ContainerSetEACL(ctx, *table, signer, prm)
 }
 
 func getContainerEACL(ctx context.Context, p *pool.Pool, cnrID cid.ID) (*models.Eacl, error) {
-	table, err := p.GetEACL(ctx, cnrID)
+	table, err := p.ContainerEACL(ctx, cnrID, client.PrmContainerEACL{})
 	if err != nil {
 		return nil, fmt.Errorf("get eacl: %w", err)
 	}
@@ -350,7 +356,7 @@ func getContainerEACL(ctx context.Context, p *pool.Pool, cnrID cid.ID) (*models.
 	return tableResp, nil
 }
 
-func createContainer(ctx context.Context, p *pool.Pool, stoken session.Container, params *operations.PutContainerParams) (cid.ID, error) {
+func createContainer(ctx context.Context, p *pool.Pool, stoken session.Container, params *operations.PutContainerParams, signer user.Signer) (cid.ID, error) {
 	request := params.Container
 
 	if request.PlacementPolicy == "" {
@@ -377,10 +383,10 @@ func createContainer(ctx context.Context, p *pool.Pool, stoken session.Container
 	cnr.SetBasicACL(basicACL)
 	cnr.SetOwner(stoken.Issuer())
 
-	container.SetCreationTime(&cnr, time.Now())
+	cnr.SetCreationTime(time.Now())
 
 	if request.ContainerName != "" {
-		container.SetName(&cnr, request.ContainerName)
+		cnr.SetName(request.ContainerName)
 	}
 
 	for _, attr := range request.Attributes {
@@ -399,13 +405,15 @@ func createContainer(ctx context.Context, p *pool.Pool, stoken session.Container
 
 		var domain container.Domain
 		domain.SetName(request.ContainerName)
-		container.WriteDomain(&cnr, domain)
+		cnr.WriteDomain(domain)
 	}
 
-	var prm pool.PrmContainerPut
+	var prm client.PrmContainerPut
 	prm.WithinSession(stoken)
 
-	cnrID, err := p.PutContainer(ctx, cnr, prm)
+	wait := waiter.NewContainerPutWaiter(p, waiter.DefaultPollInterval)
+
+	cnrID, err := wait.ContainerPut(ctx, cnr, signer, prm)
 	if err != nil {
 		return cid.ID{}, fmt.Errorf("put container: %w", err)
 	}

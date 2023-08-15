@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"context"
-	"crypto/elliptic"
 	"fmt"
 	"net/http"
 	"strings"
@@ -25,9 +24,9 @@ import (
 type API struct {
 	log              *zap.Logger
 	pool             *pool.Pool
-	key              *keys.PrivateKey
-	owner            *user.ID
+	signer           user.Signer
 	defaultTimestamp bool
+	maxObjectSize    int64
 
 	gateMetric             *metrics.GateMetrics
 	prometheusService      *metrics.Service
@@ -41,6 +40,7 @@ type PrmAPI struct {
 	Pool             *pool.Pool
 	Key              *keys.PrivateKey
 	DefaultTimestamp bool
+	MaxObjectSize    int64
 
 	GateMetric             *metrics.GateMetrics
 	PrometheusService      *metrics.Service
@@ -76,16 +76,14 @@ const (
 
 // New creates a new API using specified logger, connection pool and other parameters.
 func New(prm *PrmAPI) *API {
-	var owner user.ID
-	var pk = prm.Key.PrivateKey.PublicKey
-	_ = user.IDFromKey(&owner, elliptic.MarshalCompressed(pk.Curve, pk.X, pk.Y)) // Can't fail for valid key.
+	signer := user.NewAutoIDSignerRFC6979(prm.Key.PrivateKey)
 
 	return &API{
 		log:              prm.Logger,
 		pool:             prm.Pool,
-		key:              prm.Key,
-		owner:            &owner,
+		signer:           signer,
 		defaultTimestamp: prm.DefaultTimestamp,
+		maxObjectSize:    prm.MaxObjectSize,
 
 		prometheusService:      prm.PrometheusService,
 		pprofService:           prm.PprofService,
