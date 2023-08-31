@@ -467,6 +467,7 @@ func newNeofsAPI(ctx context.Context, logger *zap.Logger, v *viper.Viper) (*hand
 	apiPrm.PrometheusService = metrics.NewPrometheusService(logger, prometheusConfig)
 	if prometheusConfig.Enabled {
 		apiPrm.GateMetric = metrics.NewGateMetrics(poolStat)
+		apiPrm.GateMetric.SetGWVersion(Version)
 	}
 
 	apiPrm.ServiceShutdownTimeout = defaultShutdownTimeout
