@@ -98,7 +98,7 @@ func runLocalTests(ctx context.Context, t *testing.T, key *keys.PrivateKey) {
 
 func runTestInContainer(rootCtx context.Context, t *testing.T, key *keys.PrivateKey) {
 	versions := []dockerImage{
-		{image: "nspccdev/neofs-aio", version: "0.36.0"},
+		{image: "nspccdev/neofs-aio", version: "0.37.0"},
 		{image: "nspccdev/neofs-aio", version: "latest"},
 	}
 
