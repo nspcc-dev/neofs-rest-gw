@@ -147,13 +147,6 @@ func createDockerContainer(ctx context.Context, t *testing.T, image, version str
 		WaitingFor: wait.NewLogStrategy("aio container started").WithStartupTimeout(30 * time.Second),
 		Name:       "restgw-aio-test-" + version,
 		Hostname:   "aio",
-		Env: map[string]string{
-			"REST_GW_WALLET_PATH":       "/config/wallet-rest.json",
-			"REST_GW_WALLET_PASSPHRASE": "one",
-			"REST_GW_WALLET_ADDRESS":    "NPFCqWHfi9ixCJRu7DABRbVfXRbkSEr9Vo",
-			"REST_GW_PEERS_0_ADDRESS":   "localhost:8080",
-			"REST_GW_LISTEN_ADDRESS":    "0.0.0.0:8090",
-		},
 		HostConfigModifier: func(hostConfig *dockerContainer.HostConfig) {
 			hostConfig.NetworkMode = "host"
 		},
