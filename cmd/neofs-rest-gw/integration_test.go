@@ -98,7 +98,7 @@ func runLocalTests(ctx context.Context, t *testing.T, key *keys.PrivateKey) {
 
 func runTestInContainer(rootCtx context.Context, t *testing.T, key *keys.PrivateKey) {
 	versions := []dockerImage{
-		{image: "nspccdev/neofs-aio", version: "0.36.0"},
+		{image: "nspccdev/neofs-aio", version: "0.37.0"},
 		{image: "nspccdev/neofs-aio", version: "latest"},
 	}
 
@@ -1322,7 +1322,14 @@ func createObject(ctx context.Context, t *testing.T, p *pool.Pool, ownerID *user
 	obj.SetAttributes(attributes...)
 	obj.SetPayload(payload)
 
+	info, err := p.NetworkInfo(ctx, client.PrmNetworkInfo{})
+	require.NoError(t, err)
+
 	var opts slicer.Options
+	if !info.HomomorphicHashingDisabled() {
+		opts.CalculateHomomorphicChecksum()
+	}
+
 	objID, err := slicer.Put(ctx, p, obj, signer, bytes.NewReader(payload), opts)
 	require.NoError(t, err)
 
