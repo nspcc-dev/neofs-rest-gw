@@ -5,7 +5,7 @@ VERSION ?= "$(shell git describe --tags --match "v*" --dirty --always --abbrev=8
 
 BUILD_OS ?= linux
 BUILD_ARCH ?= amd64
-GO_VERSION ?= 1.20
+GO_VERSION ?= 1.21
 LINT_VERSION ?= v1.49.0
 
 HUB_IMAGE ?= nspccdev/neofs-rest-gw
