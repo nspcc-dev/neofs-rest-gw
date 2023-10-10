@@ -11,7 +11,7 @@ require (
 	github.com/go-openapi/swag v0.21.1
 	github.com/go-openapi/validate v0.21.0
 	github.com/google/uuid v1.3.0
-	github.com/nspcc-dev/neo-go v0.100.1
+	github.com/nspcc-dev/neo-go v0.102.0
 	github.com/nspcc-dev/neofs-api-go/v2 v2.14.0
 	github.com/nspcc-dev/neofs-sdk-go v1.0.0-rc.11
 	github.com/spf13/pflag v1.0.5
