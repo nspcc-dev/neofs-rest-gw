@@ -13,7 +13,7 @@ require (
 	github.com/google/uuid v1.3.0
 	github.com/nspcc-dev/neo-go v0.100.1
 	github.com/nspcc-dev/neofs-api-go/v2 v2.14.0
-	github.com/nspcc-dev/neofs-sdk-go v1.0.0-rc.10.0.20230809032523-a9b24f64ee93
+	github.com/nspcc-dev/neofs-sdk-go v1.0.0-rc.11
 	github.com/spf13/pflag v1.0.5
 	github.com/stretchr/testify v1.8.4
 	github.com/testcontainers/testcontainers-go v0.22.0
