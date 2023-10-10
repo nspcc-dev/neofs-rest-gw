@@ -126,15 +126,9 @@ func (a *API) GetObjectInfo(params operations.GetObjectInfoParams, principal *mo
 	var prm client.PrmObjectHead
 	attachBearer(&prm, btoken)
 
-	objInfo, err := a.pool.ObjectHead(ctx, addr.Container(), addr.Object(), a.signer, prm)
+	header, err := a.pool.ObjectHead(ctx, addr.Container(), addr.Object(), a.signer, prm)
 	if err != nil {
 		resp := a.logAndGetErrorResponse("head object", err)
-		return errorResponse.WithPayload(resp)
-	}
-
-	var header object.Object
-	if !objInfo.ReadHeader(&header) {
-		resp := a.logAndGetErrorResponse("header is empty", nil)
 		return errorResponse.WithPayload(resp)
 	}
 
@@ -315,14 +309,9 @@ func headObjectBaseInfo(ctx context.Context, p *pool.Pool, cnrID cid.ID, objID o
 	var prm client.PrmObjectHead
 	attachBearer(&prm, btoken)
 
-	objInfo, err := p.ObjectHead(ctx, cnrID, objID, signer, prm)
+	header, err := p.ObjectHead(ctx, cnrID, objID, signer, prm)
 	if err != nil {
-		return nil, err
-	}
-
-	var header object.Object
-	if !objInfo.ReadHeader(&header) {
-		return nil, errors.New("header is empty")
+		return nil, fmt.Errorf("head: %w", err)
 	}
 
 	resp := &models.ObjectBaseInfo{
