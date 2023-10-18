@@ -5,13 +5,30 @@ This document outlines major changes between releases.
 ## [Unreleased]
 
 ### Added
+
+### Fixed
+
+### Changed
+
+## [0.6.0] - 2023-10-19
+
+### Added
 - Stop pool dial on SIGINT (#76)
+- Unauthenticated GET/SEARCH requests (#2)
+- Version metric (#102)
+
+### Fixed
+- Panic when getting an empty object (#79)
 
 ### Changed
 - Configuration parameters (#66, #71)
-- Build releases with Go 1.20
-- Drop support for Go 1.17
-- Use SDK 1.0.0-rc.8
+- Build releases with Go 1.20 (#86)
+- Drop support for Go 1.17, 1.18 (#86, #107)
+- Use SDK 1.0.0-rc.11 (#86, #91, #96, #104, #107)
+- Use NeoGo 0.102.0 (#107)
+- Use go.uber.org/zap 1.26.0 (#107)
+- Use newer go-openapi modules (#107)
+- Use golang.org/x/net 0.17.0 (#108)
 
 ### Updating from v0.5.0
 
@@ -105,4 +122,5 @@ Please refer to [GitHub releases](https://github.com/nspcc-dev/neofs-rest-gw/rel
 [0.3.0]: https://github.com/nspcc-dev/neofs-rest-gw/compare/v0.2.0...v0.3.0
 [0.4.0]: https://github.com/nspcc-dev/neofs-rest-gw/compare/v0.3.0...v0.4.0
 [0.5.0]: https://github.com/nspcc-dev/neofs-rest-gw/compare/v0.4.0...v0.5.0
-[Unreleased]: https://github.com/nspcc-dev/neofs-rest-gw/compare/v0.5.0...master
+[0.6.0]: https://github.com/nspcc-dev/neofs-rest-gw/compare/v0.5.0...v0.6.0
+[Unreleased]: https://github.com/nspcc-dev/neofs-rest-gw/compare/v0.6.0...master
