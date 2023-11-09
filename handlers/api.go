@@ -127,7 +127,21 @@ func (a *API) Configure(api *operations.NeofsRestGwAPI) http.Handler {
 	api.PutContainerEACLHandler = operations.PutContainerEACLHandlerFunc(a.PutContainerEACL)
 	api.GetContainerEACLHandler = operations.GetContainerEACLHandlerFunc(a.GetContainerEACL)
 
+	api.GetContainerObjectHandler = operations.GetContainerObjectHandlerFunc(a.GetContainerObject)
+	api.HeadContainerObjectHandler = operations.HeadContainerObjectHandlerFunc(a.HeadContainerObject)
+
 	api.BearerAuthAuth = func(s string) (*models.Principal, error) {
+		if !strings.HasPrefix(s, BearerPrefix) {
+			return nil, fmt.Errorf("has not bearer token")
+		}
+		if s = strings.TrimPrefix(s, BearerPrefix); len(s) == 0 {
+			return nil, fmt.Errorf("bearer token is empty")
+		}
+
+		return (*models.Principal)(&s), nil
+	}
+
+	api.CookieAuthAuth = func(s string) (*models.Principal, error) {
 		if !strings.HasPrefix(s, BearerPrefix) {
 			return nil, fmt.Errorf("has not bearer token")
 		}

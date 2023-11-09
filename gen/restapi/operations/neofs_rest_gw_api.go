@@ -42,6 +42,7 @@ func NewNeofsRestGwAPI(spec *loads.Document) *NeofsRestGwAPI {
 
 		JSONConsumer: runtime.JSONConsumer(),
 
+		BinProducer:  runtime.ByteStreamProducer(),
 		JSONProducer: runtime.JSONProducer(),
 
 		AuthHandler: AuthHandlerFunc(func(params AuthParams) middleware.Responder {
@@ -65,8 +66,14 @@ func NewNeofsRestGwAPI(spec *loads.Document) *NeofsRestGwAPI {
 		GetContainerEACLHandler: GetContainerEACLHandlerFunc(func(params GetContainerEACLParams) middleware.Responder {
 			return middleware.NotImplemented("operation GetContainerEACL has not yet been implemented")
 		}),
+		GetContainerObjectHandler: GetContainerObjectHandlerFunc(func(params GetContainerObjectParams, principal *models.Principal) middleware.Responder {
+			return middleware.NotImplemented("operation GetContainerObject has not yet been implemented")
+		}),
 		GetObjectInfoHandler: GetObjectInfoHandlerFunc(func(params GetObjectInfoParams, principal *models.Principal) middleware.Responder {
 			return middleware.NotImplemented("operation GetObjectInfo has not yet been implemented")
+		}),
+		HeadContainerObjectHandler: HeadContainerObjectHandlerFunc(func(params HeadContainerObjectParams, principal *models.Principal) middleware.Responder {
+			return middleware.NotImplemented("operation HeadContainerObject has not yet been implemented")
 		}),
 		ListContainersHandler: ListContainersHandlerFunc(func(params ListContainersParams) middleware.Responder {
 			return middleware.NotImplemented("operation ListContainers has not yet been implemented")
@@ -112,6 +119,10 @@ func NewNeofsRestGwAPI(spec *loads.Document) *NeofsRestGwAPI {
 		BearerAuthAuth: func(token string) (*models.Principal, error) {
 			return nil, errors.NotImplemented("api key auth (BearerAuth) Authorization from header param [Authorization] has not yet been implemented")
 		},
+		// Applies when the "cookie" header is set
+		CookieAuthAuth: func(token string) (*models.Principal, error) {
+			return nil, errors.NotImplemented("api key auth (CookieAuth) cookie from header param [cookie] has not yet been implemented")
+		},
 		// default authorizer is authorized meaning no requests are blocked
 		APIAuthorizer: security.Authorized(),
 	}
@@ -146,6 +157,9 @@ type NeofsRestGwAPI struct {
 	//   - application/json
 	JSONConsumer runtime.Consumer
 
+	// BinProducer registers a producer for the following mime types:
+	//   - application/octet-stream
+	BinProducer runtime.Producer
 	// JSONProducer registers a producer for the following mime types:
 	//   - application/json
 	JSONProducer runtime.Producer
@@ -153,6 +167,10 @@ type NeofsRestGwAPI struct {
 	// BearerAuthAuth registers a function that takes a token and returns a principal
 	// it performs authentication based on an api key Authorization provided in the header
 	BearerAuthAuth func(string) (*models.Principal, error)
+
+	// CookieAuthAuth registers a function that takes a token and returns a principal
+	// it performs authentication based on an api key cookie provided in the header
+	CookieAuthAuth func(string) (*models.Principal, error)
 
 	// APIAuthorizer provides access control (ACL/RBAC/ABAC) by providing access to the request and authenticated principal
 	APIAuthorizer runtime.Authorizer
@@ -171,8 +189,12 @@ type NeofsRestGwAPI struct {
 	GetContainerHandler GetContainerHandler
 	// GetContainerEACLHandler sets the operation handler for the get container e ACL operation
 	GetContainerEACLHandler GetContainerEACLHandler
+	// GetContainerObjectHandler sets the operation handler for the get container object operation
+	GetContainerObjectHandler GetContainerObjectHandler
 	// GetObjectInfoHandler sets the operation handler for the get object info operation
 	GetObjectInfoHandler GetObjectInfoHandler
+	// HeadContainerObjectHandler sets the operation handler for the head container object operation
+	HeadContainerObjectHandler HeadContainerObjectHandler
 	// ListContainersHandler sets the operation handler for the list containers operation
 	ListContainersHandler ListContainersHandler
 	// OptionsAuthHandler sets the operation handler for the options auth operation
@@ -272,12 +294,18 @@ func (o *NeofsRestGwAPI) Validate() error {
 		unregistered = append(unregistered, "JSONConsumer")
 	}
 
+	if o.BinProducer == nil {
+		unregistered = append(unregistered, "BinProducer")
+	}
 	if o.JSONProducer == nil {
 		unregistered = append(unregistered, "JSONProducer")
 	}
 
 	if o.BearerAuthAuth == nil {
 		unregistered = append(unregistered, "AuthorizationAuth")
+	}
+	if o.CookieAuthAuth == nil {
+		unregistered = append(unregistered, "CookieAuth")
 	}
 
 	if o.AuthHandler == nil {
@@ -301,8 +329,14 @@ func (o *NeofsRestGwAPI) Validate() error {
 	if o.GetContainerEACLHandler == nil {
 		unregistered = append(unregistered, "GetContainerEACLHandler")
 	}
+	if o.GetContainerObjectHandler == nil {
+		unregistered = append(unregistered, "GetContainerObjectHandler")
+	}
 	if o.GetObjectInfoHandler == nil {
 		unregistered = append(unregistered, "GetObjectInfoHandler")
+	}
+	if o.HeadContainerObjectHandler == nil {
+		unregistered = append(unregistered, "HeadContainerObjectHandler")
 	}
 	if o.ListContainersHandler == nil {
 		unregistered = append(unregistered, "ListContainersHandler")
@@ -367,6 +401,12 @@ func (o *NeofsRestGwAPI) AuthenticatorsFor(schemes map[string]spec.SecuritySchem
 				return o.BearerAuthAuth(token)
 			})
 
+		case "CookieAuth":
+			scheme := schemes[name]
+			result[name] = o.APIKeyAuthenticator(scheme.Name, scheme.In, func(token string) (interface{}, error) {
+				return o.CookieAuthAuth(token)
+			})
+
 		}
 	}
 	return result
@@ -400,6 +440,8 @@ func (o *NeofsRestGwAPI) ProducersFor(mediaTypes []string) map[string]runtime.Pr
 	result := make(map[string]runtime.Producer, len(mediaTypes))
 	for _, mt := range mediaTypes {
 		switch mt {
+		case "application/octet-stream":
+			result["application/octet-stream"] = o.BinProducer
 		case "application/json":
 			result["application/json"] = o.JSONProducer
 		}
@@ -473,7 +515,15 @@ func (o *NeofsRestGwAPI) initHandlerCache() {
 	if o.handlers["GET"] == nil {
 		o.handlers["GET"] = make(map[string]http.Handler)
 	}
+	o.handlers["GET"]["/get/{containerId}/{objectId}"] = NewGetContainerObject(o.context, o.GetContainerObjectHandler)
+	if o.handlers["GET"] == nil {
+		o.handlers["GET"] = make(map[string]http.Handler)
+	}
 	o.handlers["GET"]["/objects/{containerId}/{objectId}"] = NewGetObjectInfo(o.context, o.GetObjectInfoHandler)
+	if o.handlers["HEAD"] == nil {
+		o.handlers["HEAD"] = make(map[string]http.Handler)
+	}
+	o.handlers["HEAD"]["/get/{containerId}/{objectId}"] = NewHeadContainerObject(o.context, o.HeadContainerObjectHandler)
 	if o.handlers["GET"] == nil {
 		o.handlers["GET"] = make(map[string]http.Handler)
 	}

@@ -8,17 +8,26 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net/http"
+	"path"
+	"strconv"
 	"strings"
+	"time"
+	"unicode"
+	"unicode/utf8"
 
+	"github.com/go-openapi/runtime"
 	"github.com/go-openapi/runtime/middleware"
 	"github.com/nspcc-dev/neo-go/pkg/crypto/keys"
 	"github.com/nspcc-dev/neofs-api-go/v2/acl"
+	"github.com/nspcc-dev/neofs-api-go/v2/container"
 	"github.com/nspcc-dev/neofs-api-go/v2/refs"
 	"github.com/nspcc-dev/neofs-rest-gw/gen/models"
 	"github.com/nspcc-dev/neofs-rest-gw/gen/restapi/operations"
 	"github.com/nspcc-dev/neofs-rest-gw/internal/util"
 	"github.com/nspcc-dev/neofs-sdk-go/bearer"
 	"github.com/nspcc-dev/neofs-sdk-go/client"
+	apistatus "github.com/nspcc-dev/neofs-sdk-go/client/status"
 	cid "github.com/nspcc-dev/neofs-sdk-go/container/id"
 	"github.com/nspcc-dev/neofs-sdk-go/object"
 	oid "github.com/nspcc-dev/neofs-sdk-go/object/id"
@@ -28,8 +37,15 @@ import (
 )
 
 const (
-	attributeFilePath = "FilePath"
+	attributeFilePath         = "FilePath"
+	sizeToDetectType          = 512
+	userAttributeHeaderPrefix = "X-Attribute-"
 )
+
+type readCloser struct {
+	io.Reader
+	io.Closer
+}
 
 // PutObjects handler that uploads object to NeoFS.
 func (a *API) PutObjects(params operations.PutObjectParams, principal *models.Principal) middleware.Responder {
@@ -305,6 +321,295 @@ func (a *API) SearchObjects(params operations.SearchObjectsParams, principal *mo
 		WithAccessControlAllowOrigin("*")
 }
 
+// GetContainerObject handler that returns object (using container ID and object ID).
+func (a *API) GetContainerObject(params operations.GetContainerObjectParams, principal *models.Principal) middleware.Responder {
+	errorResponse := operations.NewGetContainerObjectBadRequest()
+	ctx := params.HTTPRequest.Context()
+
+	addr, err := parseAddress(params.ContainerID, params.ObjectID)
+	if err != nil {
+		resp := a.logAndGetErrorResponse("invalid address", err)
+		return errorResponse.WithPayload(resp)
+	}
+
+	var prm client.PrmObjectGet
+
+	if principal != nil {
+		btoken, err := getBearerTokenFromString(string(*principal))
+		if err != nil {
+			resp := a.logAndGetErrorResponse("get bearer token", err)
+			return errorResponse.WithPayload(resp)
+		}
+		attachBearer(&prm, btoken)
+	}
+
+	header, payloadReader, err := a.pool.ObjectGetInit(ctx, addr.Container(), addr.Object(), a.signer, prm)
+	if err != nil {
+		if isNotFoundError(err) {
+			resp := a.logAndGetErrorResponse("not found", err)
+			return operations.NewGetContainerObjectNotFound().WithPayload(resp)
+		}
+		resp := a.logAndGetErrorResponse("get object", err)
+		return errorResponse.WithPayload(resp)
+	}
+
+	payloadSize := header.PayloadSize()
+	res := operations.NewGetContainerObjectOK()
+
+	responder, contentType := a.setAttributes(res, payloadSize, params.ContainerID, params.ObjectID, header, params.HTTPRequest.URL.Query().Get("download"))
+	var payload io.ReadCloser = payloadReader
+	if len(contentType) == 0 {
+		if payloadSize > 0 {
+			// determine the Content-Type from the payload head
+			var payloadHead []byte
+
+			contentType, payloadHead, err = readContentType(payloadSize, func(uint64) (io.Reader, error) {
+				return payload, nil
+			})
+			if err != nil {
+				resp := a.logAndGetErrorResponse("invalid  ContentType", err)
+				return errorResponse.WithPayload(resp)
+			}
+
+			// reset payload reader since a part of the data has been read
+			var headReader io.Reader = bytes.NewReader(payloadHead)
+
+			if uint64(len(payloadHead)) != payloadSize { // otherwise, we've already read full payload
+				headReader = io.MultiReader(headReader, payload)
+			}
+
+			payload = readCloser{headReader, payload}
+		} else {
+			contentType = http.DetectContentType(nil)
+		}
+	}
+
+	res.WithContentType(contentType).
+		WithPayload(payload)
+
+	if responder != nil {
+		return responder
+	}
+
+	return res
+}
+
+// HeadContainerObject handler that returns object info (using container ID and object ID).
+func (a *API) HeadContainerObject(params operations.HeadContainerObjectParams, principal *models.Principal) middleware.Responder {
+	errorResponse := operations.NewHeadContainerObjectBadRequest()
+	ctx := params.HTTPRequest.Context()
+
+	addr, err := parseAddress(params.ContainerID, params.ObjectID)
+	if err != nil {
+		resp := a.logAndGetErrorResponse("invalid address", err)
+		return errorResponse.WithPayload(resp)
+	}
+
+	var prm client.PrmObjectHead
+
+	if principal != nil {
+		btoken, err := getBearerTokenFromString(string(*principal))
+		if err != nil {
+			resp := a.logAndGetErrorResponse("get bearer token", err)
+			return errorResponse.WithPayload(resp)
+		}
+		attachBearer(&prm, btoken)
+	}
+
+	header, err := a.pool.ObjectHead(ctx, addr.Container(), addr.Object(), a.signer, prm)
+	if err != nil {
+		if isNotFoundError(err) {
+			resp := a.logAndGetErrorResponse("not found", err)
+			return operations.NewHeadContainerObjectNotFound().WithPayload(resp)
+		}
+		resp := a.logAndGetErrorResponse("head object", err)
+		return errorResponse.WithPayload(resp)
+	}
+
+	payloadSize := header.PayloadSize()
+	res := operations.NewHeadContainerObjectOK()
+
+	responder, contentType := a.setAttributes(res, payloadSize, params.ContainerID, params.ObjectID, *header, params.HTTPRequest.URL.Query().Get("download"))
+	if len(contentType) == 0 {
+		if payloadSize > 0 {
+			contentType, _, err = readContentType(payloadSize, func(sz uint64) (io.Reader, error) {
+				var prmRange client.PrmObjectRange
+
+				resObj, err := a.pool.ObjectRangeInit(ctx, addr.Container(), addr.Object(), 0, sz, a.signer, prmRange)
+				if err != nil {
+					return nil, err
+				}
+				return resObj, nil
+			})
+			if err != nil {
+				resp := a.logAndGetErrorResponse("invalid  ContentType", err)
+				return errorResponse.WithPayload(resp)
+			}
+		} else {
+			contentType = http.DetectContentType(nil)
+		}
+	}
+
+	res.WithContentType(contentType)
+
+	if responder != nil {
+		return responder
+	}
+
+	return res
+}
+
+func isNotFoundError(err error) bool {
+	return errors.Is(err, apistatus.ErrObjectNotFound) ||
+		errors.Is(err, apistatus.ErrContainerNotFound) ||
+		errors.Is(err, apistatus.ErrObjectAlreadyRemoved)
+}
+
+type attributeSetter interface {
+	SetContentLength(contentLength string)
+	SetXContainerID(xContainerID string)
+	SetXObjectID(xObjectID string)
+	SetXOwnerID(xOwnerID string)
+	SetContentDisposition(contentDisposition string)
+	SetXAttributeFileName(xAttributeFileName string)
+	SetXAttributeTimestamp(xAttributeTimestamp int64)
+	SetLastModified(lastModified string)
+	WriteResponse(rw http.ResponseWriter, producer runtime.Producer)
+}
+
+func (a *API) setAttributes(res attributeSetter, payloadSize uint64, cid string, oid string, header object.Object, download string) (middleware.Responder, string) {
+	res.SetContentLength(strconv.FormatUint(payloadSize, 10))
+	res.SetXContainerID(cid)
+	res.SetXObjectID(oid)
+	res.SetXOwnerID(header.OwnerID().EncodeToString())
+
+	var (
+		contentType, filename string
+		responder             middleware.Responder
+	)
+	attributes := header.Attributes()
+	if len(attributes) > 0 {
+		responder = middleware.ResponderFunc(func(rw http.ResponseWriter, pr runtime.Producer) {
+			for _, attr := range attributes {
+				key := attr.Key()
+				val := attr.Value()
+				if !isValidToken(key) || !isValidValue(val) {
+					continue
+				}
+				switch key {
+				case object.AttributeFileName:
+					filename = val
+					res.SetXAttributeFileName(val)
+				case object.AttributeTimestamp:
+					attrTimestamp, err := strconv.ParseInt(val, 10, 64)
+					if err != nil {
+						a.log.Info("attribute timestamp parsing error",
+							zap.String("container ID", cid),
+							zap.String("object ID", oid),
+							zap.Error(err))
+						continue
+					}
+					res.SetXAttributeTimestamp(attrTimestamp)
+					res.SetLastModified(time.Unix(attrTimestamp, 0).UTC().Format(http.TimeFormat))
+				case object.AttributeContentType:
+					contentType = val
+				default:
+					if strings.HasPrefix(key, container.SysAttributePrefix) {
+						key = systemBackwardTranslator(key)
+					}
+					rw.Header().Set(userAttributeHeaderPrefix+key, attr.Value())
+				}
+			}
+			res.WriteResponse(rw, pr)
+		})
+	}
+
+	var dis = "inline"
+	switch download {
+	case "1", "t", "T", "true", "TRUE", "True", "y", "yes", "Y", "YES", "Yes":
+		dis = "attachment"
+	}
+	res.SetContentDisposition(dis + "; filename=" + path.Base(filename))
+
+	return responder, contentType
+}
+
+// initializes io.Reader with the limited size and detects Content-Type from it.
+// Returns r's error directly. Also returns the processed data.
+func readContentType(maxSize uint64, rInit func(uint64) (io.Reader, error)) (string, []byte, error) {
+	if maxSize > sizeToDetectType {
+		maxSize = sizeToDetectType
+	}
+
+	buf := make([]byte, maxSize)
+
+	r, err := rInit(maxSize)
+	if err != nil {
+		return "", nil, err
+	}
+
+	n, err := io.ReadFull(r, buf)
+	if err != nil && !errors.Is(err, io.EOF) {
+		return "", nil, err
+	}
+
+	buf = buf[:n]
+
+	return http.DetectContentType(buf), buf, nil
+}
+
+func isValidToken(s string) bool {
+	for _, c := range s {
+		if c <= ' ' || c > 127 {
+			return false
+		}
+		if strings.ContainsRune("()<>@,;:\\\"/[]?={}", c) {
+			return false
+		}
+	}
+	return true
+}
+
+func isValidValue(s string) bool {
+	for _, c := range s {
+		// HTTP specification allows for more technically, but we don't want to escape things.
+		if c < ' ' || c > 127 || c == '"' {
+			return false
+		}
+	}
+	return true
+}
+
+// systemBackwardTranslator is used to convert headers looking like '__NEOFS__ATTR_NAME' to 'Neofs-Attr-Name'.
+func systemBackwardTranslator(key string) string {
+	// trim specified prefix '__NEOFS__'
+	key = strings.TrimPrefix(key, container.SysAttributePrefix)
+
+	var res strings.Builder
+	res.WriteString("Neofs-")
+
+	strs := strings.Split(key, "_")
+	for i, s := range strs {
+		s = title(strings.ToLower(s))
+		res.WriteString(s)
+		if i != len(strs)-1 {
+			res.WriteString("-")
+		}
+	}
+
+	return res.String()
+}
+
+func title(str string) string {
+	if str == "" {
+		return ""
+	}
+
+	r, size := utf8.DecodeRuneInString(str)
+	r0 := unicode.ToTitle(r)
+	return string(r0) + str[size:]
+}
+
 func headObjectBaseInfo(ctx context.Context, p *pool.Pool, cnrID cid.ID, objID oid.ID, btoken *bearer.Token, signer user.Signer) (*models.ObjectBaseInfo, error) {
 	var prm client.PrmObjectHead
 	attachBearer(&prm, btoken)
@@ -419,6 +724,23 @@ func prepareBearerToken(bt *BearerToken, isWalletConnect, isFullToken bool) (*be
 		return nil, fmt.Errorf("read from v2 token: %w", err)
 	}
 
+	if !btoken.VerifySignature() {
+		return nil, fmt.Errorf("invalid signature")
+	}
+
+	return &btoken, nil
+}
+
+func getBearerTokenFromString(token string) (*bearer.Token, error) {
+	data, err := base64.StdEncoding.DecodeString(token)
+	if err != nil {
+		return nil, fmt.Errorf("can't base64-decode bearer token: %w", err)
+	}
+
+	var btoken bearer.Token
+	if err = btoken.Unmarshal(data); err != nil {
+		return nil, fmt.Errorf("couldn't unmarshall bearer token: %w", err)
+	}
 	if !btoken.VerifySignature() {
 		return nil, fmt.Errorf("invalid signature")
 	}
