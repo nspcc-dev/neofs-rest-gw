@@ -523,6 +523,166 @@ func init() {
         }
       ]
     },
+    "/get/{containerId}/{objectId}": {
+      "get": {
+        "security": [
+          {},
+          {
+            "BearerAuth": []
+          },
+          {
+            "CookieAuth": []
+          }
+        ],
+        "produces": [
+          "application/octet-stream"
+        ],
+        "summary": "Get object by container ID and object ID. Also returns custom users' header attributes ` + "`" + `X-Attribute-*` + "`" + `",
+        "operationId": "getContainerObject",
+        "parameters": [
+          {
+            "type": "boolean",
+            "description": "Set the Content-Disposition header as attachment in response. This make the browser to download object as file instead of showing it on the page.",
+            "name": "download",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Object.",
+            "schema": {
+              "type": "string",
+              "format": "binary"
+            },
+            "headers": {
+              "Access-Control-Allow-Origin": {
+                "type": "string"
+              },
+              "Content-Disposition": {
+                "type": "string"
+              },
+              "Content-Length": {
+                "type": "string"
+              },
+              "Content-Type": {
+                "type": "string"
+              },
+              "Last-Modified": {
+                "type": "string"
+              },
+              "X-Attribute-FileName": {
+                "type": "string"
+              },
+              "X-Attribute-Timestamp": {
+                "type": "integer"
+              },
+              "X-Container-Id": {
+                "type": "string"
+              },
+              "X-Object-Id": {
+                "type": "string"
+              },
+              "X-Owner-Id": {
+                "type": "string"
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request.",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        }
+      },
+      "head": {
+        "security": [
+          {},
+          {
+            "BearerAuth": []
+          },
+          {
+            "CookieAuth": []
+          }
+        ],
+        "summary": "Get object info (head) by container ID and object ID. Also returns custom users' header attributes ` + "`" + `X-Attribute-*` + "`" + `",
+        "operationId": "headContainerObject",
+        "parameters": [
+          {
+            "type": "boolean",
+            "description": "Set the Content-Disposition header as attachment in response. This make the browser to download object as file instead of showing it on the page.",
+            "name": "download",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Object info.",
+            "schema": {
+              "$ref": "#/definitions/ObjectInfo"
+            },
+            "headers": {
+              "Access-Control-Allow-Origin": {
+                "type": "string"
+              },
+              "Content-Disposition": {
+                "type": "string"
+              },
+              "Content-Length": {
+                "type": "string"
+              },
+              "Content-Type": {
+                "type": "string"
+              },
+              "Last-Modified": {
+                "type": "string"
+              },
+              "X-Attribute-FileName": {
+                "type": "string"
+              },
+              "X-Attribute-Timestamp": {
+                "type": "integer"
+              },
+              "X-Container-Id": {
+                "type": "string"
+              },
+              "X-Object-Id": {
+                "type": "string"
+              },
+              "X-Owner-Id": {
+                "type": "string"
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request.",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        }
+      },
+      "parameters": [
+        {
+          "$ref": "#/parameters/containerId"
+        },
+        {
+          "$ref": "#/parameters/objectId"
+        }
+      ]
+    },
     "/objects": {
       "put": {
         "consumes": [
@@ -1657,11 +1817,20 @@ func init() {
       "type": "apiKey",
       "name": "Authorization",
       "in": "header"
+    },
+    "CookieAuth": {
+      "description": "Bearer cookie with base64-encoded token contents.",
+      "type": "apiKey",
+      "name": "cookie",
+      "in": "header"
     }
   },
   "security": [
     {
       "BearerAuth": []
+    },
+    {
+      "CookieAuth": []
     }
   ]
 }`))
@@ -2215,6 +2384,174 @@ func init() {
           "type": "string",
           "description": "Base58 encoded container id.",
           "name": "containerId",
+          "in": "path",
+          "required": true
+        }
+      ]
+    },
+    "/get/{containerId}/{objectId}": {
+      "get": {
+        "security": [
+          {},
+          {
+            "BearerAuth": []
+          },
+          {
+            "CookieAuth": []
+          }
+        ],
+        "produces": [
+          "application/octet-stream"
+        ],
+        "summary": "Get object by container ID and object ID. Also returns custom users' header attributes ` + "`" + `X-Attribute-*` + "`" + `",
+        "operationId": "getContainerObject",
+        "parameters": [
+          {
+            "type": "boolean",
+            "description": "Set the Content-Disposition header as attachment in response. This make the browser to download object as file instead of showing it on the page.",
+            "name": "download",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Object.",
+            "schema": {
+              "type": "string",
+              "format": "binary"
+            },
+            "headers": {
+              "Access-Control-Allow-Origin": {
+                "type": "string"
+              },
+              "Content-Disposition": {
+                "type": "string"
+              },
+              "Content-Length": {
+                "type": "string"
+              },
+              "Content-Type": {
+                "type": "string"
+              },
+              "Last-Modified": {
+                "type": "string"
+              },
+              "X-Attribute-FileName": {
+                "type": "string"
+              },
+              "X-Attribute-Timestamp": {
+                "type": "integer"
+              },
+              "X-Container-Id": {
+                "type": "string"
+              },
+              "X-Object-Id": {
+                "type": "string"
+              },
+              "X-Owner-Id": {
+                "type": "string"
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request.",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        }
+      },
+      "head": {
+        "security": [
+          {},
+          {
+            "BearerAuth": []
+          },
+          {
+            "CookieAuth": []
+          }
+        ],
+        "summary": "Get object info (head) by container ID and object ID. Also returns custom users' header attributes ` + "`" + `X-Attribute-*` + "`" + `",
+        "operationId": "headContainerObject",
+        "parameters": [
+          {
+            "type": "boolean",
+            "description": "Set the Content-Disposition header as attachment in response. This make the browser to download object as file instead of showing it on the page.",
+            "name": "download",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Object info.",
+            "schema": {
+              "$ref": "#/definitions/ObjectInfo"
+            },
+            "headers": {
+              "Access-Control-Allow-Origin": {
+                "type": "string"
+              },
+              "Content-Disposition": {
+                "type": "string"
+              },
+              "Content-Length": {
+                "type": "string"
+              },
+              "Content-Type": {
+                "type": "string"
+              },
+              "Last-Modified": {
+                "type": "string"
+              },
+              "X-Attribute-FileName": {
+                "type": "string"
+              },
+              "X-Attribute-Timestamp": {
+                "type": "integer"
+              },
+              "X-Container-Id": {
+                "type": "string"
+              },
+              "X-Object-Id": {
+                "type": "string"
+              },
+              "X-Owner-Id": {
+                "type": "string"
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request.",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        }
+      },
+      "parameters": [
+        {
+          "type": "string",
+          "description": "Base58 encoded container id.",
+          "name": "containerId",
+          "in": "path",
+          "required": true
+        },
+        {
+          "type": "string",
+          "description": "Base58 encoded object id.",
+          "name": "objectId",
           "in": "path",
           "required": true
         }
@@ -3425,11 +3762,20 @@ func init() {
       "type": "apiKey",
       "name": "Authorization",
       "in": "header"
+    },
+    "CookieAuth": {
+      "description": "Bearer cookie with base64-encoded token contents.",
+      "type": "apiKey",
+      "name": "cookie",
+      "in": "header"
     }
   },
   "security": [
     {
       "BearerAuth": []
+    },
+    {
+      "CookieAuth": []
     }
   ]
 }`))
