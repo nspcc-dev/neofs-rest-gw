@@ -129,6 +129,7 @@ func (a *API) Configure(api *operations.NeofsRestGwAPI) http.Handler {
 
 	api.GetContainerObjectHandler = operations.GetContainerObjectHandlerFunc(a.GetContainerObject)
 	api.HeadContainerObjectHandler = operations.HeadContainerObjectHandlerFunc(a.HeadContainerObject)
+	api.UploadContainerObjectHandler = operations.UploadContainerObjectHandlerFunc(a.UploadContainerObject)
 
 	api.BearerAuthAuth = func(s string) (*models.Principal, error) {
 		if !strings.HasPrefix(s, BearerPrefix) {

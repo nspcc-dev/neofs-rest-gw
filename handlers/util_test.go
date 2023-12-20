@@ -2,12 +2,14 @@ package handlers
 
 import (
 	"math"
+	"net/http"
 	"strconv"
 	"testing"
 	"time"
 
 	objectv2 "github.com/nspcc-dev/neofs-api-go/v2/object"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/zap"
 )
 
 func TestPrepareExpirationHeader(t *testing.T) {
@@ -153,7 +155,8 @@ func TestPrepareExpirationHeader(t *testing.T) {
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			err := prepareExpirationHeader(tc.headers, tc.durations)
+			now := time.Now().UTC()
+			err := prepareExpirationHeader(tc.headers, tc.durations, now)
 			if tc.err {
 				require.Error(t, err)
 			} else {
@@ -162,4 +165,47 @@ func TestPrepareExpirationHeader(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestFilter(t *testing.T) {
+	log := zap.NewNop()
+
+	t.Run("duplicate keys error", func(t *testing.T) {
+		req := http.Header{}
+		req.Add("X-Attribute-Dup-Key", "first-value")
+		req.Add("X-Attribute-Dup-Key", "second-value")
+		_, err := filterHeaders(log, req)
+		require.Error(t, err)
+	})
+
+	t.Run("duplicate system keys error", func(t *testing.T) {
+		req := http.Header{}
+		req.Add("X-Attribute-Neofs-Dup-Key", "first-value")
+		req.Add("X-Attribute-Neofs-Dup-Key", "second-value")
+		_, err := filterHeaders(log, req)
+		require.Error(t, err)
+	})
+
+	req := http.Header{}
+
+	req.Set("X-Attribute-Neofs-Expiration-Epoch1", "101")
+	req.Set("X-Attribute-NEOFS-Expiration-Epoch2", "102")
+	req.Set("X-Attribute-neofs-Expiration-Epoch3", "103")
+	req.Set("X-Attribute-My-Attribute", "value")
+	req.Set("X-Attribute-MyAttribute", "value2")
+	req.Set("X-Attribute-Empty-Value", "")
+	req.Set("X-Attribute-", "prefix only")
+	req.Set("No-Prefix", "value")
+
+	expected := map[string]string{
+		"__NEOFS__EXPIRATION_EPOCH1": "101",
+		"__NEOFS__EXPIRATION_EPOCH2": "102",
+		"__NEOFS__EXPIRATION_EPOCH3": "103",
+		"My-Attribute":               "value",
+		"Myattribute":                "value2",
+	}
+
+	result, err := filterHeaders(log, req)
+	require.NoError(t, err)
+	require.Equal(t, expected, result)
 }

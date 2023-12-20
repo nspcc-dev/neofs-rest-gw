@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"mime/multipart"
 	"net/http"
 	"path"
 	"strconv"
@@ -18,6 +19,7 @@ import (
 
 	"github.com/go-openapi/runtime"
 	"github.com/go-openapi/runtime/middleware"
+	"github.com/go-openapi/swag"
 	"github.com/nspcc-dev/neo-go/pkg/crypto/keys"
 	"github.com/nspcc-dev/neofs-api-go/v2/acl"
 	"github.com/nspcc-dev/neofs-api-go/v2/container"
@@ -784,5 +786,176 @@ func attachOwner(obj *object.Object, btoken *bearer.Token) {
 	if btoken != nil {
 		owner := btoken.ResolveIssuer()
 		obj.SetOwnerID(&owner)
+	}
+}
+
+// UploadContainerObject handler that upload file as object with attributes to NeoFS.
+func (a *API) UploadContainerObject(params operations.UploadContainerObjectParams, principal *models.Principal) middleware.Responder {
+	var (
+		header *multipart.FileHeader
+		file   multipart.File
+		err    error
+		idObj  oid.ID
+		addr   oid.Address
+		btoken *bearer.Token
+	)
+	errorResponse := operations.NewUploadContainerObjectBadRequest()
+	ctx := params.HTTPRequest.Context()
+
+	var idCnr cid.ID
+	if err := idCnr.DecodeString(params.ContainerID); err != nil {
+		resp := a.logAndGetErrorResponse("invalid container id", err)
+		return errorResponse.WithPayload(resp)
+	}
+
+	if principal != nil {
+		btoken, err = getBearerTokenFromString(string(*principal))
+		if err != nil {
+			resp := a.logAndGetErrorResponse("get bearer token", err)
+			return errorResponse.WithPayload(resp)
+		}
+	}
+
+	if swagFile, ok := params.Payload.(*swag.File); ok {
+		header = swagFile.Header
+		file = swagFile.Data
+	} else {
+		var fileKey string
+		for fileKey = range params.HTTPRequest.MultipartForm.File {
+			file, header, err = params.HTTPRequest.FormFile(fileKey)
+			if err != nil {
+				resp := a.logAndGetErrorResponse(fmt.Sprintf("get file %q from HTTP request", fileKey), err)
+				return errorResponse.WithPayload(resp)
+			}
+			break
+		}
+		if fileKey == "" {
+			resp := a.logAndGetErrorResponse("no multipart/form file", http.ErrMissingFile)
+			return errorResponse.WithPayload(resp)
+		}
+	}
+
+	defer func() {
+		if file == nil {
+			return
+		}
+		err := file.Close()
+		a.log.Debug(
+			"close temporary multipart/form file",
+			zap.Stringer("address", addr),
+			zap.String("filename", header.Filename),
+			zap.Error(err),
+		)
+	}()
+
+	filtered, err := filterHeaders(a.log, params.HTTPRequest.Header)
+	if err != nil {
+		resp := a.logAndGetErrorResponse("could not process headers", err)
+		return errorResponse.WithPayload(resp)
+	}
+
+	if needParseExpiration(filtered) {
+		epochDuration, err := getEpochDurations(ctx, a.pool)
+		if err != nil {
+			resp := a.logAndGetErrorResponse("could not get epoch durations from network info", err)
+			return errorResponse.WithPayload(resp)
+		}
+
+		now := time.Now()
+		if rawHeader := params.HTTPRequest.Header.Get("Date"); rawHeader != "" {
+			if parsed, err := time.Parse(http.TimeFormat, rawHeader); err != nil {
+				a.log.Warn("could not parse client time", zap.String("Date header", rawHeader), zap.Error(err))
+			} else {
+				now = parsed
+			}
+		}
+
+		if err = prepareExpirationHeader(filtered, epochDuration, now); err != nil {
+			resp := a.logAndGetErrorResponse("could not parse expiration header", err)
+			return errorResponse.WithPayload(resp)
+		}
+	}
+
+	attributes := make([]object.Attribute, 0, len(filtered))
+	// prepares attributes from filtered headers
+	for key, val := range filtered {
+		attribute := object.NewAttribute()
+		attribute.SetKey(key)
+		attribute.SetValue(val)
+		attributes = append(attributes, *attribute)
+	}
+	// sets FileName attribute if it wasn't set from header
+	if _, ok := filtered[object.AttributeFileName]; !ok {
+		filename := object.NewAttribute()
+		filename.SetKey(object.AttributeFileName)
+		filename.SetValue(header.Filename)
+		attributes = append(attributes, *filename)
+	}
+	// sets Content-Type attribute if it wasn't set from header
+	if _, ok := filtered[object.AttributeContentType]; !ok {
+		if contentTypes, ok := header.Header["Content-Type"]; ok && len(contentTypes) > 0 {
+			contentType := contentTypes[0]
+			cType := object.NewAttribute()
+			cType.SetKey(object.AttributeContentType)
+			cType.SetValue(contentType)
+			attributes = append(attributes, *cType)
+		}
+	}
+	// sets Timestamp attribute if it wasn't set from header and enabled by settings
+	if _, ok := filtered[object.AttributeTimestamp]; !ok && a.defaultTimestamp {
+		timestamp := object.NewAttribute()
+		timestamp.SetKey(object.AttributeTimestamp)
+		timestamp.SetValue(strconv.FormatInt(time.Now().Unix(), 10))
+		attributes = append(attributes, *timestamp)
+	}
+
+	var obj object.Object
+	obj.SetContainerID(idCnr)
+	a.setOwner(&obj, btoken)
+	obj.SetAttributes(attributes...)
+
+	var prmPutInit client.PrmObjectPutInit
+	if btoken != nil {
+		prmPutInit.WithBearerToken(*btoken)
+	}
+
+	writer, err := a.pool.ObjectPutInit(ctx, obj, a.signer, prmPutInit)
+	if err != nil {
+		resp := a.logAndGetErrorResponse("put object init", err)
+		return errorResponse.WithPayload(resp)
+	}
+
+	chunk := make([]byte, a.maxObjectSize)
+	_, err = io.CopyBuffer(writer, file, chunk)
+	if err != nil {
+		resp := a.logAndGetErrorResponse("write", err)
+		return errorResponse.WithPayload(resp)
+	}
+
+	if err = writer.Close(); err != nil {
+		resp := a.logAndGetErrorResponse("writer close", err)
+		return errorResponse.WithPayload(resp)
+	}
+
+	idObj = writer.GetResult().StoredObjectID()
+	addr.SetObject(idObj)
+	addr.SetContainer(idCnr)
+
+	var resp models.AddressForUpload
+	resp.ContainerID = &params.ContainerID
+	resp.ObjectID = util.NewString(idObj.String())
+
+	return operations.NewUploadContainerObjectOK().
+		WithPayload(&resp).
+		WithAccessControlAllowOrigin("*")
+}
+
+func (a *API) setOwner(obj *object.Object, btoken *bearer.Token) {
+	if btoken != nil {
+		owner := btoken.ResolveIssuer()
+		obj.SetOwnerID(&owner)
+	} else {
+		ownerID := a.signer.UserID()
+		obj.SetOwnerID(&ownerID)
 	}
 }

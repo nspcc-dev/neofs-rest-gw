@@ -5,10 +5,12 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"net/http"
 	"strconv"
 	"strings"
 	"time"
 
+	"github.com/nspcc-dev/neofs-api-go/v2/container"
 	objectv2 "github.com/nspcc-dev/neofs-api-go/v2/object"
 	sessionv2 "github.com/nspcc-dev/neofs-api-go/v2/session"
 	"github.com/nspcc-dev/neofs-rest-gw/gen/models"
@@ -16,6 +18,7 @@ import (
 	"github.com/nspcc-dev/neofs-sdk-go/container/acl"
 	"github.com/nspcc-dev/neofs-sdk-go/object"
 	"github.com/nspcc-dev/neofs-sdk-go/pool"
+	"go.uber.org/zap"
 )
 
 // PrmAttributes groups parameters to form attributes from request headers.
@@ -36,6 +39,8 @@ const (
 	ExpirationDurationAttr  = SystemAttributePrefix + "EXPIRATION_DURATION"
 	ExpirationTimestampAttr = SystemAttributePrefix + "EXPIRATION_TIMESTAMP"
 	ExpirationRFC3339Attr   = SystemAttributePrefix + "EXPIRATION_RFC3339"
+
+	neofsAttributeHeaderPrefix = "Neofs-"
 )
 
 // GetObjectAttributes forms object attributes from request headers.
@@ -52,7 +57,8 @@ func GetObjectAttributes(ctx context.Context, pool *pool.Pool, attrs []*models.A
 		if err != nil {
 			return nil, fmt.Errorf("could not get epoch durations from network info: %w", err)
 		}
-		if err = prepareExpirationHeader(headers, epochDuration); err != nil {
+		now := time.Now().UTC()
+		if err = prepareExpirationHeader(headers, epochDuration, now); err != nil {
 			return nil, fmt.Errorf("could not prepare expiration header: %w", err)
 		}
 	}
@@ -105,7 +111,7 @@ func needParseExpiration(headers map[string]string) bool {
 	return ok1 || ok2 || ok3
 }
 
-func prepareExpirationHeader(headers map[string]string, epochDurations *epochDurations) error {
+func prepareExpirationHeader(headers map[string]string, epochDurations *epochDurations, now time.Time) error {
 	expirationInEpoch := headers[objectv2.SysAttributeExpEpoch]
 
 	if timeRFC3339, ok := headers[ExpirationRFC3339Attr]; ok {
@@ -114,7 +120,6 @@ func prepareExpirationHeader(headers map[string]string, epochDurations *epochDur
 			return fmt.Errorf("couldn't parse value %s of header %s", timeRFC3339, ExpirationRFC3339Attr)
 		}
 
-		now := time.Now().UTC()
 		if expTime.Before(now) {
 			return fmt.Errorf("value %s of header %s must be in the future", timeRFC3339, ExpirationRFC3339Attr)
 		}
@@ -239,4 +244,64 @@ func decodeBasicACL(input string) (acl.Basic, error) {
 		res.FromBits(uint32(v))
 		return res, nil
 	}
+}
+
+func systemTranslator(key, prefix string) string {
+	// replace the specified prefix with `__NEOFS__`
+	key = strings.Replace(key, prefix, container.SysAttributePrefix, 1)
+
+	// replace `-` with `_`
+	key = strings.ReplaceAll(key, "-", "_")
+
+	// replace with uppercase
+	return strings.ToUpper(key)
+}
+
+func filterHeaders(l *zap.Logger, header http.Header) (map[string]string, error) {
+	result := make(map[string]string)
+
+	for key, values := range header {
+		// check if key gets duplicated
+		// return error containing full key name (with prefix)
+		if len(values) > 1 {
+			return nil, fmt.Errorf("key duplication error: %s", key)
+		}
+
+		// checks that the value is  not empty
+		if len(values) == 0 {
+			continue
+		}
+
+		value := values[0]
+
+		// checks that the key and the val not empty
+		if len(key) == 0 || len(value) == 0 {
+			continue
+		}
+
+		// checks that the key has attribute prefix
+		if !strings.HasPrefix(key, userAttributeHeaderPrefix) {
+			continue
+		}
+
+		// removing attribute prefix
+		clearKey := strings.TrimPrefix(key, userAttributeHeaderPrefix)
+
+		// checks that it's a system NeoFS header
+		if strings.HasPrefix(clearKey, neofsAttributeHeaderPrefix) {
+			clearKey = systemTranslator(clearKey, neofsAttributeHeaderPrefix)
+		}
+
+		// checks that the attribute key is not empty
+		if len(clearKey) == 0 {
+			continue
+		}
+
+		result[clearKey] = value
+
+		l.Debug("add attribute to result object",
+			zap.String("key", clearKey),
+			zap.String("value", value))
+	}
+	return result, nil
 }

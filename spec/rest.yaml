@@ -664,6 +664,38 @@ paths:
           description: Not found
           schema:
             $ref: '#/definitions/ErrorResponse'
+  /upload/{containerId}:
+    parameters:
+      - $ref: '#/parameters/containerId'
+    post:
+      operationId: uploadContainerObject
+      summary: Upload object to NeoFS
+      security:
+        - { }
+        - BearerAuth: [ ]
+        - CookieAuth: [ ]
+      consumes:
+        - multipart/form-data
+      produces:
+        - application/json
+      parameters:
+        - name: payload
+          in: formData
+          required: false
+          type: file
+          description: The file to upload.  If no file is present in this field, any other field name will be accepted, except for an empty one.
+      responses:
+        200:
+          headers:
+            Access-Control-Allow-Origin:
+              type: string
+          description: Address of uploaded objects.
+          schema:
+            $ref: '#/definitions/AddressForUpload'
+        400:
+          description: Bad request.
+          schema:
+            $ref: '#/definitions/ErrorResponse'
 
 definitions:
   BinaryBearer:
@@ -1200,3 +1232,17 @@ definitions:
       - success
     example:
       success: true
+  AddressForUpload:
+    description: Address of the object in NeoFS.
+    type: object
+    properties:
+      container_id:
+        type: string
+      object_id:
+        type: string
+    required:
+      - object_id
+      - container_id
+    example:
+      object_id: 8N3o7Dtr6T1xteCt6eRwhpmJ7JhME58Hyu1dvaswuTDd
+      container_id: 5HZTn5qkRnmgSz9gSrw22CEdPPk6nQhkwf2Mgzyvkikv
