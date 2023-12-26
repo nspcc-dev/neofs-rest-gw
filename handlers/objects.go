@@ -358,7 +358,8 @@ func (a *API) GetContainerObject(params operations.GetContainerObjectParams, pri
 	payloadSize := header.PayloadSize()
 	res := operations.NewGetContainerObjectOK()
 
-	responder, contentType := a.setAttributes(res, payloadSize, params.ContainerID, params.ObjectID, header, params.HTTPRequest.URL.Query().Get("download"))
+	responder := a.setAttributes(res, payloadSize, params.ContainerID, params.ObjectID, header, params.HTTPRequest.URL.Query().Get("download"))
+	contentType := res.ContentType
 	var payload io.ReadCloser = payloadReader
 	if len(contentType) == 0 {
 		if payloadSize > 0 {
@@ -431,7 +432,8 @@ func (a *API) HeadContainerObject(params operations.HeadContainerObjectParams, p
 	payloadSize := header.PayloadSize()
 	res := operations.NewHeadContainerObjectOK()
 
-	responder, contentType := a.setAttributes(res, payloadSize, params.ContainerID, params.ObjectID, *header, params.HTTPRequest.URL.Query().Get("download"))
+	responder := a.setAttributes(res, payloadSize, params.ContainerID, params.ObjectID, *header, params.HTTPRequest.URL.Query().Get("download"))
+	contentType := res.ContentType
 	if len(contentType) == 0 {
 		if payloadSize > 0 {
 			contentType, _, err = readContentType(payloadSize, func(sz uint64) (io.Reader, error) {
@@ -469,6 +471,7 @@ func isNotFoundError(err error) bool {
 
 type attributeSetter interface {
 	SetContentLength(contentLength string)
+	SetContentType(contentType string)
 	SetXContainerID(xContainerID string)
 	SetXObjectID(xObjectID string)
 	SetXOwnerID(xOwnerID string)
@@ -479,16 +482,14 @@ type attributeSetter interface {
 	WriteResponse(rw http.ResponseWriter, producer runtime.Producer)
 }
 
-func (a *API) setAttributes(res attributeSetter, payloadSize uint64, cid string, oid string, header object.Object, download string) (middleware.Responder, string) {
+func (a *API) setAttributes(res attributeSetter, payloadSize uint64, cid string, oid string, header object.Object, download string) middleware.Responder {
 	res.SetContentLength(strconv.FormatUint(payloadSize, 10))
 	res.SetXContainerID(cid)
 	res.SetXObjectID(oid)
 	res.SetXOwnerID(header.OwnerID().EncodeToString())
 
-	var (
-		contentType, filename string
-		responder             middleware.Responder
-	)
+	var responder middleware.Responder
+	dis := "inline"
 	attributes := header.Attributes()
 	if len(attributes) > 0 {
 		responder = middleware.ResponderFunc(func(rw http.ResponseWriter, pr runtime.Producer) {
@@ -500,7 +501,11 @@ func (a *API) setAttributes(res attributeSetter, payloadSize uint64, cid string,
 				}
 				switch key {
 				case object.AttributeFileName:
-					filename = val
+					switch download {
+					case "1", "t", "T", "true", "TRUE", "True", "y", "yes", "Y", "YES", "Yes":
+						dis = "attachment"
+					}
+					res.SetContentDisposition(dis + "; filename=" + path.Base(val))
 					res.SetXAttributeFileName(val)
 				case object.AttributeTimestamp:
 					attrTimestamp, err := strconv.ParseInt(val, 10, 64)
@@ -514,7 +519,7 @@ func (a *API) setAttributes(res attributeSetter, payloadSize uint64, cid string,
 					res.SetXAttributeTimestamp(attrTimestamp)
 					res.SetLastModified(time.Unix(attrTimestamp, 0).UTC().Format(http.TimeFormat))
 				case object.AttributeContentType:
-					contentType = val
+					res.SetContentType(val)
 				default:
 					if strings.HasPrefix(key, container.SysAttributePrefix) {
 						key = systemBackwardTranslator(key)
@@ -525,15 +530,7 @@ func (a *API) setAttributes(res attributeSetter, payloadSize uint64, cid string,
 			res.WriteResponse(rw, pr)
 		})
 	}
-
-	var dis = "inline"
-	switch download {
-	case "1", "t", "T", "true", "TRUE", "True", "y", "yes", "Y", "YES", "Yes":
-		dis = "attachment"
-	}
-	res.SetContentDisposition(dis + "; filename=" + path.Base(filename))
-
-	return responder, contentType
+	return responder
 }
 
 // initializes io.Reader with the limited size and detects Content-Type from it.
