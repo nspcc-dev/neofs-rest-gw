@@ -62,6 +62,18 @@ parameters:
     type: string
     required: true
     description: Base58 encoded object id.
+  attrKey:
+    in: path
+    name: attrKey
+    type: string
+    required: true
+    description: Object attribute key to search.
+  attrVal:
+    in: path
+    name: attrVal
+    type: string
+    required: true
+    description: Object attribute value to match.
 
 paths:
   /auth:
@@ -694,6 +706,108 @@ paths:
             $ref: '#/definitions/AddressForUpload'
         400:
           description: Bad request.
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+  /get_by_attribute/{containerId}/{attrKey}/{attrVal}:
+    parameters:
+      - $ref: '#/parameters/containerId'
+      - $ref: '#/parameters/attrKey'
+      - $ref: '#/parameters/attrVal'
+    get:
+      operationId: getByAttribute
+      summary: Find and get an object (payload and attributes) by a specific attribute. If more than one object is found, an arbitrary one will be returned.
+      security:
+        - { }
+        - BearerAuth: [ ]
+        - CookieAuth: [ ]
+      produces:
+        - application/octet-stream
+      parameters:
+        - name: download
+          in: query
+          description: Set the Content-Disposition header as attachment in response. This makes the browser to download object as file instead of showing it on the page.
+          required: false
+          type: boolean
+      responses:
+        200:
+          headers:
+            Access-Control-Allow-Origin:
+              type: string
+            Content-Length:
+              type: string
+            Content-Type:
+              type: string
+            Content-Disposition:
+              type: string
+            Last-Modified:
+              type: string
+            X-Object-Id:
+              type: string
+            X-Owner-Id:
+              type: string
+            X-Container-Id:
+              type: string
+            X-Attribute-FileName:
+              type: string
+            X-Attribute-Timestamp:
+              type: integer
+          description: Object.
+          schema:
+            type: string
+            format: binary
+        400:
+          description: Bad request.
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        404:
+          description: Not found
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+    head:
+      operationId: headByAttribute
+      summary: Get object attributes by a specific attribute. If more than one object is found, an arbitrary one will be used to get attributes.
+      security:
+        - { }
+        - BearerAuth: [ ]
+        - CookieAuth: [ ]
+      parameters:
+        - name: download
+          in: query
+          description: Set the Content-Disposition header as attachment in response. This makes the browser to download object as file instead of showing it on the page.
+          required: false
+          type: boolean
+      responses:
+        200:
+          headers:
+            Access-Control-Allow-Origin:
+              type: string
+            Content-Length:
+              type: string
+            Content-Type:
+              type: string
+            Content-Disposition:
+              type: string
+            Last-Modified:
+              type: string
+            X-Object-Id:
+              type: string
+            X-Owner-Id:
+              type: string
+            X-Container-Id:
+              type: string
+            X-Attribute-FileName:
+              type: string
+            X-Attribute-Timestamp:
+              type: integer
+          description: Object info.
+          schema:
+            $ref: "#/definitions/ObjectInfo"
+        400:
+          description: Bad request.
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        404:
+          description: Not found
           schema:
             $ref: '#/definitions/ErrorResponse'
 
