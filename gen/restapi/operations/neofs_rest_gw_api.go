@@ -40,7 +40,8 @@ func NewNeofsRestGwAPI(spec *loads.Document) *NeofsRestGwAPI {
 		APIKeyAuthenticator: security.APIKeyAuth,
 		BearerAuthenticator: security.BearerAuth,
 
-		JSONConsumer: runtime.JSONConsumer(),
+		JSONConsumer:          runtime.JSONConsumer(),
+		MultipartformConsumer: runtime.DiscardConsumer,
 
 		BinProducer:  runtime.ByteStreamProducer(),
 		JSONProducer: runtime.JSONProducer(),
@@ -114,6 +115,9 @@ func NewNeofsRestGwAPI(spec *loads.Document) *NeofsRestGwAPI {
 		SearchObjectsHandler: SearchObjectsHandlerFunc(func(params SearchObjectsParams, principal *models.Principal) middleware.Responder {
 			return middleware.NotImplemented("operation SearchObjects has not yet been implemented")
 		}),
+		UploadContainerObjectHandler: UploadContainerObjectHandlerFunc(func(params UploadContainerObjectParams, principal *models.Principal) middleware.Responder {
+			return middleware.NotImplemented("operation UploadContainerObject has not yet been implemented")
+		}),
 
 		// Applies when the "Authorization" header is set
 		BearerAuthAuth: func(token string) (*models.Principal, error) {
@@ -156,6 +160,9 @@ type NeofsRestGwAPI struct {
 	// JSONConsumer registers a consumer for the following mime types:
 	//   - application/json
 	JSONConsumer runtime.Consumer
+	// MultipartformConsumer registers a consumer for the following mime types:
+	//   - multipart/form-data
+	MultipartformConsumer runtime.Consumer
 
 	// BinProducer registers a producer for the following mime types:
 	//   - application/octet-stream
@@ -221,6 +228,8 @@ type NeofsRestGwAPI struct {
 	PutObjectHandler PutObjectHandler
 	// SearchObjectsHandler sets the operation handler for the search objects operation
 	SearchObjectsHandler SearchObjectsHandler
+	// UploadContainerObjectHandler sets the operation handler for the upload container object operation
+	UploadContainerObjectHandler UploadContainerObjectHandler
 
 	// ServeError is called when an error is received, there is a default handler
 	// but you can set your own with this
@@ -292,6 +301,9 @@ func (o *NeofsRestGwAPI) Validate() error {
 
 	if o.JSONConsumer == nil {
 		unregistered = append(unregistered, "JSONConsumer")
+	}
+	if o.MultipartformConsumer == nil {
+		unregistered = append(unregistered, "MultipartformConsumer")
 	}
 
 	if o.BinProducer == nil {
@@ -377,6 +389,9 @@ func (o *NeofsRestGwAPI) Validate() error {
 	if o.SearchObjectsHandler == nil {
 		unregistered = append(unregistered, "SearchObjectsHandler")
 	}
+	if o.UploadContainerObjectHandler == nil {
+		unregistered = append(unregistered, "UploadContainerObjectHandler")
+	}
 
 	if len(unregistered) > 0 {
 		return fmt.Errorf("missing registration: %s", strings.Join(unregistered, ", "))
@@ -425,6 +440,8 @@ func (o *NeofsRestGwAPI) ConsumersFor(mediaTypes []string) map[string]runtime.Co
 		switch mt {
 		case "application/json":
 			result["application/json"] = o.JSONConsumer
+		case "multipart/form-data":
+			result["multipart/form-data"] = o.MultipartformConsumer
 		}
 
 		if c, ok := o.customConsumers[mt]; ok {
@@ -576,6 +593,10 @@ func (o *NeofsRestGwAPI) initHandlerCache() {
 		o.handlers["POST"] = make(map[string]http.Handler)
 	}
 	o.handlers["POST"]["/objects/{containerId}/search"] = NewSearchObjects(o.context, o.SearchObjectsHandler)
+	if o.handlers["POST"] == nil {
+		o.handlers["POST"] = make(map[string]http.Handler)
+	}
+	o.handlers["POST"]["/upload/{containerId}"] = NewUploadContainerObject(o.context, o.UploadContainerObjectHandler)
 }
 
 // Serve creates a http handler to serve the API over HTTP

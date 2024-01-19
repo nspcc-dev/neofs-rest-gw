@@ -64,7 +64,8 @@ type ContextKey string
 
 const (
 	// BearerPrefix is the prefix for authorization token.
-	BearerPrefix = "Bearer "
+	BearerPrefix       = "Bearer "
+	BearerCookiePrefix = "Bearer="
 
 	// ContextKeyRequestID is the ContextKey for RequestID.
 	ContextKeyRequestID ContextKey = "requestID"
@@ -129,6 +130,7 @@ func (a *API) Configure(api *operations.NeofsRestGwAPI) http.Handler {
 
 	api.GetContainerObjectHandler = operations.GetContainerObjectHandlerFunc(a.GetContainerObject)
 	api.HeadContainerObjectHandler = operations.HeadContainerObjectHandlerFunc(a.HeadContainerObject)
+	api.UploadContainerObjectHandler = operations.UploadContainerObjectHandlerFunc(a.UploadContainerObject)
 
 	api.BearerAuthAuth = func(s string) (*models.Principal, error) {
 		if !strings.HasPrefix(s, BearerPrefix) {
@@ -137,18 +139,16 @@ func (a *API) Configure(api *operations.NeofsRestGwAPI) http.Handler {
 		if s = strings.TrimPrefix(s, BearerPrefix); len(s) == 0 {
 			return nil, fmt.Errorf("bearer token is empty")
 		}
-
 		return (*models.Principal)(&s), nil
 	}
 
 	api.CookieAuthAuth = func(s string) (*models.Principal, error) {
-		if !strings.HasPrefix(s, BearerPrefix) {
+		if !strings.HasPrefix(s, BearerCookiePrefix) {
 			return nil, fmt.Errorf("has not bearer token")
 		}
-		if s = strings.TrimPrefix(s, BearerPrefix); len(s) == 0 {
+		if s = strings.TrimPrefix(s, BearerCookiePrefix); len(s) == 0 {
 			return nil, fmt.Errorf("bearer token is empty")
 		}
-
 		return (*models.Principal)(&s), nil
 	}
 

@@ -979,6 +979,59 @@ func init() {
           "$ref": "#/parameters/objectId"
         }
       ]
+    },
+    "/upload/{containerId}": {
+      "post": {
+        "security": [
+          {},
+          {
+            "BearerAuth": []
+          },
+          {
+            "CookieAuth": []
+          }
+        ],
+        "consumes": [
+          "multipart/form-data"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "summary": "Upload object to NeoFS",
+        "operationId": "uploadContainerObject",
+        "parameters": [
+          {
+            "type": "file",
+            "description": "The file to upload.  If no file is present in this field, any other field name will be accepted, except for an empty one.",
+            "name": "payload",
+            "in": "formData"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Address of uploaded objects.",
+            "schema": {
+              "$ref": "#/definitions/AddressForUpload"
+            },
+            "headers": {
+              "Access-Control-Allow-Origin": {
+                "type": "string"
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request.",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        }
+      },
+      "parameters": [
+        {
+          "$ref": "#/parameters/containerId"
+        }
+      ]
     }
   },
   "definitions": {
@@ -1008,6 +1061,26 @@ func init() {
       "example": {
         "containerId": "5HZTn5qkRnmgSz9gSrw22CEdPPk6nQhkwf2Mgzyvkikv",
         "objectId": "8N3o7Dtr6T1xteCt6eRwhpmJ7JhME58Hyu1dvaswuTDd"
+      }
+    },
+    "AddressForUpload": {
+      "description": "Address of the object in NeoFS.",
+      "type": "object",
+      "required": [
+        "object_id",
+        "container_id"
+      ],
+      "properties": {
+        "container_id": {
+          "type": "string"
+        },
+        "object_id": {
+          "type": "string"
+        }
+      },
+      "example": {
+        "container_id": "5HZTn5qkRnmgSz9gSrw22CEdPPk6nQhkwf2Mgzyvkikv",
+        "object_id": "8N3o7Dtr6T1xteCt6eRwhpmJ7JhME58Hyu1dvaswuTDd"
       }
     },
     "Attribute": {
@@ -2924,6 +2997,63 @@ func init() {
           "required": true
         }
       ]
+    },
+    "/upload/{containerId}": {
+      "post": {
+        "security": [
+          {},
+          {
+            "BearerAuth": []
+          },
+          {
+            "CookieAuth": []
+          }
+        ],
+        "consumes": [
+          "multipart/form-data"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "summary": "Upload object to NeoFS",
+        "operationId": "uploadContainerObject",
+        "parameters": [
+          {
+            "type": "file",
+            "description": "The file to upload.  If no file is present in this field, any other field name will be accepted, except for an empty one.",
+            "name": "payload",
+            "in": "formData"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Address of uploaded objects.",
+            "schema": {
+              "$ref": "#/definitions/AddressForUpload"
+            },
+            "headers": {
+              "Access-Control-Allow-Origin": {
+                "type": "string"
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request.",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        }
+      },
+      "parameters": [
+        {
+          "type": "string",
+          "description": "Base58 encoded container id.",
+          "name": "containerId",
+          "in": "path",
+          "required": true
+        }
+      ]
     }
   },
   "definitions": {
@@ -2953,6 +3083,26 @@ func init() {
       "example": {
         "containerId": "5HZTn5qkRnmgSz9gSrw22CEdPPk6nQhkwf2Mgzyvkikv",
         "objectId": "8N3o7Dtr6T1xteCt6eRwhpmJ7JhME58Hyu1dvaswuTDd"
+      }
+    },
+    "AddressForUpload": {
+      "description": "Address of the object in NeoFS.",
+      "type": "object",
+      "required": [
+        "object_id",
+        "container_id"
+      ],
+      "properties": {
+        "container_id": {
+          "type": "string"
+        },
+        "object_id": {
+          "type": "string"
+        }
+      },
+      "example": {
+        "container_id": "5HZTn5qkRnmgSz9gSrw22CEdPPk6nQhkwf2Mgzyvkikv",
+        "object_id": "8N3o7Dtr6T1xteCt6eRwhpmJ7JhME58Hyu1dvaswuTDd"
       }
     },
     "Attribute": {
