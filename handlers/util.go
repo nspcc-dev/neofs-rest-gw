@@ -65,21 +65,15 @@ func GetObjectAttributes(ctx context.Context, pool *pool.Pool, attrs []*models.A
 
 	attributes := make([]object.Attribute, 0, len(headers))
 	for key, val := range headers {
-		attribute := object.NewAttribute()
-		attribute.SetKey(key)
-		attribute.SetValue(val)
+		attribute := object.NewAttribute(key, val)
 		attributes = append(attributes, *attribute)
 	}
 
-	filename := object.NewAttribute()
-	filename.SetKey(object.AttributeFileName)
-	filename.SetValue(prm.DefaultFileName)
+	filename := object.NewAttribute(object.AttributeFileName, prm.DefaultFileName)
 	attributes = append(attributes, *filename)
 
 	if _, ok := headers[object.AttributeTimestamp]; !ok && prm.DefaultTimestamp {
-		timestamp := object.NewAttribute()
-		timestamp.SetKey(object.AttributeTimestamp)
-		timestamp.SetValue(strconv.FormatInt(time.Now().Unix(), 10))
+		timestamp := object.NewAttribute(object.AttributeTimestamp, strconv.FormatInt(time.Now().Unix(), 10))
 		attributes = append(attributes, *timestamp)
 	}
 
