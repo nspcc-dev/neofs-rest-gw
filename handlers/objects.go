@@ -876,33 +876,25 @@ func (a *API) UploadContainerObject(params operations.UploadContainerObjectParam
 	attributes := make([]object.Attribute, 0, len(filtered))
 	// prepares attributes from filtered headers
 	for key, val := range filtered {
-		attribute := object.NewAttribute()
-		attribute.SetKey(key)
-		attribute.SetValue(val)
+		attribute := object.NewAttribute(key, val)
 		attributes = append(attributes, *attribute)
 	}
 	// sets FileName attribute if it wasn't set from header
 	if _, ok := filtered[object.AttributeFileName]; !ok {
-		filename := object.NewAttribute()
-		filename.SetKey(object.AttributeFileName)
-		filename.SetValue(header.Filename)
+		filename := object.NewAttribute(object.AttributeFileName, header.Filename)
 		attributes = append(attributes, *filename)
 	}
 	// sets Content-Type attribute if it wasn't set from header
 	if _, ok := filtered[object.AttributeContentType]; !ok {
 		if contentTypes, ok := header.Header["Content-Type"]; ok && len(contentTypes) > 0 {
 			contentType := contentTypes[0]
-			cType := object.NewAttribute()
-			cType.SetKey(object.AttributeContentType)
-			cType.SetValue(contentType)
+			cType := object.NewAttribute(object.AttributeContentType, contentType)
 			attributes = append(attributes, *cType)
 		}
 	}
 	// sets Timestamp attribute if it wasn't set from header and enabled by settings
 	if _, ok := filtered[object.AttributeTimestamp]; !ok && a.defaultTimestamp {
-		timestamp := object.NewAttribute()
-		timestamp.SetKey(object.AttributeTimestamp)
-		timestamp.SetValue(strconv.FormatInt(time.Now().Unix(), 10))
+		timestamp := object.NewAttribute(object.AttributeTimestamp, strconv.FormatInt(time.Now().Unix(), 10))
 		attributes = append(attributes, *timestamp)
 	}
 
