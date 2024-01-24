@@ -3,14 +3,14 @@ module github.com/nspcc-dev/neofs-rest-gw
 go 1.19
 
 require (
-	github.com/go-openapi/errors v0.20.4
-	github.com/go-openapi/loads v0.21.2
+	github.com/go-openapi/errors v0.21.0
+	github.com/go-openapi/loads v0.21.5
 	github.com/go-openapi/runtime v0.26.0
-	github.com/go-openapi/spec v0.20.11
-	github.com/go-openapi/strfmt v0.21.9
-	github.com/go-openapi/swag v0.22.4
-	github.com/go-openapi/validate v0.22.3
-	github.com/google/uuid v1.4.0
+	github.com/go-openapi/spec v0.20.14
+	github.com/go-openapi/strfmt v0.22.0
+	github.com/go-openapi/swag v0.22.8
+	github.com/go-openapi/validate v0.22.6
+	github.com/google/uuid v1.6.0
 	github.com/nspcc-dev/neo-go v0.105.1
 	github.com/nspcc-dev/neofs-api-go/v2 v2.14.0
 	github.com/nspcc-dev/neofs-sdk-go v1.0.0-rc.11.0.20231220200831-1db2fbf3c1ad
@@ -44,6 +44,7 @@ require (
 	github.com/yusufpapurcu/wmi v1.2.3 // indirect
 	golang.org/x/exp v0.0.0-20231006140011-7918f672742d // indirect
 	golang.org/x/mod v0.13.0 // indirect
+	golang.org/x/sync v0.6.0 // indirect
 	golang.org/x/tools v0.14.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20230803162519-f966b187b2e5 // indirect
 )
@@ -63,9 +64,9 @@ require (
 	github.com/docker/go-connections v0.4.0 // indirect
 	github.com/docker/go-units v0.5.0 // indirect
 	github.com/fsnotify/fsnotify v1.6.0 // indirect
-	github.com/go-openapi/analysis v0.21.4 // indirect
-	github.com/go-openapi/jsonpointer v0.20.0 // indirect
-	github.com/go-openapi/jsonreference v0.20.2 // indirect
+	github.com/go-openapi/analysis v0.22.2 // indirect
+	github.com/go-openapi/jsonpointer v0.20.2 // indirect
+	github.com/go-openapi/jsonreference v0.20.4 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang/protobuf v1.5.3 // indirect
 	github.com/hashicorp/golang-lru v1.0.2 // indirect
