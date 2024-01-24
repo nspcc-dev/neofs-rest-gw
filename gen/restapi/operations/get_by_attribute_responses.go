@@ -324,7 +324,7 @@ func (o *GetByAttributeBadRequest) WriteResponse(rw http.ResponseWriter, produce
 // GetByAttributeNotFoundCode is the HTTP code returned for type GetByAttributeNotFound
 const GetByAttributeNotFoundCode int = 404
 
-/*GetByAttributeNotFound Not found
+/*GetByAttributeNotFound Not found.
 
 swagger:response getByAttributeNotFound
 */

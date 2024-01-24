@@ -6,6 +6,7 @@ package operations
 // Editing this file might prove futile when you re-run the swagger generate command
 
 import (
+	"io"
 	"net/http"
 
 	"github.com/go-openapi/runtime"
@@ -66,7 +67,7 @@ type HeadByAttributeOK struct {
 	/*
 	  In: Body
 	*/
-	Payload *models.ObjectInfo `json:"body,omitempty"`
+	Payload io.ReadCloser `json:"body,omitempty"`
 }
 
 // NewHeadByAttributeOK creates HeadByAttributeOK with default headers values
@@ -186,13 +187,13 @@ func (o *HeadByAttributeOK) SetXOwnerID(xOwnerID string) {
 }
 
 // WithPayload adds the payload to the head by attribute o k response
-func (o *HeadByAttributeOK) WithPayload(payload *models.ObjectInfo) *HeadByAttributeOK {
+func (o *HeadByAttributeOK) WithPayload(payload io.ReadCloser) *HeadByAttributeOK {
 	o.Payload = payload
 	return o
 }
 
 // SetPayload sets the payload to the head by attribute o k response
-func (o *HeadByAttributeOK) SetPayload(payload *models.ObjectInfo) {
+func (o *HeadByAttributeOK) SetPayload(payload io.ReadCloser) {
 	o.Payload = payload
 }
 
@@ -270,11 +271,9 @@ func (o *HeadByAttributeOK) WriteResponse(rw http.ResponseWriter, producer runti
 	}
 
 	rw.WriteHeader(200)
-	if o.Payload != nil {
-		payload := o.Payload
-		if err := producer.Produce(rw, payload); err != nil {
-			panic(err) // let the recovery middleware deal with this
-		}
+	payload := o.Payload
+	if err := producer.Produce(rw, payload); err != nil {
+		panic(err) // let the recovery middleware deal with this
 	}
 }
 
@@ -325,7 +324,7 @@ func (o *HeadByAttributeBadRequest) WriteResponse(rw http.ResponseWriter, produc
 // HeadByAttributeNotFoundCode is the HTTP code returned for type HeadByAttributeNotFound
 const HeadByAttributeNotFoundCode int = 404
 
-/*HeadByAttributeNotFound Not found
+/*HeadByAttributeNotFound Not found.
 
 swagger:response headByAttributeNotFound
 */

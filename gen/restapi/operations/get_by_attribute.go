@@ -33,7 +33,7 @@ func NewGetByAttribute(ctx *middleware.Context, handler GetByAttributeHandler) *
 
 /* GetByAttribute swagger:route GET /get_by_attribute/{containerId}/{attrKey}/{attrVal} getByAttribute
 
-Find and get an object (payload and attributes) by a specific attribute. If more than one object is found, an arbitrary one will be returned.
+Find and get an object (payload and attributes) by a specific attribute. If more than one object is found, an arbitrary one will be returned. It returns the MIME type based on headers or object contents, so the actual Content-Type can differ from the list in the "Response content type" section.
 
 */
 type GetByAttribute struct {

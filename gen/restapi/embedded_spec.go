@@ -535,9 +535,12 @@ func init() {
           }
         ],
         "produces": [
-          "application/octet-stream"
+          "application/octet-stream",
+          "application/json",
+          "image/jpeg",
+          "text/plain"
         ],
-        "summary": "Get object by container ID and object ID. Also returns custom users' header attributes ` + "`" + `X-Attribute-*` + "`" + `",
+        "summary": "Get object by container ID and object ID. Also returns custom users' header attributes ` + "`" + `X-Attribute-*` + "`" + `. It returns the MIME type based on headers or object contents, so the actual Content-Type can differ from the list in the \"Response content type\" section.",
         "operationId": "getContainerObject",
         "parameters": [
           {
@@ -549,55 +552,13 @@ func init() {
         ],
         "responses": {
           "200": {
-            "description": "Object.",
-            "schema": {
-              "type": "string",
-              "format": "binary"
-            },
-            "headers": {
-              "Access-Control-Allow-Origin": {
-                "type": "string"
-              },
-              "Content-Disposition": {
-                "type": "string"
-              },
-              "Content-Length": {
-                "type": "string"
-              },
-              "Content-Type": {
-                "type": "string"
-              },
-              "Last-Modified": {
-                "type": "string"
-              },
-              "X-Attribute-FileName": {
-                "type": "string"
-              },
-              "X-Attribute-Timestamp": {
-                "type": "integer"
-              },
-              "X-Container-Id": {
-                "type": "string"
-              },
-              "X-Object-Id": {
-                "type": "string"
-              },
-              "X-Owner-Id": {
-                "type": "string"
-              }
-            }
+            "$ref": "#/responses/ObjectContentOK"
           },
           "400": {
-            "description": "Bad request.",
-            "schema": {
-              "$ref": "#/definitions/ErrorResponse"
-            }
+            "$ref": "#/responses/BadRequest"
           },
           "404": {
-            "description": "Not found",
-            "schema": {
-              "$ref": "#/definitions/ErrorResponse"
-            }
+            "$ref": "#/responses/NotFound"
           }
         }
       },
@@ -611,7 +572,7 @@ func init() {
             "CookieAuth": []
           }
         ],
-        "summary": "Get object info (head) by container ID and object ID. Also returns custom users' header attributes ` + "`" + `X-Attribute-*` + "`" + `",
+        "summary": "Get object info (head) by container ID and object ID. Also returns custom users' header attributes ` + "`" + `X-Attribute-*` + "`" + `.",
         "operationId": "headContainerObject",
         "parameters": [
           {
@@ -623,54 +584,13 @@ func init() {
         ],
         "responses": {
           "200": {
-            "description": "Object info.",
-            "schema": {
-              "$ref": "#/definitions/ObjectInfo"
-            },
-            "headers": {
-              "Access-Control-Allow-Origin": {
-                "type": "string"
-              },
-              "Content-Disposition": {
-                "type": "string"
-              },
-              "Content-Length": {
-                "type": "string"
-              },
-              "Content-Type": {
-                "type": "string"
-              },
-              "Last-Modified": {
-                "type": "string"
-              },
-              "X-Attribute-FileName": {
-                "type": "string"
-              },
-              "X-Attribute-Timestamp": {
-                "type": "integer"
-              },
-              "X-Container-Id": {
-                "type": "string"
-              },
-              "X-Object-Id": {
-                "type": "string"
-              },
-              "X-Owner-Id": {
-                "type": "string"
-              }
-            }
+            "$ref": "#/responses/ObjectHeadOK"
           },
           "400": {
-            "description": "Bad request.",
-            "schema": {
-              "$ref": "#/definitions/ErrorResponse"
-            }
+            "$ref": "#/responses/BadRequest"
           },
           "404": {
-            "description": "Not found",
-            "schema": {
-              "$ref": "#/definitions/ErrorResponse"
-            }
+            "$ref": "#/responses/NotFound"
           }
         }
       },
@@ -695,9 +615,12 @@ func init() {
           }
         ],
         "produces": [
-          "application/octet-stream"
+          "application/octet-stream",
+          "application/json",
+          "image/jpeg",
+          "text/plain"
         ],
-        "summary": "Find and get an object (payload and attributes) by a specific attribute. If more than one object is found, an arbitrary one will be returned.",
+        "summary": "Find and get an object (payload and attributes) by a specific attribute. If more than one object is found, an arbitrary one will be returned. It returns the MIME type based on headers or object contents, so the actual Content-Type can differ from the list in the \"Response content type\" section.",
         "operationId": "getByAttribute",
         "parameters": [
           {
@@ -709,55 +632,13 @@ func init() {
         ],
         "responses": {
           "200": {
-            "description": "Object.",
-            "schema": {
-              "type": "string",
-              "format": "binary"
-            },
-            "headers": {
-              "Access-Control-Allow-Origin": {
-                "type": "string"
-              },
-              "Content-Disposition": {
-                "type": "string"
-              },
-              "Content-Length": {
-                "type": "string"
-              },
-              "Content-Type": {
-                "type": "string"
-              },
-              "Last-Modified": {
-                "type": "string"
-              },
-              "X-Attribute-FileName": {
-                "type": "string"
-              },
-              "X-Attribute-Timestamp": {
-                "type": "integer"
-              },
-              "X-Container-Id": {
-                "type": "string"
-              },
-              "X-Object-Id": {
-                "type": "string"
-              },
-              "X-Owner-Id": {
-                "type": "string"
-              }
-            }
+            "$ref": "#/responses/ObjectContentOK"
           },
           "400": {
-            "description": "Bad request.",
-            "schema": {
-              "$ref": "#/definitions/ErrorResponse"
-            }
+            "$ref": "#/responses/BadRequest"
           },
           "404": {
-            "description": "Not found",
-            "schema": {
-              "$ref": "#/definitions/ErrorResponse"
-            }
+            "$ref": "#/responses/NotFound"
           }
         }
       },
@@ -783,54 +664,13 @@ func init() {
         ],
         "responses": {
           "200": {
-            "description": "Object info.",
-            "schema": {
-              "$ref": "#/definitions/ObjectInfo"
-            },
-            "headers": {
-              "Access-Control-Allow-Origin": {
-                "type": "string"
-              },
-              "Content-Disposition": {
-                "type": "string"
-              },
-              "Content-Length": {
-                "type": "string"
-              },
-              "Content-Type": {
-                "type": "string"
-              },
-              "Last-Modified": {
-                "type": "string"
-              },
-              "X-Attribute-FileName": {
-                "type": "string"
-              },
-              "X-Attribute-Timestamp": {
-                "type": "integer"
-              },
-              "X-Container-Id": {
-                "type": "string"
-              },
-              "X-Object-Id": {
-                "type": "string"
-              },
-              "X-Owner-Id": {
-                "type": "string"
-              }
-            }
+            "$ref": "#/responses/ObjectHeadOK"
           },
           "400": {
-            "description": "Bad request.",
-            "schema": {
-              "$ref": "#/definitions/ErrorResponse"
-            }
+            "$ref": "#/responses/BadRequest"
           },
           "404": {
-            "description": "Not found",
-            "schema": {
-              "$ref": "#/definitions/ErrorResponse"
-            }
+            "$ref": "#/responses/NotFound"
           }
         }
       },
@@ -1183,10 +1023,7 @@ func init() {
             }
           },
           "400": {
-            "description": "Bad request.",
-            "schema": {
-              "$ref": "#/definitions/ErrorResponse"
-            }
+            "$ref": "#/responses/BadRequest"
           }
         }
       },
@@ -2061,6 +1898,98 @@ func init() {
       "in": "query"
     }
   },
+  "responses": {
+    "BadRequest": {
+      "description": "Bad request.",
+      "schema": {
+        "$ref": "#/definitions/ErrorResponse"
+      }
+    },
+    "NotFound": {
+      "description": "Not found.",
+      "schema": {
+        "$ref": "#/definitions/ErrorResponse"
+      }
+    },
+    "ObjectContentOK": {
+      "description": "Object.",
+      "schema": {
+        "type": "string",
+        "format": "binary"
+      },
+      "headers": {
+        "Access-Control-Allow-Origin": {
+          "type": "string"
+        },
+        "Content-Disposition": {
+          "type": "string"
+        },
+        "Content-Length": {
+          "type": "string"
+        },
+        "Content-Type": {
+          "type": "string"
+        },
+        "Last-Modified": {
+          "type": "string"
+        },
+        "X-Attribute-FileName": {
+          "type": "string"
+        },
+        "X-Attribute-Timestamp": {
+          "type": "integer"
+        },
+        "X-Container-Id": {
+          "type": "string"
+        },
+        "X-Object-Id": {
+          "type": "string"
+        },
+        "X-Owner-Id": {
+          "type": "string"
+        }
+      }
+    },
+    "ObjectHeadOK": {
+      "description": "Object info.",
+      "schema": {
+        "type": "string",
+        "format": "binary"
+      },
+      "headers": {
+        "Access-Control-Allow-Origin": {
+          "type": "string"
+        },
+        "Content-Disposition": {
+          "type": "string"
+        },
+        "Content-Length": {
+          "type": "string"
+        },
+        "Content-Type": {
+          "type": "string"
+        },
+        "Last-Modified": {
+          "type": "string"
+        },
+        "X-Attribute-FileName": {
+          "type": "string"
+        },
+        "X-Attribute-Timestamp": {
+          "type": "integer"
+        },
+        "X-Container-Id": {
+          "type": "string"
+        },
+        "X-Object-Id": {
+          "type": "string"
+        },
+        "X-Owner-Id": {
+          "type": "string"
+        }
+      }
+    }
+  },
   "securityDefinitions": {
     "BearerAuth": {
       "description": "Bearer token body to provide with NeoFS request. Must have 'Bearer ' prefix.",
@@ -2651,9 +2580,12 @@ func init() {
           }
         ],
         "produces": [
-          "application/octet-stream"
+          "application/json",
+          "application/octet-stream",
+          "image/jpeg",
+          "text/plain"
         ],
-        "summary": "Get object by container ID and object ID. Also returns custom users' header attributes ` + "`" + `X-Attribute-*` + "`" + `",
+        "summary": "Get object by container ID and object ID. Also returns custom users' header attributes ` + "`" + `X-Attribute-*` + "`" + `. It returns the MIME type based on headers or object contents, so the actual Content-Type can differ from the list in the \"Response content type\" section.",
         "operationId": "getContainerObject",
         "parameters": [
           {
@@ -2710,7 +2642,7 @@ func init() {
             }
           },
           "404": {
-            "description": "Not found",
+            "description": "Not found.",
             "schema": {
               "$ref": "#/definitions/ErrorResponse"
             }
@@ -2727,7 +2659,7 @@ func init() {
             "CookieAuth": []
           }
         ],
-        "summary": "Get object info (head) by container ID and object ID. Also returns custom users' header attributes ` + "`" + `X-Attribute-*` + "`" + `",
+        "summary": "Get object info (head) by container ID and object ID. Also returns custom users' header attributes ` + "`" + `X-Attribute-*` + "`" + `.",
         "operationId": "headContainerObject",
         "parameters": [
           {
@@ -2741,7 +2673,8 @@ func init() {
           "200": {
             "description": "Object info.",
             "schema": {
-              "$ref": "#/definitions/ObjectInfo"
+              "type": "string",
+              "format": "binary"
             },
             "headers": {
               "Access-Control-Allow-Origin": {
@@ -2783,7 +2716,7 @@ func init() {
             }
           },
           "404": {
-            "description": "Not found",
+            "description": "Not found.",
             "schema": {
               "$ref": "#/definitions/ErrorResponse"
             }
@@ -2819,9 +2752,12 @@ func init() {
           }
         ],
         "produces": [
-          "application/octet-stream"
+          "application/json",
+          "application/octet-stream",
+          "image/jpeg",
+          "text/plain"
         ],
-        "summary": "Find and get an object (payload and attributes) by a specific attribute. If more than one object is found, an arbitrary one will be returned.",
+        "summary": "Find and get an object (payload and attributes) by a specific attribute. If more than one object is found, an arbitrary one will be returned. It returns the MIME type based on headers or object contents, so the actual Content-Type can differ from the list in the \"Response content type\" section.",
         "operationId": "getByAttribute",
         "parameters": [
           {
@@ -2878,7 +2814,7 @@ func init() {
             }
           },
           "404": {
-            "description": "Not found",
+            "description": "Not found.",
             "schema": {
               "$ref": "#/definitions/ErrorResponse"
             }
@@ -2909,7 +2845,8 @@ func init() {
           "200": {
             "description": "Object info.",
             "schema": {
-              "$ref": "#/definitions/ObjectInfo"
+              "type": "string",
+              "format": "binary"
             },
             "headers": {
               "Access-Control-Allow-Origin": {
@@ -2951,7 +2888,7 @@ func init() {
             }
           },
           "404": {
-            "description": "Not found",
+            "description": "Not found.",
             "schema": {
               "$ref": "#/definitions/ErrorResponse"
             }
@@ -4270,6 +4207,98 @@ func init() {
       "description": "Use wallet connect signature scheme or native NeoFS signature.",
       "name": "walletConnect",
       "in": "query"
+    }
+  },
+  "responses": {
+    "BadRequest": {
+      "description": "Bad request.",
+      "schema": {
+        "$ref": "#/definitions/ErrorResponse"
+      }
+    },
+    "NotFound": {
+      "description": "Not found.",
+      "schema": {
+        "$ref": "#/definitions/ErrorResponse"
+      }
+    },
+    "ObjectContentOK": {
+      "description": "Object.",
+      "schema": {
+        "type": "string",
+        "format": "binary"
+      },
+      "headers": {
+        "Access-Control-Allow-Origin": {
+          "type": "string"
+        },
+        "Content-Disposition": {
+          "type": "string"
+        },
+        "Content-Length": {
+          "type": "string"
+        },
+        "Content-Type": {
+          "type": "string"
+        },
+        "Last-Modified": {
+          "type": "string"
+        },
+        "X-Attribute-FileName": {
+          "type": "string"
+        },
+        "X-Attribute-Timestamp": {
+          "type": "integer"
+        },
+        "X-Container-Id": {
+          "type": "string"
+        },
+        "X-Object-Id": {
+          "type": "string"
+        },
+        "X-Owner-Id": {
+          "type": "string"
+        }
+      }
+    },
+    "ObjectHeadOK": {
+      "description": "Object info.",
+      "schema": {
+        "type": "string",
+        "format": "binary"
+      },
+      "headers": {
+        "Access-Control-Allow-Origin": {
+          "type": "string"
+        },
+        "Content-Disposition": {
+          "type": "string"
+        },
+        "Content-Length": {
+          "type": "string"
+        },
+        "Content-Type": {
+          "type": "string"
+        },
+        "Last-Modified": {
+          "type": "string"
+        },
+        "X-Attribute-FileName": {
+          "type": "string"
+        },
+        "X-Attribute-Timestamp": {
+          "type": "integer"
+        },
+        "X-Container-Id": {
+          "type": "string"
+        },
+        "X-Object-Id": {
+          "type": "string"
+        },
+        "X-Owner-Id": {
+          "type": "string"
+        }
+      }
     }
   },
   "securityDefinitions": {

@@ -33,7 +33,7 @@ func NewHeadContainerObject(ctx *middleware.Context, handler HeadContainerObject
 
 /* HeadContainerObject swagger:route HEAD /get/{containerId}/{objectId} headContainerObject
 
-Get object info (head) by container ID and object ID. Also returns custom users' header attributes `X-Attribute-*`
+Get object info (head) by container ID and object ID. Also returns custom users' header attributes `X-Attribute-*`.
 
 */
 type HeadContainerObject struct {

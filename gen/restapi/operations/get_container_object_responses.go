@@ -324,7 +324,7 @@ func (o *GetContainerObjectBadRequest) WriteResponse(rw http.ResponseWriter, pro
 // GetContainerObjectNotFoundCode is the HTTP code returned for type GetContainerObjectNotFound
 const GetContainerObjectNotFoundCode int = 404
 
-/*GetContainerObjectNotFound Not found
+/*GetContainerObjectNotFound Not found.
 
 swagger:response getContainerObjectNotFound
 */
