@@ -196,6 +196,8 @@ func (a *API) docMiddleware(handler http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if strings.HasPrefix(r.URL.Path, docsPrefix) {
 			fh.ServeHTTP(w, r)
+		} else if r.URL.Path == "" || r.URL.Path == "/" {
+			http.Redirect(w, r, "/v1/docs/", http.StatusFound)
 		} else {
 			handler.ServeHTTP(w, r)
 		}
