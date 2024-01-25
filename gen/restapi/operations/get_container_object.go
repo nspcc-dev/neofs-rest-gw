@@ -33,7 +33,7 @@ func NewGetContainerObject(ctx *middleware.Context, handler GetContainerObjectHa
 
 /* GetContainerObject swagger:route GET /get/{containerId}/{objectId} getContainerObject
 
-Get object by container ID and object ID. Also returns custom users' header attributes `X-Attribute-*`
+Get object by container ID and object ID. Also returns custom users' header attributes `X-Attribute-*`. It returns the MIME type based on headers or object contents, so the actual Content-Type can differ from the list in the "Response content type" section.
 
 */
 type GetContainerObject struct {

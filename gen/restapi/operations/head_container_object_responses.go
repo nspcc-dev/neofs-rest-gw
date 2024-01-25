@@ -6,6 +6,7 @@ package operations
 // Editing this file might prove futile when you re-run the swagger generate command
 
 import (
+	"io"
 	"net/http"
 
 	"github.com/go-openapi/runtime"
@@ -66,7 +67,7 @@ type HeadContainerObjectOK struct {
 	/*
 	  In: Body
 	*/
-	Payload *models.ObjectInfo `json:"body,omitempty"`
+	Payload io.ReadCloser `json:"body,omitempty"`
 }
 
 // NewHeadContainerObjectOK creates HeadContainerObjectOK with default headers values
@@ -186,13 +187,13 @@ func (o *HeadContainerObjectOK) SetXOwnerID(xOwnerID string) {
 }
 
 // WithPayload adds the payload to the head container object o k response
-func (o *HeadContainerObjectOK) WithPayload(payload *models.ObjectInfo) *HeadContainerObjectOK {
+func (o *HeadContainerObjectOK) WithPayload(payload io.ReadCloser) *HeadContainerObjectOK {
 	o.Payload = payload
 	return o
 }
 
 // SetPayload sets the payload to the head container object o k response
-func (o *HeadContainerObjectOK) SetPayload(payload *models.ObjectInfo) {
+func (o *HeadContainerObjectOK) SetPayload(payload io.ReadCloser) {
 	o.Payload = payload
 }
 
@@ -270,11 +271,9 @@ func (o *HeadContainerObjectOK) WriteResponse(rw http.ResponseWriter, producer r
 	}
 
 	rw.WriteHeader(200)
-	if o.Payload != nil {
-		payload := o.Payload
-		if err := producer.Produce(rw, payload); err != nil {
-			panic(err) // let the recovery middleware deal with this
-		}
+	payload := o.Payload
+	if err := producer.Produce(rw, payload); err != nil {
+		panic(err) // let the recovery middleware deal with this
 	}
 }
 
@@ -325,7 +324,7 @@ func (o *HeadContainerObjectBadRequest) WriteResponse(rw http.ResponseWriter, pr
 // HeadContainerObjectNotFoundCode is the HTTP code returned for type HeadContainerObjectNotFound
 const HeadContainerObjectNotFoundCode int = 404
 
-/*HeadContainerObjectNotFound Not found
+/*HeadContainerObjectNotFound Not found.
 
 swagger:response headContainerObjectNotFound
 */

@@ -62,6 +62,18 @@ parameters:
     type: string
     required: true
     description: Base58 encoded object id.
+  attrKey:
+    in: path
+    name: attrKey
+    type: string
+    required: true
+    description: Object attribute key to search.
+  attrVal:
+    in: path
+    name: attrVal
+    type: string
+    required: true
+    description: Object attribute value to match.
 
 paths:
   /auth:
@@ -569,13 +581,16 @@ paths:
       - $ref: '#/parameters/objectId'
     get:
       operationId: getContainerObject
-      summary: Get object by container ID and object ID. Also returns custom users' header attributes `X-Attribute-*`
+      summary: Get object by container ID and object ID. Also returns custom users' header attributes `X-Attribute-*`. It returns the MIME type based on headers or object contents, so the actual Content-Type can differ from the list in the "Response content type" section.
       security:
         - {}
         - BearerAuth: [ ]
         - CookieAuth: [ ]
       produces:
         - application/octet-stream
+        - application/json
+        - image/jpeg
+        - text/plain
       parameters:
         - name: download
           in: query
@@ -584,42 +599,14 @@ paths:
           type: boolean
       responses:
         200:
-          headers:
-            Access-Control-Allow-Origin:
-              type: string
-            Content-Length:
-              type: string
-            Content-Type:
-              type: string
-            Content-Disposition:
-              type: string
-            Last-Modified:
-              type: string
-            X-Object-Id:
-              type: string
-            X-Owner-Id:
-              type: string
-            X-Container-Id:
-              type: string
-            X-Attribute-FileName:
-              type: string
-            X-Attribute-Timestamp:
-              type: integer
-          description: Object.
-          schema:
-            type: string
-            format: binary
+          $ref: '#/responses/ObjectContentOK'
         400:
-          description: Bad request.
-          schema:
-            $ref: '#/definitions/ErrorResponse'
+          $ref: '#/responses/BadRequest'
         404:
-          description: Not found
-          schema:
-            $ref: '#/definitions/ErrorResponse'
+          $ref: '#/responses/NotFound'
     head:
       operationId: headContainerObject
-      summary: Get object info (head) by container ID and object ID. Also returns custom users' header attributes `X-Attribute-*`
+      summary: Get object info (head) by container ID and object ID. Also returns custom users' header attributes `X-Attribute-*`.
       security:
         - {}
         - BearerAuth: [ ]
@@ -632,38 +619,11 @@ paths:
           type: boolean
       responses:
         200:
-          headers:
-            Access-Control-Allow-Origin:
-              type: string
-            Content-Length:
-              type: string
-            Content-Type:
-              type: string
-            Content-Disposition:
-              type: string
-            Last-Modified:
-              type: string
-            X-Object-Id:
-              type: string
-            X-Owner-Id:
-              type: string
-            X-Container-Id:
-              type: string
-            X-Attribute-FileName:
-              type: string
-            X-Attribute-Timestamp:
-              type: integer
-          description: Object info.
-          schema:
-            $ref: "#/definitions/ObjectInfo"
+          $ref: '#/responses/ObjectHeadOK'
         400:
-          description: Bad request.
-          schema:
-            $ref: '#/definitions/ErrorResponse'
+          $ref: '#/responses/BadRequest'
         404:
-          description: Not found
-          schema:
-            $ref: '#/definitions/ErrorResponse'
+          $ref: '#/responses/NotFound'
   /upload/{containerId}:
     parameters:
       - $ref: '#/parameters/containerId'
@@ -693,9 +653,57 @@ paths:
           schema:
             $ref: '#/definitions/AddressForUpload'
         400:
-          description: Bad request.
-          schema:
-            $ref: '#/definitions/ErrorResponse'
+          $ref: '#/responses/BadRequest'
+  /get_by_attribute/{containerId}/{attrKey}/{attrVal}:
+    parameters:
+      - $ref: '#/parameters/containerId'
+      - $ref: '#/parameters/attrKey'
+      - $ref: '#/parameters/attrVal'
+    get:
+      operationId: getByAttribute
+      summary: Find and get an object (payload and attributes) by a specific attribute. If more than one object is found, an arbitrary one will be returned. It returns the MIME type based on headers or object contents, so the actual Content-Type can differ from the list in the "Response content type" section.
+      security:
+        - { }
+        - BearerAuth: [ ]
+        - CookieAuth: [ ]
+      produces:
+        - application/octet-stream
+        - application/json
+        - image/jpeg
+        - text/plain
+      parameters:
+        - name: download
+          in: query
+          description: Set the Content-Disposition header as attachment in response. This makes the browser to download object as file instead of showing it on the page.
+          required: false
+          type: boolean
+      responses:
+        200:
+          $ref: '#/responses/ObjectContentOK'
+        400:
+          $ref: '#/responses/BadRequest'
+        404:
+          $ref: '#/responses/NotFound'
+    head:
+      operationId: headByAttribute
+      summary: Get object attributes by a specific attribute. If more than one object is found, an arbitrary one will be used to get attributes.
+      security:
+        - { }
+        - BearerAuth: [ ]
+        - CookieAuth: [ ]
+      parameters:
+        - name: download
+          in: query
+          description: Set the Content-Disposition header as attachment in response. This makes the browser to download object as file instead of showing it on the page.
+          required: false
+          type: boolean
+      responses:
+        200:
+          $ref: '#/responses/ObjectHeadOK'
+        400:
+          $ref: '#/responses/BadRequest'
+        404:
+          $ref: '#/responses/NotFound'
 
 definitions:
   BinaryBearer:
@@ -1246,3 +1254,65 @@ definitions:
     example:
       object_id: 8N3o7Dtr6T1xteCt6eRwhpmJ7JhME58Hyu1dvaswuTDd
       container_id: 5HZTn5qkRnmgSz9gSrw22CEdPPk6nQhkwf2Mgzyvkikv
+
+responses:
+  ObjectContentOK:
+    description: Object.
+    headers:
+      Access-Control-Allow-Origin:
+        type: string
+      Content-Length:
+        type: string
+      Content-Type:
+        type: string
+      Content-Disposition:
+        type: string
+      Last-Modified:
+        type: string
+      X-Object-Id:
+        type: string
+      X-Owner-Id:
+        type: string
+      X-Container-Id:
+        type: string
+      X-Attribute-FileName:
+        type: string
+      X-Attribute-Timestamp:
+        type: integer
+    schema:
+      type: string
+      format: binary
+  ObjectHeadOK:
+    description: Object info.
+    headers:
+      Access-Control-Allow-Origin:
+        type: string
+      Content-Length:
+        type: string
+      Content-Type:
+        type: string
+      Content-Disposition:
+        type: string
+      Last-Modified:
+        type: string
+      X-Object-Id:
+        type: string
+      X-Owner-Id:
+        type: string
+      X-Container-Id:
+        type: string
+      X-Attribute-FileName:
+        type: string
+      X-Attribute-Timestamp:
+        type: integer
+    schema:
+      type: string
+      format: binary
+  BadRequest:
+    description: Bad request.
+    schema:
+      $ref: '#/definitions/ErrorResponse'
+  NotFound:
+    description: Not found.
+    schema:
+      $ref: '#/definitions/ErrorResponse'

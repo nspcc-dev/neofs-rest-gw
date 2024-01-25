@@ -334,6 +334,13 @@ func (a *API) GetContainerObject(params operations.GetContainerObjectParams, pri
 		return errorResponse.WithPayload(resp)
 	}
 
+	return a.getByAddress(ctx, NewGetContainerObjectBadRequestWrapper, addr, params.HTTPRequest.URL.Query().Get("download"), principal)
+}
+
+// getByAddress returns object (using container ID and object ID).
+func (a *API) getByAddress(ctx context.Context, createErrorResponse ErrorResponseCreator, addr oid.Address, downloadParam string, principal *models.Principal) middleware.Responder {
+	errorResponse := createErrorResponse() // Use the passed function to create the error response
+
 	var prm client.PrmObjectGet
 
 	if principal != nil {
@@ -358,7 +365,7 @@ func (a *API) GetContainerObject(params operations.GetContainerObjectParams, pri
 	payloadSize := header.PayloadSize()
 	res := operations.NewGetContainerObjectOK()
 
-	responder := a.setAttributes(res, payloadSize, params.ContainerID, params.ObjectID, header, params.HTTPRequest.URL.Query().Get("download"))
+	responder := a.setAttributes(res, payloadSize, addr.Container().String(), addr.Object().String(), header, downloadParam)
 	contentType := res.ContentType
 	var payload io.ReadCloser = payloadReader
 	if len(contentType) == 0 {
@@ -408,6 +415,12 @@ func (a *API) HeadContainerObject(params operations.HeadContainerObjectParams, p
 		return errorResponse.WithPayload(resp)
 	}
 
+	return a.headByAddress(ctx, NewHeadContainerObjectBadRequestWrapper, addr, params.HTTPRequest.URL.Query().Get("download"), principal)
+}
+
+// headByAddress returns object info (using container ID and object ID).
+func (a *API) headByAddress(ctx context.Context, createErrorResponse ErrorResponseCreator, addr oid.Address, downloadParam string, principal *models.Principal) middleware.Responder {
+	errorResponse := createErrorResponse() // Use the passed function to create the error response
 	var prm client.PrmObjectHead
 
 	if principal != nil {
@@ -432,7 +445,7 @@ func (a *API) HeadContainerObject(params operations.HeadContainerObjectParams, p
 	payloadSize := header.PayloadSize()
 	res := operations.NewHeadContainerObjectOK()
 
-	responder := a.setAttributes(res, payloadSize, params.ContainerID, params.ObjectID, *header, params.HTTPRequest.URL.Query().Get("download"))
+	responder := a.setAttributes(res, payloadSize, addr.Container().String(), addr.Object().String(), *header, downloadParam)
 	contentType := res.ContentType
 	if len(contentType) == 0 {
 		if payloadSize > 0 {
@@ -947,4 +960,105 @@ func (a *API) setOwner(obj *object.Object, btoken *bearer.Token) {
 		ownerID := a.signer.UserID()
 		obj.SetOwnerID(&ownerID)
 	}
+}
+
+// GetByAttribute handler that returns object (payload and attributes) by a specific attribute.
+func (a *API) GetByAttribute(params operations.GetByAttributeParams, principal *models.Principal) middleware.Responder {
+	errorResponse := operations.NewGetByAttributeBadRequest()
+	ctx := params.HTTPRequest.Context()
+
+	var cnrID cid.ID
+	if err := cnrID.DecodeString(params.ContainerID); err != nil {
+		resp := a.logAndGetErrorResponse("invalid container id", err)
+		return errorResponse.WithPayload(resp)
+	}
+
+	res, err := a.search(ctx, principal, cnrID, params.AttrKey, params.AttrVal, object.MatchStringEqual)
+	if err != nil {
+		resp := a.logAndGetErrorResponse("could not search for objects", err)
+		return operations.NewGetContainerObjectNotFound().WithPayload(resp)
+	}
+
+	defer res.Close()
+
+	buf := make([]oid.ID, 1)
+
+	n, _ := res.Read(buf)
+	if n == 0 {
+		err = res.Close()
+
+		if err == nil || errors.Is(err, io.EOF) {
+			resp := a.logAndGetErrorResponse("object not found", err)
+			return operations.NewGetContainerObjectNotFound().WithPayload(resp)
+		}
+
+		resp := a.logAndGetErrorResponse("read object list failed", err)
+		return operations.NewGetContainerObjectNotFound().WithPayload(resp)
+	}
+
+	var addrObj oid.Address
+	addrObj.SetContainer(cnrID)
+	addrObj.SetObject(buf[0])
+
+	return a.getByAddress(ctx, NewGetByAttributeBadRequestWrapper, addrObj, params.HTTPRequest.URL.Query().Get("download"), principal)
+}
+
+// HeadByAttribute handler that returns object info (payload and attributes) by a specific attribute.
+func (a *API) HeadByAttribute(params operations.HeadByAttributeParams, principal *models.Principal) middleware.Responder {
+	errorResponse := operations.NewHeadByAttributeBadRequest()
+	ctx := params.HTTPRequest.Context()
+
+	var cnrID cid.ID
+	if err := cnrID.DecodeString(params.ContainerID); err != nil {
+		resp := a.logAndGetErrorResponse("invalid container id", err)
+		return errorResponse.WithPayload(resp)
+	}
+
+	res, err := a.search(ctx, principal, cnrID, params.AttrKey, params.AttrVal, object.MatchStringEqual)
+	if err != nil {
+		resp := a.logAndGetErrorResponse("could not search for objects", err)
+		return operations.NewHeadContainerObjectNotFound().WithPayload(resp)
+	}
+
+	defer res.Close()
+
+	buf := make([]oid.ID, 1)
+
+	n, _ := res.Read(buf)
+	if n == 0 {
+		err = res.Close()
+
+		if err == nil || errors.Is(err, io.EOF) {
+			resp := a.logAndGetErrorResponse("object not found", err)
+			return operations.NewHeadContainerObjectNotFound().WithPayload(resp)
+		}
+
+		resp := a.logAndGetErrorResponse("read object list failed", err)
+		return operations.NewHeadContainerObjectNotFound().WithPayload(resp)
+	}
+
+	var addrObj oid.Address
+	addrObj.SetContainer(cnrID)
+	addrObj.SetObject(buf[0])
+
+	return a.headByAddress(ctx, NewHeadByAttributeBadRequestWrapper, addrObj, params.HTTPRequest.URL.Query().Get("download"), principal)
+}
+
+func (a *API) search(ctx context.Context, principal *models.Principal, cid cid.ID, key, val string, op object.SearchMatchType) (*client.ObjectListReader, error) {
+	filters := object.NewSearchFilters()
+	filters.AddRootFilter()
+	filters.AddFilter(key, val, op)
+
+	var prm client.PrmObjectSearch
+	prm.SetFilters(filters)
+
+	if principal != nil {
+		btoken, err := getBearerTokenFromString(string(*principal))
+		if err != nil {
+			return nil, err
+		}
+		attachBearer(&prm, btoken)
+	}
+
+	return a.pool.ObjectSearchInit(ctx, cid, a.signer, prm)
 }

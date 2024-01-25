@@ -45,6 +45,7 @@ func NewNeofsRestGwAPI(spec *loads.Document) *NeofsRestGwAPI {
 
 		BinProducer:  runtime.ByteStreamProducer(),
 		JSONProducer: runtime.JSONProducer(),
+		TxtProducer:  runtime.TextProducer(),
 
 		AuthHandler: AuthHandlerFunc(func(params AuthParams) middleware.Responder {
 			return middleware.NotImplemented("operation Auth has not yet been implemented")
@@ -61,6 +62,9 @@ func NewNeofsRestGwAPI(spec *loads.Document) *NeofsRestGwAPI {
 		GetBalanceHandler: GetBalanceHandlerFunc(func(params GetBalanceParams) middleware.Responder {
 			return middleware.NotImplemented("operation GetBalance has not yet been implemented")
 		}),
+		GetByAttributeHandler: GetByAttributeHandlerFunc(func(params GetByAttributeParams, principal *models.Principal) middleware.Responder {
+			return middleware.NotImplemented("operation GetByAttribute has not yet been implemented")
+		}),
 		GetContainerHandler: GetContainerHandlerFunc(func(params GetContainerParams) middleware.Responder {
 			return middleware.NotImplemented("operation GetContainer has not yet been implemented")
 		}),
@@ -72,6 +76,9 @@ func NewNeofsRestGwAPI(spec *loads.Document) *NeofsRestGwAPI {
 		}),
 		GetObjectInfoHandler: GetObjectInfoHandlerFunc(func(params GetObjectInfoParams, principal *models.Principal) middleware.Responder {
 			return middleware.NotImplemented("operation GetObjectInfo has not yet been implemented")
+		}),
+		HeadByAttributeHandler: HeadByAttributeHandlerFunc(func(params HeadByAttributeParams, principal *models.Principal) middleware.Responder {
+			return middleware.NotImplemented("operation HeadByAttribute has not yet been implemented")
 		}),
 		HeadContainerObjectHandler: HeadContainerObjectHandlerFunc(func(params HeadContainerObjectParams, principal *models.Principal) middleware.Responder {
 			return middleware.NotImplemented("operation HeadContainerObject has not yet been implemented")
@@ -166,10 +173,14 @@ type NeofsRestGwAPI struct {
 
 	// BinProducer registers a producer for the following mime types:
 	//   - application/octet-stream
+	//   - image/jpeg
 	BinProducer runtime.Producer
 	// JSONProducer registers a producer for the following mime types:
 	//   - application/json
 	JSONProducer runtime.Producer
+	// TxtProducer registers a producer for the following mime types:
+	//   - text/plain
+	TxtProducer runtime.Producer
 
 	// BearerAuthAuth registers a function that takes a token and returns a principal
 	// it performs authentication based on an api key Authorization provided in the header
@@ -192,6 +203,8 @@ type NeofsRestGwAPI struct {
 	FormBinaryBearerHandler FormBinaryBearerHandler
 	// GetBalanceHandler sets the operation handler for the get balance operation
 	GetBalanceHandler GetBalanceHandler
+	// GetByAttributeHandler sets the operation handler for the get by attribute operation
+	GetByAttributeHandler GetByAttributeHandler
 	// GetContainerHandler sets the operation handler for the get container operation
 	GetContainerHandler GetContainerHandler
 	// GetContainerEACLHandler sets the operation handler for the get container e ACL operation
@@ -200,6 +213,8 @@ type NeofsRestGwAPI struct {
 	GetContainerObjectHandler GetContainerObjectHandler
 	// GetObjectInfoHandler sets the operation handler for the get object info operation
 	GetObjectInfoHandler GetObjectInfoHandler
+	// HeadByAttributeHandler sets the operation handler for the head by attribute operation
+	HeadByAttributeHandler HeadByAttributeHandler
 	// HeadContainerObjectHandler sets the operation handler for the head container object operation
 	HeadContainerObjectHandler HeadContainerObjectHandler
 	// ListContainersHandler sets the operation handler for the list containers operation
@@ -312,6 +327,9 @@ func (o *NeofsRestGwAPI) Validate() error {
 	if o.JSONProducer == nil {
 		unregistered = append(unregistered, "JSONProducer")
 	}
+	if o.TxtProducer == nil {
+		unregistered = append(unregistered, "TxtProducer")
+	}
 
 	if o.BearerAuthAuth == nil {
 		unregistered = append(unregistered, "AuthorizationAuth")
@@ -335,6 +353,9 @@ func (o *NeofsRestGwAPI) Validate() error {
 	if o.GetBalanceHandler == nil {
 		unregistered = append(unregistered, "GetBalanceHandler")
 	}
+	if o.GetByAttributeHandler == nil {
+		unregistered = append(unregistered, "GetByAttributeHandler")
+	}
 	if o.GetContainerHandler == nil {
 		unregistered = append(unregistered, "GetContainerHandler")
 	}
@@ -346,6 +367,9 @@ func (o *NeofsRestGwAPI) Validate() error {
 	}
 	if o.GetObjectInfoHandler == nil {
 		unregistered = append(unregistered, "GetObjectInfoHandler")
+	}
+	if o.HeadByAttributeHandler == nil {
+		unregistered = append(unregistered, "HeadByAttributeHandler")
 	}
 	if o.HeadContainerObjectHandler == nil {
 		unregistered = append(unregistered, "HeadContainerObjectHandler")
@@ -459,8 +483,12 @@ func (o *NeofsRestGwAPI) ProducersFor(mediaTypes []string) map[string]runtime.Pr
 		switch mt {
 		case "application/octet-stream":
 			result["application/octet-stream"] = o.BinProducer
+		case "image/jpeg":
+			result["image/jpeg"] = o.BinProducer
 		case "application/json":
 			result["application/json"] = o.JSONProducer
+		case "text/plain":
+			result["text/plain"] = o.TxtProducer
 		}
 
 		if p, ok := o.customProducers[mt]; ok {
@@ -524,6 +552,10 @@ func (o *NeofsRestGwAPI) initHandlerCache() {
 	if o.handlers["GET"] == nil {
 		o.handlers["GET"] = make(map[string]http.Handler)
 	}
+	o.handlers["GET"]["/get_by_attribute/{containerId}/{attrKey}/{attrVal}"] = NewGetByAttribute(o.context, o.GetByAttributeHandler)
+	if o.handlers["GET"] == nil {
+		o.handlers["GET"] = make(map[string]http.Handler)
+	}
 	o.handlers["GET"]["/containers/{containerId}"] = NewGetContainer(o.context, o.GetContainerHandler)
 	if o.handlers["GET"] == nil {
 		o.handlers["GET"] = make(map[string]http.Handler)
@@ -537,6 +569,10 @@ func (o *NeofsRestGwAPI) initHandlerCache() {
 		o.handlers["GET"] = make(map[string]http.Handler)
 	}
 	o.handlers["GET"]["/objects/{containerId}/{objectId}"] = NewGetObjectInfo(o.context, o.GetObjectInfoHandler)
+	if o.handlers["HEAD"] == nil {
+		o.handlers["HEAD"] = make(map[string]http.Handler)
+	}
+	o.handlers["HEAD"]["/get_by_attribute/{containerId}/{attrKey}/{attrVal}"] = NewHeadByAttribute(o.context, o.HeadByAttributeHandler)
 	if o.handlers["HEAD"] == nil {
 		o.handlers["HEAD"] = make(map[string]http.Handler)
 	}
