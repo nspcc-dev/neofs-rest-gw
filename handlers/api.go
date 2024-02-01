@@ -8,10 +8,12 @@ import (
 	"time"
 
 	"github.com/go-openapi/errors"
+	"github.com/go-openapi/loads"
 	"github.com/google/uuid"
 	"github.com/nspcc-dev/neo-go/pkg/crypto/keys"
 	sessionv2 "github.com/nspcc-dev/neofs-api-go/v2/session"
 	"github.com/nspcc-dev/neofs-rest-gw/gen/models"
+	"github.com/nspcc-dev/neofs-rest-gw/gen/restapi"
 	"github.com/nspcc-dev/neofs-rest-gw/gen/restapi/operations"
 	"github.com/nspcc-dev/neofs-rest-gw/internal/util"
 	"github.com/nspcc-dev/neofs-rest-gw/metrics"
@@ -61,6 +63,13 @@ type SessionToken struct {
 
 // ContextKey is used for context.Context value. The value requires a key that is not primitive type.
 type ContextKey string
+
+// specBasePath is used for keeping in memory basePath from restapi.SwaggerJSON.
+var specBasePath string
+
+func init() {
+	specBasePath, _ = getBasePath()
+}
 
 const (
 	// BearerPrefix is the prefix for authorization token.
@@ -196,6 +205,13 @@ func (a *API) docMiddleware(handler http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if strings.HasPrefix(r.URL.Path, docsPrefix) {
 			fh.ServeHTTP(w, r)
+		} else if r.URL.Path == "" || r.URL.Path == "/" {
+			if specBasePath != "" {
+				http.Redirect(w, r, specBasePath+"/docs/", http.StatusFound)
+				return
+			}
+			a.log.Info("cannot get basePath from spec")
+			handler.ServeHTTP(w, r)
 		} else {
 			handler.ServeHTTP(w, r)
 		}
@@ -219,4 +235,13 @@ func (a API) StartCallback() {
 func (a API) RunServices() {
 	go a.pprofService.Start()
 	go a.prometheusService.Start()
+}
+
+func getBasePath() (string, error) {
+	// Load and parse the Swagger JSON file.
+	spec, err := loads.Analyzed(restapi.SwaggerJSON, "")
+	if err != nil {
+		return "", err
+	}
+	return spec.BasePath(), nil
 }
