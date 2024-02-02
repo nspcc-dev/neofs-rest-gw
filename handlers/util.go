@@ -307,7 +307,7 @@ func filterHeaders(l *zap.Logger, header http.Header) (map[string]string, error)
 func formatSpecialAttribute(s string) string {
 	switch s {
 	case attributeFilepathHTTP:
-		return attributeFilePath
+		return object.AttributeFilePath
 	case attributeFilenameHTTP:
 		return object.AttributeFileName
 	default:
