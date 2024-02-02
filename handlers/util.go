@@ -291,6 +291,7 @@ func filterHeaders(l *zap.Logger, header http.Header) (map[string]string, error)
 			continue
 		}
 
+		clearKey = formatSpecialAttribute(clearKey)
 		result[clearKey] = value
 
 		l.Debug("add attribute to result object",
@@ -298,4 +299,18 @@ func filterHeaders(l *zap.Logger, header http.Header) (map[string]string, error)
 			zap.String("value", value))
 	}
 	return result, nil
+}
+
+// formatSpecialAttribute checks if a key-string is one of the special NEOFS
+// attributes and returns the string in the correct case.
+// For example: "Filepath" -> "FilePath".
+func formatSpecialAttribute(s string) string {
+	switch s {
+	case attributeFilepathHTTP:
+		return attributeFilePath
+	case attributeFilenameHTTP:
+		return object.AttributeFileName
+	default:
+		return s
+	}
 }

@@ -40,6 +40,14 @@ type UploadContainerObjectParams struct {
 	// HTTP Request Object
 	HTTPRequest *http.Request `json:"-"`
 
+	/*This attribute, in any combination of upper/lower case, will be added to the object as the `FileName` attribute. It will also be returned as the `FileName` attribute in GET/HEAD API calls for the object (/get/{containerId}/{objectId}) and the `name` in POST call search in a container (/objects/{containerId}/search).
+	  In: header
+	*/
+	XAttributeFilename *string
+	/*This attribute, in any combination of upper/lower case, will be added to the object as the `FilePath` attribute. It will also be returned as the `FilePath` attribute in GET/HEAD API calls for the object (/get/{containerId}/{objectId}) or the `filePath` in POST call search in a container (/objects/{containerId}/search).
+	  In: header
+	*/
+	XAttributeFilepath *string
 	/*Base58 encoded container id.
 	  Required: true
 	  In: path
@@ -68,6 +76,14 @@ func (o *UploadContainerObjectParams) BindRequest(r *http.Request, route *middle
 		}
 	}
 
+	if err := o.bindXAttributeFilename(r.Header[http.CanonicalHeaderKey("X-Attribute-Filename")], true, route.Formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := o.bindXAttributeFilepath(r.Header[http.CanonicalHeaderKey("X-Attribute-Filepath")], true, route.Formats); err != nil {
+		res = append(res, err)
+	}
+
 	rContainerID, rhkContainerID, _ := route.Params.GetOK("containerId")
 	if err := o.bindContainerID(rContainerID, rhkContainerID, route.Formats); err != nil {
 		res = append(res, err)
@@ -86,6 +102,40 @@ func (o *UploadContainerObjectParams) BindRequest(r *http.Request, route *middle
 	if len(res) > 0 {
 		return errors.CompositeValidationError(res...)
 	}
+	return nil
+}
+
+// bindXAttributeFilename binds and validates parameter XAttributeFilename from header.
+func (o *UploadContainerObjectParams) bindXAttributeFilename(rawData []string, hasKey bool, formats strfmt.Registry) error {
+	var raw string
+	if len(rawData) > 0 {
+		raw = rawData[len(rawData)-1]
+	}
+
+	// Required: false
+
+	if raw == "" { // empty values pass all other validations
+		return nil
+	}
+	o.XAttributeFilename = &raw
+
+	return nil
+}
+
+// bindXAttributeFilepath binds and validates parameter XAttributeFilepath from header.
+func (o *UploadContainerObjectParams) bindXAttributeFilepath(rawData []string, hasKey bool, formats strfmt.Registry) error {
+	var raw string
+	if len(rawData) > 0 {
+		raw = rawData[len(rawData)-1]
+	}
+
+	// Required: false
+
+	if raw == "" { // empty values pass all other validations
+		return nil
+	}
+	o.XAttributeFilepath = &raw
+
 	return nil
 }
 

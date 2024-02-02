@@ -42,6 +42,9 @@ const (
 	attributeFilePath         = "FilePath"
 	sizeToDetectType          = 512
 	userAttributeHeaderPrefix = "X-Attribute-"
+
+	attributeFilepathHTTP = "Filepath"
+	attributeFilenameHTTP = "Filename"
 )
 
 type readCloser struct {

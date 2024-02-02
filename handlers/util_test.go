@@ -191,16 +191,24 @@ func TestFilter(t *testing.T) {
 	req.Set("X-Attribute-Neofs-Expiration-Epoch1", "101")
 	req.Set("X-Attribute-NEOFS-Expiration-Epoch2", "102")
 	req.Set("X-Attribute-neofs-Expiration-Epoch3", "103")
+	req.Set("X-Attribute-FileName", "FileName") // This one will be overridden.
+	req.Set("X-Attribute-filename", "filename")
+	req.Set("X-Attribute-fIlePaTh", "fIlePaTh/") // This one will be overridden.
+	req.Set("X-Attribute-Filepath", "Filepath/")
+	req.Set("X-Attribute-FilePath1", "FilePath/1")
 	req.Set("X-Attribute-My-Attribute", "value")
 	req.Set("X-Attribute-MyAttribute", "value2")
-	req.Set("X-Attribute-Empty-Value", "")
-	req.Set("X-Attribute-", "prefix only")
-	req.Set("No-Prefix", "value")
+	req.Set("X-Attribute-Empty-Value", "") // This one will be skipped.
+	req.Set("X-Attribute-", "prefix only") // This one will be skipped.
+	req.Set("No-Prefix", "value")          // This one will be skipped.
 
 	expected := map[string]string{
 		"__NEOFS__EXPIRATION_EPOCH1": "101",
 		"__NEOFS__EXPIRATION_EPOCH2": "102",
 		"__NEOFS__EXPIRATION_EPOCH3": "103",
+		"FileName":                   "filename",
+		"FilePath":                   "Filepath/",
+		"Filepath1":                  "FilePath/1",
 		"My-Attribute":               "value",
 		"Myattribute":                "value2",
 	}
