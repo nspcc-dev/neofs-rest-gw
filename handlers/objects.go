@@ -39,9 +39,11 @@ import (
 )
 
 const (
-	attributeFilePath         = "FilePath"
 	sizeToDetectType          = 512
 	userAttributeHeaderPrefix = "X-Attribute-"
+
+	attributeFilepathHTTP = "Filepath"
+	attributeFilenameHTTP = "Filename"
 )
 
 type readCloser struct {
@@ -642,7 +644,7 @@ func headObjectBaseInfo(ctx context.Context, p *pool.Pool, cnrID cid.ID, objID o
 		switch attr.Key() {
 		case object.AttributeFileName:
 			resp.Name = attr.Value()
-		case attributeFilePath:
+		case object.AttributeFilePath:
 			resp.FilePath = attr.Value()
 		}
 	}

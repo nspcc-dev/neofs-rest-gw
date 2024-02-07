@@ -1008,6 +1008,18 @@ func init() {
             "description": "The file to upload.  If no file is present in this field, any other field name will be accepted, except for an empty one.",
             "name": "payload",
             "in": "formData"
+          },
+          {
+            "type": "string",
+            "description": "This attribute, in any combination of upper/lower case, will be added to the object as the ` + "`" + `FileName` + "`" + ` attribute. It will also be returned as the ` + "`" + `FileName` + "`" + ` attribute in GET/HEAD API calls for the object (/get/{containerId}/{objectId}) and the ` + "`" + `name` + "`" + ` in POST call search in a container (/objects/{containerId}/search).",
+            "name": "X-Attribute-Filename",
+            "in": "header"
+          },
+          {
+            "type": "string",
+            "description": "This attribute, in any combination of upper/lower case, will be added to the object as the ` + "`" + `FilePath` + "`" + ` attribute. It will also be returned as the ` + "`" + `FilePath` + "`" + ` attribute in GET/HEAD API calls for the object (/get/{containerId}/{objectId}) or the ` + "`" + `filePath` + "`" + ` in POST call search in a container (/objects/{containerId}/search).",
+            "name": "X-Attribute-Filepath",
+            "in": "header"
           }
         ],
         "responses": {
@@ -3312,6 +3324,18 @@ func init() {
             "description": "The file to upload.  If no file is present in this field, any other field name will be accepted, except for an empty one.",
             "name": "payload",
             "in": "formData"
+          },
+          {
+            "type": "string",
+            "description": "This attribute, in any combination of upper/lower case, will be added to the object as the ` + "`" + `FileName` + "`" + ` attribute. It will also be returned as the ` + "`" + `FileName` + "`" + ` attribute in GET/HEAD API calls for the object (/get/{containerId}/{objectId}) and the ` + "`" + `name` + "`" + ` in POST call search in a container (/objects/{containerId}/search).",
+            "name": "X-Attribute-Filename",
+            "in": "header"
+          },
+          {
+            "type": "string",
+            "description": "This attribute, in any combination of upper/lower case, will be added to the object as the ` + "`" + `FilePath` + "`" + ` attribute. It will also be returned as the ` + "`" + `FilePath` + "`" + ` attribute in GET/HEAD API calls for the object (/get/{containerId}/{objectId}) or the ` + "`" + `filePath` + "`" + ` in POST call search in a container (/objects/{containerId}/search).",
+            "name": "X-Attribute-Filepath",
+            "in": "header"
           }
         ],
         "responses": {
