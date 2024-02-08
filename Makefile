@@ -1,7 +1,7 @@
 #!/usr/bin/make -f
 
 REPO ?= "$(shell go list -m)"
-VERSION ?= "$(shell git describe --tags --match "v*" --dirty --always --abbrev=8 2>/dev/null || cat VERSION 2>/dev/null || echo "develop")"
+VERSION ?= "$(shell git describe --tags --match "v*" --dirty --always --abbrev=8 | sed 's/^v//' 2>/dev/null || cat VERSION 2>/dev/null || echo "develop")"
 
 BUILD_OS ?= linux
 BUILD_ARCH ?= amd64
