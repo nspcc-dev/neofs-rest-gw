@@ -216,6 +216,7 @@ var serverFlags = []string{
 	restapi.FlagTLSKeepAlive,
 	restapi.FlagTLSReadTimeout,
 	restapi.FlagTLSWriteTimeout,
+	restapi.FlagExternalAddress,
 }
 
 var bindings = map[string]string{
@@ -418,6 +419,8 @@ func serverConfig(v *viper.Viper) *restapi.ServerConfig {
 		TLSKeepAlive:     v.GetDuration(cfgServerSection + restapi.FlagTLSKeepAlive),
 		TLSReadTimeout:   v.GetDuration(cfgServerSection + restapi.FlagTLSReadTimeout),
 		TLSWriteTimeout:  v.GetDuration(cfgServerSection + restapi.FlagTLSWriteTimeout),
+
+		ExternalAddress: v.GetString(cfgServerSection + restapi.FlagExternalAddress),
 	}
 }
 

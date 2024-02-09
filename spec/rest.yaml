@@ -4,6 +4,7 @@ info:
   description: REST API for native integration with NeoFS.
   version: v1
 
+# host value is replaced by `external-address` in config.yaml
 host: localhost:8090
 basePath: /v1
 schemes:

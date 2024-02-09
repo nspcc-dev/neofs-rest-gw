@@ -59,6 +59,8 @@ type ServerConfig struct {
 	TLSCertificateKey string
 	TLSCACertificate  string
 
+	ExternalAddress string
+
 	SuccessfulStartCallback func()
 }
 
@@ -85,6 +87,7 @@ func NewServer(api *operations.NeofsRestGwAPI, cfg *ServerConfig) *Server {
 	s.TLSKeepAlive = cfg.TLSKeepAlive
 	s.TLSReadTimeout = cfg.TLSReadTimeout
 	s.TLSWriteTimeout = cfg.TLSWriteTimeout
+	s.ExternalAddress = cfg.ExternalAddress
 	s.shutdown = make(chan struct{})
 	s.api = api
 	s.startCallback = cfg.SuccessfulStartCallback
@@ -121,7 +124,10 @@ type Server struct {
 	TLSKeepAlive      time.Duration
 	TLSReadTimeout    time.Duration
 	TLSWriteTimeout   time.Duration
-	httpsServerL      net.Listener
+
+	ExternalAddress string
+
+	httpsServerL net.Listener
 
 	startCallback func()
 
