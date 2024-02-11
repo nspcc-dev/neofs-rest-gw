@@ -15,7 +15,24 @@ import (
 	"github.com/go-openapi/validate"
 )
 
-// ObjectUpload Request body to create object.
+// ObjectUpload <p>Request body to create object.</p>
+// <p>To create an object you must provide <code>containerId</code> and <code>fileName</code>.
+// Additionally, you can provide <code>payload</code> (base64 encoded data) and <code>attributes</code>.</p>
+//
+// <p>Attribute is key-value data that is stored with the object. Key and value must be in UTF-8 format and must not be empty.</p>
+//
+// <p>Valid attribute:</p>
+// <ul>
+//   <li><code>MyAttribute: 'some value'</code></li>
+// </ul>
+//
+// <p>Invalid attribute:</p>
+// <ul>
+//   <li><code>MyAttribute: ''</code></li>
+// </ul>
+//
+// <p>Also, you can use this attribute to further object searching.</p>
+//
 // Example: {"attributes":[{"key":"User-Attribute","value":"some-value"}],"containerId":"5HZTn5qkRnmgSz9gSrw22CEdPPk6nQhkwf2Mgzyvkikv","fileName":"myFile.txt","payload":"Y29udGVudCBvZiBmaWxl"}
 //
 // swagger:model ObjectUpload
