@@ -90,3 +90,6 @@ server:
   tls-read-timeout: 30s
   # Maximum duration before timing out write of the response.
   tls-write-timeout: 30s
+
+  # The IP and port to be shown in the API documentation.
+  external-address: localhost:8090

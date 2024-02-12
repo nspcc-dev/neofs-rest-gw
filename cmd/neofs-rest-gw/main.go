@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"os/signal"
 	"syscall"
 
@@ -23,13 +24,28 @@ func main() {
 		logger.Fatal("init neofs", zap.Error(err))
 	}
 
+	serverCfg := serverConfig(v)
+	serverCfg.SuccessfulStartCallback = neofsAPI.StartCallback
+
+	// Unmarshal the JSON into a map
+	var swaggerMap map[string]interface{}
+	err = json.Unmarshal(restapi.SwaggerJSON, &swaggerMap)
+	if err != nil {
+		logger.Fatal("unmarshaling SwaggerJSON", zap.Error(err))
+	}
+
+	swaggerMap["host"] = serverCfg.ExternalAddress
+
+	// Marshal the map back into json.RawMessage
+	restapi.SwaggerJSON, err = json.MarshalIndent(swaggerMap, "", "    ")
+	if err != nil {
+		logger.Fatal("marshaling updated SwaggerJSON", zap.Error(err))
+	}
+
 	swaggerSpec, err := loads.Analyzed(restapi.SwaggerJSON, "")
 	if err != nil {
 		logger.Fatal("init spec", zap.Error(err))
 	}
-
-	serverCfg := serverConfig(v)
-	serverCfg.SuccessfulStartCallback = neofsAPI.StartCallback
 
 	api := operations.NewNeofsRestGwAPI(swaggerSpec)
 	server := restapi.NewServer(api, serverCfg)

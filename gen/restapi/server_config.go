@@ -26,6 +26,7 @@ const (
 	FlagTLSKeepAlive     = "tls-keep-alive"
 	FlagTLSReadTimeout   = "tls-read-timeout"
 	FlagTLSWriteTimeout  = "tls-write-timeout"
+	FlagExternalAddress  = "external-address"
 )
 
 // BindDefaultFlag init default flag.
@@ -50,4 +51,6 @@ func BindDefaultFlags(flagSet *pflag.FlagSet) {
 	flagSet.Duration(FlagTLSKeepAlive, 3*time.Minute, "sets the TCP keep-alive timeouts on accepted connections. It prunes dead TCP connections ( e.g. closing laptop mid-download)")
 	flagSet.Duration(FlagTLSReadTimeout, 30*time.Second, "maximum duration before timing out read of the request")
 	flagSet.Duration(FlagTLSWriteTimeout, 30*time.Second, "maximum duration before timing out write of the response")
+
+	flagSet.String(FlagExternalAddress, "localhost:8090", "the IP and port to be shown in the API documentation")
 }
