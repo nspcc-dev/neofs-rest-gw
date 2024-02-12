@@ -38,14 +38,14 @@ Now all pool config parameters moved to `pool` section. So you need to change:
 * `node-dial-timeout` -> `pool.node-dial-timeout` (`REST_GW_NODE_DIAL_TIMEOUT` -> `REST_GW_POOL_NODE_DIAL_TIMEOUT`)
 * `healthcheck-timeout` -> `pool.healthcheck-timeout` (`REST_GW_HEALTHCHECK_TIMEOUT` -> `REST_GW_POOL_HEALTHCHECK_TIMEOUT`)
 * `rebalance-timer` -> `pool.rebalance-timer` (`REST_GW_REBALANCE_TIMER` -> `REST_GW_POOL_REBALANCE_TIMER`)
-* `pool-error-threshold` -> `pool.error-threshold` 
+* `pool-error-threshold` -> `pool.error-threshold`
 
 Besides all other parameters that doesn't belong any section, now in `server` section:
 * `listen-address` -> `server.listen-address`
 
 The same should be done for the following parameters as well:
 ```
-scheme, cleanup-timeout, graceful-timeout, max-header-size, listen-limit, keep-alive, read-timeout, write-timeout, 
+scheme, cleanup-timeout, graceful-timeout, max-header-size, listen-limit, keep-alive, read-timeout, write-timeout,
 tls-listen-address, tls-certificate, tls-key, tls-ca, tls-listen-limit, tls-keep-alive, tls-read-timeout, tls-write-timeout
 ```
 
@@ -78,11 +78,11 @@ Environment variables should be changed appropriately.
 - `Keys` target in extended ACL (#54)
 
 ### Changed
-- Unify application version format (#49) 
+- Unify application version format (#49)
 
 ## [0.3.0] "Thunder Bluff" - 2022-08-15
 
-### Added 
+### Added
 - CORS headers (#39)
 - Expose metrics (#44)
 - Documentation for default params (#45)
@@ -101,7 +101,7 @@ Environment variables should be changed appropriately.
 ## [0.2.0] "Orgrimmar" - 2022-07-22
 
 ### Added
-- Support macOS build (#18) 
+- Support macOS build (#18)
 
 ### Changed
 - Update version calculating (#20)
