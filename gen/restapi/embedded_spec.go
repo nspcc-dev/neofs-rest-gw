@@ -23,7 +23,7 @@ func init() {
   ],
   "swagger": "2.0",
   "info": {
-    "description": "REST API for native integration with NeoFS.",
+    "description": "REST API for native integration with NeoFS. Using this API you can interact with NeoFS nodes and manage containers and objects.",
     "title": "REST API NeoFS",
     "version": "v1"
   },
@@ -1310,7 +1310,7 @@ func init() {
       }
     },
     "ContainerPutInfo": {
-      "description": "Request body to create container. To specify container name use appropriate property (name provided in attributes will be ignored).",
+      "description": "\u003cp\u003eRequest body to create container. To specify container name use appropriate property (name provided in attributes will be ignored).\u003cp\u003e\n\u003cp\u003eTo create a container you must provide \u003ccode\u003ePlacementPolicy\u003c/code\u003e and \u003ccode\u003eBasicACL\u003c/code\u003e.\u003c/p\u003e\n\n\u003ch5\u003ePlacement policy\u003c/h5\u003e\n\u003cp\u003ePlacement policy allows you control where and how the container (and its object) is stored. For example, you want to store 3 copies of every object, so you can use the following policy:\u003c/p\u003e\n\u003cpre\u003e\u003ccode\u003eREP 3\u003c/code\u003e\u003c/pre\u003e\n\u003cp\u003e\u003ca href=\"https://github.com/nspcc-dev/neofs-spec/blob/master/01-arch/02-policy.md\"\u003eMore about policy\u003c/a\u003e.\u003c/p\u003e\n\n\u003ch5\u003eBasic ACL\u003c/h5\u003e\n\u003cp\u003eBasic ACL is a part of the container structure, and it is always created simultaneously with the container. Therefore, it is never subject to any changes. It is a 32-bit integer with a bit field in the following format:\u003c/p\u003e\n\u003cp\u003e\u003cimg src=\"https://raw.githubusercontent.com/nspcc-dev/neofs-spec/046e623dc2d8134ab2b85fcaf831077d574561a2/01-arch/pic/acl-basic-private.svg\" alt=\"ACL Basic\"\u003e\u003c/p\u003e\n\n\u003ctable\u003e\n    \u003cthead\u003e\n        \u003ctr\u003e\n            \u003cth\u003eSymbol\u003c/th\u003e\n            \u003cth\u003eMeaning\u003c/th\u003e\n            \u003cth\u003eDescription\u003c/th\u003e\n        \u003c/tr\u003e\n    \u003c/thead\u003e\n    \u003ctbody\u003e\n        \u003ctr\u003e\n            \u003ctd\u003eB\u003c/td\u003e\n            \u003ctd\u003eBearer\u003c/td\u003e\n            \u003ctd\u003eAllows using Bear Token ACL rules to replace eACL rules\u003c/td\u003e\n        \u003c/tr\u003e\n        \u003ctr\u003e\n            \u003ctd\u003eU\u003c/td\u003e\n            \u003ctd\u003eUser\u003c/td\u003e\n            \u003ctd\u003eThe owner of the container identified by the public key linked to the container\u003c/td\u003e\n        \u003c/tr\u003e\n        \u003ctr\u003e\n            \u003ctd\u003eS\u003c/td\u003e\n            \u003ctd\u003eSystem\u003c/td\u003e\n            \u003ctd\u003eInner Ring and/or container nodes in the current version of network map. IR nodes can only perform \u003ccode\u003eGetRangeHash\u003c/code\u003e, \u003ccode\u003eHead\u003c/code\u003e, and \u003ccode\u003eSearch\u003c/code\u003e necessary for data audit. Container nodes can only do things required for the replication.\u003c/td\u003e\n        \u003c/tr\u003e\n        \u003ctr\u003e\n            \u003ctd\u003eO\u003c/td\u003e\n            \u003ctd\u003eOthers\u003c/td\u003e\n            \u003ctd\u003eClients that do not match any of the categories above\u003c/td\u003e\n        \u003c/tr\u003e\n        \u003ctr\u003e\n            \u003ctd\u003eF\u003c/td\u003e\n            \u003ctd\u003eFinal\u003c/td\u003e\n            \u003ctd\u003eFlag denying Extended ACL. If set, Basic ACL check is final, Extended ACL is ignored\u003c/td\u003e\n        \u003c/tr\u003e\n        \u003ctr\u003e\n            \u003ctd\u003eX\u003c/td\u003e\n            \u003ctd\u003eSticky\u003c/td\u003e\n            \u003ctd\u003eFlag denying different owners of the request and the object. If set, object in \u003ccode\u003ePut\u003c/code\u003e request must have one \u003ccode\u003eOwner\u003c/code\u003e and be signed with the same signature. If not set, the object must be correct but can be of any owner. The nodes falling for \u003ccode\u003eSYSTEM\u003c/code\u003e role are exceptions from this rule. For them, the bit is ignored.\u003c/td\u003e\n        \u003c/tr\u003e\n        \u003ctr\u003e\n            \u003ctd\u003e0\u003c/td\u003e\n            \u003ctd\u003eDeny\u003c/td\u003e\n            \u003ctd\u003eDenies operation of the identified category\u003c/td\u003e\n        \u003c/tr\u003e\n        \u003ctr\u003e\n            \u003ctd\u003e1\u003c/td\u003e\n            \u003ctd\u003eAllow\u003c/td\u003e\n            \u003ctd\u003eAllows operation of the identified category\u003c/td\u003e\n        \u003c/tr\u003e\n    \u003c/tbody\u003e\n\u003c/table\u003e\n\u003cp\u003eTo upload objects with a bearer token your container must have Bearer bits set. For example, you can use \u003ccode\u003e0x0FBFBFFF\u003c/code\u003e or predefined \u003ccode\u003eeacl-public-read-write\u003c/code\u003e values.\u003c/p\u003e\n\u003cp\u003eAlso, don't forget to set appropriate eACL to restrict your container.\u003c/p\u003e\n\u003cp\u003e\u003ca href=\"https://github.com/nspcc-dev/neofs-spec/blob/master/01-arch/07-acl.md\"\u003eMore about ACL\u003c/a\u003e.\u003c/p\u003e\n",
       "type": "object",
       "properties": {
         "attributes": {
@@ -1383,7 +1383,7 @@ func init() {
       }
     },
     "ErrorResponse": {
-      "description": "Error response.",
+      "description": "\u003cp\u003eError response.\u003c/p\u003e\n\u003cp\u003eMore about NeoFS status code you can find \n  \u003ca href=\"https://github.com/nspcc-dev/neofs-spec/blob/master/20-api-v2/status.md\"\u003ehere\u003c/a\u003e.\u003c/p\u003e\n",
       "type": "object",
       "required": [
         "type",
@@ -1582,7 +1582,7 @@ func init() {
       }
     },
     "ObjectUpload": {
-      "description": "Request body to create object.",
+      "description": "\u003cp\u003eRequest body to create object.\u003c/p\u003e\n\u003cp\u003eTo create an object you must provide \u003ccode\u003econtainerId\u003c/code\u003e and \u003ccode\u003efileName\u003c/code\u003e.\nAdditionally, you can provide \u003ccode\u003epayload\u003c/code\u003e (base64 encoded data) and \u003ccode\u003eattributes\u003c/code\u003e.\u003c/p\u003e\n                          \n\u003cp\u003eAttribute is key-value data that is stored with the object. Key and value must be in UTF-8 format and must not be empty.\u003c/p\u003e\n                        \n\u003cp\u003eValid attribute:\u003c/p\u003e\n\u003cul\u003e\n  \u003cli\u003e\u003ccode\u003eMyAttribute: 'some value'\u003c/code\u003e\u003c/li\u003e\n\u003c/ul\u003e\n                          \n\u003cp\u003eInvalid attribute:\u003c/p\u003e\n\u003cul\u003e\n  \u003cli\u003e\u003ccode\u003eMyAttribute: ''\u003c/code\u003e\u003c/li\u003e\n\u003c/ul\u003e\n                          \n\u003cp\u003eAlso, you can use this attribute to further object searching.\u003c/p\u003e\n",
       "type": "object",
       "required": [
         "containerId",
@@ -2031,7 +2031,7 @@ func init() {
   ],
   "swagger": "2.0",
   "info": {
-    "description": "REST API for native integration with NeoFS.",
+    "description": "REST API for native integration with NeoFS. Using this API you can interact with NeoFS nodes and manage containers and objects.",
     "title": "REST API NeoFS",
     "version": "v1"
   },
@@ -3633,7 +3633,7 @@ func init() {
       }
     },
     "ContainerPutInfo": {
-      "description": "Request body to create container. To specify container name use appropriate property (name provided in attributes will be ignored).",
+      "description": "\u003cp\u003eRequest body to create container. To specify container name use appropriate property (name provided in attributes will be ignored).\u003cp\u003e\n\u003cp\u003eTo create a container you must provide \u003ccode\u003ePlacementPolicy\u003c/code\u003e and \u003ccode\u003eBasicACL\u003c/code\u003e.\u003c/p\u003e\n\n\u003ch5\u003ePlacement policy\u003c/h5\u003e\n\u003cp\u003ePlacement policy allows you control where and how the container (and its object) is stored. For example, you want to store 3 copies of every object, so you can use the following policy:\u003c/p\u003e\n\u003cpre\u003e\u003ccode\u003eREP 3\u003c/code\u003e\u003c/pre\u003e\n\u003cp\u003e\u003ca href=\"https://github.com/nspcc-dev/neofs-spec/blob/master/01-arch/02-policy.md\"\u003eMore about policy\u003c/a\u003e.\u003c/p\u003e\n\n\u003ch5\u003eBasic ACL\u003c/h5\u003e\n\u003cp\u003eBasic ACL is a part of the container structure, and it is always created simultaneously with the container. Therefore, it is never subject to any changes. It is a 32-bit integer with a bit field in the following format:\u003c/p\u003e\n\u003cp\u003e\u003cimg src=\"https://raw.githubusercontent.com/nspcc-dev/neofs-spec/046e623dc2d8134ab2b85fcaf831077d574561a2/01-arch/pic/acl-basic-private.svg\" alt=\"ACL Basic\"\u003e\u003c/p\u003e\n\n\u003ctable\u003e\n    \u003cthead\u003e\n        \u003ctr\u003e\n            \u003cth\u003eSymbol\u003c/th\u003e\n            \u003cth\u003eMeaning\u003c/th\u003e\n            \u003cth\u003eDescription\u003c/th\u003e\n        \u003c/tr\u003e\n    \u003c/thead\u003e\n    \u003ctbody\u003e\n        \u003ctr\u003e\n            \u003ctd\u003eB\u003c/td\u003e\n            \u003ctd\u003eBearer\u003c/td\u003e\n            \u003ctd\u003eAllows using Bear Token ACL rules to replace eACL rules\u003c/td\u003e\n        \u003c/tr\u003e\n        \u003ctr\u003e\n            \u003ctd\u003eU\u003c/td\u003e\n            \u003ctd\u003eUser\u003c/td\u003e\n            \u003ctd\u003eThe owner of the container identified by the public key linked to the container\u003c/td\u003e\n        \u003c/tr\u003e\n        \u003ctr\u003e\n            \u003ctd\u003eS\u003c/td\u003e\n            \u003ctd\u003eSystem\u003c/td\u003e\n            \u003ctd\u003eInner Ring and/or container nodes in the current version of network map. IR nodes can only perform \u003ccode\u003eGetRangeHash\u003c/code\u003e, \u003ccode\u003eHead\u003c/code\u003e, and \u003ccode\u003eSearch\u003c/code\u003e necessary for data audit. Container nodes can only do things required for the replication.\u003c/td\u003e\n        \u003c/tr\u003e\n        \u003ctr\u003e\n            \u003ctd\u003eO\u003c/td\u003e\n            \u003ctd\u003eOthers\u003c/td\u003e\n            \u003ctd\u003eClients that do not match any of the categories above\u003c/td\u003e\n        \u003c/tr\u003e\n        \u003ctr\u003e\n            \u003ctd\u003eF\u003c/td\u003e\n            \u003ctd\u003eFinal\u003c/td\u003e\n            \u003ctd\u003eFlag denying Extended ACL. If set, Basic ACL check is final, Extended ACL is ignored\u003c/td\u003e\n        \u003c/tr\u003e\n        \u003ctr\u003e\n            \u003ctd\u003eX\u003c/td\u003e\n            \u003ctd\u003eSticky\u003c/td\u003e\n            \u003ctd\u003eFlag denying different owners of the request and the object. If set, object in \u003ccode\u003ePut\u003c/code\u003e request must have one \u003ccode\u003eOwner\u003c/code\u003e and be signed with the same signature. If not set, the object must be correct but can be of any owner. The nodes falling for \u003ccode\u003eSYSTEM\u003c/code\u003e role are exceptions from this rule. For them, the bit is ignored.\u003c/td\u003e\n        \u003c/tr\u003e\n        \u003ctr\u003e\n            \u003ctd\u003e0\u003c/td\u003e\n            \u003ctd\u003eDeny\u003c/td\u003e\n            \u003ctd\u003eDenies operation of the identified category\u003c/td\u003e\n        \u003c/tr\u003e\n        \u003ctr\u003e\n            \u003ctd\u003e1\u003c/td\u003e\n            \u003ctd\u003eAllow\u003c/td\u003e\n            \u003ctd\u003eAllows operation of the identified category\u003c/td\u003e\n        \u003c/tr\u003e\n    \u003c/tbody\u003e\n\u003c/table\u003e\n\u003cp\u003eTo upload objects with a bearer token your container must have Bearer bits set. For example, you can use \u003ccode\u003e0x0FBFBFFF\u003c/code\u003e or predefined \u003ccode\u003eeacl-public-read-write\u003c/code\u003e values.\u003c/p\u003e\n\u003cp\u003eAlso, don't forget to set appropriate eACL to restrict your container.\u003c/p\u003e\n\u003cp\u003e\u003ca href=\"https://github.com/nspcc-dev/neofs-spec/blob/master/01-arch/07-acl.md\"\u003eMore about ACL\u003c/a\u003e.\u003c/p\u003e\n",
       "type": "object",
       "properties": {
         "attributes": {
@@ -3706,7 +3706,7 @@ func init() {
       }
     },
     "ErrorResponse": {
-      "description": "Error response.",
+      "description": "\u003cp\u003eError response.\u003c/p\u003e\n\u003cp\u003eMore about NeoFS status code you can find \n  \u003ca href=\"https://github.com/nspcc-dev/neofs-spec/blob/master/20-api-v2/status.md\"\u003ehere\u003c/a\u003e.\u003c/p\u003e\n",
       "type": "object",
       "required": [
         "type",
@@ -3905,7 +3905,7 @@ func init() {
       }
     },
     "ObjectUpload": {
-      "description": "Request body to create object.",
+      "description": "\u003cp\u003eRequest body to create object.\u003c/p\u003e\n\u003cp\u003eTo create an object you must provide \u003ccode\u003econtainerId\u003c/code\u003e and \u003ccode\u003efileName\u003c/code\u003e.\nAdditionally, you can provide \u003ccode\u003epayload\u003c/code\u003e (base64 encoded data) and \u003ccode\u003eattributes\u003c/code\u003e.\u003c/p\u003e\n                          \n\u003cp\u003eAttribute is key-value data that is stored with the object. Key and value must be in UTF-8 format and must not be empty.\u003c/p\u003e\n                        \n\u003cp\u003eValid attribute:\u003c/p\u003e\n\u003cul\u003e\n  \u003cli\u003e\u003ccode\u003eMyAttribute: 'some value'\u003c/code\u003e\u003c/li\u003e\n\u003c/ul\u003e\n                          \n\u003cp\u003eInvalid attribute:\u003c/p\u003e\n\u003cul\u003e\n  \u003cli\u003e\u003ccode\u003eMyAttribute: ''\u003c/code\u003e\u003c/li\u003e\n\u003c/ul\u003e\n                          \n\u003cp\u003eAlso, you can use this attribute to further object searching.\u003c/p\u003e\n",
       "type": "object",
       "required": [
         "containerId",

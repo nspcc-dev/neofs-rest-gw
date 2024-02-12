@@ -1,7 +1,7 @@
 swagger: "2.0"
 info:
   title: REST API NeoFS
-  description: REST API for native integration with NeoFS.
+  description: REST API for native integration with NeoFS. Using this API you can interact with NeoFS nodes and manage containers and objects.
   version: v1
 
 # host value is replaced by `external-address` in config.yaml
@@ -902,7 +902,73 @@ definitions:
       - object
       - container
   ContainerPutInfo:
-    description: Request body to create container. To specify container name use appropriate property (name provided in attributes will be ignored).
+    description: |
+      <p>Request body to create container. To specify container name use appropriate property (name provided in attributes will be ignored).<p>
+      <p>To create a container you must provide <code>PlacementPolicy</code> and <code>BasicACL</code>.</p>
+
+      <h5>Placement policy</h5>
+      <p>Placement policy allows you control where and how the container (and its object) is stored. For example, you want to store 3 copies of every object, so you can use the following policy:</p>
+      <pre><code>REP 3</code></pre>
+      <p><a href="https://github.com/nspcc-dev/neofs-spec/blob/master/01-arch/02-policy.md">More about policy</a>.</p>
+
+      <h5>Basic ACL</h5>
+      <p>Basic ACL is a part of the container structure, and it is always created simultaneously with the container. Therefore, it is never subject to any changes. It is a 32-bit integer with a bit field in the following format:</p>
+      <p><img src="https://raw.githubusercontent.com/nspcc-dev/neofs-spec/046e623dc2d8134ab2b85fcaf831077d574561a2/01-arch/pic/acl-basic-private.svg" alt="ACL Basic"></p>
+
+      <table>
+          <thead>
+              <tr>
+                  <th>Symbol</th>
+                  <th>Meaning</th>
+                  <th>Description</th>
+              </tr>
+          </thead>
+          <tbody>
+              <tr>
+                  <td>B</td>
+                  <td>Bearer</td>
+                  <td>Allows using Bear Token ACL rules to replace eACL rules</td>
+              </tr>
+              <tr>
+                  <td>U</td>
+                  <td>User</td>
+                  <td>The owner of the container identified by the public key linked to the container</td>
+              </tr>
+              <tr>
+                  <td>S</td>
+                  <td>System</td>
+                  <td>Inner Ring and/or container nodes in the current version of network map. IR nodes can only perform <code>GetRangeHash</code>, <code>Head</code>, and <code>Search</code> necessary for data audit. Container nodes can only do things required for the replication.</td>
+              </tr>
+              <tr>
+                  <td>O</td>
+                  <td>Others</td>
+                  <td>Clients that do not match any of the categories above</td>
+              </tr>
+              <tr>
+                  <td>F</td>
+                  <td>Final</td>
+                  <td>Flag denying Extended ACL. If set, Basic ACL check is final, Extended ACL is ignored</td>
+              </tr>
+              <tr>
+                  <td>X</td>
+                  <td>Sticky</td>
+                  <td>Flag denying different owners of the request and the object. If set, object in <code>Put</code> request must have one <code>Owner</code> and be signed with the same signature. If not set, the object must be correct but can be of any owner. The nodes falling for <code>SYSTEM</code> role are exceptions from this rule. For them, the bit is ignored.</td>
+              </tr>
+              <tr>
+                  <td>0</td>
+                  <td>Deny</td>
+                  <td>Denies operation of the identified category</td>
+              </tr>
+              <tr>
+                  <td>1</td>
+                  <td>Allow</td>
+                  <td>Allows operation of the identified category</td>
+              </tr>
+          </tbody>
+      </table>
+      <p>To upload objects with a bearer token your container must have Bearer bits set. For example, you can use <code>0x0FBFBFFF</code> or predefined <code>eacl-public-read-write</code> values.</p>
+      <p>Also, don't forget to set appropriate eACL to restrict your container.</p>
+      <p><a href="https://github.com/nspcc-dev/neofs-spec/blob/master/01-arch/07-acl.md">More about ACL</a>.</p>
     type: object
     properties:
       containerName:
@@ -1088,7 +1154,24 @@ definitions:
         objectId: 8N3o7Dtr6T1xteCt6eRwhpmJ7JhME58Hyu1dvaswuTDd
         containerId: 5HZTn5qkRnmgSz9gSrw22CEdPPk6nQhkwf2Mgzyvkikv
   ObjectUpload:
-    description: Request body to create object.
+    description: |
+      <p>Request body to create object.</p>
+      <p>To create an object you must provide <code>containerId</code> and <code>fileName</code>.
+      Additionally, you can provide <code>payload</code> (base64 encoded data) and <code>attributes</code>.</p>
+                                
+      <p>Attribute is key-value data that is stored with the object. Key and value must be in UTF-8 format and must not be empty.</p>
+                              
+      <p>Valid attribute:</p>
+      <ul>
+        <li><code>MyAttribute: 'some value'</code></li>
+      </ul>
+                                
+      <p>Invalid attribute:</p>
+      <ul>
+        <li><code>MyAttribute: ''</code></li>
+      </ul>
+                                
+      <p>Also, you can use this attribute to further object searching.</p>
     type: object
     properties:
       containerId:
@@ -1225,7 +1308,10 @@ definitions:
       - GW
       - API
   ErrorResponse:
-    description: Error response.
+    description: |
+      <p>Error response.</p>
+      <p>More about NeoFS status code you can find 
+        <a href="https://github.com/nspcc-dev/neofs-spec/blob/master/20-api-v2/status.md">here</a>.</p>
     type: object
     properties:
       type:

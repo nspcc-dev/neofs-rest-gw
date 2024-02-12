@@ -79,8 +79,6 @@ const (
 	// ContextKeyRequestID is the ContextKey for RequestID.
 	ContextKeyRequestID ContextKey = "requestID"
 
-	docsPrefix = "/docs"
-
 	accessControlAllowOriginHeader = "Access-Control-Allow-Origin"
 )
 
@@ -200,12 +198,8 @@ func (a *API) setupGlobalMiddleware(handler http.Handler) http.Handler {
 }
 
 func (a *API) docMiddleware(handler http.Handler) http.Handler {
-	fh := http.StripPrefix(docsPrefix, http.FileServer(http.Dir("static/docs")))
-
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if strings.HasPrefix(r.URL.Path, docsPrefix) {
-			fh.ServeHTTP(w, r)
-		} else if r.URL.Path == "" || r.URL.Path == "/" {
+		if r.URL.Path == "" || r.URL.Path == "/" {
 			if specBasePath != "" {
 				http.Redirect(w, r, specBasePath+"/docs/", http.StatusFound)
 				return

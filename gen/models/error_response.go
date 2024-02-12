@@ -14,7 +14,10 @@ import (
 	"github.com/go-openapi/validate"
 )
 
-// ErrorResponse Error response.
+// ErrorResponse <p>Error response.</p>
+// <p>More about NeoFS status code you can find
+//   <a href="https://github.com/nspcc-dev/neofs-spec/blob/master/20-api-v2/status.md">here</a>.</p>
+//
 // Example: {"code":1024,"message":"incomplete object PUT by placement","type":"API"}
 //
 // swagger:model ErrorResponse

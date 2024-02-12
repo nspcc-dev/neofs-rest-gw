@@ -124,11 +124,17 @@ $ neofs-rest-gw --config config.yaml
 
 ## Docs
 
-You can see additional docs and swagger specification using the following url
+You can see swagger specification using the following url
 (suppose you ran rest-gw on `localhost:8090`):
 
-* http://localhost:8090/docs - rest-gw documentation
-* http://localhost:8090/v1/docs - swagger specification
+* http://localhost:8090/v1/docs
+
+Also, when you run rest-gw, you will see a line similar to:
+```shell
+...
+2024/02/12 13:21:31 Serving neofs rest gw at http://192.168.130.72:8080
+```
+You will find an auto-redirect to the specification page via this link.
 
 ## Contributing
 
