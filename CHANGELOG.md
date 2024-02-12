@@ -10,6 +10,25 @@ This document outlines major changes between releases.
 
 ### Changed
 
+## [0.7.0] - 2024-02-12
+
+### Added
+- Object getter compatible with HTTP gateway (#114, #127, #133)
+- Object uploader compatible with HTTP gateway (#124)
+- External address show in documentation can be configured now (#134)
+
+### Fixed
+- Bump NeoFS SDK dependency fixing "no healthy client" problem (#128)
+
+### Changed
+- Bump google.golang.org/grpc from 1.57.0 to 1.57.1 (#120)
+- Bump golang.org/x/crypto from 0.16.0 to 0.17.0 (#123)
+- Bump NeoGo dependency to 0.105.1 (#128)
+- Bump go-openapi dependencies (#128)
+- "/" now redirects to documentation page (#130)
+- Gateway version doesn't have "v" prefix now (#135)
+- Documentation is completely embedded into the specification now (#138)
+
 ## [0.6.0] - 2023-10-19
 
 ### Added
@@ -38,14 +57,14 @@ Now all pool config parameters moved to `pool` section. So you need to change:
 * `node-dial-timeout` -> `pool.node-dial-timeout` (`REST_GW_NODE_DIAL_TIMEOUT` -> `REST_GW_POOL_NODE_DIAL_TIMEOUT`)
 * `healthcheck-timeout` -> `pool.healthcheck-timeout` (`REST_GW_HEALTHCHECK_TIMEOUT` -> `REST_GW_POOL_HEALTHCHECK_TIMEOUT`)
 * `rebalance-timer` -> `pool.rebalance-timer` (`REST_GW_REBALANCE_TIMER` -> `REST_GW_POOL_REBALANCE_TIMER`)
-* `pool-error-threshold` -> `pool.error-threshold` 
+* `pool-error-threshold` -> `pool.error-threshold`
 
 Besides all other parameters that doesn't belong any section, now in `server` section:
 * `listen-address` -> `server.listen-address`
 
 The same should be done for the following parameters as well:
 ```
-scheme, cleanup-timeout, graceful-timeout, max-header-size, listen-limit, keep-alive, read-timeout, write-timeout, 
+scheme, cleanup-timeout, graceful-timeout, max-header-size, listen-limit, keep-alive, read-timeout, write-timeout,
 tls-listen-address, tls-certificate, tls-key, tls-ca, tls-listen-limit, tls-keep-alive, tls-read-timeout, tls-write-timeout
 ```
 
@@ -78,11 +97,11 @@ Environment variables should be changed appropriately.
 - `Keys` target in extended ACL (#54)
 
 ### Changed
-- Unify application version format (#49) 
+- Unify application version format (#49)
 
 ## [0.3.0] "Thunder Bluff" - 2022-08-15
 
-### Added 
+### Added
 - CORS headers (#39)
 - Expose metrics (#44)
 - Documentation for default params (#45)
@@ -101,7 +120,7 @@ Environment variables should be changed appropriately.
 ## [0.2.0] "Orgrimmar" - 2022-07-22
 
 ### Added
-- Support macOS build (#18) 
+- Support macOS build (#18)
 
 ### Changed
 - Update version calculating (#20)
@@ -117,10 +136,11 @@ Environment variables should be changed appropriately.
 
 Please refer to [GitHub releases](https://github.com/nspcc-dev/neofs-rest-gw/releases/) for older releases.
 
-[0.2.1]: https://github.com/nspcc-dev/neofs-rest-gw/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/nspcc-dev/neofs-rest-gw/compare/v0.1.0...v0.2.0
+[0.2.1]: https://github.com/nspcc-dev/neofs-rest-gw/compare/v0.2.0...v0.2.1
 [0.3.0]: https://github.com/nspcc-dev/neofs-rest-gw/compare/v0.2.0...v0.3.0
 [0.4.0]: https://github.com/nspcc-dev/neofs-rest-gw/compare/v0.3.0...v0.4.0
 [0.5.0]: https://github.com/nspcc-dev/neofs-rest-gw/compare/v0.4.0...v0.5.0
 [0.6.0]: https://github.com/nspcc-dev/neofs-rest-gw/compare/v0.5.0...v0.6.0
-[Unreleased]: https://github.com/nspcc-dev/neofs-rest-gw/compare/v0.6.0...master
+[0.6.0]: https://github.com/nspcc-dev/neofs-rest-gw/compare/v0.6.0...v0.7.0
+[Unreleased]: https://github.com/nspcc-dev/neofs-rest-gw/compare/v0.7.0...master
