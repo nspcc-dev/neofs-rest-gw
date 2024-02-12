@@ -143,20 +143,20 @@ func (a *API) Configure(api *operations.NeofsRestGwAPI) http.Handler {
 
 	api.BearerAuthAuth = func(s string) (*models.Principal, error) {
 		if !strings.HasPrefix(s, BearerPrefix) {
-			return nil, fmt.Errorf("has not bearer token")
+			return nil, fmt.Errorf("http auth: no bearer token")
 		}
 		if s = strings.TrimPrefix(s, BearerPrefix); len(s) == 0 {
-			return nil, fmt.Errorf("bearer token is empty")
+			return nil, fmt.Errorf("http auth: bearer token is empty")
 		}
 		return (*models.Principal)(&s), nil
 	}
 
 	api.CookieAuthAuth = func(s string) (*models.Principal, error) {
 		if !strings.HasPrefix(s, BearerCookiePrefix) {
-			return nil, fmt.Errorf("has not bearer token")
+			return nil, fmt.Errorf("cookie auth: has no bearer token")
 		}
 		if s = strings.TrimPrefix(s, BearerCookiePrefix); len(s) == 0 {
-			return nil, fmt.Errorf("bearer token is empty")
+			return nil, fmt.Errorf("cookie auth: bearer token is empty")
 		}
 		return (*models.Principal)(&s), nil
 	}
