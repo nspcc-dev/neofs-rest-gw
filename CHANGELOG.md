@@ -10,6 +10,25 @@ This document outlines major changes between releases.
 
 ### Changed
 
+## [0.7.0] - 2024-02-12
+
+### Added
+- Object getter compatible with HTTP gateway (#114, #127, #133)
+- Object uploader compatible with HTTP gateway (#124)
+- External address show in documentation can be configured now (#134)
+
+### Fixed
+- Bump NeoFS SDK dependency fixing "no healthy client" problem (#128)
+
+### Changed
+- Bump google.golang.org/grpc from 1.57.0 to 1.57.1 (#120)
+- Bump golang.org/x/crypto from 0.16.0 to 0.17.0 (#123)
+- Bump NeoGo dependency to 0.105.1 (#128)
+- Bump go-openapi dependencies (#128)
+- "/" now redirects to documentation page (#130)
+- Gateway version doesn't have "v" prefix now (#135)
+- Documentation is completely embedded into the specification now (#138)
+
 ## [0.6.0] - 2023-10-19
 
 ### Added
@@ -123,4 +142,5 @@ Please refer to [GitHub releases](https://github.com/nspcc-dev/neofs-rest-gw/rel
 [0.4.0]: https://github.com/nspcc-dev/neofs-rest-gw/compare/v0.3.0...v0.4.0
 [0.5.0]: https://github.com/nspcc-dev/neofs-rest-gw/compare/v0.4.0...v0.5.0
 [0.6.0]: https://github.com/nspcc-dev/neofs-rest-gw/compare/v0.5.0...v0.6.0
-[Unreleased]: https://github.com/nspcc-dev/neofs-rest-gw/compare/v0.6.0...master
+[0.6.0]: https://github.com/nspcc-dev/neofs-rest-gw/compare/v0.6.0...v0.7.0
+[Unreleased]: https://github.com/nspcc-dev/neofs-rest-gw/compare/v0.7.0...master
