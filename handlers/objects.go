@@ -981,7 +981,11 @@ func (a *API) GetByAttribute(params operations.GetByAttributeParams, principal *
 		return operations.NewGetContainerObjectNotFound().WithPayload(resp)
 	}
 
-	defer res.Close()
+	defer func() {
+		if err = res.Close(); err != nil {
+			a.log.Error("failed to close resource", zap.Error(err))
+		}
+	}()
 
 	buf := make([]oid.ID, 1)
 
@@ -1022,7 +1026,11 @@ func (a *API) HeadByAttribute(params operations.HeadByAttributeParams, principal
 		return operations.NewHeadContainerObjectNotFound().WithPayload(resp)
 	}
 
-	defer res.Close()
+	defer func() {
+		if err = res.Close(); err != nil {
+			a.log.Error("failed to close resource", zap.Error(err))
+		}
+	}()
 
 	buf := make([]oid.ID, 1)
 

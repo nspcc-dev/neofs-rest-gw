@@ -143,22 +143,30 @@ func (a *API) Configure(api *operations.NeofsRestGwAPI) http.Handler {
 
 	api.BearerAuthAuth = func(s string) (*models.Principal, error) {
 		if !strings.HasPrefix(s, BearerPrefix) {
-			return nil, fmt.Errorf("has not bearer token")
+			return nil, fmt.Errorf("http auth: no bearer token")
 		}
 		if s = strings.TrimPrefix(s, BearerPrefix); len(s) == 0 {
-			return nil, fmt.Errorf("bearer token is empty")
+			return nil, fmt.Errorf("http auth: bearer token is empty")
 		}
 		return (*models.Principal)(&s), nil
 	}
 
 	api.CookieAuthAuth = func(s string) (*models.Principal, error) {
-		if !strings.HasPrefix(s, BearerCookiePrefix) {
-			return nil, fmt.Errorf("has not bearer token")
+		var bearerCookie string
+		cookies := strings.Split(s, "; ")
+		for _, cookie := range cookies {
+			cookie = strings.TrimSpace(cookie)
+			if strings.HasPrefix(cookie, BearerCookiePrefix) {
+				// Cookie found, return its value without the prefix
+				bearerCookie = strings.TrimPrefix(s, BearerCookiePrefix)
+				if len(bearerCookie) == 0 {
+					return nil, fmt.Errorf("cookie auth: bearer token is empty")
+				}
+				return (*models.Principal)(&bearerCookie), nil
+			}
 		}
-		if s = strings.TrimPrefix(s, BearerCookiePrefix); len(s) == 0 {
-			return nil, fmt.Errorf("bearer token is empty")
-		}
-		return (*models.Principal)(&s), nil
+		// We tried to find BearerCookie, but there isn't one. And it's not an error.
+		return nil, nil
 	}
 
 	api.PreServerShutdown = func() {}
