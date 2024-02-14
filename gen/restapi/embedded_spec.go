@@ -535,10 +535,7 @@ func init() {
           }
         ],
         "produces": [
-          "application/octet-stream",
-          "application/json",
-          "image/jpeg",
-          "text/plain"
+          "application/octet-stream"
         ],
         "summary": "Get object by container ID and object ID. Also returns custom users' header attributes ` + "`" + `X-Attribute-*` + "`" + `. It returns the MIME type based on headers or object contents, so the actual Content-Type can differ from the list in the \"Response content type\" section.",
         "operationId": "getContainerObject",
@@ -615,10 +612,7 @@ func init() {
           }
         ],
         "produces": [
-          "application/octet-stream",
-          "application/json",
-          "image/jpeg",
-          "text/plain"
+          "application/octet-stream"
         ],
         "summary": "Find and get an object (payload and attributes) by a specific attribute. If more than one object is found, an arbitrary one will be returned. It returns the MIME type based on headers or object contents, so the actual Content-Type can differ from the list in the \"Response content type\" section.",
         "operationId": "getByAttribute",
@@ -2592,10 +2586,7 @@ func init() {
           }
         ],
         "produces": [
-          "application/json",
-          "application/octet-stream",
-          "image/jpeg",
-          "text/plain"
+          "application/octet-stream"
         ],
         "summary": "Get object by container ID and object ID. Also returns custom users' header attributes ` + "`" + `X-Attribute-*` + "`" + `. It returns the MIME type based on headers or object contents, so the actual Content-Type can differ from the list in the \"Response content type\" section.",
         "operationId": "getContainerObject",
@@ -2764,10 +2755,7 @@ func init() {
           }
         ],
         "produces": [
-          "application/json",
-          "application/octet-stream",
-          "image/jpeg",
-          "text/plain"
+          "application/octet-stream"
         ],
         "summary": "Find and get an object (payload and attributes) by a specific attribute. If more than one object is found, an arbitrary one will be returned. It returns the MIME type based on headers or object contents, so the actual Content-Type can differ from the list in the \"Response content type\" section.",
         "operationId": "getByAttribute",

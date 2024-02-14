@@ -589,9 +589,6 @@ paths:
         - CookieAuth: [ ]
       produces:
         - application/octet-stream
-        - application/json
-        - image/jpeg
-        - text/plain
       parameters:
         - name: download
           in: query
@@ -679,9 +676,6 @@ paths:
         - CookieAuth: [ ]
       produces:
         - application/octet-stream
-        - application/json
-        - image/jpeg
-        - text/plain
       parameters:
         - name: download
           in: query
