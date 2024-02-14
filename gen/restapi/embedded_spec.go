@@ -562,6 +562,26 @@ func init() {
           }
         }
       },
+      "options": {
+        "security": [],
+        "operationId": "optionsContainerObject",
+        "responses": {
+          "200": {
+            "description": "CORS",
+            "headers": {
+              "Access-Control-Allow-Headers": {
+                "type": "string"
+              },
+              "Access-Control-Allow-Methods": {
+                "type": "string"
+              },
+              "Access-Control-Allow-Origin": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      },
       "head": {
         "security": [
           {},
@@ -639,6 +659,26 @@ func init() {
           },
           "404": {
             "$ref": "#/responses/NotFound"
+          }
+        }
+      },
+      "options": {
+        "security": [],
+        "operationId": "optionsByAttribute",
+        "responses": {
+          "200": {
+            "description": "CORS",
+            "headers": {
+              "Access-Control-Allow-Headers": {
+                "type": "string"
+              },
+              "Access-Control-Allow-Methods": {
+                "type": "string"
+              },
+              "Access-Control-Allow-Origin": {
+                "type": "string"
+              }
+            }
           }
         }
       },
@@ -1036,6 +1076,26 @@ func init() {
           },
           "400": {
             "$ref": "#/responses/BadRequest"
+          }
+        }
+      },
+      "options": {
+        "security": [],
+        "operationId": "optionsUploadContainerObject",
+        "responses": {
+          "200": {
+            "description": "CORS",
+            "headers": {
+              "Access-Control-Allow-Headers": {
+                "type": "string"
+              },
+              "Access-Control-Allow-Methods": {
+                "type": "string"
+              },
+              "Access-Control-Allow-Origin": {
+                "type": "string"
+              }
+            }
           }
         }
       },
@@ -2661,6 +2721,26 @@ func init() {
           }
         }
       },
+      "options": {
+        "security": [],
+        "operationId": "optionsContainerObject",
+        "responses": {
+          "200": {
+            "description": "CORS",
+            "headers": {
+              "Access-Control-Allow-Headers": {
+                "type": "string"
+              },
+              "Access-Control-Allow-Methods": {
+                "type": "string"
+              },
+              "Access-Control-Allow-Origin": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      },
       "head": {
         "security": [
           {},
@@ -2829,6 +2909,26 @@ func init() {
             "description": "Not found.",
             "schema": {
               "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        }
+      },
+      "options": {
+        "security": [],
+        "operationId": "optionsByAttribute",
+        "responses": {
+          "200": {
+            "description": "CORS",
+            "headers": {
+              "Access-Control-Allow-Headers": {
+                "type": "string"
+              },
+              "Access-Control-Allow-Methods": {
+                "type": "string"
+              },
+              "Access-Control-Allow-Origin": {
+                "type": "string"
+              }
             }
           }
         }
@@ -3354,6 +3454,26 @@ func init() {
             "description": "Bad request.",
             "schema": {
               "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        }
+      },
+      "options": {
+        "security": [],
+        "operationId": "optionsUploadContainerObject",
+        "responses": {
+          "200": {
+            "description": "CORS",
+            "headers": {
+              "Access-Control-Allow-Headers": {
+                "type": "string"
+              },
+              "Access-Control-Allow-Methods": {
+                "type": "string"
+              },
+              "Access-Control-Allow-Origin": {
+                "type": "string"
+              }
             }
           }
         }

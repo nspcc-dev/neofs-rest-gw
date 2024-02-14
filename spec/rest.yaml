@@ -580,6 +580,19 @@ paths:
     parameters:
       - $ref: '#/parameters/containerId'
       - $ref: '#/parameters/objectId'
+    options:
+      operationId: optionsContainerObject
+      security: [ ]
+      responses:
+        200:
+          description: CORS
+          headers:
+            Access-Control-Allow-Origin:
+              type: string
+            Access-Control-Allow-Headers:
+              type: string
+            Access-Control-Allow-Methods:
+              type: string
     get:
       operationId: getContainerObject
       summary: Get object by container ID and object ID. Also returns custom users' header attributes `X-Attribute-*`. It returns the MIME type based on headers or object contents, so the actual Content-Type can differ from the list in the "Response content type" section.
@@ -628,6 +641,19 @@ paths:
   /upload/{containerId}:
     parameters:
       - $ref: '#/parameters/containerId'
+    options:
+      operationId: optionsUploadContainerObject
+      security: [ ]
+      responses:
+        200:
+          description: CORS
+          headers:
+            Access-Control-Allow-Origin:
+              type: string
+            Access-Control-Allow-Headers:
+              type: string
+            Access-Control-Allow-Methods:
+              type: string
     post:
       operationId: uploadContainerObject
       summary: Upload object to NeoFS
@@ -670,6 +696,19 @@ paths:
       - $ref: '#/parameters/containerId'
       - $ref: '#/parameters/attrKey'
       - $ref: '#/parameters/attrVal'
+    options:
+      operationId: optionsByAttribute
+      security: [ ]
+      responses:
+        200:
+          description: CORS
+          headers:
+            Access-Control-Allow-Origin:
+              type: string
+            Access-Control-Allow-Headers:
+              type: string
+            Access-Control-Allow-Methods:
+              type: string
     get:
       operationId: getByAttribute
       summary: Find and get an object (payload and attributes) by a specific attribute. If more than one object is found, an arbitrary one will be returned. It returns the MIME type based on headers or object contents, so the actual Content-Type can differ from the list in the "Response content type" section.

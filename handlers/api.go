@@ -135,9 +135,14 @@ func (a *API) Configure(api *operations.NeofsRestGwAPI) http.Handler {
 	api.PutContainerEACLHandler = operations.PutContainerEACLHandlerFunc(a.PutContainerEACL)
 	api.GetContainerEACLHandler = operations.GetContainerEACLHandlerFunc(a.GetContainerEACL)
 
+	api.OptionsContainerObjectHandler = operations.OptionsContainerObjectHandlerFunc(a.OptionsContainerObject)
 	api.GetContainerObjectHandler = operations.GetContainerObjectHandlerFunc(a.GetContainerObject)
 	api.HeadContainerObjectHandler = operations.HeadContainerObjectHandlerFunc(a.HeadContainerObject)
+
+	api.OptionsUploadContainerObjectHandler = operations.OptionsUploadContainerObjectHandlerFunc(a.OptionsUploadContainerObject)
 	api.UploadContainerObjectHandler = operations.UploadContainerObjectHandlerFunc(a.UploadContainerObject)
+
+	api.OptionsByAttributeHandler = operations.OptionsByAttributeHandlerFunc(a.OptionsByAttribute)
 	api.GetByAttributeHandler = operations.GetByAttributeHandlerFunc(a.GetByAttribute)
 	api.HeadByAttributeHandler = operations.HeadByAttributeHandlerFunc(a.HeadByAttribute)
 

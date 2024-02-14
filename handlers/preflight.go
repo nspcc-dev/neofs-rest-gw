@@ -63,3 +63,24 @@ func (a *API) OptionsContainersEACL(operations.OptionsContainersEACLParams) midd
 		WithAccessControlAllowHeaders(allowHeaders).
 		WithAccessControlAllowMethods(allowMethods)
 }
+
+func (a *API) OptionsContainerObject(operations.OptionsContainerObjectParams) middleware.Responder {
+	return operations.NewOptionsContainerObjectOK().
+		WithAccessControlAllowOrigin(allOrigins).
+		WithAccessControlAllowHeaders(allowHeaders).
+		WithAccessControlAllowMethods(allowMethods)
+}
+
+func (a *API) OptionsUploadContainerObject(operations.OptionsUploadContainerObjectParams) middleware.Responder {
+	return operations.NewOptionsUploadContainerObjectOK().
+		WithAccessControlAllowOrigin(allOrigins).
+		WithAccessControlAllowHeaders(allowHeaders).
+		WithAccessControlAllowMethods(allowMethods)
+}
+
+func (a *API) OptionsByAttribute(operations.OptionsByAttributeParams) middleware.Responder {
+	return operations.NewOptionsByAttributeOK().
+		WithAccessControlAllowOrigin(allOrigins).
+		WithAccessControlAllowHeaders(allowHeaders).
+		WithAccessControlAllowMethods(allowMethods)
+}
