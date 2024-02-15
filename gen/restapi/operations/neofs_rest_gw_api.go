@@ -45,7 +45,6 @@ func NewNeofsRestGwAPI(spec *loads.Document) *NeofsRestGwAPI {
 
 		BinProducer:  runtime.ByteStreamProducer(),
 		JSONProducer: runtime.JSONProducer(),
-		TxtProducer:  runtime.TextProducer(),
 
 		AuthHandler: AuthHandlerFunc(func(params AuthParams) middleware.Responder {
 			return middleware.NotImplemented("operation Auth has not yet been implemented")
@@ -173,14 +172,10 @@ type NeofsRestGwAPI struct {
 
 	// BinProducer registers a producer for the following mime types:
 	//   - application/octet-stream
-	//   - image/jpeg
 	BinProducer runtime.Producer
 	// JSONProducer registers a producer for the following mime types:
 	//   - application/json
 	JSONProducer runtime.Producer
-	// TxtProducer registers a producer for the following mime types:
-	//   - text/plain
-	TxtProducer runtime.Producer
 
 	// BearerAuthAuth registers a function that takes a token and returns a principal
 	// it performs authentication based on an api key Authorization provided in the header
@@ -326,9 +321,6 @@ func (o *NeofsRestGwAPI) Validate() error {
 	}
 	if o.JSONProducer == nil {
 		unregistered = append(unregistered, "JSONProducer")
-	}
-	if o.TxtProducer == nil {
-		unregistered = append(unregistered, "TxtProducer")
 	}
 
 	if o.BearerAuthAuth == nil {
@@ -483,12 +475,8 @@ func (o *NeofsRestGwAPI) ProducersFor(mediaTypes []string) map[string]runtime.Pr
 		switch mt {
 		case "application/octet-stream":
 			result["application/octet-stream"] = o.BinProducer
-		case "image/jpeg":
-			result["image/jpeg"] = o.BinProducer
 		case "application/json":
 			result["application/json"] = o.JSONProducer
-		case "text/plain":
-			result["text/plain"] = o.TxtProducer
 		}
 
 		if p, ok := o.customProducers[mt]; ok {

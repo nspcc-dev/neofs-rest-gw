@@ -15,9 +15,7 @@
 //
 //  Produces:
 //    - application/octet-stream
-//    - image/jpeg
 //    - application/json
-//    - text/plain
 //
 // swagger:meta
 package restapi
