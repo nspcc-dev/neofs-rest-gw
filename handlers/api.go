@@ -111,6 +111,7 @@ func (a *API) Configure(api *operations.NeofsRestGwAPI) http.Handler {
 	api.OptionsAuthBearerHandler = operations.OptionsAuthBearerHandlerFunc(a.OptionsAuthBearer)
 	api.FormBinaryBearerHandler = operations.FormBinaryBearerHandlerFunc(a.FormBinaryBearer)
 
+	api.OptionsBalanceHandler = operations.OptionsBalanceHandlerFunc(a.OptionsBalance)
 	api.GetBalanceHandler = operations.GetBalanceHandlerFunc(a.Balance)
 
 	api.OptionsObjectsPutHandler = operations.OptionsObjectsPutHandlerFunc(a.OptionsObjectsPut)

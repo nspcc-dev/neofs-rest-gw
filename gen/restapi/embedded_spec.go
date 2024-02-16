@@ -39,15 +39,6 @@ func init() {
         ],
         "summary": "Get balance in NeoFS",
         "operationId": "getBalance",
-        "parameters": [
-          {
-            "type": "string",
-            "description": "Base58 encoded wallet address.",
-            "name": "address",
-            "in": "path",
-            "required": true
-          }
-        ],
         "responses": {
           "200": {
             "description": "Balance of address in NeoFS",
@@ -67,7 +58,36 @@ func init() {
             }
           }
         }
-      }
+      },
+      "options": {
+        "security": [],
+        "operationId": "optionsBalance",
+        "responses": {
+          "200": {
+            "description": "CORS",
+            "headers": {
+              "Access-Control-Allow-Headers": {
+                "type": "string"
+              },
+              "Access-Control-Allow-Methods": {
+                "type": "string"
+              },
+              "Access-Control-Allow-Origin": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      },
+      "parameters": [
+        {
+          "type": "string",
+          "description": "Base58 encoded wallet address.",
+          "name": "address",
+          "in": "path",
+          "required": true
+        }
+      ]
     },
     "/auth": {
       "post": {
@@ -148,6 +168,9 @@ func init() {
               "Access-Control-Allow-Headers": {
                 "type": "string"
               },
+              "Access-Control-Allow-Methods": {
+                "type": "string"
+              },
               "Access-Control-Allow-Origin": {
                 "type": "string"
               }
@@ -202,6 +225,9 @@ func init() {
             "description": "CORS",
             "headers": {
               "Access-Control-Allow-Headers": {
+                "type": "string"
+              },
+              "Access-Control-Allow-Methods": {
                 "type": "string"
               },
               "Access-Control-Allow-Origin": {
@@ -877,6 +903,9 @@ func init() {
             "description": "Base64 encoded stable binary marshaled bearer token.",
             "headers": {
               "Access-Control-Allow-Headers": {
+                "type": "string"
+              },
+              "Access-Control-Allow-Methods": {
                 "type": "string"
               },
               "Access-Control-Allow-Origin": {
@@ -2107,15 +2136,6 @@ func init() {
         ],
         "summary": "Get balance in NeoFS",
         "operationId": "getBalance",
-        "parameters": [
-          {
-            "type": "string",
-            "description": "Base58 encoded wallet address.",
-            "name": "address",
-            "in": "path",
-            "required": true
-          }
-        ],
         "responses": {
           "200": {
             "description": "Balance of address in NeoFS",
@@ -2135,7 +2155,36 @@ func init() {
             }
           }
         }
-      }
+      },
+      "options": {
+        "security": [],
+        "operationId": "optionsBalance",
+        "responses": {
+          "200": {
+            "description": "CORS",
+            "headers": {
+              "Access-Control-Allow-Headers": {
+                "type": "string"
+              },
+              "Access-Control-Allow-Methods": {
+                "type": "string"
+              },
+              "Access-Control-Allow-Origin": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      },
+      "parameters": [
+        {
+          "type": "string",
+          "description": "Base58 encoded wallet address.",
+          "name": "address",
+          "in": "path",
+          "required": true
+        }
+      ]
     },
     "/auth": {
       "post": {
@@ -2216,6 +2265,9 @@ func init() {
               "Access-Control-Allow-Headers": {
                 "type": "string"
               },
+              "Access-Control-Allow-Methods": {
+                "type": "string"
+              },
               "Access-Control-Allow-Origin": {
                 "type": "string"
               }
@@ -2280,6 +2332,9 @@ func init() {
             "description": "CORS",
             "headers": {
               "Access-Control-Allow-Headers": {
+                "type": "string"
+              },
+              "Access-Control-Allow-Methods": {
                 "type": "string"
               },
               "Access-Control-Allow-Origin": {
@@ -3211,6 +3266,9 @@ func init() {
             "description": "Base64 encoded stable binary marshaled bearer token.",
             "headers": {
               "Access-Control-Allow-Headers": {
+                "type": "string"
+              },
+              "Access-Control-Allow-Methods": {
                 "type": "string"
               },
               "Access-Control-Allow-Origin": {

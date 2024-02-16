@@ -26,6 +26,10 @@ type OptionsObjectsSearchOK struct {
 	/*
 
 	 */
+	AccessControlAllowMethods string `json:"Access-Control-Allow-Methods"`
+	/*
+
+	 */
 	AccessControlAllowOrigin string `json:"Access-Control-Allow-Origin"`
 }
 
@@ -44,6 +48,17 @@ func (o *OptionsObjectsSearchOK) WithAccessControlAllowHeaders(accessControlAllo
 // SetAccessControlAllowHeaders sets the accessControlAllowHeaders to the options objects search o k response
 func (o *OptionsObjectsSearchOK) SetAccessControlAllowHeaders(accessControlAllowHeaders string) {
 	o.AccessControlAllowHeaders = accessControlAllowHeaders
+}
+
+// WithAccessControlAllowMethods adds the accessControlAllowMethods to the options objects search o k response
+func (o *OptionsObjectsSearchOK) WithAccessControlAllowMethods(accessControlAllowMethods string) *OptionsObjectsSearchOK {
+	o.AccessControlAllowMethods = accessControlAllowMethods
+	return o
+}
+
+// SetAccessControlAllowMethods sets the accessControlAllowMethods to the options objects search o k response
+func (o *OptionsObjectsSearchOK) SetAccessControlAllowMethods(accessControlAllowMethods string) {
+	o.AccessControlAllowMethods = accessControlAllowMethods
 }
 
 // WithAccessControlAllowOrigin adds the accessControlAllowOrigin to the options objects search o k response
@@ -65,6 +80,13 @@ func (o *OptionsObjectsSearchOK) WriteResponse(rw http.ResponseWriter, producer 
 	accessControlAllowHeaders := o.AccessControlAllowHeaders
 	if accessControlAllowHeaders != "" {
 		rw.Header().Set("Access-Control-Allow-Headers", accessControlAllowHeaders)
+	}
+
+	// response header Access-Control-Allow-Methods
+
+	accessControlAllowMethods := o.AccessControlAllowMethods
+	if accessControlAllowMethods != "" {
+		rw.Header().Set("Access-Control-Allow-Methods", accessControlAllowMethods)
 	}
 
 	// response header Access-Control-Allow-Origin

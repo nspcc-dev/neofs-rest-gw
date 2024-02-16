@@ -92,6 +92,9 @@ func NewNeofsRestGwAPI(spec *loads.Document) *NeofsRestGwAPI {
 		OptionsAuthBearerHandler: OptionsAuthBearerHandlerFunc(func(params OptionsAuthBearerParams) middleware.Responder {
 			return middleware.NotImplemented("operation OptionsAuthBearer has not yet been implemented")
 		}),
+		OptionsBalanceHandler: OptionsBalanceHandlerFunc(func(params OptionsBalanceParams) middleware.Responder {
+			return middleware.NotImplemented("operation OptionsBalance has not yet been implemented")
+		}),
 		OptionsByAttributeHandler: OptionsByAttributeHandlerFunc(func(params OptionsByAttributeParams) middleware.Responder {
 			return middleware.NotImplemented("operation OptionsByAttribute has not yet been implemented")
 		}),
@@ -232,6 +235,8 @@ type NeofsRestGwAPI struct {
 	OptionsAuthHandler OptionsAuthHandler
 	// OptionsAuthBearerHandler sets the operation handler for the options auth bearer operation
 	OptionsAuthBearerHandler OptionsAuthBearerHandler
+	// OptionsBalanceHandler sets the operation handler for the options balance operation
+	OptionsBalanceHandler OptionsBalanceHandler
 	// OptionsByAttributeHandler sets the operation handler for the options by attribute operation
 	OptionsByAttributeHandler OptionsByAttributeHandler
 	// OptionsContainerObjectHandler sets the operation handler for the options container object operation
@@ -397,6 +402,9 @@ func (o *NeofsRestGwAPI) Validate() error {
 	}
 	if o.OptionsAuthBearerHandler == nil {
 		unregistered = append(unregistered, "OptionsAuthBearerHandler")
+	}
+	if o.OptionsBalanceHandler == nil {
+		unregistered = append(unregistered, "OptionsBalanceHandler")
 	}
 	if o.OptionsByAttributeHandler == nil {
 		unregistered = append(unregistered, "OptionsByAttributeHandler")
@@ -613,6 +621,10 @@ func (o *NeofsRestGwAPI) initHandlerCache() {
 		o.handlers["OPTIONS"] = make(map[string]http.Handler)
 	}
 	o.handlers["OPTIONS"]["/auth/bearer"] = NewOptionsAuthBearer(o.context, o.OptionsAuthBearerHandler)
+	if o.handlers["OPTIONS"] == nil {
+		o.handlers["OPTIONS"] = make(map[string]http.Handler)
+	}
+	o.handlers["OPTIONS"]["/accounting/balance/{address}"] = NewOptionsBalance(o.context, o.OptionsBalanceHandler)
 	if o.handlers["OPTIONS"] == nil {
 		o.handlers["OPTIONS"] = make(map[string]http.Handler)
 	}

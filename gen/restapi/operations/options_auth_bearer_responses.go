@@ -26,6 +26,10 @@ type OptionsAuthBearerOK struct {
 	/*
 
 	 */
+	AccessControlAllowMethods string `json:"Access-Control-Allow-Methods"`
+	/*
+
+	 */
 	AccessControlAllowOrigin string `json:"Access-Control-Allow-Origin"`
 }
 
@@ -44,6 +48,17 @@ func (o *OptionsAuthBearerOK) WithAccessControlAllowHeaders(accessControlAllowHe
 // SetAccessControlAllowHeaders sets the accessControlAllowHeaders to the options auth bearer o k response
 func (o *OptionsAuthBearerOK) SetAccessControlAllowHeaders(accessControlAllowHeaders string) {
 	o.AccessControlAllowHeaders = accessControlAllowHeaders
+}
+
+// WithAccessControlAllowMethods adds the accessControlAllowMethods to the options auth bearer o k response
+func (o *OptionsAuthBearerOK) WithAccessControlAllowMethods(accessControlAllowMethods string) *OptionsAuthBearerOK {
+	o.AccessControlAllowMethods = accessControlAllowMethods
+	return o
+}
+
+// SetAccessControlAllowMethods sets the accessControlAllowMethods to the options auth bearer o k response
+func (o *OptionsAuthBearerOK) SetAccessControlAllowMethods(accessControlAllowMethods string) {
+	o.AccessControlAllowMethods = accessControlAllowMethods
 }
 
 // WithAccessControlAllowOrigin adds the accessControlAllowOrigin to the options auth bearer o k response
@@ -65,6 +80,13 @@ func (o *OptionsAuthBearerOK) WriteResponse(rw http.ResponseWriter, producer run
 	accessControlAllowHeaders := o.AccessControlAllowHeaders
 	if accessControlAllowHeaders != "" {
 		rw.Header().Set("Access-Control-Allow-Headers", accessControlAllowHeaders)
+	}
+
+	// response header Access-Control-Allow-Methods
+
+	accessControlAllowMethods := o.AccessControlAllowMethods
+	if accessControlAllowMethods != "" {
+		rw.Header().Set("Access-Control-Allow-Methods", accessControlAllowMethods)
 	}
 
 	// response header Access-Control-Allow-Origin
