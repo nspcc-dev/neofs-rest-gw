@@ -10,6 +10,17 @@ This document outlines major changes between releases.
 
 ### Changed
 
+## [0.7.1] - 2024-02-19
+
+### Added
+- OPTIONS handling for HTTP-alike requests (#145)
+
+### Fixed
+- Improper non-bearer cookie handling (#142)
+- Error messages (#142)
+- Incorrect data returned from get APIs in some cases (#146)
+- OPTIONS handling for all requests (#145)
+
 ## [0.7.0] - 2024-02-12
 
 ### Added
@@ -143,4 +154,5 @@ Please refer to [GitHub releases](https://github.com/nspcc-dev/neofs-rest-gw/rel
 [0.5.0]: https://github.com/nspcc-dev/neofs-rest-gw/compare/v0.4.0...v0.5.0
 [0.6.0]: https://github.com/nspcc-dev/neofs-rest-gw/compare/v0.5.0...v0.6.0
 [0.7.0]: https://github.com/nspcc-dev/neofs-rest-gw/compare/v0.6.0...v0.7.0
-[Unreleased]: https://github.com/nspcc-dev/neofs-rest-gw/compare/v0.7.0...master
+[0.7.1]: https://github.com/nspcc-dev/neofs-rest-gw/compare/v0.7.0...v0.7.1
+[Unreleased]: https://github.com/nspcc-dev/neofs-rest-gw/compare/v0.7.1...master
