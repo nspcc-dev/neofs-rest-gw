@@ -45,9 +45,6 @@ jobs:
       - name: Check version
         run: if [[ $(make version) == *"dirty"* ]]; then exit 1; fi
 
-      - name: Update Go modules
-        run: make dep
-
       - name: Build CLI
         run: BUILD_OS=${{ matrix.go_os }} BUILD_ARCH=${{ matrix.go_arch }} make
 
@@ -82,9 +79,6 @@ jobs:
         with:
           cache: true
           go-version: '1.21'
-
-      - name: Update Go modules
-        run: make dep
 
       - name: Build Docker image
         run: make image
