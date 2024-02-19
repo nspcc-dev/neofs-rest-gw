@@ -28,7 +28,7 @@ jobs:
     runs-on: ubuntu-22.04
     strategy:
       matrix:
-        go_os: [ linux, darwin ]
+        go_os: [ linux ] # darwin
         go_arch: [ amd64, arm64 ]
 
     steps:
