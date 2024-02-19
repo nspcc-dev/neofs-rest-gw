@@ -91,6 +91,15 @@ func NewNeofsRestGwAPI(spec *loads.Document) *NeofsRestGwAPI {
 		OptionsAuthBearerHandler: OptionsAuthBearerHandlerFunc(func(params OptionsAuthBearerParams) middleware.Responder {
 			return middleware.NotImplemented("operation OptionsAuthBearer has not yet been implemented")
 		}),
+		OptionsBalanceHandler: OptionsBalanceHandlerFunc(func(params OptionsBalanceParams) middleware.Responder {
+			return middleware.NotImplemented("operation OptionsBalance has not yet been implemented")
+		}),
+		OptionsByAttributeHandler: OptionsByAttributeHandlerFunc(func(params OptionsByAttributeParams) middleware.Responder {
+			return middleware.NotImplemented("operation OptionsByAttribute has not yet been implemented")
+		}),
+		OptionsContainerObjectHandler: OptionsContainerObjectHandlerFunc(func(params OptionsContainerObjectParams) middleware.Responder {
+			return middleware.NotImplemented("operation OptionsContainerObject has not yet been implemented")
+		}),
 		OptionsContainersEACLHandler: OptionsContainersEACLHandlerFunc(func(params OptionsContainersEACLParams) middleware.Responder {
 			return middleware.NotImplemented("operation OptionsContainersEACL has not yet been implemented")
 		}),
@@ -108,6 +117,9 @@ func NewNeofsRestGwAPI(spec *loads.Document) *NeofsRestGwAPI {
 		}),
 		OptionsObjectsSearchHandler: OptionsObjectsSearchHandlerFunc(func(params OptionsObjectsSearchParams) middleware.Responder {
 			return middleware.NotImplemented("operation OptionsObjectsSearch has not yet been implemented")
+		}),
+		OptionsUploadContainerObjectHandler: OptionsUploadContainerObjectHandlerFunc(func(params OptionsUploadContainerObjectParams) middleware.Responder {
+			return middleware.NotImplemented("operation OptionsUploadContainerObject has not yet been implemented")
 		}),
 		PutContainerHandler: PutContainerHandlerFunc(func(params PutContainerParams, principal *models.Principal) middleware.Responder {
 			return middleware.NotImplemented("operation PutContainer has not yet been implemented")
@@ -218,6 +230,12 @@ type NeofsRestGwAPI struct {
 	OptionsAuthHandler OptionsAuthHandler
 	// OptionsAuthBearerHandler sets the operation handler for the options auth bearer operation
 	OptionsAuthBearerHandler OptionsAuthBearerHandler
+	// OptionsBalanceHandler sets the operation handler for the options balance operation
+	OptionsBalanceHandler OptionsBalanceHandler
+	// OptionsByAttributeHandler sets the operation handler for the options by attribute operation
+	OptionsByAttributeHandler OptionsByAttributeHandler
+	// OptionsContainerObjectHandler sets the operation handler for the options container object operation
+	OptionsContainerObjectHandler OptionsContainerObjectHandler
 	// OptionsContainersEACLHandler sets the operation handler for the options containers e ACL operation
 	OptionsContainersEACLHandler OptionsContainersEACLHandler
 	// OptionsContainersGetDeleteHandler sets the operation handler for the options containers get delete operation
@@ -230,6 +248,8 @@ type NeofsRestGwAPI struct {
 	OptionsObjectsPutHandler OptionsObjectsPutHandler
 	// OptionsObjectsSearchHandler sets the operation handler for the options objects search operation
 	OptionsObjectsSearchHandler OptionsObjectsSearchHandler
+	// OptionsUploadContainerObjectHandler sets the operation handler for the options upload container object operation
+	OptionsUploadContainerObjectHandler OptionsUploadContainerObjectHandler
 	// PutContainerHandler sets the operation handler for the put container operation
 	PutContainerHandler PutContainerHandler
 	// PutContainerEACLHandler sets the operation handler for the put container e ACL operation
@@ -375,6 +395,15 @@ func (o *NeofsRestGwAPI) Validate() error {
 	if o.OptionsAuthBearerHandler == nil {
 		unregistered = append(unregistered, "OptionsAuthBearerHandler")
 	}
+	if o.OptionsBalanceHandler == nil {
+		unregistered = append(unregistered, "OptionsBalanceHandler")
+	}
+	if o.OptionsByAttributeHandler == nil {
+		unregistered = append(unregistered, "OptionsByAttributeHandler")
+	}
+	if o.OptionsContainerObjectHandler == nil {
+		unregistered = append(unregistered, "OptionsContainerObjectHandler")
+	}
 	if o.OptionsContainersEACLHandler == nil {
 		unregistered = append(unregistered, "OptionsContainersEACLHandler")
 	}
@@ -392,6 +421,9 @@ func (o *NeofsRestGwAPI) Validate() error {
 	}
 	if o.OptionsObjectsSearchHandler == nil {
 		unregistered = append(unregistered, "OptionsObjectsSearchHandler")
+	}
+	if o.OptionsUploadContainerObjectHandler == nil {
+		unregistered = append(unregistered, "OptionsUploadContainerObjectHandler")
 	}
 	if o.PutContainerHandler == nil {
 		unregistered = append(unregistered, "PutContainerHandler")
@@ -580,6 +612,18 @@ func (o *NeofsRestGwAPI) initHandlerCache() {
 	if o.handlers["OPTIONS"] == nil {
 		o.handlers["OPTIONS"] = make(map[string]http.Handler)
 	}
+	o.handlers["OPTIONS"]["/accounting/balance/{address}"] = NewOptionsBalance(o.context, o.OptionsBalanceHandler)
+	if o.handlers["OPTIONS"] == nil {
+		o.handlers["OPTIONS"] = make(map[string]http.Handler)
+	}
+	o.handlers["OPTIONS"]["/get_by_attribute/{containerId}/{attrKey}/{attrVal}"] = NewOptionsByAttribute(o.context, o.OptionsByAttributeHandler)
+	if o.handlers["OPTIONS"] == nil {
+		o.handlers["OPTIONS"] = make(map[string]http.Handler)
+	}
+	o.handlers["OPTIONS"]["/get/{containerId}/{objectId}"] = NewOptionsContainerObject(o.context, o.OptionsContainerObjectHandler)
+	if o.handlers["OPTIONS"] == nil {
+		o.handlers["OPTIONS"] = make(map[string]http.Handler)
+	}
 	o.handlers["OPTIONS"]["/containers/{containerId}/eacl"] = NewOptionsContainersEACL(o.context, o.OptionsContainersEACLHandler)
 	if o.handlers["OPTIONS"] == nil {
 		o.handlers["OPTIONS"] = make(map[string]http.Handler)
@@ -601,6 +645,10 @@ func (o *NeofsRestGwAPI) initHandlerCache() {
 		o.handlers["OPTIONS"] = make(map[string]http.Handler)
 	}
 	o.handlers["OPTIONS"]["/objects/{containerId}/search"] = NewOptionsObjectsSearch(o.context, o.OptionsObjectsSearchHandler)
+	if o.handlers["OPTIONS"] == nil {
+		o.handlers["OPTIONS"] = make(map[string]http.Handler)
+	}
+	o.handlers["OPTIONS"]["/upload/{containerId}"] = NewOptionsUploadContainerObject(o.context, o.OptionsUploadContainerObjectHandler)
 	if o.handlers["PUT"] == nil {
 		o.handlers["PUT"] = make(map[string]http.Handler)
 	}

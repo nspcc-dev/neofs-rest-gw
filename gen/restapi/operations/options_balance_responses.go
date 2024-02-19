@@ -11,14 +11,14 @@ import (
 	"github.com/go-openapi/runtime"
 )
 
-// OptionsAuthOKCode is the HTTP code returned for type OptionsAuthOK
-const OptionsAuthOKCode int = 200
+// OptionsBalanceOKCode is the HTTP code returned for type OptionsBalanceOK
+const OptionsBalanceOKCode int = 200
 
-/*OptionsAuthOK CORS
+/*OptionsBalanceOK CORS
 
-swagger:response optionsAuthOK
+swagger:response optionsBalanceOK
 */
-type OptionsAuthOK struct {
+type OptionsBalanceOK struct {
 	/*
 
 	 */
@@ -33,47 +33,47 @@ type OptionsAuthOK struct {
 	AccessControlAllowOrigin string `json:"Access-Control-Allow-Origin"`
 }
 
-// NewOptionsAuthOK creates OptionsAuthOK with default headers values
-func NewOptionsAuthOK() *OptionsAuthOK {
+// NewOptionsBalanceOK creates OptionsBalanceOK with default headers values
+func NewOptionsBalanceOK() *OptionsBalanceOK {
 
-	return &OptionsAuthOK{}
+	return &OptionsBalanceOK{}
 }
 
-// WithAccessControlAllowHeaders adds the accessControlAllowHeaders to the options auth o k response
-func (o *OptionsAuthOK) WithAccessControlAllowHeaders(accessControlAllowHeaders string) *OptionsAuthOK {
+// WithAccessControlAllowHeaders adds the accessControlAllowHeaders to the options balance o k response
+func (o *OptionsBalanceOK) WithAccessControlAllowHeaders(accessControlAllowHeaders string) *OptionsBalanceOK {
 	o.AccessControlAllowHeaders = accessControlAllowHeaders
 	return o
 }
 
-// SetAccessControlAllowHeaders sets the accessControlAllowHeaders to the options auth o k response
-func (o *OptionsAuthOK) SetAccessControlAllowHeaders(accessControlAllowHeaders string) {
+// SetAccessControlAllowHeaders sets the accessControlAllowHeaders to the options balance o k response
+func (o *OptionsBalanceOK) SetAccessControlAllowHeaders(accessControlAllowHeaders string) {
 	o.AccessControlAllowHeaders = accessControlAllowHeaders
 }
 
-// WithAccessControlAllowMethods adds the accessControlAllowMethods to the options auth o k response
-func (o *OptionsAuthOK) WithAccessControlAllowMethods(accessControlAllowMethods string) *OptionsAuthOK {
+// WithAccessControlAllowMethods adds the accessControlAllowMethods to the options balance o k response
+func (o *OptionsBalanceOK) WithAccessControlAllowMethods(accessControlAllowMethods string) *OptionsBalanceOK {
 	o.AccessControlAllowMethods = accessControlAllowMethods
 	return o
 }
 
-// SetAccessControlAllowMethods sets the accessControlAllowMethods to the options auth o k response
-func (o *OptionsAuthOK) SetAccessControlAllowMethods(accessControlAllowMethods string) {
+// SetAccessControlAllowMethods sets the accessControlAllowMethods to the options balance o k response
+func (o *OptionsBalanceOK) SetAccessControlAllowMethods(accessControlAllowMethods string) {
 	o.AccessControlAllowMethods = accessControlAllowMethods
 }
 
-// WithAccessControlAllowOrigin adds the accessControlAllowOrigin to the options auth o k response
-func (o *OptionsAuthOK) WithAccessControlAllowOrigin(accessControlAllowOrigin string) *OptionsAuthOK {
+// WithAccessControlAllowOrigin adds the accessControlAllowOrigin to the options balance o k response
+func (o *OptionsBalanceOK) WithAccessControlAllowOrigin(accessControlAllowOrigin string) *OptionsBalanceOK {
 	o.AccessControlAllowOrigin = accessControlAllowOrigin
 	return o
 }
 
-// SetAccessControlAllowOrigin sets the accessControlAllowOrigin to the options auth o k response
-func (o *OptionsAuthOK) SetAccessControlAllowOrigin(accessControlAllowOrigin string) {
+// SetAccessControlAllowOrigin sets the accessControlAllowOrigin to the options balance o k response
+func (o *OptionsBalanceOK) SetAccessControlAllowOrigin(accessControlAllowOrigin string) {
 	o.AccessControlAllowOrigin = accessControlAllowOrigin
 }
 
 // WriteResponse to the client
-func (o *OptionsAuthOK) WriteResponse(rw http.ResponseWriter, producer runtime.Producer) {
+func (o *OptionsBalanceOK) WriteResponse(rw http.ResponseWriter, producer runtime.Producer) {
 
 	// response header Access-Control-Allow-Headers
 

@@ -11,14 +11,14 @@ import (
 	"github.com/go-openapi/runtime"
 )
 
-// OptionsAuthOKCode is the HTTP code returned for type OptionsAuthOK
-const OptionsAuthOKCode int = 200
+// OptionsUploadOKCode is the HTTP code returned for type OptionsUploadOK
+const OptionsUploadOKCode int = 200
 
-/*OptionsAuthOK CORS
+/*OptionsUploadOK CORS
 
-swagger:response optionsAuthOK
+swagger:response optionsUploadOK
 */
-type OptionsAuthOK struct {
+type OptionsUploadOK struct {
 	/*
 
 	 */
@@ -33,47 +33,47 @@ type OptionsAuthOK struct {
 	AccessControlAllowOrigin string `json:"Access-Control-Allow-Origin"`
 }
 
-// NewOptionsAuthOK creates OptionsAuthOK with default headers values
-func NewOptionsAuthOK() *OptionsAuthOK {
+// NewOptionsUploadOK creates OptionsUploadOK with default headers values
+func NewOptionsUploadOK() *OptionsUploadOK {
 
-	return &OptionsAuthOK{}
+	return &OptionsUploadOK{}
 }
 
-// WithAccessControlAllowHeaders adds the accessControlAllowHeaders to the options auth o k response
-func (o *OptionsAuthOK) WithAccessControlAllowHeaders(accessControlAllowHeaders string) *OptionsAuthOK {
+// WithAccessControlAllowHeaders adds the accessControlAllowHeaders to the options upload o k response
+func (o *OptionsUploadOK) WithAccessControlAllowHeaders(accessControlAllowHeaders string) *OptionsUploadOK {
 	o.AccessControlAllowHeaders = accessControlAllowHeaders
 	return o
 }
 
-// SetAccessControlAllowHeaders sets the accessControlAllowHeaders to the options auth o k response
-func (o *OptionsAuthOK) SetAccessControlAllowHeaders(accessControlAllowHeaders string) {
+// SetAccessControlAllowHeaders sets the accessControlAllowHeaders to the options upload o k response
+func (o *OptionsUploadOK) SetAccessControlAllowHeaders(accessControlAllowHeaders string) {
 	o.AccessControlAllowHeaders = accessControlAllowHeaders
 }
 
-// WithAccessControlAllowMethods adds the accessControlAllowMethods to the options auth o k response
-func (o *OptionsAuthOK) WithAccessControlAllowMethods(accessControlAllowMethods string) *OptionsAuthOK {
+// WithAccessControlAllowMethods adds the accessControlAllowMethods to the options upload o k response
+func (o *OptionsUploadOK) WithAccessControlAllowMethods(accessControlAllowMethods string) *OptionsUploadOK {
 	o.AccessControlAllowMethods = accessControlAllowMethods
 	return o
 }
 
-// SetAccessControlAllowMethods sets the accessControlAllowMethods to the options auth o k response
-func (o *OptionsAuthOK) SetAccessControlAllowMethods(accessControlAllowMethods string) {
+// SetAccessControlAllowMethods sets the accessControlAllowMethods to the options upload o k response
+func (o *OptionsUploadOK) SetAccessControlAllowMethods(accessControlAllowMethods string) {
 	o.AccessControlAllowMethods = accessControlAllowMethods
 }
 
-// WithAccessControlAllowOrigin adds the accessControlAllowOrigin to the options auth o k response
-func (o *OptionsAuthOK) WithAccessControlAllowOrigin(accessControlAllowOrigin string) *OptionsAuthOK {
+// WithAccessControlAllowOrigin adds the accessControlAllowOrigin to the options upload o k response
+func (o *OptionsUploadOK) WithAccessControlAllowOrigin(accessControlAllowOrigin string) *OptionsUploadOK {
 	o.AccessControlAllowOrigin = accessControlAllowOrigin
 	return o
 }
 
-// SetAccessControlAllowOrigin sets the accessControlAllowOrigin to the options auth o k response
-func (o *OptionsAuthOK) SetAccessControlAllowOrigin(accessControlAllowOrigin string) {
+// SetAccessControlAllowOrigin sets the accessControlAllowOrigin to the options upload o k response
+func (o *OptionsUploadOK) SetAccessControlAllowOrigin(accessControlAllowOrigin string) {
 	o.AccessControlAllowOrigin = accessControlAllowOrigin
 }
 
 // WriteResponse to the client
-func (o *OptionsAuthOK) WriteResponse(rw http.ResponseWriter, producer runtime.Producer) {
+func (o *OptionsUploadOK) WriteResponse(rw http.ResponseWriter, producer runtime.Producer) {
 
 	// response header Access-Control-Allow-Headers
 
