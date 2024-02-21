@@ -23,8 +23,8 @@ on:
         default: ''
 
 jobs:
-  build_cli:
-    name: Build CLI
+  build_bin:
+    name: Build binary
     runs-on: ubuntu-22.04
     strategy:
       matrix:
@@ -65,7 +65,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   build_image:
-    needs: build_cli
+    needs: build_bin
     name: Build Docker image
     runs-on: ubuntu-22.04
 
