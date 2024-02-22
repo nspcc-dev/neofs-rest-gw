@@ -8,7 +8,6 @@ import (
 
 	"github.com/nspcc-dev/neo-go/pkg/crypto/keys"
 	"github.com/nspcc-dev/neofs-api-go/v2/acl"
-	crypto "github.com/nspcc-dev/neofs-crypto"
 	"github.com/nspcc-dev/neofs-rest-gw/gen/models"
 	"github.com/nspcc-dev/neofs-rest-gw/internal/util"
 	"github.com/nspcc-dev/neofs-sdk-go/user"
@@ -38,7 +37,7 @@ func TestSign(t *testing.T) {
 
 	btoken.SetExp(math.MaxInt64)
 
-	signer := user.NewAutoIDSignerRFC6979(key.PrivateKey)
+	signer := user.NewAutoIDSigner(key.PrivateKey)
 	owner := signer.UserID()
 	btoken.ForUser(owner)
 
@@ -48,7 +47,7 @@ func TestSign(t *testing.T) {
 	binaryBearer := v2token.GetBody().StableMarshal(nil)
 	bearerBase64 := base64.StdEncoding.EncodeToString(binaryBearer)
 
-	signatureData, err := crypto.Sign(&key.PrivateKey, binaryBearer)
+	signatureData, err := signer.Sign(binaryBearer)
 	require.NoError(t, err)
 
 	bt := &BearerToken{

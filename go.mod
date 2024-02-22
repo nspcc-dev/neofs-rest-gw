@@ -79,7 +79,7 @@ require (
 	github.com/moby/term v0.5.0 // indirect
 	github.com/morikuni/aec v1.0.0 // indirect
 	github.com/mr-tron/base58 v1.2.0 // indirect
-	github.com/nspcc-dev/neofs-crypto v0.4.0
+	github.com/nspcc-dev/neofs-crypto v0.4.0 // indirect
 	github.com/nspcc-dev/rfc6979 v0.2.0 // indirect
 	github.com/nspcc-dev/tzhash v1.7.1 // indirect
 	github.com/oklog/ulid v1.3.1 // indirect
