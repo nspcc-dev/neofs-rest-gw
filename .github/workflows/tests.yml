@@ -16,6 +16,12 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+
+      - name: Set up Go from go.mod
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: 'go.mod'
+
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v3
         with:
@@ -36,7 +42,7 @@ jobs:
         uses: actions/setup-go@v5
         with:
           cache: true
-          go-version: '1.21'
+          go-version: '1.22'
 
       - name: Test and write coverage profile
         run: make cover
@@ -53,7 +59,7 @@ jobs:
     runs-on: ubuntu-22.04
     strategy:
       matrix:
-        go_versions: [ '1.19', '1.20', '1.21' ]
+        go_versions: [ '1.20', '1.21', '1.22' ]
       fail-fast: false
     steps:
       - uses: actions/checkout@v4

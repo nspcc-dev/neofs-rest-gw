@@ -1,4 +1,4 @@
-FROM golang:1.21 as basebuilder
+FROM golang:1.22 as basebuilder
 
 RUN set -x \
     && apt-get update \
