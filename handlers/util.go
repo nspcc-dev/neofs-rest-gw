@@ -13,7 +13,7 @@ import (
 	"github.com/nspcc-dev/neofs-api-go/v2/container"
 	objectv2 "github.com/nspcc-dev/neofs-api-go/v2/object"
 	sessionv2 "github.com/nspcc-dev/neofs-api-go/v2/session"
-	"github.com/nspcc-dev/neofs-rest-gw/gen/models"
+	"github.com/nspcc-dev/neofs-rest-gw/handlers/apiserver"
 	"github.com/nspcc-dev/neofs-sdk-go/client"
 	"github.com/nspcc-dev/neofs-sdk-go/container/acl"
 	"github.com/nspcc-dev/neofs-sdk-go/object"
@@ -41,14 +41,20 @@ const (
 	ExpirationRFC3339Attr   = SystemAttributePrefix + "EXPIRATION_RFC3339"
 
 	neofsAttributeHeaderPrefix = "Neofs-"
+
+	offsetMin     = 0
+	offsetDefault = 0
+
+	limitMin     = 1
+	limitMax     = 10000
+	limitDefault = 100
 )
 
-// GetObjectAttributes forms object attributes from request headers.
-func GetObjectAttributes(ctx context.Context, pool *pool.Pool, attrs []*models.Attribute, prm PrmAttributes) ([]object.Attribute, error) {
+func getObjectAttributes(ctx context.Context, pool *pool.Pool, attrs []apiserver.Attribute, prm PrmAttributes) ([]object.Attribute, error) {
 	headers := make(map[string]string, len(attrs))
 
 	for _, attr := range attrs {
-		headers[*attr.Key] = *attr.Value
+		headers[attr.Key] = attr.Value
 	}
 	delete(headers, object.AttributeFileName)
 
@@ -173,7 +179,7 @@ func updateExpirationHeader(headers map[string]string, durations *epochDurations
 }
 
 // IsObjectToken check that provided token is for object.
-func IsObjectToken(token *models.Bearer) (bool, error) {
+func IsObjectToken(token apiserver.Bearer) (bool, error) {
 	isObject := len(token.Object) != 0
 	isContainer := token.Container != nil
 
@@ -188,14 +194,14 @@ func IsObjectToken(token *models.Bearer) (bool, error) {
 	return isObject, nil
 }
 
-func formSessionTokenFromHeaders(principal *models.Principal, signature, key *string, verb sessionv2.ContainerSessionVerb) (*SessionToken, error) {
+func formSessionTokenFromHeaders(principal string, signature, key *string, verb sessionv2.ContainerSessionVerb) (*SessionToken, error) {
 	if signature == nil || key == nil {
 		return nil, errors.New("missed signature or key header")
 	}
 
 	return &SessionToken{
 		BearerToken: BearerToken{
-			Token:     string(*principal),
+			Token:     principal,
 			Signature: *signature,
 			Key:       *key,
 		},
@@ -313,4 +319,32 @@ func formatSpecialAttribute(s string) string {
 	default:
 		return s
 	}
+}
+
+func getOffsetAndLimit(offset, limit *int) (int, int, error) {
+	var (
+		off = offsetDefault
+		lim = limitDefault
+	)
+
+	if offset != nil {
+		if *offset < offsetMin {
+			return 0, 0, fmt.Errorf("offset %d < %d", *offset, offsetMin)
+		}
+
+		off = *offset
+	}
+
+	if limit != nil {
+		if *limit < limitMin {
+			return 0, 0, fmt.Errorf("limit %d < %d", *limit, limitMin)
+		}
+		if *limit > limitMax {
+			return 0, 0, fmt.Errorf("limit %d > %d", *limit, limitMax)
+		}
+
+		lim = *limit
+	}
+
+	return off, lim, nil
 }

@@ -118,18 +118,6 @@ docker/all:
 		--env BUILD_ARCH=$(BUILD_ARCH) \
 		golang:$(GO_VERSION) make all
 
-# Generate server by swagger spec using swagger docker image
-docker/generate-server:
-	@docker run --rm -t \
-		-v `pwd`:/src \
-		-w /src \
-		-u `stat -c "%u:%g" .` \
-		--env HOME=/src \
-		quay.io/goswagger/swagger:$(SWAGGER_VERSION) generate server \
-			-t gen -f ./spec/rest.yaml --exclude-main \
-			-A neofs-rest-gw -P models.Principal \
-			-C templates/server-config.yaml --template-dir templates
-
 # Run linters in Docker
 docker/lint:
 	docker run --rm -it \

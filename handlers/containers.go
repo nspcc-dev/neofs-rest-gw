@@ -6,16 +6,16 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"net/http"
 	"strings"
 	"time"
 
-	"github.com/go-openapi/runtime/middleware"
+	"github.com/labstack/echo/v4"
 	"github.com/nspcc-dev/neo-go/pkg/crypto/keys"
 	containerv2 "github.com/nspcc-dev/neofs-api-go/v2/container"
 	"github.com/nspcc-dev/neofs-api-go/v2/refs"
 	sessionv2 "github.com/nspcc-dev/neofs-api-go/v2/session"
-	"github.com/nspcc-dev/neofs-rest-gw/gen/models"
-	"github.com/nspcc-dev/neofs-rest-gw/gen/restapi/operations"
+	"github.com/nspcc-dev/neofs-rest-gw/handlers/apiserver"
 	"github.com/nspcc-dev/neofs-rest-gw/internal/util"
 	"github.com/nspcc-dev/neofs-sdk-go/client"
 	"github.com/nspcc-dev/neofs-sdk-go/container"
@@ -37,193 +37,233 @@ const (
 	attributeTimestamp     = "Timestamp"
 )
 
-// PutContainers handler that creates container in NeoFS.
-func (a *API) PutContainers(params operations.PutContainerParams, principal *models.Principal) middleware.Responder {
+// PutContainer handler that creates container in NeoFS.
+func (a *RestAPI) PutContainer(ctx echo.Context, params apiserver.PutContainerParams) error {
+	var body apiserver.ContainerPutInfo
+	if err := ctx.Bind(&body); err != nil {
+		return ctx.JSON(http.StatusBadRequest, a.logAndGetErrorResponse("bind", err))
+	}
+
+	principal, err := getPrincipal(ctx)
+	if err != nil {
+		return ctx.JSON(http.StatusBadRequest, util.NewErrorResponse(err))
+	}
+
 	st, err := formSessionTokenFromHeaders(principal, params.XBearerSignature, params.XBearerSignatureKey, sessionv2.ContainerVerbPut)
 	if err != nil {
 		resp := a.logAndGetErrorResponse("invalid session token headers", err)
-		return operations.NewPutContainerBadRequest().WithPayload(resp)
+		return ctx.JSON(http.StatusBadRequest, resp)
 	}
 
-	stoken, err := prepareSessionToken(st, *params.WalletConnect)
+	var isWalletConnect bool
+	if params.WalletConnect != nil {
+		isWalletConnect = *params.WalletConnect
+	}
+
+	stoken, err := prepareSessionToken(st, isWalletConnect)
 	if err != nil {
 		resp := a.logAndGetErrorResponse("invalid session token", err)
-		return operations.NewPutContainerBadRequest().WithPayload(resp)
+		return ctx.JSON(http.StatusBadRequest, resp)
 	}
 
-	cnrID, err := createContainer(params.HTTPRequest.Context(), a.pool, stoken, &params, a.signer)
+	cnrID, err := createContainer(ctx.Request().Context(), a.pool, stoken, body, params, a.signer)
 	if err != nil {
 		resp := a.logAndGetErrorResponse("create container", err)
-		return operations.NewPutContainerBadRequest().WithPayload(resp)
+		return ctx.JSON(http.StatusBadRequest, resp)
 	}
 
-	var resp operations.PutContainerOKBody
-	resp.ContainerID = util.NewString(cnrID.EncodeToString())
+	resp := apiserver.PutContainerOK{
+		ContainerId: cnrID.EncodeToString(),
+	}
 
-	return operations.NewPutContainerOK().
-		WithPayload(&resp).
-		WithAccessControlAllowOrigin("*")
+	ctx.Response().Header().Set(accessControlAllowOriginHeader, "*")
+	return ctx.JSON(http.StatusOK, resp)
 }
 
 // GetContainer handler that returns container info.
-func (a *API) GetContainer(params operations.GetContainerParams) middleware.Responder {
-	cnrID, err := parseContainerID(params.ContainerID)
+func (a *RestAPI) GetContainer(ctx echo.Context, containerID apiserver.ContainerId) error {
+	cnrID, err := parseContainerID(containerID)
 	if err != nil {
 		resp := a.logAndGetErrorResponse("invalid container id", err)
-		return operations.NewGetContainerBadRequest().WithPayload(resp)
+		return ctx.JSON(http.StatusBadRequest, resp)
 	}
 
-	cnrInfo, err := getContainerInfo(params.HTTPRequest.Context(), a.pool, cnrID)
+	cnrInfo, err := getContainerInfo(ctx.Request().Context(), a.pool, cnrID)
 	if err != nil {
 		resp := a.logAndGetErrorResponse("get container", err)
-		return operations.NewGetContainerBadRequest().WithPayload(resp)
+		return ctx.JSON(http.StatusBadRequest, resp)
 	}
 
-	return operations.NewGetContainerOK().
-		WithPayload(cnrInfo).
-		WithAccessControlAllowOrigin("*")
+	ctx.Response().Header().Set(accessControlAllowOriginHeader, "*")
+	return ctx.JSON(http.StatusOK, cnrInfo)
 }
 
 // PutContainerEACL handler that update container eacl.
-func (a *API) PutContainerEACL(params operations.PutContainerEACLParams, principal *models.Principal) middleware.Responder {
-	cnrID, err := parseContainerID(params.ContainerID)
-	if err != nil {
-		resp := a.logAndGetErrorResponse("invalid container id", err)
-		return operations.NewPutContainerEACLBadRequest().WithPayload(resp)
+func (a *RestAPI) PutContainerEACL(ctx echo.Context, containerID apiserver.ContainerId, params apiserver.PutContainerEACLParams) error {
+	var body apiserver.Eacl
+	if err := ctx.Bind(&body); err != nil {
+		return ctx.JSON(http.StatusBadRequest, a.logAndGetErrorResponse("bind", err))
 	}
 
-	if err = checkContainerExtendable(params.HTTPRequest.Context(), a.pool, cnrID); err != nil {
+	cnrID, err := parseContainerID(containerID)
+	if err != nil {
+		resp := a.logAndGetErrorResponse("invalid container id", err)
+		return ctx.JSON(http.StatusBadRequest, resp)
+	}
+
+	if err = checkContainerExtendable(ctx.Request().Context(), a.pool, cnrID); err != nil {
 		resp := a.logAndGetErrorResponse("check acl allowance", err)
-		return operations.NewPutContainerEACLBadRequest().WithPayload(resp)
+		return ctx.JSON(http.StatusBadRequest, resp)
+	}
+
+	principal, err := getPrincipal(ctx)
+	if err != nil {
+		return ctx.JSON(http.StatusBadRequest, util.NewErrorResponse(err))
 	}
 
 	st, err := formSessionTokenFromHeaders(principal, params.XBearerSignature, params.XBearerSignatureKey, sessionv2.ContainerVerbSetEACL)
 	if err != nil {
 		resp := a.logAndGetErrorResponse("invalid session token headers", err)
-		return operations.NewPutContainerEACLBadRequest().WithPayload(resp)
+		return ctx.JSON(http.StatusBadRequest, resp)
 	}
 
-	stoken, err := prepareSessionToken(st, *params.WalletConnect)
+	var isWalletConnect bool
+	if params.WalletConnect != nil {
+		isWalletConnect = *params.WalletConnect
+	}
+
+	stoken, err := prepareSessionToken(st, isWalletConnect)
 	if err != nil {
 		resp := a.logAndGetErrorResponse("invalid session token", err)
-		return operations.NewPutContainerEACLBadRequest().WithPayload(resp)
+		return ctx.JSON(http.StatusBadRequest, resp)
 	}
 
-	if err = setContainerEACL(params.HTTPRequest.Context(), a.pool, cnrID, stoken, params.Eacl, a.signer); err != nil {
+	if err = setContainerEACL(ctx.Request().Context(), a.pool, cnrID, stoken, body, a.signer); err != nil {
 		resp := a.logAndGetErrorResponse("failed set container eacl", err)
-		return operations.NewPutContainerEACLBadRequest().WithPayload(resp)
+		return ctx.JSON(http.StatusBadRequest, resp)
 	}
 
-	return operations.NewPutContainerEACLOK().
-		WithPayload(util.NewSuccessResponse()).
-		WithAccessControlAllowOrigin("*")
+	ctx.Response().Header().Set(accessControlAllowOriginHeader, "*")
+	return ctx.JSON(http.StatusOK, util.NewSuccessResponse())
 }
 
 // GetContainerEACL handler that returns container eacl.
-func (a *API) GetContainerEACL(params operations.GetContainerEACLParams) middleware.Responder {
-	cnrID, err := parseContainerID(params.ContainerID)
+func (a *RestAPI) GetContainerEACL(ctx echo.Context, containerID apiserver.ContainerId) error {
+	cnrID, err := parseContainerID(containerID)
 	if err != nil {
 		resp := a.logAndGetErrorResponse("invalid container id", err)
-		return operations.NewGetContainerEACLBadRequest().WithPayload(resp)
+		return ctx.JSON(http.StatusBadRequest, resp)
 	}
 
-	resp, err := getContainerEACL(params.HTTPRequest.Context(), a.pool, cnrID)
+	resp, err := getContainerEACL(ctx.Request().Context(), a.pool, cnrID)
 	if err != nil {
 		errResp := a.logAndGetErrorResponse("failed to get container eacl", err)
-		return operations.NewGetContainerEACLBadRequest().WithPayload(errResp)
+		return ctx.JSON(http.StatusBadRequest, errResp)
 	}
 
-	return operations.NewGetContainerEACLOK().
-		WithPayload(resp).
-		WithAccessControlAllowOrigin("*")
+	ctx.Response().Header().Set(accessControlAllowOriginHeader, "*")
+	return ctx.JSON(http.StatusOK, resp)
 }
 
-// ListContainer handler that returns containers.
-func (a *API) ListContainer(params operations.ListContainersParams) middleware.Responder {
-	ctx := params.HTTPRequest.Context()
-
+// ListContainers handler that returns containers.
+func (a *RestAPI) ListContainers(ctx echo.Context, params apiserver.ListContainersParams) error {
 	var ownerID user.ID
-	if err := ownerID.DecodeString(params.OwnerID); err != nil {
+	if err := ownerID.DecodeString(params.OwnerId); err != nil {
 		resp := a.logAndGetErrorResponse("invalid owner id", err)
-		return operations.NewListContainersBadRequest().WithPayload(resp)
+		return ctx.JSON(http.StatusBadRequest, resp)
 	}
 
 	var prm client.PrmContainerList
 
-	ids, err := a.pool.ContainerList(ctx, ownerID, prm)
+	ids, err := a.pool.ContainerList(ctx.Request().Context(), ownerID, prm)
 	if err != nil {
 		resp := a.logAndGetErrorResponse("list containers", err)
-		return operations.NewListContainersBadRequest().WithPayload(resp)
+		return ctx.JSON(http.StatusBadRequest, resp)
 	}
 
-	offset := int(*params.Offset)
-	size := int(*params.Limit)
+	offset, limit, err := getOffsetAndLimit(params.Offset, params.Limit)
+	if err != nil {
+		resp := a.logAndGetErrorResponse("invalid parameter", err)
+		return ctx.JSON(http.StatusBadRequest, resp)
+	}
 
 	if offset > len(ids)-1 {
-		res := &models.ContainerList{
-			Size:       util.NewInteger(0),
-			Containers: []*models.ContainerInfo{},
+		res := &apiserver.ContainerList{
+			Containers: []apiserver.ContainerInfo{},
 		}
-		return operations.NewListContainersOK().
-			WithPayload(res).
-			WithAccessControlAllowOrigin("*")
+
+		ctx.Response().Header().Set(accessControlAllowOriginHeader, "*")
+		return ctx.JSON(http.StatusOK, res)
 	}
 
-	if offset+size > len(ids) {
-		size = len(ids) - offset
+	if offset+limit > len(ids) {
+		limit = len(ids) - offset
 	}
 
-	res := &models.ContainerList{
-		Size:       util.NewInteger(int64(size)),
-		Containers: make([]*models.ContainerInfo, 0, size),
+	res := &apiserver.ContainerList{
+		Size:       limit,
+		Containers: make([]apiserver.ContainerInfo, 0, limit),
 	}
 
-	for _, id := range ids[offset : offset+size] {
-		cnrInfo, err := getContainerInfo(ctx, a.pool, id)
+	for _, id := range ids[offset : offset+limit] {
+		cnrInfo, err := getContainerInfo(ctx.Request().Context(), a.pool, id)
 		if err != nil {
 			resp := a.logAndGetErrorResponse("get container", err, zap.String("cid", id.String()))
-			return operations.NewListContainersBadRequest().WithPayload(resp)
+			return ctx.JSON(http.StatusBadRequest, resp)
 		}
-		res.Containers = append(res.Containers, cnrInfo)
+
+		if cnrInfo != nil {
+			res.Containers = append(res.Containers, *cnrInfo)
+		} else {
+			zap.L().Warn("getContainerInfo not error, but container info is empty", zap.Stringer("cid", id))
+		}
 	}
 
-	return operations.NewListContainersOK().
-		WithPayload(res).
-		WithAccessControlAllowOrigin("*")
+	ctx.Response().Header().Set(accessControlAllowOriginHeader, "*")
+	return ctx.JSON(http.StatusOK, res)
 }
 
 // DeleteContainer handler that returns container info.
-func (a *API) DeleteContainer(params operations.DeleteContainerParams, principal *models.Principal) middleware.Responder {
+func (a *RestAPI) DeleteContainer(ctx echo.Context, containerID apiserver.ContainerId, params apiserver.DeleteContainerParams) error {
+	principal, err := getPrincipal(ctx)
+	if err != nil {
+		return ctx.JSON(http.StatusBadRequest, util.NewErrorResponse(err))
+	}
+
 	st, err := formSessionTokenFromHeaders(principal, params.XBearerSignature, params.XBearerSignatureKey, sessionv2.ContainerVerbDelete)
 	if err != nil {
 		resp := a.logAndGetErrorResponse("invalid session token headers", err)
-		return operations.NewDeleteContainerBadRequest().WithPayload(resp)
+		return ctx.JSON(http.StatusBadRequest, resp)
 	}
 
-	stoken, err := prepareSessionToken(st, *params.WalletConnect)
+	var isWalletConnect bool
+	if params.WalletConnect != nil {
+		isWalletConnect = *params.WalletConnect
+	}
+
+	stoken, err := prepareSessionToken(st, isWalletConnect)
 	if err != nil {
 		resp := a.logAndGetErrorResponse("invalid session token", err)
-		return operations.NewDeleteContainerBadRequest().WithPayload(resp)
+		return ctx.JSON(http.StatusBadRequest, resp)
 	}
 
-	cnrID, err := parseContainerID(params.ContainerID)
+	cnrID, err := parseContainerID(containerID)
 	if err != nil {
 		resp := a.logAndGetErrorResponse("invalid container id", err)
-		return operations.NewDeleteContainerBadRequest().WithPayload(resp)
+		return ctx.JSON(http.StatusBadRequest, resp)
 	}
 
 	var prm client.PrmContainerDelete
 	prm.WithinSession(stoken)
 
 	wait := waiter.NewContainerDeleteWaiter(a.pool, waiter.DefaultPollInterval)
-	if err = wait.ContainerDelete(params.HTTPRequest.Context(), cnrID, a.signer, prm); err != nil {
-		resp := a.logAndGetErrorResponse("delete container", err, zap.String("container", params.ContainerID))
-		return operations.NewDeleteContainerBadRequest().WithPayload(resp)
+	if err = wait.ContainerDelete(ctx.Request().Context(), cnrID, a.signer, prm); err != nil {
+		resp := a.logAndGetErrorResponse("delete container", err, zap.String("container", containerID))
+		return ctx.JSON(http.StatusBadRequest, resp)
 	}
 
-	return operations.NewDeleteContainerOK().
-		WithPayload(util.NewSuccessResponse()).
-		WithAccessControlAllowOrigin("*")
+	ctx.Response().Header().Set(accessControlAllowOriginHeader, "*")
+	return ctx.JSON(http.StatusOK, util.NewSuccessResponse())
 }
 
 func checkContainerExtendable(ctx context.Context, p *pool.Pool, cnrID cid.ID) error {
@@ -243,17 +283,17 @@ func getContainer(ctx context.Context, p *pool.Pool, cnrID cid.ID) (container.Co
 	return p.ContainerGet(ctx, cnrID, client.PrmContainerGet{})
 }
 
-func getContainerInfo(ctx context.Context, p *pool.Pool, cnrID cid.ID) (*models.ContainerInfo, error) {
+func getContainerInfo(ctx context.Context, p *pool.Pool, cnrID cid.ID) (*apiserver.ContainerInfo, error) {
 	cnr, err := getContainer(ctx, p, cnrID)
 	if err != nil {
 		return nil, err
 	}
 
-	var attrs []*models.Attribute
+	var attrs []apiserver.Attribute
 	cnr.IterateAttributes(func(key, val string) {
-		attrs = append(attrs, &models.Attribute{
-			Key:   util.NewString(key),
-			Value: util.NewString(val),
+		attrs = append(attrs, apiserver.Attribute{
+			Key:   key,
+			Value: val,
 		})
 	})
 
@@ -262,15 +302,15 @@ func getContainerInfo(ctx context.Context, p *pool.Pool, cnrID cid.ID) (*models.
 		return nil, fmt.Errorf("writer policy to string: %w", err)
 	}
 
-	return &models.ContainerInfo{
-		ContainerID:     util.NewString(cnrID.String()),
-		ContainerName:   util.NewString(cnr.Name()),
-		OwnerID:         util.NewString(cnr.Owner().String()),
-		BasicACL:        util.NewString(cnr.BasicACL().EncodeToString()),
-		CannedACL:       friendlyBasicACL(cnr.BasicACL()),
-		PlacementPolicy: util.NewString(sb.String()),
+	return &apiserver.ContainerInfo{
+		ContainerId:     cnrID.String(),
+		ContainerName:   cnr.Name(),
+		OwnerId:         cnr.Owner().String(),
+		BasicAcl:        cnr.BasicACL().EncodeToString(),
+		CannedAcl:       util.NewString(friendlyBasicACL(cnr.BasicACL())),
+		PlacementPolicy: sb.String(),
 		Attributes:      attrs,
-		Version:         util.NewString(getContainerVersion(cnr).String()),
+		Version:         getContainerVersion(cnr).String(),
 	}, nil
 }
 
@@ -319,7 +359,7 @@ func parseContainerID(containerID string) (cid.ID, error) {
 	return cnrID, nil
 }
 
-func setContainerEACL(ctx context.Context, p *pool.Pool, cnrID cid.ID, stoken session.Container, eaclPrm *models.Eacl, signer user.Signer) error {
+func setContainerEACL(ctx context.Context, p *pool.Pool, cnrID cid.ID, stoken session.Container, eaclPrm apiserver.Eacl, signer user.Signer) error {
 	table, err := util.ToNativeTable(eaclPrm.Records)
 	if err != nil {
 		return err
@@ -334,15 +374,15 @@ func setContainerEACL(ctx context.Context, p *pool.Pool, cnrID cid.ID, stoken se
 	return wait.ContainerSetEACL(ctx, *table, signer, prm)
 }
 
-func getContainerEACL(ctx context.Context, p *pool.Pool, cnrID cid.ID) (*models.Eacl, error) {
+func getContainerEACL(ctx context.Context, p *pool.Pool, cnrID cid.ID) (*apiserver.Eacl, error) {
 	table, err := p.ContainerEACL(ctx, cnrID, client.PrmContainerEACL{})
 	if err != nil {
 		return nil, fmt.Errorf("get eacl: %w", err)
 	}
 
-	tableResp := &models.Eacl{
-		ContainerID: cnrID.EncodeToString(),
-		Records:     make([]*models.Record, len(table.Records())),
+	tableResp := &apiserver.Eacl{
+		ContainerId: cnrID.EncodeToString(),
+		Records:     make([]apiserver.Record, len(table.Records())),
 	}
 
 	for i, rec := range table.Records() {
@@ -356,9 +396,7 @@ func getContainerEACL(ctx context.Context, p *pool.Pool, cnrID cid.ID) (*models.
 	return tableResp, nil
 }
 
-func createContainer(ctx context.Context, p *pool.Pool, stoken session.Container, params *operations.PutContainerParams, signer user.Signer) (cid.ID, error) {
-	request := params.Container
-
+func createContainer(ctx context.Context, p *pool.Pool, stoken session.Container, request apiserver.ContainerPutInfo, params apiserver.PutContainerParams, signer user.Signer) (cid.ID, error) {
 	if request.PlacementPolicy == "" {
 		request.PlacementPolicy = defaultPlacementPolicy
 	}
@@ -368,11 +406,11 @@ func createContainer(ctx context.Context, p *pool.Pool, stoken session.Container
 		return cid.ID{}, fmt.Errorf("couldn't parse placement policy: %w", err)
 	}
 
-	if request.BasicACL == "" {
-		request.BasicACL = defaultBasicACL
+	if request.BasicAcl == "" {
+		request.BasicAcl = defaultBasicACL
 	}
 
-	basicACL, err := decodeBasicACL(request.BasicACL)
+	basicACL, err := decodeBasicACL(request.BasicAcl)
 	if err != nil {
 		return cid.ID{}, fmt.Errorf("couldn't parse basic acl: %w", err)
 	}
@@ -390,15 +428,15 @@ func createContainer(ctx context.Context, p *pool.Pool, stoken session.Container
 	}
 
 	for _, attr := range request.Attributes {
-		switch *attr.Key {
+		switch attr.Key {
 		case attributeName, attributeTimestamp,
 			containerv2.SysAttributeName, containerv2.SysAttributeZone:
 		default:
-			cnr.SetAttribute(*attr.Key, *attr.Value)
+			cnr.SetAttribute(attr.Key, attr.Value)
 		}
 	}
 
-	if *params.NameScopeGlobal { // we don't check for nil because there is default false value
+	if params.NameScopeGlobal != nil && *params.NameScopeGlobal {
 		if err = checkNNSContainerName(request.ContainerName); err != nil {
 			return cid.ID{}, fmt.Errorf("invalid container name: %w", err)
 		}

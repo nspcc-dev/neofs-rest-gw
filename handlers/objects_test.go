@@ -3,7 +3,7 @@ package handlers
 import (
 	"testing"
 
-	"github.com/nspcc-dev/neofs-rest-gw/gen/restapi/operations"
+	"github.com/nspcc-dev/neofs-rest-gw/handlers/apiserver"
 	"github.com/nspcc-dev/neofs-rest-gw/internal/util"
 	"github.com/stretchr/testify/require"
 )
@@ -13,11 +13,11 @@ func TestPrepareOffset(t *testing.T) {
 		err            bool
 		expectedOffset uint64
 		expectedLength uint64
-		params         operations.GetObjectInfoParams
+		params         apiserver.GetObjectInfoParams
 		objSize        uint64
 	}{
 		{
-			params: operations.GetObjectInfoParams{
+			params: apiserver.GetObjectInfoParams{
 				RangeLength: util.NewInteger(1),
 				RangeOffset: util.NewInteger(0),
 			},
@@ -26,7 +26,7 @@ func TestPrepareOffset(t *testing.T) {
 			expectedLength: 1,
 		},
 		{
-			params: operations.GetObjectInfoParams{
+			params: apiserver.GetObjectInfoParams{
 				RangeLength: util.NewInteger(3),
 				RangeOffset: util.NewInteger(1),
 			},
@@ -41,21 +41,21 @@ func TestPrepareOffset(t *testing.T) {
 		},
 		{
 			err: true,
-			params: operations.GetObjectInfoParams{
+			params: apiserver.GetObjectInfoParams{
 				RangeLength: util.NewInteger(1),
 				RangeOffset: nil,
 			},
 		},
 		{
 			err: true,
-			params: operations.GetObjectInfoParams{
+			params: apiserver.GetObjectInfoParams{
 				RangeLength: nil,
 				RangeOffset: util.NewInteger(1),
 			},
 		},
 		{
 			err: true,
-			params: operations.GetObjectInfoParams{
+			params: apiserver.GetObjectInfoParams{
 				RangeLength: util.NewInteger(1),
 				RangeOffset: util.NewInteger(0),
 			},

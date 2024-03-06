@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"mime/multipart"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -15,12 +16,8 @@ import (
 	"time"
 
 	dockerContainer "github.com/docker/docker/api/types/container"
-	"github.com/go-openapi/loads"
 	"github.com/labstack/echo/v4"
 	"github.com/nspcc-dev/neo-go/pkg/crypto/keys"
-	"github.com/nspcc-dev/neofs-rest-gw/gen/models"
-	"github.com/nspcc-dev/neofs-rest-gw/gen/restapi"
-	"github.com/nspcc-dev/neofs-rest-gw/gen/restapi/operations"
 	"github.com/nspcc-dev/neofs-rest-gw/handlers"
 	"github.com/nspcc-dev/neofs-rest-gw/handlers/apiserver"
 	"github.com/nspcc-dev/neofs-rest-gw/internal/util"
@@ -81,7 +78,6 @@ func TestIntegration(t *testing.T) {
 
 	if useLocalEnvironment {
 		runLocalTests(ctx, t, key)
-		runLocalEchoTests(ctx, t, key)
 	} else {
 		runTestInContainer(ctx, t, key)
 	}
@@ -89,10 +85,6 @@ func TestIntegration(t *testing.T) {
 
 func runLocalTests(ctx context.Context, t *testing.T, key *keys.PrivateKey) {
 	t.Run("local", func(t *testing.T) { runTests(ctx, t, key, testLocalNode) })
-}
-
-func runLocalEchoTests(ctx context.Context, t *testing.T, key *keys.PrivateKey) {
-	t.Run("local", func(t *testing.T) { runEchoTests(ctx, t, key, testLocalNode) })
 }
 
 func runTestInContainer(rootCtx context.Context, t *testing.T, key *keys.PrivateKey) {
@@ -130,15 +122,7 @@ func runTests(ctx context.Context, t *testing.T, key *keys.PrivateKey, node stri
 	restrictByEACL(ctx, t, clientPool, cnrID, signer)
 
 	t.Run("rest auth several tokens", func(t *testing.T) { authTokens(ctx, t) })
-	t.Run("rest check mix tokens up", func(t *testing.T) { mixTokens(ctx, t, cnrID) })
 	t.Run("rest form full binary bearer", func(t *testing.T) { formFullBinaryBearer(ctx, t) })
-
-	t.Run("rest put object", func(t *testing.T) { restObjectPut(ctx, t, clientPool, cnrID, signer) })
-	t.Run("rest get object", func(t *testing.T) { restObjectGet(ctx, t, clientPool, &owner, cnrID, signer) })
-	t.Run("rest get object unauthenticated", func(t *testing.T) { restObjectGetUnauthenticated(ctx, t, clientPool, &owner, cnrID, signer) })
-	t.Run("rest get object full bearer", func(t *testing.T) { restObjectGetFullBearer(ctx, t, clientPool, &owner, cnrID, signer) })
-	t.Run("rest delete object", func(t *testing.T) { restObjectDelete(ctx, t, clientPool, &owner, cnrID, signer) })
-	t.Run("rest search objects", func(t *testing.T) { restObjectsSearch(ctx, t, clientPool, &owner, cnrID, signer) })
 
 	t.Run("rest put container invalid", func(t *testing.T) { restContainerPutInvalid(ctx, t) })
 	t.Run("rest put container", func(t *testing.T) { restContainerPut(ctx, t, clientPool) })
@@ -147,18 +131,21 @@ func runTests(ctx context.Context, t *testing.T, key *keys.PrivateKey, node stri
 	t.Run("rest put container eacl", func(t *testing.T) { restContainerEACLPut(ctx, t, clientPool, owner, signer) })
 	t.Run("rest get container eacl", func(t *testing.T) { restContainerEACLGet(ctx, t, clientPool, cnrID) })
 	t.Run("rest list containers", func(t *testing.T) { restContainerList(ctx, t, clientPool, owner, cnrID) })
-}
 
-func runEchoTests(ctx context.Context, t *testing.T, key *keys.PrivateKey, node string) {
-	cancel := runEchoServer(ctx, t, node)
-	defer cancel()
+	t.Run("rest put object", func(t *testing.T) { restObjectPut(ctx, t, clientPool, cnrID, signer) })
+	t.Run("rest get object", func(t *testing.T) { restObjectGet(ctx, t, clientPool, &owner, cnrID, signer) })
+	t.Run("rest get object unauthenticated", func(t *testing.T) { restObjectGetUnauthenticated(ctx, t, clientPool, &owner, cnrID, signer) })
+	t.Run("rest get object full bearer", func(t *testing.T) { restObjectGetFullBearer(ctx, t, clientPool, &owner, cnrID, signer) })
+	t.Run("rest delete object", func(t *testing.T) { restObjectDelete(ctx, t, clientPool, &owner, cnrID, signer) })
+	t.Run("rest search objects", func(t *testing.T) { restObjectsSearch(ctx, t, clientPool, &owner, cnrID, signer) })
+	t.Run("rest upload object", func(t *testing.T) { restObjectUpload(ctx, t, clientPool, cnrID, signer) })
+	t.Run("rest head object", func(t *testing.T) { restObjectHead(ctx, t, clientPool, &owner, cnrID, signer) })
+	t.Run("rest head by attribute", func(t *testing.T) { restObjectHeadByAttribute(ctx, t, clientPool, &owner, cnrID, signer) })
+	t.Run("rest get by attribute", func(t *testing.T) { restObjectGetByAttribute(ctx, t, clientPool, &owner, cnrID, signer) })
 
-	signer := user.NewAutoIDSignerRFC6979(key.PrivateKey)
-	owner := signer.UserID()
+	t.Run("rest check mix tokens up", func(t *testing.T) { mixTokens(ctx, t, cnrID) })
 
-	clientPool := getPool(ctx, t, key, node)
-	cnrID := createContainer(ctx, t, clientPool, owner, containerName, signer)
-	restrictByEACL(ctx, t, clientPool, cnrID, signer)
+	t.Run("rest balance", func(t *testing.T) { restBalance(ctx, t) })
 }
 
 func createDockerContainer(ctx context.Context, t *testing.T, image, version string) testcontainers.Container {
@@ -187,35 +174,6 @@ func runServer(ctx context.Context, t *testing.T, node string) context.CancelFun
 	l := newLogger(v)
 
 	neofsAPI, err := newNeofsAPI(cancelCtx, l, v)
-	require.NoError(t, err)
-
-	swaggerSpec, err := loads.Analyzed(restapi.SwaggerJSON, "")
-	require.NoError(t, err)
-
-	api := operations.NewNeofsRestGwAPI(swaggerSpec)
-	server := restapi.NewServer(api, serverConfig(v))
-
-	server.ConfigureAPI(neofsAPI.Configure)
-
-	go func() {
-		err := server.Serve()
-		require.NoError(t, err)
-	}()
-
-	return func() {
-		cancel()
-		err := server.Shutdown()
-		require.NoError(t, err)
-	}
-}
-
-func runEchoServer(ctx context.Context, t *testing.T, node string) context.CancelFunc {
-	cancelCtx, cancel := context.WithCancel(ctx)
-
-	v := getDefaultConfig(node)
-	l := newLogger(v)
-
-	neofsAPI, err := newNeofsAPIEcho(cancelCtx, l, v)
 	require.NoError(t, err)
 
 	swagger, err := apiserver.GetSwagger()
@@ -248,8 +206,8 @@ func getDefaultConfig(node string) *viper.Viper {
 	v.SetDefault(cfgPeers+".0.address", node)
 	v.SetDefault(cfgPeers+".0.weight", 1)
 	v.SetDefault(cfgPeers+".0.priority", 1)
-	v.SetDefault(cfgServerSection+restapi.FlagListenAddress, testListenAddress)
-	v.SetDefault(cfgServerSection+restapi.FlagWriteTimeout, 60*time.Second)
+	v.SetDefault(cfgServerSection+FlagListenAddress, testListenAddress)
+	v.SetDefault(cfgServerSection+FlagWriteTimeout, 60*time.Second)
 
 	return v
 }
@@ -269,59 +227,59 @@ func getPool(ctx context.Context, t *testing.T, key *keys.PrivateKey, node strin
 	return clientPool
 }
 
-func getRestrictBearerRecords() []*models.Record {
-	return []*models.Record{
-		formRestrictRecord(models.OperationGET),
-		formRestrictRecord(models.OperationHEAD),
-		formRestrictRecord(models.OperationPUT),
-		formRestrictRecord(models.OperationDELETE),
-		formRestrictRecord(models.OperationSEARCH),
-		formRestrictRecord(models.OperationRANGE),
-		formRestrictRecord(models.OperationRANGEHASH),
+func getRestrictBearerRecords() []apiserver.Record {
+	return []apiserver.Record{
+		formRestrictRecord(apiserver.OperationGET),
+		formRestrictRecord(apiserver.OperationHEAD),
+		formRestrictRecord(apiserver.OperationPUT),
+		formRestrictRecord(apiserver.OperationDELETE),
+		formRestrictRecord(apiserver.OperationSEARCH),
+		formRestrictRecord(apiserver.OperationRANGE),
+		formRestrictRecord(apiserver.OperationRANGEHASH),
 	}
 }
 
-func formRestrictRecord(op models.Operation) *models.Record {
-	return &models.Record{
-		Operation: models.NewOperation(op),
-		Action:    models.NewAction(models.ActionDENY),
-		Filters:   []*models.Filter{},
-		Targets: []*models.Target{{
-			Role: models.NewRole(models.RoleOTHERS),
+func formRestrictRecord(op apiserver.Operation) apiserver.Record {
+	return apiserver.Record{
+		Operation: op,
+		Action:    apiserver.DENY,
+		Filters:   []apiserver.Filter{},
+		Targets: []apiserver.Target{{
+			Role: apiserver.OTHERS,
 			Keys: []string{},
 		}}}
 }
 
 func authTokens(ctx context.Context, t *testing.T) {
-	bearers := []*models.Bearer{
+	bearers := []apiserver.Bearer{
 		{
 			Name: "all-object",
-			Object: []*models.Record{{
-				Operation: models.NewOperation(models.OperationPUT),
-				Action:    models.NewAction(models.ActionALLOW),
-				Filters:   []*models.Filter{},
-				Targets: []*models.Target{{
-					Role: models.NewRole(models.RoleOTHERS),
+			Object: []apiserver.Record{{
+				Operation: apiserver.OperationPUT,
+				Action:    apiserver.ALLOW,
+				Filters:   []apiserver.Filter{},
+				Targets: []apiserver.Target{{
+					Role: apiserver.OTHERS,
 					Keys: []string{},
 				}},
 			}},
 		},
 		{
 			Name: "put-container",
-			Container: &models.Rule{
-				Verb: models.NewVerb(models.VerbPUT),
+			Container: &apiserver.Rule{
+				Verb: apiserver.VerbPUT,
 			},
 		},
 		{
 			Name: "seteacl-container",
-			Container: &models.Rule{
-				Verb: models.NewVerb(models.VerbSETEACL),
+			Container: &apiserver.Rule{
+				Verb: apiserver.VerbSETEACL,
 			},
 		},
 		{
 			Name: "delete-container",
-			Container: &models.Rule{
-				Verb: models.NewVerb(models.VerbDELETE),
+			Container: &apiserver.Rule{
+				Verb: apiserver.VerbDELETE,
 			},
 		},
 	}
@@ -331,29 +289,29 @@ func authTokens(ctx context.Context, t *testing.T) {
 }
 
 func mixTokens(ctx context.Context, t *testing.T, cnrID cid.ID) {
-	bearers := []*models.Bearer{
+	bearers := []apiserver.Bearer{
 		{
 			Name: "all-object",
-			Object: []*models.Record{{
-				Operation: models.NewOperation(models.OperationPUT),
-				Action:    models.NewAction(models.ActionALLOW),
-				Filters:   []*models.Filter{},
-				Targets: []*models.Target{{
-					Role: models.NewRole(models.RoleOTHERS),
+			Object: []apiserver.Record{{
+				Operation: apiserver.OperationPUT,
+				Action:    apiserver.ALLOW,
+				Filters:   []apiserver.Filter{},
+				Targets: []apiserver.Target{{
+					Role: apiserver.OTHERS,
 					Keys: []string{},
 				}},
 			}},
 		},
 		{
 			Name: "put-container",
-			Container: &models.Rule{
-				Verb: models.NewVerb(models.VerbPUT),
+			Container: &apiserver.Rule{
+				Verb: apiserver.VerbPUT,
 			},
 		},
 		{
 			Name: "seteacl-container",
-			Container: &models.Rule{
-				Verb: models.NewVerb(models.VerbSETEACL),
+			Container: &apiserver.Rule{
+				Verb: apiserver.VerbSETEACL,
 			},
 		},
 	}
@@ -381,23 +339,23 @@ func mixTokens(ctx context.Context, t *testing.T, cnrID cid.ID) {
 }
 
 func formFullBinaryBearer(ctx context.Context, t *testing.T) {
-	bearers := []*models.Bearer{
+	bearers := []apiserver.Bearer{
 		{
 			Name: "all-object",
-			Object: []*models.Record{{
-				Operation: models.NewOperation(models.OperationPUT),
-				Action:    models.NewAction(models.ActionALLOW),
-				Filters:   []*models.Filter{},
-				Targets: []*models.Target{{
-					Role: models.NewRole(models.RoleOTHERS),
+			Object: []apiserver.Record{{
+				Operation: apiserver.OperationPUT,
+				Action:    apiserver.ALLOW,
+				Filters:   []apiserver.Filter{},
+				Targets: []apiserver.Target{{
+					Role: apiserver.OTHERS,
 					Keys: []string{},
 				}},
 			}},
 		},
 		{
 			Name: "put-container",
-			Container: &models.Rule{
-				Verb: models.NewVerb(models.VerbPUT),
+			Container: &apiserver.Rule{
+				Verb: apiserver.VerbPUT,
 			},
 		},
 	}
@@ -420,10 +378,10 @@ func formFullBinaryBearer(ctx context.Context, t *testing.T) {
 	request, err = http.NewRequest(http.MethodGet, testHost+"/v1/auth/bearer?"+query.Encode(), nil)
 	require.NoError(t, err)
 	prepareCommonHeaders(request.Header, objectToken)
-	resp := &models.BinaryBearer{}
+	resp := &apiserver.BinaryBearer{}
 	doRequest(t, httpClient, request, http.StatusOK, resp)
 
-	actualTokenRaw, err := base64.StdEncoding.DecodeString(*resp.Token)
+	actualTokenRaw, err := base64.StdEncoding.DecodeString(resp.Token)
 	require.NoError(t, err)
 
 	var actualToken bearer.Token
@@ -445,7 +403,7 @@ func formFullBinaryBearer(ctx context.Context, t *testing.T) {
 func checkPutContainerWithError(t *testing.T, httpClient *http.Client, token *handlers.BearerToken) {
 	reqURL, err := url.Parse(testHost + "/v1/containers")
 	require.NoError(t, err)
-	body, err := json.Marshal(&models.ContainerPutInfo{ContainerName: "container"})
+	body, err := json.Marshal(&apiserver.ContainerPutInfo{ContainerName: "container"})
 	require.NoError(t, err)
 	request, err := http.NewRequest(http.MethodPut, reqURL.String(), bytes.NewReader(body))
 	require.NoError(t, err)
@@ -465,7 +423,7 @@ func checkDeleteContainerWithError(t *testing.T, httpClient *http.Client, cnrID 
 }
 
 func checkSetEACLContainerWithError(t *testing.T, httpClient *http.Client, cnrID cid.ID, token *handlers.BearerToken) {
-	req := models.Eacl{Records: []*models.Record{}}
+	req := apiserver.Eacl{Records: []apiserver.Record{}}
 	body, err := json.Marshal(&req)
 	require.NoError(t, err)
 	request, err := http.NewRequest(http.MethodPut, testHost+"/v1/containers/"+cnrID.EncodeToString()+"/eacl", bytes.NewReader(body))
@@ -476,10 +434,11 @@ func checkSetEACLContainerWithError(t *testing.T, httpClient *http.Client, cnrID
 }
 
 func checkPutObjectWithError(t *testing.T, httpClient *http.Client, cnrID cid.ID, token *handlers.BearerToken) {
-	req := &models.ObjectUpload{
-		ContainerID: util.NewString(cnrID.EncodeToString()),
-		FileName:    util.NewString("newFile.txt"),
-		Payload:     base64.StdEncoding.EncodeToString([]byte("content")),
+	p := base64.StdEncoding.EncodeToString([]byte("content"))
+	req := &apiserver.ObjectUpload{
+		ContainerId: cnrID.EncodeToString(),
+		FileName:    "newFile.txt",
+		Payload:     &p,
 	}
 
 	body, err := json.Marshal(req)
@@ -493,20 +452,20 @@ func checkPutObjectWithError(t *testing.T, httpClient *http.Client, cnrID cid.ID
 }
 
 func checkGWErrorResponse(t *testing.T, httpClient *http.Client, request *http.Request) {
-	resp := &models.ErrorResponse{}
+	resp := &apiserver.ErrorResponse{}
 	doRequest(t, httpClient, request, http.StatusBadRequest, resp)
-	require.Equal(t, int64(0), resp.Code)
-	require.Equal(t, models.ErrorTypeGW, *resp.Type)
+	require.Equal(t, uint32(0), resp.Code)
+	require.Equal(t, apiserver.GW, resp.Type)
 }
 
 func restObjectPut(ctx context.Context, t *testing.T, clientPool *pool.Pool, cnrID cid.ID, signer user.Signer) {
-	bearer := &models.Bearer{
-		Object: []*models.Record{{
-			Operation: models.NewOperation(models.OperationPUT),
-			Action:    models.NewAction(models.ActionALLOW),
-			Filters:   []*models.Filter{},
-			Targets: []*models.Target{{
-				Role: models.NewRole(models.RoleOTHERS),
+	bearer := apiserver.Bearer{
+		Object: []apiserver.Record{{
+			Operation: apiserver.OperationPUT,
+			Action:    apiserver.ALLOW,
+			Filters:   []apiserver.Filter{},
+			Targets: []apiserver.Target{{
+				Role: apiserver.OTHERS,
 				Keys: []string{},
 			}},
 		}},
@@ -514,7 +473,7 @@ func restObjectPut(ctx context.Context, t *testing.T, clientPool *pool.Pool, cnr
 	bearer.Object = append(bearer.Object, getRestrictBearerRecords()...)
 
 	httpClient := defaultHTTPClient()
-	bearerTokens := makeAuthTokenRequest(ctx, t, []*models.Bearer{bearer}, httpClient, false)
+	bearerTokens := makeAuthTokenRequest(ctx, t, []apiserver.Bearer{bearer}, httpClient, false)
 	bearerToken := bearerTokens[0]
 
 	content := "content of file"
@@ -525,13 +484,13 @@ func restObjectPut(ctx context.Context, t *testing.T, clientPool *pool.Pool, cnr
 		attrKey:                  attrValue,
 	}
 
-	req := &models.ObjectUpload{
-		ContainerID: util.NewString(cnrID.EncodeToString()),
-		FileName:    util.NewString("newFile.txt"),
-		Payload:     base64.StdEncoding.EncodeToString([]byte(content)),
-		Attributes: []*models.Attribute{{
-			Key:   &attrKey,
-			Value: &attrValue,
+	req := &apiserver.ObjectUpload{
+		ContainerId: cnrID.EncodeToString(),
+		FileName:    "newFile.txt",
+		Payload:     util.NewString(base64.StdEncoding.EncodeToString([]byte(content))),
+		Attributes: []apiserver.Attribute{{
+			Key:   attrKey,
+			Value: attrValue,
 		}},
 	}
 
@@ -545,14 +504,14 @@ func restObjectPut(ctx context.Context, t *testing.T, clientPool *pool.Pool, cnr
 	require.NoError(t, err)
 	prepareCommonHeaders(request.Header, bearerToken)
 
-	addr := &models.Address{}
+	addr := &apiserver.Address{}
 	doRequest(t, httpClient, request, http.StatusOK, addr)
 
 	var CID cid.ID
-	err = CID.DecodeString(*addr.ContainerID)
+	err = CID.DecodeString(addr.ContainerId)
 	require.NoError(t, err)
 	var id oid.ID
-	err = id.DecodeString(*addr.ObjectID)
+	err = id.DecodeString(addr.ObjectId)
 	require.NoError(t, err)
 
 	var prm client.PrmObjectGet
@@ -569,6 +528,400 @@ func restObjectPut(ctx context.Context, t *testing.T, clientPool *pool.Pool, cnr
 	}
 }
 
+func restObjectGetByAttribute(ctx context.Context, t *testing.T, p *pool.Pool, ownerID *user.ID, cnrID cid.ID, signer user.Signer) {
+	bearer := apiserver.Bearer{
+		Object: []apiserver.Record{
+			{
+				Operation: apiserver.OperationGET,
+				Action:    apiserver.ALLOW,
+				Filters:   []apiserver.Filter{},
+				Targets: []apiserver.Target{{
+					Role: apiserver.OTHERS,
+					Keys: []string{},
+				}},
+			},
+			{
+				Operation: apiserver.OperationSEARCH,
+				Action:    apiserver.ALLOW,
+				Filters:   []apiserver.Filter{},
+				Targets: []apiserver.Target{{
+					Role: apiserver.OTHERS,
+					Keys: []string{},
+				}},
+			},
+		},
+	}
+	bearer.Object = append(bearer.Object, getRestrictBearerRecords()...)
+
+	httpClient := defaultHTTPClient()
+	bearerTokens := makeAuthTokenRequest(ctx, t, []apiserver.Bearer{bearer}, httpClient, false)
+	bearerToken := bearerTokens[0]
+
+	query := make(url.Values)
+	query.Add(walletConnectQuery, strconv.FormatBool(useWalletConnect))
+
+	request, err := http.NewRequest(http.MethodGet, testHost+"/v1/auth/bearer?"+query.Encode(), nil)
+	require.NoError(t, err)
+	prepareCommonHeaders(request.Header, bearerToken)
+	resp := &apiserver.BinaryBearer{}
+	doRequest(t, httpClient, request, http.StatusOK, resp)
+
+	var (
+		content      = []byte("some content")
+		fileNameAttr = "get-obj-by-attr-name-echo"
+		createTS     = time.Now().Unix()
+		attributes   = map[string]string{
+			object.AttributeFileName:  fileNameAttr,
+			object.AttributeTimestamp: strconv.FormatInt(createTS, 10),
+			"user-attribute":          "user value",
+		}
+	)
+
+	t.Run("get", func(t *testing.T) {
+		objID := createObject(ctx, t, p, ownerID, cnrID, attributes, content, signer)
+
+		request, err = http.NewRequest(http.MethodGet, testHost+"/v1/get_by_attribute/"+cnrID.EncodeToString()+"/"+object.AttributeFileName+"/"+fileNameAttr+"?"+query.Encode(), nil)
+		require.NoError(t, err)
+		prepareCommonHeaders(request.Header, bearerToken)
+		request.Header.Set("Authorization", "Bearer "+resp.Token)
+
+		headers, rawPayload := doRequest(t, httpClient, request, http.StatusOK, nil)
+		require.NotEmpty(t, headers)
+
+		for key, vals := range headers {
+			require.Len(t, vals, 1)
+
+			switch key {
+			case "X-Attribute-Filename":
+				require.Equal(t, fileNameAttr, vals[0])
+			case "Content-Disposition":
+				require.Equal(t, "inline; filename="+fileNameAttr, vals[0])
+			case "X-Attribute-Timestamp":
+				require.Equal(t, strconv.FormatInt(createTS, 10), vals[0])
+			case "X-Object-Id":
+				require.Equal(t, objID.String(), vals[0])
+			case "Last-Modified":
+				require.Equal(t, time.Unix(createTS, 0).UTC().Format(http.TimeFormat), vals[0])
+			case "X-Owner-Id":
+				require.Equal(t, signer.UserID().String(), vals[0])
+			case "X-Container-Id":
+				require.Equal(t, cnrID.String(), vals[0])
+			case "Content-Length":
+				require.Equal(t, strconv.FormatInt(int64(len(content)), 10), vals[0])
+			case "Content-Type":
+				require.Equal(t, "text/plain; charset=utf-8", vals[0])
+			}
+		}
+
+		require.Equal(t, content, rawPayload)
+	})
+
+	t.Run("get multi-segment path attribute", func(t *testing.T) {
+		multiSegmentName := "path/" + fileNameAttr
+		attributes[object.AttributeFileName] = multiSegmentName
+
+		objID := createObject(ctx, t, p, ownerID, cnrID, attributes, content, signer)
+
+		request, err = http.NewRequest(http.MethodGet, testHost+"/v1/get_by_attribute/"+cnrID.EncodeToString()+"/"+object.AttributeFileName+"/"+multiSegmentName+"?"+query.Encode(), nil)
+		require.NoError(t, err)
+		prepareCommonHeaders(request.Header, bearerToken)
+		request.Header.Set("Authorization", "Bearer "+resp.Token)
+
+		headers, rawPayload := doRequest(t, httpClient, request, http.StatusOK, nil)
+		require.NotEmpty(t, headers)
+
+		for key, vals := range headers {
+			require.Len(t, vals, 1)
+
+			switch key {
+			case "X-Attribute-Filename":
+				require.Equal(t, multiSegmentName, vals[0])
+			case "Content-Disposition":
+				require.Equal(t, "inline; filename="+fileNameAttr, vals[0])
+			case "X-Attribute-Timestamp":
+				require.Equal(t, strconv.FormatInt(createTS, 10), vals[0])
+			case "X-Object-Id":
+				require.Equal(t, objID.String(), vals[0])
+			case "Last-Modified":
+				require.Equal(t, time.Unix(createTS, 0).UTC().Format(http.TimeFormat), vals[0])
+			case "X-Owner-Id":
+				require.Equal(t, signer.UserID().String(), vals[0])
+			case "X-Container-Id":
+				require.Equal(t, cnrID.String(), vals[0])
+			case "Content-Length":
+				require.Equal(t, strconv.FormatInt(int64(len(content)), 10), vals[0])
+			case "Content-Type":
+				require.Equal(t, "text/plain; charset=utf-8", vals[0])
+			}
+		}
+
+		require.Equal(t, content, rawPayload)
+	})
+}
+
+func restObjectHeadByAttribute(ctx context.Context, t *testing.T, p *pool.Pool, ownerID *user.ID, cnrID cid.ID, signer user.Signer) {
+	bearer := apiserver.Bearer{
+		Object: []apiserver.Record{
+			{
+				Operation: apiserver.OperationHEAD,
+				Action:    apiserver.ALLOW,
+				Filters:   []apiserver.Filter{},
+				Targets: []apiserver.Target{{
+					Role: apiserver.OTHERS,
+					Keys: []string{},
+				}},
+			},
+			{
+				Operation: apiserver.OperationRANGE,
+				Action:    apiserver.ALLOW,
+				Filters:   []apiserver.Filter{},
+				Targets: []apiserver.Target{{
+					Role: apiserver.OTHERS,
+					Keys: []string{},
+				}},
+			},
+			{
+				Operation: apiserver.OperationSEARCH,
+				Action:    apiserver.ALLOW,
+				Filters:   []apiserver.Filter{},
+				Targets: []apiserver.Target{{
+					Role: apiserver.OTHERS,
+					Keys: []string{},
+				}},
+			},
+		},
+	}
+	bearer.Object = append(bearer.Object, getRestrictBearerRecords()...)
+
+	httpClient := defaultHTTPClient()
+	bearerTokens := makeAuthTokenRequest(ctx, t, []apiserver.Bearer{bearer}, httpClient, false)
+	bearerToken := bearerTokens[0]
+
+	query := make(url.Values)
+	query.Add(walletConnectQuery, strconv.FormatBool(useWalletConnect))
+
+	request, err := http.NewRequest(http.MethodGet, testHost+"/v1/auth/bearer?"+query.Encode(), nil)
+	require.NoError(t, err)
+	prepareCommonHeaders(request.Header, bearerToken)
+	resp := &apiserver.BinaryBearer{}
+	doRequest(t, httpClient, request, http.StatusOK, resp)
+
+	var (
+		content      = []byte("some content")
+		fileNameAttr = "head-obj-by-attr-name-echo"
+		createTS     = time.Now().Unix()
+		attributes   = map[string]string{
+			object.AttributeFileName:  fileNameAttr,
+			object.AttributeTimestamp: strconv.FormatInt(createTS, 10),
+			"user-attribute":          "user value",
+		}
+	)
+
+	t.Run("head", func(t *testing.T) {
+		objID := createObject(ctx, t, p, ownerID, cnrID, attributes, content, signer)
+
+		request, err = http.NewRequest(http.MethodHead, testHost+"/v1/get_by_attribute/"+cnrID.EncodeToString()+"/"+object.AttributeFileName+"/"+fileNameAttr+"?"+query.Encode(), nil)
+		require.NoError(t, err)
+		prepareCommonHeaders(request.Header, bearerToken)
+		request.Header.Set("Authorization", "Bearer "+resp.Token)
+
+		headers, _ := doRequest(t, httpClient, request, http.StatusOK, nil)
+		require.NotEmpty(t, headers)
+
+		for key, vals := range headers {
+			require.Len(t, vals, 1)
+
+			switch key {
+			case "X-Attribute-Filename":
+				require.Equal(t, fileNameAttr, vals[0])
+			case "Content-Disposition":
+				require.Equal(t, "inline; filename="+fileNameAttr, vals[0])
+			case "X-Attribute-Timestamp":
+				require.Equal(t, strconv.FormatInt(createTS, 10), vals[0])
+			case "X-Object-Id":
+				require.Equal(t, objID.String(), vals[0])
+			case "Last-Modified":
+				require.Equal(t, time.Unix(createTS, 0).UTC().Format(http.TimeFormat), vals[0])
+			case "X-Owner-Id":
+				require.Equal(t, signer.UserID().String(), vals[0])
+			case "X-Container-Id":
+				require.Equal(t, cnrID.String(), vals[0])
+			case "Content-Length":
+				require.Equal(t, strconv.FormatInt(int64(len(content)), 10), vals[0])
+			case "Content-Type":
+				require.Equal(t, "text/plain; charset=utf-8", vals[0])
+			}
+		}
+	})
+
+	t.Run("head multi-segment path attribute", func(t *testing.T) {
+		multiSegmentName := "path/" + fileNameAttr
+		attributes[object.AttributeFileName] = multiSegmentName
+
+		objID := createObject(ctx, t, p, ownerID, cnrID, attributes, content, signer)
+
+		request, err = http.NewRequest(http.MethodHead, testHost+"/v1/get_by_attribute/"+cnrID.EncodeToString()+"/"+object.AttributeFileName+"/"+multiSegmentName+"?"+query.Encode(), nil)
+		require.NoError(t, err)
+		prepareCommonHeaders(request.Header, bearerToken)
+		request.Header.Set("Authorization", "Bearer "+resp.Token)
+
+		headers, _ := doRequest(t, httpClient, request, http.StatusOK, nil)
+		require.NotEmpty(t, headers)
+
+		for key, vals := range headers {
+			require.Len(t, vals, 1)
+
+			switch key {
+			case "X-Attribute-Filename":
+				require.Equal(t, multiSegmentName, vals[0])
+			case "Content-Disposition":
+				require.Equal(t, "inline; filename="+fileNameAttr, vals[0])
+			case "X-Attribute-Timestamp":
+				require.Equal(t, strconv.FormatInt(createTS, 10), vals[0])
+			case "X-Object-Id":
+				require.Equal(t, objID.String(), vals[0])
+			case "Last-Modified":
+				require.Equal(t, time.Unix(createTS, 0).UTC().Format(http.TimeFormat), vals[0])
+			case "X-Owner-Id":
+				require.Equal(t, signer.UserID().String(), vals[0])
+			case "X-Container-Id":
+				require.Equal(t, cnrID.String(), vals[0])
+			case "Content-Length":
+				require.Equal(t, strconv.FormatInt(int64(len(content)), 10), vals[0])
+			case "Content-Type":
+				require.Equal(t, "text/plain; charset=utf-8", vals[0])
+			}
+		}
+	})
+}
+
+func restObjectHead(ctx context.Context, t *testing.T, p *pool.Pool, ownerID *user.ID, cnrID cid.ID, signer user.Signer) {
+	bearer := apiserver.Bearer{
+		Object: []apiserver.Record{
+			{
+				Operation: apiserver.OperationHEAD,
+				Action:    apiserver.ALLOW,
+				Filters:   []apiserver.Filter{},
+				Targets: []apiserver.Target{{
+					Role: apiserver.OTHERS,
+					Keys: []string{},
+				}},
+			},
+			{
+				Operation: apiserver.OperationRANGE,
+				Action:    apiserver.ALLOW,
+				Filters:   []apiserver.Filter{},
+				Targets: []apiserver.Target{{
+					Role: apiserver.OTHERS,
+					Keys: []string{},
+				}},
+			},
+		},
+	}
+	bearer.Object = append(bearer.Object, getRestrictBearerRecords()...)
+
+	httpClient := defaultHTTPClient()
+	bearerTokens := makeAuthTokenRequest(ctx, t, []apiserver.Bearer{bearer}, httpClient, false)
+	bearerToken := bearerTokens[0]
+
+	query := make(url.Values)
+	query.Add(walletConnectQuery, strconv.FormatBool(useWalletConnect))
+
+	request, err := http.NewRequest(http.MethodGet, testHost+"/v1/auth/bearer?"+query.Encode(), nil)
+	require.NoError(t, err)
+	prepareCommonHeaders(request.Header, bearerToken)
+	resp := &apiserver.BinaryBearer{}
+	doRequest(t, httpClient, request, http.StatusOK, resp)
+
+	var (
+		content      = []byte("some content")
+		fileNameAttr = "head-obj-name-echo"
+		createTS     = time.Now().Unix()
+		attributes   = map[string]string{
+			object.AttributeFileName:  fileNameAttr,
+			object.AttributeTimestamp: strconv.FormatInt(createTS, 10),
+			"user-attribute":          "user value",
+		}
+	)
+
+	t.Run("head", func(t *testing.T) {
+		objID := createObject(ctx, t, p, ownerID, cnrID, attributes, content, signer)
+
+		request, err = http.NewRequest(http.MethodHead, testHost+"/v1/get/"+cnrID.EncodeToString()+"/"+objID.EncodeToString()+"?"+query.Encode(), nil)
+		require.NoError(t, err)
+		prepareCommonHeaders(request.Header, bearerToken)
+		request.Header.Set("Authorization", "Bearer "+resp.Token)
+
+		headers, _ := doRequest(t, httpClient, request, http.StatusOK, nil)
+		require.NotEmpty(t, headers)
+
+		for key, vals := range headers {
+			require.Len(t, vals, 1)
+
+			switch key {
+			case "X-Attribute-Filename":
+				require.Equal(t, fileNameAttr, vals[0])
+			case "Content-Disposition":
+				require.Equal(t, "inline; filename="+fileNameAttr, vals[0])
+			case "X-Attribute-Timestamp":
+				require.Equal(t, strconv.FormatInt(createTS, 10), vals[0])
+			case "X-Object-Id":
+				require.Equal(t, objID.String(), vals[0])
+			case "Last-Modified":
+				require.Equal(t, time.Unix(createTS, 0).UTC().Format(http.TimeFormat), vals[0])
+			case "X-Owner-Id":
+				require.Equal(t, signer.UserID().String(), vals[0])
+			case "X-Container-Id":
+				require.Equal(t, cnrID.String(), vals[0])
+			case "Content-Length":
+				require.Equal(t, strconv.FormatInt(int64(len(content)), 10), vals[0])
+			case "Content-Type":
+				require.Equal(t, "text/plain; charset=utf-8", vals[0])
+			}
+		}
+	})
+
+	t.Run("custom content-type", func(t *testing.T) {
+		customContentType := "some/type"
+		attributes[object.AttributeContentType] = customContentType
+
+		objID := createObject(ctx, t, p, ownerID, cnrID, attributes, content, signer)
+
+		request, err = http.NewRequest(http.MethodHead, testHost+"/v1/get/"+cnrID.EncodeToString()+"/"+objID.EncodeToString()+"?"+query.Encode(), nil)
+		require.NoError(t, err)
+		prepareCommonHeaders(request.Header, bearerToken)
+		request.Header.Set("Authorization", "Bearer "+resp.Token)
+
+		headers, _ := doRequest(t, httpClient, request, http.StatusOK, nil)
+		require.NotEmpty(t, headers)
+
+		for key, vals := range headers {
+			require.Len(t, vals, 1)
+
+			switch key {
+			case "X-Attribute-Filename":
+				require.Equal(t, fileNameAttr, vals[0])
+			case "Content-Disposition":
+				require.Equal(t, "inline; filename="+fileNameAttr, vals[0])
+			case "X-Attribute-Timestamp":
+				require.Equal(t, strconv.FormatInt(createTS, 10), vals[0])
+			case "X-Object-Id":
+				require.Equal(t, objID.String(), vals[0])
+			case "Last-Modified":
+				require.Equal(t, time.Unix(createTS, 0).UTC().Format(http.TimeFormat), vals[0])
+			case "X-Owner-Id":
+				require.Equal(t, signer.UserID().String(), vals[0])
+			case "X-Container-Id":
+				require.Equal(t, cnrID.String(), vals[0])
+			case "Content-Length":
+				require.Equal(t, strconv.FormatInt(int64(len(content)), 10), vals[0])
+			case "Content-Type":
+				require.Equal(t, customContentType, vals[0])
+			}
+		}
+	})
+}
+
 func restObjectGet(ctx context.Context, t *testing.T, p *pool.Pool, ownerID *user.ID, cnrID cid.ID, signer user.Signer) {
 	content := []byte("some content")
 	attributes := map[string]string{
@@ -578,23 +931,23 @@ func restObjectGet(ctx context.Context, t *testing.T, p *pool.Pool, ownerID *use
 
 	objID := createObject(ctx, t, p, ownerID, cnrID, attributes, content, signer)
 
-	bearer := &models.Bearer{
-		Object: []*models.Record{
+	bearer := apiserver.Bearer{
+		Object: []apiserver.Record{
 			{
-				Operation: models.NewOperation(models.OperationHEAD),
-				Action:    models.NewAction(models.ActionALLOW),
-				Filters:   []*models.Filter{},
-				Targets: []*models.Target{{
-					Role: models.NewRole(models.RoleOTHERS),
+				Operation: apiserver.OperationHEAD,
+				Action:    apiserver.ALLOW,
+				Filters:   []apiserver.Filter{},
+				Targets: []apiserver.Target{{
+					Role: apiserver.OTHERS,
 					Keys: []string{},
 				}},
 			},
 			{
-				Operation: models.NewOperation(models.OperationRANGE),
-				Action:    models.NewAction(models.ActionALLOW),
-				Filters:   []*models.Filter{},
-				Targets: []*models.Target{{
-					Role: models.NewRole(models.RoleOTHERS),
+				Operation: apiserver.OperationRANGE,
+				Action:    apiserver.ALLOW,
+				Filters:   []apiserver.Filter{},
+				Targets: []apiserver.Target{{
+					Role: apiserver.OTHERS,
 					Keys: []string{},
 				}},
 			},
@@ -603,7 +956,7 @@ func restObjectGet(ctx context.Context, t *testing.T, p *pool.Pool, ownerID *use
 	bearer.Object = append(bearer.Object, getRestrictBearerRecords()...)
 
 	httpClient := defaultHTTPClient()
-	bearerTokens := makeAuthTokenRequest(ctx, t, []*models.Bearer{bearer}, httpClient, false)
+	bearerTokens := makeAuthTokenRequest(ctx, t, []apiserver.Bearer{bearer}, httpClient, false)
 	bearerToken := bearerTokens[0]
 
 	query := make(url.Values)
@@ -613,21 +966,21 @@ func restObjectGet(ctx context.Context, t *testing.T, p *pool.Pool, ownerID *use
 	require.NoError(t, err)
 	prepareCommonHeaders(request.Header, bearerToken)
 
-	objInfo := &models.ObjectInfo{}
+	objInfo := &apiserver.ObjectInfo{}
 	doRequest(t, httpClient, request, http.StatusOK, objInfo)
 
-	require.Equal(t, cnrID.EncodeToString(), *objInfo.ContainerID)
-	require.Equal(t, objID.EncodeToString(), *objInfo.ObjectID)
-	require.Equal(t, ownerID.EncodeToString(), *objInfo.OwnerID)
+	require.Equal(t, cnrID.EncodeToString(), objInfo.ContainerId)
+	require.Equal(t, objID.EncodeToString(), objInfo.ObjectId)
+	require.Equal(t, ownerID.EncodeToString(), objInfo.OwnerId)
 	require.Equal(t, len(attributes), len(objInfo.Attributes))
-	require.Equal(t, int64(len(content)), *objInfo.ObjectSize)
+	require.Equal(t, uint64(len(content)), objInfo.ObjectSize)
 
-	contentData, err := base64.StdEncoding.DecodeString(objInfo.Payload)
+	contentData, err := base64.StdEncoding.DecodeString(*objInfo.Payload)
 	require.NoError(t, err)
 	require.Equal(t, content, contentData)
 
 	for _, attr := range objInfo.Attributes {
-		require.Equal(t, attributes[*attr.Key], *attr.Value)
+		require.Equal(t, attributes[attr.Key], attr.Value)
 	}
 
 	// check max-payload-size params
@@ -639,10 +992,10 @@ func restObjectGet(ctx context.Context, t *testing.T, p *pool.Pool, ownerID *use
 	require.NoError(t, err)
 	prepareCommonHeaders(request.Header, bearerToken)
 
-	objInfo = &models.ObjectInfo{}
+	objInfo = &apiserver.ObjectInfo{}
 	doRequest(t, httpClient, request, http.StatusOK, objInfo)
 	require.Empty(t, objInfo.Payload)
-	require.Equal(t, int64(0), *objInfo.PayloadSize)
+	require.Equal(t, int64(0), objInfo.PayloadSize)
 
 	// check range params
 	rangeLength := 4
@@ -655,11 +1008,11 @@ func restObjectGet(ctx context.Context, t *testing.T, p *pool.Pool, ownerID *use
 	require.NoError(t, err)
 	prepareCommonHeaders(request.Header, bearerToken)
 
-	objInfo = &models.ObjectInfo{}
+	objInfo = &apiserver.ObjectInfo{}
 	doRequest(t, httpClient, request, http.StatusOK, objInfo)
-	require.Equal(t, int64(rangeLength), *objInfo.PayloadSize)
+	require.Equal(t, int64(rangeLength), objInfo.PayloadSize)
 
-	contentData, err = base64.StdEncoding.DecodeString(objInfo.Payload)
+	contentData, err = base64.StdEncoding.DecodeString(*objInfo.Payload)
 	require.NoError(t, err)
 	require.Equal(t, content[:rangeLength], contentData)
 
@@ -673,14 +1026,14 @@ func restObjectGet(ctx context.Context, t *testing.T, p *pool.Pool, ownerID *use
 	require.NoError(t, err)
 	prepareCommonHeaders(request2.Header, bearerToken)
 
-	objInfo2 := &models.ObjectInfo{}
+	objInfo2 := &apiserver.ObjectInfo{}
 	doRequest(t, httpClient, request2, http.StatusOK, objInfo2)
 
-	require.Equal(t, cnrID.EncodeToString(), *objInfo2.ContainerID)
-	require.Equal(t, objID2.EncodeToString(), *objInfo2.ObjectID)
-	require.Equal(t, ownerID.EncodeToString(), *objInfo2.OwnerID)
+	require.Equal(t, cnrID.EncodeToString(), objInfo2.ContainerId)
+	require.Equal(t, objID2.EncodeToString(), objInfo2.ObjectId)
+	require.Equal(t, ownerID.EncodeToString(), objInfo2.OwnerId)
 	require.Equal(t, 0, len(objInfo2.Attributes))
-	require.Equal(t, int64(0), *objInfo2.ObjectSize)
+	require.Equal(t, uint64(0), objInfo2.ObjectSize)
 }
 
 func restObjectGetUnauthenticated(ctx context.Context, t *testing.T, p *pool.Pool, ownerID *user.ID, cnrID cid.ID, signer user.Signer) {
@@ -699,31 +1052,31 @@ func restObjectGetUnauthenticated(ctx context.Context, t *testing.T, p *pool.Poo
 
 	request.Header.Add("Content-Type", "application/json")
 
-	resp := &models.ErrorResponse{}
+	resp := &apiserver.ErrorResponse{}
 	doRequest(t, httpClient, request, http.StatusBadRequest, resp)
-	require.Equal(t, int64(2048), resp.Code)
-	require.Equal(t, models.ErrorTypeAPI, *resp.Type)
+	require.Equal(t, uint32(2048), resp.Code)
+	require.Equal(t, apiserver.API, resp.Type)
 
 	// set empty eacl table to be able to do unauthenticated request
 	allowByEACL(ctx, t, p, cnrID, signer)
 
 	request, err = http.NewRequest(http.MethodGet, testHost+"/v1/objects/"+cnrID.EncodeToString()+"/"+objID.EncodeToString(), nil)
 	require.NoError(t, err)
-	objInfo := &models.ObjectInfo{}
+	objInfo := &apiserver.ObjectInfo{}
 	doRequest(t, httpClient, request, http.StatusOK, objInfo)
 
-	require.Equal(t, cnrID.EncodeToString(), *objInfo.ContainerID)
-	require.Equal(t, objID.EncodeToString(), *objInfo.ObjectID)
-	require.Equal(t, ownerID.EncodeToString(), *objInfo.OwnerID)
+	require.Equal(t, cnrID.EncodeToString(), objInfo.ContainerId)
+	require.Equal(t, objID.EncodeToString(), objInfo.ObjectId)
+	require.Equal(t, ownerID.EncodeToString(), objInfo.OwnerId)
 	require.Equal(t, len(attributes), len(objInfo.Attributes))
-	require.Equal(t, int64(len(content)), *objInfo.ObjectSize)
+	require.Equal(t, uint64(len(content)), objInfo.ObjectSize)
 
-	contentData, err := base64.StdEncoding.DecodeString(objInfo.Payload)
+	contentData, err := base64.StdEncoding.DecodeString(*objInfo.Payload)
 	require.NoError(t, err)
 	require.Equal(t, content, contentData)
 
 	for _, attr := range objInfo.Attributes {
-		require.Equal(t, attributes[*attr.Key], *attr.Value)
+		require.Equal(t, attributes[attr.Key], attr.Value)
 	}
 
 	// set eacl the same as was before test started
@@ -739,23 +1092,23 @@ func restObjectGetFullBearer(ctx context.Context, t *testing.T, p *pool.Pool, ow
 
 	objID := createObject(ctx, t, p, ownerID, cnrID, attributes, content, signer)
 
-	bearers := &models.Bearer{
-		Object: []*models.Record{
+	bearers := apiserver.Bearer{
+		Object: []apiserver.Record{
 			{
-				Operation: models.NewOperation(models.OperationHEAD),
-				Action:    models.NewAction(models.ActionALLOW),
-				Filters:   []*models.Filter{},
-				Targets: []*models.Target{{
-					Role: models.NewRole(models.RoleOTHERS),
+				Operation: apiserver.OperationHEAD,
+				Action:    apiserver.ALLOW,
+				Filters:   []apiserver.Filter{},
+				Targets: []apiserver.Target{{
+					Role: apiserver.OTHERS,
 					Keys: []string{},
 				}},
 			},
 			{
-				Operation: models.NewOperation(models.OperationRANGE),
-				Action:    models.NewAction(models.ActionALLOW),
-				Filters:   []*models.Filter{},
-				Targets: []*models.Target{{
-					Role: models.NewRole(models.RoleOTHERS),
+				Operation: apiserver.OperationRANGE,
+				Action:    apiserver.ALLOW,
+				Filters:   []apiserver.Filter{},
+				Targets: []apiserver.Target{{
+					Role: apiserver.OTHERS,
 					Keys: []string{},
 				}},
 			},
@@ -764,7 +1117,7 @@ func restObjectGetFullBearer(ctx context.Context, t *testing.T, p *pool.Pool, ow
 	bearers.Object = append(bearers.Object, getRestrictBearerRecords()...)
 
 	httpClient := defaultHTTPClient()
-	bearerTokens := makeAuthTokenRequest(ctx, t, []*models.Bearer{bearers}, httpClient, true)
+	bearerTokens := makeAuthTokenRequest(ctx, t, []apiserver.Bearer{bearers}, httpClient, true)
 	bearerToken := bearerTokens[0]
 
 	query := make(url.Values)
@@ -773,9 +1126,9 @@ func restObjectGetFullBearer(ctx context.Context, t *testing.T, p *pool.Pool, ow
 	request, err := http.NewRequest(http.MethodGet, testHost+"/v1/auth/bearer?"+query.Encode(), nil)
 	require.NoError(t, err)
 	prepareCommonHeaders(request.Header, bearerToken)
-	resp := &models.BinaryBearer{}
+	resp := &apiserver.BinaryBearer{}
 	doRequest(t, httpClient, request, http.StatusOK, resp)
-	actualTokenRaw, err := base64.StdEncoding.DecodeString(*resp.Token)
+	actualTokenRaw, err := base64.StdEncoding.DecodeString(resp.Token)
 	require.NoError(t, err)
 	var actualToken bearer.Token
 	err = actualToken.Unmarshal(actualTokenRaw)
@@ -787,33 +1140,35 @@ func restObjectGetFullBearer(ctx context.Context, t *testing.T, p *pool.Pool, ow
 
 	request, err = http.NewRequest(http.MethodGet, testHost+"/v1/objects/"+cnrID.EncodeToString()+"/"+objID.EncodeToString()+"?"+query.Encode(), nil)
 	require.NoError(t, err)
-	request.Header.Add("Authorization", "Bearer "+*resp.Token)
+	request.Header.Add("Authorization", "Bearer "+resp.Token)
 
-	objInfo := &models.ObjectInfo{}
+	objInfo := &apiserver.ObjectInfo{}
 	doRequest(t, httpClient, request, http.StatusOK, objInfo)
-	contentData, err := base64.StdEncoding.DecodeString(objInfo.Payload)
-	require.NoError(t, err)
-	require.Equal(t, content, contentData)
+	if objInfo.Payload != nil {
+		contentData, err := base64.StdEncoding.DecodeString(*objInfo.Payload)
+		require.NoError(t, err)
+		require.Equal(t, content, contentData)
+	}
 }
 
 func restObjectDelete(ctx context.Context, t *testing.T, p *pool.Pool, owner *user.ID, cnrID cid.ID, signer user.Signer) {
 	objID := createObject(ctx, t, p, owner, cnrID, nil, []byte("some content"), signer)
 
-	bearer := &models.Bearer{
-		Object: []*models.Record{{
-			Operation: models.NewOperation(models.OperationDELETE),
-			Action:    models.NewAction(models.ActionALLOW),
-			Filters:   []*models.Filter{},
-			Targets: []*models.Target{{
-				Role: models.NewRole(models.RoleOTHERS),
+	bearer := apiserver.Bearer{
+		Object: []apiserver.Record{{
+			Operation: apiserver.OperationDELETE,
+			Action:    apiserver.ALLOW,
+			Filters:   []apiserver.Filter{},
+			Targets: []apiserver.Target{{
+				Role: apiserver.OTHERS,
 				Keys: []string{},
 			}},
 		}, {
-			Operation: models.NewOperation(models.OperationHEAD),
-			Action:    models.NewAction(models.ActionALLOW),
-			Filters:   []*models.Filter{},
-			Targets: []*models.Target{{
-				Role: models.NewRole(models.RoleOTHERS),
+			Operation: apiserver.OperationHEAD,
+			Action:    apiserver.ALLOW,
+			Filters:   []apiserver.Filter{},
+			Targets: []apiserver.Target{{
+				Role: apiserver.OTHERS,
 				Keys: []string{},
 			}},
 		}},
@@ -821,7 +1176,7 @@ func restObjectDelete(ctx context.Context, t *testing.T, p *pool.Pool, owner *us
 	bearer.Object = append(bearer.Object, getRestrictBearerRecords()...)
 
 	httpClient := defaultHTTPClient()
-	bearerTokens := makeAuthTokenRequest(ctx, t, []*models.Bearer{bearer}, httpClient, false)
+	bearerTokens := makeAuthTokenRequest(ctx, t, []apiserver.Bearer{bearer}, httpClient, false)
 	bearerToken := bearerTokens[0]
 
 	query := make(url.Values)
@@ -831,9 +1186,9 @@ func restObjectDelete(ctx context.Context, t *testing.T, p *pool.Pool, owner *us
 	require.NoError(t, err)
 	prepareCommonHeaders(request.Header, bearerToken)
 
-	resp := &models.SuccessResponse{}
+	resp := &apiserver.SuccessResponse{}
 	doRequest(t, httpClient, request, http.StatusOK, resp)
-	require.True(t, *resp.Success)
+	require.True(t, resp.Success)
 
 	var prm client.PrmObjectHead
 
@@ -854,40 +1209,40 @@ func restObjectsSearch(ctx context.Context, t *testing.T, p *pool.Pool, owner *u
 	headers[userKey] = "dummy"
 	_ = createObject(ctx, t, p, owner, cnrID, headers, []byte("some content"), signer)
 
-	bearer := &models.Bearer{
-		Object: []*models.Record{
+	bearer := apiserver.Bearer{
+		Object: []apiserver.Record{
 			{
-				Operation: models.NewOperation(models.OperationSEARCH),
-				Action:    models.NewAction(models.ActionALLOW),
-				Filters:   []*models.Filter{},
-				Targets:   []*models.Target{{Role: models.NewRole(models.RoleOTHERS), Keys: []string{}}},
+				Operation: apiserver.OperationSEARCH,
+				Action:    apiserver.ALLOW,
+				Filters:   []apiserver.Filter{},
+				Targets:   []apiserver.Target{{Role: apiserver.OTHERS, Keys: []string{}}},
 			},
 			{
-				Operation: models.NewOperation(models.OperationHEAD),
-				Action:    models.NewAction(models.ActionALLOW),
-				Filters:   []*models.Filter{},
-				Targets:   []*models.Target{{Role: models.NewRole(models.RoleOTHERS), Keys: []string{}}},
+				Operation: apiserver.OperationHEAD,
+				Action:    apiserver.ALLOW,
+				Filters:   []apiserver.Filter{},
+				Targets:   []apiserver.Target{{Role: apiserver.OTHERS, Keys: []string{}}},
 			},
 			{
-				Operation: models.NewOperation(models.OperationGET),
-				Action:    models.NewAction(models.ActionALLOW),
-				Filters:   []*models.Filter{},
-				Targets:   []*models.Target{{Role: models.NewRole(models.RoleOTHERS), Keys: []string{}}},
+				Operation: apiserver.OperationGET,
+				Action:    apiserver.ALLOW,
+				Filters:   []apiserver.Filter{},
+				Targets:   []apiserver.Target{{Role: apiserver.OTHERS, Keys: []string{}}},
 			},
 		},
 	}
 	bearer.Object = append(bearer.Object, getRestrictBearerRecords()...)
 
 	httpClient := defaultHTTPClient()
-	bearerTokens := makeAuthTokenRequest(ctx, t, []*models.Bearer{bearer}, httpClient, false)
+	bearerTokens := makeAuthTokenRequest(ctx, t, []apiserver.Bearer{bearer}, httpClient, false)
 	bearerToken := bearerTokens[0]
 
-	search := &models.SearchFilters{
-		Filters: []*models.SearchFilter{
+	search := &apiserver.SearchFilters{
+		Filters: []apiserver.SearchFilter{
 			{
-				Key:   util.NewString(userKey),
-				Match: models.NewSearchMatch(models.SearchMatchMatchStringEqual),
-				Value: util.NewString(userValue),
+				Key:   userKey,
+				Match: apiserver.MatchStringEqual,
+				Value: userValue,
 			},
 		},
 	}
@@ -902,20 +1257,20 @@ func restObjectsSearch(ctx context.Context, t *testing.T, p *pool.Pool, owner *u
 	require.NoError(t, err)
 	prepareCommonHeaders(request.Header, bearerToken)
 
-	resp := &models.ObjectList{}
+	resp := &apiserver.ObjectList{}
 	doRequest(t, httpClient, request, http.StatusOK, resp)
 
-	require.Equal(t, 1, int(*resp.Size))
+	require.Equal(t, 1, resp.Size)
 	require.Len(t, resp.Objects, 1)
 
 	objBaseInfo := resp.Objects[0]
-	require.Equal(t, cnrID.EncodeToString(), *objBaseInfo.Address.ContainerID)
-	require.Equal(t, objID.EncodeToString(), *objBaseInfo.Address.ObjectID)
-	require.Equal(t, objectName, objBaseInfo.Name)
-	require.Equal(t, filePath, objBaseInfo.FilePath)
+	require.Equal(t, cnrID.EncodeToString(), objBaseInfo.Address.ContainerId)
+	require.Equal(t, objID.EncodeToString(), objBaseInfo.Address.ObjectId)
+	require.Equal(t, objectName, *objBaseInfo.Name)
+	require.Equal(t, filePath, *objBaseInfo.FilePath)
 }
 
-func doRequest(t *testing.T, httpClient *http.Client, request *http.Request, expectedCode int, model any) {
+func doRequest(t *testing.T, httpClient *http.Client, request *http.Request, expectedCode int, model any) (http.Header, []byte) {
 	resp, err := httpClient.Do(request)
 	require.NoError(t, err)
 	defer func() {
@@ -931,11 +1286,12 @@ func doRequest(t *testing.T, httpClient *http.Client, request *http.Request, exp
 	require.Equal(t, expectedCode, resp.StatusCode)
 
 	if model == nil {
-		return
+		return resp.Header, respBody
 	}
 
 	err = json.Unmarshal(respBody, model)
 	require.NoError(t, err)
+	return resp.Header, respBody
 }
 
 func restContainerGet(ctx context.Context, t *testing.T, owner user.ID, cnrID cid.ID) {
@@ -944,26 +1300,26 @@ func restContainerGet(ctx context.Context, t *testing.T, owner user.ID, cnrID ci
 	require.NoError(t, err)
 	request = request.WithContext(ctx)
 
-	cnrInfo := &models.ContainerInfo{}
+	cnrInfo := &apiserver.ContainerInfo{}
 	doRequest(t, httpClient, request, http.StatusOK, cnrInfo)
 
-	require.Equal(t, cnrID.EncodeToString(), *cnrInfo.ContainerID)
-	require.Equal(t, owner.EncodeToString(), *cnrInfo.OwnerID)
-	require.Equal(t, containerName, *cnrInfo.ContainerName)
-	require.NotEmpty(t, *cnrInfo.Version)
+	require.Equal(t, cnrID.EncodeToString(), cnrInfo.ContainerId)
+	require.Equal(t, owner.EncodeToString(), cnrInfo.OwnerId)
+	require.Equal(t, containerName, cnrInfo.ContainerName)
+	require.NotEmpty(t, cnrInfo.Version)
 }
 
 func restContainerDelete(ctx context.Context, t *testing.T, clientPool *pool.Pool, owner user.ID, signer user.Signer) {
 	cnrID := createContainer(ctx, t, clientPool, owner, "for-delete", signer)
 
-	bearer := &models.Bearer{
-		Container: &models.Rule{
-			Verb: models.NewVerb(models.VerbDELETE),
+	bearer := apiserver.Bearer{
+		Container: &apiserver.Rule{
+			Verb: apiserver.VerbDELETE,
 		},
 	}
 
 	httpClient := defaultHTTPClient()
-	bearerTokens := makeAuthTokenRequest(ctx, t, []*models.Bearer{bearer}, httpClient, false)
+	bearerTokens := makeAuthTokenRequest(ctx, t, []apiserver.Bearer{bearer}, httpClient, false)
 	bearerToken := bearerTokens[0]
 
 	query := make(url.Values)
@@ -974,9 +1330,9 @@ func restContainerDelete(ctx context.Context, t *testing.T, clientPool *pool.Poo
 	request = request.WithContext(ctx)
 	prepareCommonHeaders(request.Header, bearerToken)
 
-	resp := &models.SuccessResponse{}
+	resp := &apiserver.SuccessResponse{}
 	doRequest(t, httpClient, request, http.StatusOK, resp)
-	require.True(t, *resp.Success)
+	require.True(t, resp.Success)
 
 	_, err = clientPool.ContainerGet(ctx, cnrID, client.PrmContainerGet{})
 	require.Error(t, err)
@@ -986,22 +1342,22 @@ func restContainerDelete(ctx context.Context, t *testing.T, clientPool *pool.Poo
 func restContainerEACLPut(ctx context.Context, t *testing.T, clientPool *pool.Pool, owner user.ID, signer user.Signer) {
 	cnrID := createContainer(ctx, t, clientPool, owner, "for-eacl-put", signer)
 	httpClient := &http.Client{Timeout: 60 * time.Second}
-	bearer := &models.Bearer{
-		Container: &models.Rule{
-			Verb: models.NewVerb(models.VerbSETEACL),
+	bearer := apiserver.Bearer{
+		Container: &apiserver.Rule{
+			Verb: apiserver.VerbSETEACL,
 		},
 	}
-	bearerTokens := makeAuthTokenRequest(ctx, t, []*models.Bearer{bearer}, httpClient, false)
+	bearerTokens := makeAuthTokenRequest(ctx, t, []apiserver.Bearer{bearer}, httpClient, false)
 	bearerToken := bearerTokens[0]
 
-	req := models.Eacl{
-		Records: []*models.Record{{
-			Action:    models.NewAction(models.ActionDENY),
-			Filters:   []*models.Filter{},
-			Operation: models.NewOperation(models.OperationDELETE),
-			Targets: []*models.Target{{
+	req := apiserver.Eacl{
+		Records: []apiserver.Record{{
+			Action:    apiserver.DENY,
+			Filters:   []apiserver.Filter{},
+			Operation: apiserver.OperationDELETE,
+			Targets: []apiserver.Target{{
 				Keys: []string{"031a6c6fbbdf02ca351745fa86b9ba5a9452d785ac4f7fc2b7548ca2a46c4fcf4a"},
-				Role: models.NewRole(models.RoleOTHERS),
+				Role: apiserver.OTHERS,
 			}},
 		}},
 	}
@@ -1009,7 +1365,7 @@ func restContainerEACLPut(ctx context.Context, t *testing.T, clientPool *pool.Po
 	invalidBody, err := json.Marshal(&req)
 	require.NoError(t, err)
 
-	req.Records[0].Targets[0].Role = models.NewRole(models.RoleKEYS)
+	req.Records[0].Targets[0].Role = apiserver.KEYS
 	body, err := json.Marshal(&req)
 	require.NoError(t, err)
 
@@ -1018,9 +1374,9 @@ func restContainerEACLPut(ctx context.Context, t *testing.T, clientPool *pool.Po
 
 	doSetEACLRequest(ctx, t, httpClient, cnrID, query, bearerToken, invalidBody, http.StatusBadRequest, nil)
 
-	resp := &models.SuccessResponse{}
+	resp := &apiserver.SuccessResponse{}
 	doSetEACLRequest(ctx, t, httpClient, cnrID, query, bearerToken, body, http.StatusOK, resp)
-	require.True(t, *resp.Success)
+	require.True(t, resp.Success)
 
 	table, err := clientPool.ContainerEACL(ctx, cnrID, client.PrmContainerEACL{})
 	require.NoError(t, err)
@@ -1051,10 +1407,10 @@ func restContainerEACLGet(ctx context.Context, t *testing.T, p *pool.Pool, cnrID
 	require.NoError(t, err)
 	request = request.WithContext(ctx)
 
-	responseTable := &models.Eacl{}
+	responseTable := &apiserver.Eacl{}
 	doRequest(t, httpClient, request, http.StatusOK, responseTable)
 
-	require.Equal(t, cnrID.EncodeToString(), responseTable.ContainerID)
+	require.Equal(t, cnrID.EncodeToString(), responseTable.ContainerId)
 
 	actualTable, err := util.ToNativeTable(responseTable.Records)
 	require.NoError(t, err)
@@ -1077,19 +1433,19 @@ func restContainerList(ctx context.Context, t *testing.T, p *pool.Pool, owner us
 	require.NoError(t, err)
 	request = request.WithContext(ctx)
 
-	list := &models.ContainerList{}
+	list := &apiserver.ContainerList{}
 	doRequest(t, httpClient, request, http.StatusOK, list)
 
-	require.Equal(t, len(ids), int(*list.Size))
+	require.Equal(t, len(ids), list.Size)
 
 	require.Truef(t, containsContainer(list.Containers, cnrID.EncodeToString(), containerName), "list doesn't contain cnr '%s' with name '%s'", cnrID.EncodeToString(), containerName)
 }
 
-func containsContainer(containers []*models.ContainerInfo, cnrID, cnrName string) bool {
+func containsContainer(containers []apiserver.ContainerInfo, cnrID, cnrName string) bool {
 	for _, cnrInfo := range containers {
-		if *cnrInfo.ContainerID == cnrID {
+		if cnrInfo.ContainerId == cnrID {
 			for _, attr := range cnrInfo.Attributes {
-				if *attr.Key == "Name" && *attr.Value == cnrName {
+				if attr.Key == "Name" && attr.Value == cnrName {
 					return true
 				}
 			}
@@ -1102,7 +1458,7 @@ func containsContainer(containers []*models.ContainerInfo, cnrID, cnrName string
 	return false
 }
 
-func makeAuthTokenRequest(ctx context.Context, t *testing.T, bearers []*models.Bearer, httpClient *http.Client, forAllUsers bool) []*handlers.BearerToken {
+func makeAuthTokenRequest(ctx context.Context, t *testing.T, bearers []apiserver.Bearer, httpClient *http.Client, forAllUsers bool) []*handlers.BearerToken {
 	key, err := keys.NewPrivateKeyFromHex(devenvPrivateKey)
 	require.NoError(t, err)
 
@@ -1134,7 +1490,7 @@ func makeAuthTokenRequest(ctx context.Context, t *testing.T, bearers []*models.B
 	}
 	require.Equal(t, http.StatusOK, resp.StatusCode)
 
-	var stokenResp []*models.TokenResponse
+	var stokenResp []*apiserver.TokenResponse
 	err = json.Unmarshal(rr, &stokenResp)
 	require.NoError(t, err)
 
@@ -1145,15 +1501,15 @@ func makeAuthTokenRequest(ctx context.Context, t *testing.T, bearers []*models.B
 		isObject, err := handlers.IsObjectToken(bearers[i])
 		require.NoError(t, err)
 
-		require.Equal(t, bearers[i].Name, tok.Name)
+		require.Equal(t, bearers[i].Name, *tok.Name)
 
 		if isObject {
-			require.Equal(t, models.TokenTypeObject, *tok.Type)
+			require.Equal(t, apiserver.Object, tok.Type)
 		} else {
-			require.Equal(t, models.TokenTypeContainer, *tok.Type)
+			require.Equal(t, apiserver.Container, tok.Type)
 		}
 
-		binaryData, err := base64.StdEncoding.DecodeString(*tok.Token)
+		binaryData, err := base64.StdEncoding.DecodeString(tok.Token)
 		require.NoError(t, err)
 
 		var bt *handlers.BearerToken
@@ -1195,14 +1551,14 @@ func signTokenWalletConnect(t *testing.T, key *keys.PrivateKey, data []byte) *ha
 }
 
 func restContainerPutInvalid(ctx context.Context, t *testing.T) {
-	bearer := &models.Bearer{
-		Container: &models.Rule{
-			Verb: models.NewVerb(models.VerbPUT),
+	bearer := apiserver.Bearer{
+		Container: &apiserver.Rule{
+			Verb: apiserver.VerbPUT,
 		},
 	}
 
 	httpClient := &http.Client{Timeout: 30 * time.Second}
-	bearerTokens := makeAuthTokenRequest(ctx, t, []*models.Bearer{bearer}, httpClient, false)
+	bearerTokens := makeAuthTokenRequest(ctx, t, []apiserver.Bearer{bearer}, httpClient, false)
 	bearerToken := bearerTokens[0]
 
 	reqURL, err := url.Parse(testHost + "/v1/containers")
@@ -1212,27 +1568,27 @@ func restContainerPutInvalid(ctx context.Context, t *testing.T) {
 	query.Add(walletConnectQuery, strconv.FormatBool(useWalletConnect))
 	reqURL.RawQuery = query.Encode()
 
-	body, err := json.Marshal(&models.ContainerPutInfo{ContainerName: "nameWithCapitalLetters"})
+	body, err := json.Marshal(&apiserver.ContainerPutInfo{ContainerName: "nameWithCapitalLetters"})
 	require.NoError(t, err)
 	request, err := http.NewRequest(http.MethodPut, reqURL.String(), bytes.NewReader(body))
 	require.NoError(t, err)
 	prepareCommonHeaders(request.Header, bearerToken)
 
-	resp := &models.ErrorResponse{}
+	resp := &apiserver.ErrorResponse{}
 	doRequest(t, httpClient, request, http.StatusBadRequest, resp)
-	require.Equal(t, int64(0), resp.Code)
-	require.Equal(t, models.ErrorTypeGW, *resp.Type)
+	require.Equal(t, uint32(0), resp.Code)
+	require.Equal(t, apiserver.GW, resp.Type)
 }
 
 func restContainerPut(ctx context.Context, t *testing.T, clientPool *pool.Pool) {
-	bearer := &models.Bearer{
-		Container: &models.Rule{
-			Verb: models.NewVerb(models.VerbPUT),
+	bearer := apiserver.Bearer{
+		Container: &apiserver.Rule{
+			Verb: apiserver.VerbPUT,
 		},
 	}
 
 	httpClient := &http.Client{Timeout: 30 * time.Second}
-	bearerTokens := makeAuthTokenRequest(ctx, t, []*models.Bearer{bearer}, httpClient, false)
+	bearerTokens := makeAuthTokenRequest(ctx, t, []apiserver.Bearer{bearer}, httpClient, false)
 	bearerToken := bearerTokens[0]
 
 	attrKey, attrValue := "User-Attribute", "user value"
@@ -1241,7 +1597,7 @@ func restContainerPut(ctx context.Context, t *testing.T, clientPool *pool.Pool) 
 	}
 
 	// try to create container without name but with name-scope-global
-	body, err := json.Marshal(&models.ContainerPutInfo{})
+	body, err := json.Marshal(&apiserver.ContainerPutInfo{})
 	require.NoError(t, err)
 
 	reqURL, err := url.Parse(testHost + "/v1/containers")
@@ -1258,10 +1614,10 @@ func restContainerPut(ctx context.Context, t *testing.T, clientPool *pool.Pool) 
 	doRequest(t, httpClient, request, http.StatusBadRequest, nil)
 
 	// create container with name in local scope
-	containerPutInfo := &models.ContainerPutInfo{
-		Attributes: []*models.Attribute{{
-			Key:   util.NewString(attrKey),
-			Value: util.NewString(attrValue),
+	containerPutInfo := &apiserver.ContainerPutInfo{
+		Attributes: []apiserver.Attribute{{
+			Key:   attrKey,
+			Value: attrValue,
 		}},
 	}
 	body, err = json.Marshal(containerPutInfo)
@@ -1277,11 +1633,11 @@ func restContainerPut(ctx context.Context, t *testing.T, clientPool *pool.Pool) 
 	require.NoError(t, err)
 	prepareCommonHeaders(request.Header, bearerToken)
 
-	addr := &operations.PutContainerOKBody{}
+	addr := &apiserver.PutContainerOK{}
 	doRequest(t, httpClient, request, http.StatusOK, addr)
 
 	var CID cid.ID
-	err = CID.DecodeString(*addr.ContainerID)
+	err = CID.DecodeString(addr.ContainerId)
 	require.NoError(t, err)
 	fmt.Println(CID.String())
 
@@ -1394,4 +1750,96 @@ func allowByEACL(ctx context.Context, t *testing.T, clientPool *pool.Pool, cnrID
 	require.NoError(t, err)
 
 	return table
+}
+
+func restBalance(_ context.Context, t *testing.T) {
+	httpClient := &http.Client{Timeout: 30 * time.Second}
+	reqURL, err := url.Parse(testHost + "/v1/accounting/balance/NPFCqWHfi9ixCJRu7DABRbVfXRbkSEr9Vo")
+	require.NoError(t, err)
+
+	request, err := http.NewRequest(http.MethodGet, reqURL.String(), nil)
+	require.NoError(t, err)
+
+	resp := &apiserver.Balance{}
+	doRequest(t, httpClient, request, http.StatusOK, resp)
+	require.Equal(t, "0", resp.Value)
+	require.Equal(t, uint32(12), resp.Precision)
+}
+
+func restObjectUpload(ctx context.Context, t *testing.T, clientPool *pool.Pool, cnrID cid.ID, signer user.Signer) {
+	bt := apiserver.Bearer{
+		Object: []apiserver.Record{{
+			Operation: apiserver.OperationPUT,
+			Action:    apiserver.ALLOW,
+			Filters:   []apiserver.Filter{},
+			Targets: []apiserver.Target{{
+				Role: apiserver.OTHERS,
+				Keys: []string{},
+			}},
+		}},
+	}
+	bt.Object = append(bt.Object, getRestrictBearerRecords()...)
+
+	httpClient := defaultHTTPClient()
+	bearerTokens := makeAuthTokenRequest(ctx, t, []apiserver.Bearer{bt}, httpClient, false)
+	bearerToken := bearerTokens[0]
+
+	query := make(url.Values)
+	query.Add(walletConnectQuery, strconv.FormatBool(useWalletConnect))
+
+	// check that object bearer token is valid
+	request, err := http.NewRequest(http.MethodGet, testHost+"/v1/auth/bearer?"+query.Encode(), nil)
+	require.NoError(t, err)
+	prepareCommonHeaders(request.Header, bearerToken)
+	resp := &apiserver.BinaryBearer{}
+	doRequest(t, httpClient, request, http.StatusOK, resp)
+
+	actualTokenRaw, err := base64.StdEncoding.DecodeString(resp.Token)
+	require.NoError(t, err)
+
+	content := "content of file"
+	attrKey, attrValue := "User-Attribute", "user value"
+
+	attributes := map[string]string{
+		object.AttributeFileName:    "newFile.txt",
+		object.AttributeContentType: "application/octet-stream",
+		attrKey:                     attrValue,
+	}
+
+	body := &bytes.Buffer{}
+	writer := multipart.NewWriter(body)
+	part, _ := writer.CreateFormFile("payload", "newFile.txt")
+	_, err = io.Copy(part, bytes.NewReader([]byte(content)))
+	require.NoError(t, err)
+	require.NoError(t, writer.Close())
+
+	request, err = http.NewRequest(http.MethodPost, testHost+"/v1/upload/"+cnrID.String(), body)
+	require.NoError(t, err)
+
+	request.Header.Set("Content-Type", writer.FormDataContentType())
+	request.Header.Add("Authorization", "Bearer "+base64.StdEncoding.EncodeToString(actualTokenRaw))
+
+	addr := &apiserver.AddressForUpload{}
+	doRequest(t, httpClient, request, http.StatusOK, addr)
+
+	var CID cid.ID
+	err = CID.DecodeString(addr.ContainerId)
+	require.NoError(t, err)
+
+	var id oid.ID
+	err = id.DecodeString(addr.ObjectId)
+	require.NoError(t, err)
+
+	var prm client.PrmObjectGet
+	res, payloadReader, err := clientPool.ObjectGetInit(ctx, CID, id, signer, prm)
+	require.NoError(t, err)
+
+	payload := bytes.NewBuffer(nil)
+	_, err = io.Copy(payload, payloadReader)
+	require.NoError(t, err)
+	require.Equal(t, content, payload.String())
+
+	for _, attribute := range res.Attributes() {
+		require.Equal(t, attributes[attribute.Key()], attribute.Value(), attribute.Key())
+	}
 }

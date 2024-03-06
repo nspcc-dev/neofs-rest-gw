@@ -325,12 +325,14 @@ paths:
           schema:
             minimum: 0
             type: integer
+            format: int64
         - name: range-length
           in: query
           description: Length of data range.
           schema:
             minimum: 1
             type: integer
+            format: int64
         - name: max-payload-size
           in: query
           description: |
@@ -483,14 +485,7 @@ paths:
           content:
             '*/*':
               schema:
-                required:
-                  - containerId
-                type: object
-                properties:
-                  containerId:
-                    type: string
-                example:
-                  containerId: 5HZTn5qkRnmgSz9gSrw22CEdPPk6nQhkwf2Mgzyvkikv
+                $ref: '#/components/schemas/PutContainerOK'
         "400":
           description: Bad request.
           content:
@@ -931,9 +926,12 @@ components:
         token: ChIKDAoAGggIARABIgIIAxoCCGQSZgohA+J5jFWFMiOpyvMZBu9wwPTKsWsG0q206kVe63iuWP/wEkEE4SIV0QngnKppDf54QezUKmar7UQby6HzufT5yVIOvj7QEqZnOavrKW0chCeCwP0khda/j9k00ct6NMEDxQFW+g==
     Bearer:
       type: object
+      required:
+        - object
       properties:
         name:
           type: string
+          x-go-type-skip-optional-pointer: true
         object:
           type: array
           items:
@@ -1112,12 +1110,16 @@ components:
       properties:
         containerName:
           type: string
+          x-go-type-skip-optional-pointer: true
         placementPolicy:
           type: string
+          x-go-type-skip-optional-pointer: true
         basicAcl:
           type: string
+          x-go-type-skip-optional-pointer: true
         attributes:
           type: array
+          x-go-type-skip-optional-pointer: true
           items:
             $ref: '#/components/schemas/Attribute'
       description: |
@@ -1373,6 +1375,7 @@ components:
           type: string
         attributes:
           type: array
+          x-go-type-skip-optional-pointer: true
           items:
             $ref: '#/components/schemas/Attribute'
       description: "<p>Request body to create object.</p>\n<p>To create an object\
@@ -1415,9 +1418,11 @@ components:
         objectSize:
           type: integer
           description: Object full payload size
+          format: uint64
         payloadSize:
           type: integer
           description: Payload size in response
+          format: int64
         payload:
           type: string
           description: Base64 encoded object payload
@@ -1448,11 +1453,11 @@ components:
     Eacl:
       required:
         - records
+        - containerId
       type: object
       properties:
         containerId:
           type: string
-          readOnly: true
         records:
           type: array
           items:
@@ -1500,6 +1505,7 @@ components:
           type: string
         precision:
           type: integer
+          format: uint32
     ErrorType:
       type: string
       description: Error type. Allow determine source of the error.
@@ -1516,6 +1522,8 @@ components:
           $ref: '#/components/schemas/ErrorType'
         code:
           type: integer
+          format: uint32
+          x-go-type-skip-optional-pointer: true
         message:
           type: string
       description: "<p>Error response.</p>\n<p>More about NeoFS status code you can\
@@ -1549,6 +1557,15 @@ components:
       example:
         object_id: 8N3o7Dtr6T1xteCt6eRwhpmJ7JhME58Hyu1dvaswuTDd
         container_id: 5HZTn5qkRnmgSz9gSrw22CEdPPk6nQhkwf2Mgzyvkikv
+    PutContainerOK:
+      required:
+        - containerId
+      type: object
+      properties:
+        containerId:
+          type: string
+      example:
+        containerId: 5HZTn5qkRnmgSz9gSrw22CEdPPk6nQhkwf2Mgzyvkikv
   responses:
     ObjectContentOK:
       description: Object.
