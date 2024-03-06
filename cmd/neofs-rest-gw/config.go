@@ -76,6 +76,8 @@ const (
 	cmdWallet  = "wallet"
 	cmdAddress = "address"
 	cmdConfig  = "config"
+
+	baseURL = "/v1"
 )
 
 var ignore = map[string]struct{}{
@@ -477,6 +479,61 @@ func newNeofsAPI(ctx context.Context, logger *zap.Logger, v *viper.Viper) (*hand
 	apiPrm.MaxObjectSize = int64(ni.MaxObjectSize())
 
 	return handlers.New(&apiPrm), nil
+}
+
+func newNeofsAPIEcho(ctx context.Context, logger *zap.Logger, v *viper.Viper) (*handlers.RestAPI, error) {
+	key, err := getNeoFSKey(logger, v)
+	if err != nil {
+		return nil, err
+	}
+
+	var prm pool.InitParameters
+	prm.SetSigner(user.NewAutoIDSignerRFC6979(key.PrivateKey))
+	prm.SetNodeDialTimeout(v.GetDuration(cfgNodeDialTimeout))
+	prm.SetHealthcheckTimeout(v.GetDuration(cfgHealthcheckTimeout))
+	prm.SetClientRebalanceInterval(v.GetDuration(cfgRebalance))
+	prm.SetErrorThreshold(v.GetUint32(cfgPoolErrorThreshold))
+
+	poolStat := stat.NewPoolStatistic()
+	prm.SetStatisticCallback(poolStat.OperationCallback)
+
+	for _, peer := range fetchPeers(logger, v) {
+		prm.AddNode(peer)
+	}
+
+	p, err := pool.NewPool(prm)
+	if err != nil {
+		return nil, err
+	}
+
+	if err = p.Dial(ctx); err != nil {
+		return nil, err
+	}
+
+	ni, err := p.NetworkInfo(ctx, client.PrmNetworkInfo{})
+	if err != nil {
+		return nil, fmt.Errorf("networkInfo: %w", err)
+	}
+
+	var apiPrm handlers.PrmAPI
+	apiPrm.Pool = p
+	apiPrm.Key = key
+	apiPrm.Logger = logger
+
+	pprofConfig := metrics.Config{Enabled: v.GetBool(cfgPprofEnabled), Address: v.GetString(cfgPprofAddress)}
+	apiPrm.PprofService = metrics.NewPprofService(logger, pprofConfig)
+
+	prometheusConfig := metrics.Config{Enabled: v.GetBool(cfgPrometheusEnabled), Address: v.GetString(cfgPrometheusAddress)}
+	apiPrm.PrometheusService = metrics.NewPrometheusService(logger, prometheusConfig)
+	if prometheusConfig.Enabled {
+		apiPrm.GateMetric = metrics.NewGateMetrics(poolStat)
+		apiPrm.GateMetric.SetGWVersion(Version)
+	}
+
+	apiPrm.ServiceShutdownTimeout = defaultShutdownTimeout
+	apiPrm.MaxObjectSize = int64(ni.MaxObjectSize())
+
+	return handlers.NewAPI(&apiPrm), nil
 }
 
 func fetchPeers(l *zap.Logger, v *viper.Viper) []pool.NodeParam {

@@ -16,11 +16,13 @@ import (
 
 	dockerContainer "github.com/docker/docker/api/types/container"
 	"github.com/go-openapi/loads"
+	"github.com/labstack/echo/v4"
 	"github.com/nspcc-dev/neo-go/pkg/crypto/keys"
 	"github.com/nspcc-dev/neofs-rest-gw/gen/models"
 	"github.com/nspcc-dev/neofs-rest-gw/gen/restapi"
 	"github.com/nspcc-dev/neofs-rest-gw/gen/restapi/operations"
 	"github.com/nspcc-dev/neofs-rest-gw/handlers"
+	"github.com/nspcc-dev/neofs-rest-gw/handlers/apiserver"
 	"github.com/nspcc-dev/neofs-rest-gw/internal/util"
 	"github.com/nspcc-dev/neofs-sdk-go/bearer"
 	"github.com/nspcc-dev/neofs-sdk-go/client"
@@ -36,6 +38,7 @@ import (
 	"github.com/nspcc-dev/neofs-sdk-go/pool"
 	"github.com/nspcc-dev/neofs-sdk-go/user"
 	"github.com/nspcc-dev/neofs-sdk-go/waiter"
+	middleware "github.com/oapi-codegen/echo-middleware"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/require"
 	"github.com/testcontainers/testcontainers-go"
@@ -78,6 +81,7 @@ func TestIntegration(t *testing.T) {
 
 	if useLocalEnvironment {
 		runLocalTests(ctx, t, key)
+		runLocalEchoTests(ctx, t, key)
 	} else {
 		runTestInContainer(ctx, t, key)
 	}
@@ -85,6 +89,10 @@ func TestIntegration(t *testing.T) {
 
 func runLocalTests(ctx context.Context, t *testing.T, key *keys.PrivateKey) {
 	t.Run("local", func(t *testing.T) { runTests(ctx, t, key, testLocalNode) })
+}
+
+func runLocalEchoTests(ctx context.Context, t *testing.T, key *keys.PrivateKey) {
+	t.Run("local", func(t *testing.T) { runEchoTests(ctx, t, key, testLocalNode) })
 }
 
 func runTestInContainer(rootCtx context.Context, t *testing.T, key *keys.PrivateKey) {
@@ -141,6 +149,18 @@ func runTests(ctx context.Context, t *testing.T, key *keys.PrivateKey, node stri
 	t.Run("rest list containers", func(t *testing.T) { restContainerList(ctx, t, clientPool, owner, cnrID) })
 }
 
+func runEchoTests(ctx context.Context, t *testing.T, key *keys.PrivateKey, node string) {
+	cancel := runEchoServer(ctx, t, node)
+	defer cancel()
+
+	signer := user.NewAutoIDSignerRFC6979(key.PrivateKey)
+	owner := signer.UserID()
+
+	clientPool := getPool(ctx, t, key, node)
+	cnrID := createContainer(ctx, t, clientPool, owner, containerName, signer)
+	restrictByEACL(ctx, t, clientPool, cnrID, signer)
+}
+
 func createDockerContainer(ctx context.Context, t *testing.T, image, version string) testcontainers.Container {
 	req := testcontainers.ContainerRequest{
 		Image:      image,
@@ -185,6 +205,36 @@ func runServer(ctx context.Context, t *testing.T, node string) context.CancelFun
 	return func() {
 		cancel()
 		err := server.Shutdown()
+		require.NoError(t, err)
+	}
+}
+
+func runEchoServer(ctx context.Context, t *testing.T, node string) context.CancelFunc {
+	cancelCtx, cancel := context.WithCancel(ctx)
+
+	v := getDefaultConfig(node)
+	l := newLogger(v)
+
+	neofsAPI, err := newNeofsAPIEcho(cancelCtx, l, v)
+	require.NoError(t, err)
+
+	swagger, err := apiserver.GetSwagger()
+	require.NoError(t, err)
+
+	e := echo.New()
+	e.HideBanner = true
+
+	e.Group(baseURL, middleware.OapiRequestValidator(swagger))
+	apiserver.RegisterHandlersWithBaseURL(e, neofsAPI, baseURL)
+
+	go func() {
+		err := e.Start(testListenAddress)
+		require.ErrorIs(t, err, http.ErrServerClosed)
+	}()
+
+	return func() {
+		cancel()
+		err := e.Shutdown(cancelCtx)
 		require.NoError(t, err)
 	}
 }
