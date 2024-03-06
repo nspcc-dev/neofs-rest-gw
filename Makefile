@@ -11,22 +11,15 @@ LINT_VERSION ?= v1.49.0
 HUB_IMAGE ?= nspccdev/neofs-rest-gw
 HUB_TAG ?= "$(shell echo ${VERSION} | sed 's/^v//')"
 
-SWAGGER_VERSION ?= v0.29.0
-
 UNAME = "$(shell uname)/$(shell uname -m)"
-SWAGGER_ARCH = linux_amd64
 
 ifeq ($(UNAME), "Darwin/arm64")
-	SWAGGER_ARCH = darwin_arm64
 	BUILD_OS=darwin
 	BUILD_ARCH=arm64
 endif
 ifeq ($(UNAME), "Darwin/x86_64")
-	SWAGGER_ARCH = darwin_amd64
 	BUILD_OS=darwin
 endif
-
-SWAGGER_URL ?= "https://github.com/go-swagger/go-swagger/releases/download/$(SWAGGER_VERSION)/swagger_$(SWAGGER_ARCH)"
 
 # List of binaries to build. For now just one.
 BINDIR = bin
@@ -60,18 +53,13 @@ dep:
 	@CGO_ENABLED=0 \
 	go mod tidy -v && echo OK
 
-# Install swagger
-swagger:
-ifeq (,$(wildcard ./bin/swagger))
-	curl --create-dirs -o ./bin/swagger -L'#' $(SWAGGER_URL)
-	chmod +x ./bin/swagger
-endif
+# Install generator
+install-generator:
+	@go install github.com/deepmap/oapi-codegen/v2/cmd/oapi-codegen@v2.1.0
 
-# Generate server by swagger spec
-generate-server: swagger
-	./bin/swagger generate server -t gen -f ./spec/rest.yaml --exclude-main \
-		-A neofs-rest-gw -P models.Principal \
-		-C templates/server-config.yaml --template-dir templates
+# Generate server by openapi spec
+generate-server: install-generator
+	@oapi-codegen --config=./oapi-generator.cfg.yaml ./spec/rest.yaml
 
 # Run tests
 test:

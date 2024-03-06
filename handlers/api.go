@@ -10,11 +10,13 @@ import (
 	"github.com/go-openapi/errors"
 	"github.com/go-openapi/loads"
 	"github.com/google/uuid"
+	"github.com/labstack/echo/v4"
 	"github.com/nspcc-dev/neo-go/pkg/crypto/keys"
 	sessionv2 "github.com/nspcc-dev/neofs-api-go/v2/session"
 	"github.com/nspcc-dev/neofs-rest-gw/gen/models"
 	"github.com/nspcc-dev/neofs-rest-gw/gen/restapi"
 	"github.com/nspcc-dev/neofs-rest-gw/gen/restapi/operations"
+	"github.com/nspcc-dev/neofs-rest-gw/handlers/apiserver"
 	"github.com/nspcc-dev/neofs-rest-gw/internal/util"
 	"github.com/nspcc-dev/neofs-rest-gw/metrics"
 	"github.com/nspcc-dev/neofs-sdk-go/pool"
@@ -87,6 +89,26 @@ func New(prm *PrmAPI) *API {
 	signer := user.NewAutoIDSignerRFC6979(prm.Key.PrivateKey)
 
 	return &API{
+		log:              prm.Logger,
+		pool:             prm.Pool,
+		signer:           signer,
+		defaultTimestamp: prm.DefaultTimestamp,
+		maxObjectSize:    prm.MaxObjectSize,
+
+		prometheusService:      prm.PrometheusService,
+		pprofService:           prm.PprofService,
+		gateMetric:             prm.GateMetric,
+		serviceShutdownTimeout: prm.ServiceShutdownTimeout,
+	}
+}
+
+//go:generate go run github.com/deepmap/oapi-codegen/cmd/oapi-codegen --config=server.cfg.yaml ../spec/rest.yaml
+
+// NewAPI creates a new RestAPI using specified logger, connection pool and other parameters.
+func NewAPI(prm *PrmAPI) *RestAPI {
+	signer := user.NewAutoIDSignerRFC6979(prm.Key.PrivateKey)
+
+	return &RestAPI{
 		log:              prm.Logger,
 		pool:             prm.Pool,
 		signer:           signer,
@@ -252,4 +274,181 @@ func getBasePath() (string, error) {
 		return "", err
 	}
 	return spec.BasePath(), nil
+}
+
+// RestAPI is a REST v1 request handler.
+type RestAPI struct {
+	log              *zap.Logger
+	pool             *pool.Pool
+	signer           user.Signer
+	defaultTimestamp bool
+	maxObjectSize    int64
+
+	gateMetric             *metrics.GateMetrics
+	prometheusService      *metrics.Service
+	pprofService           *metrics.Service
+	serviceShutdownTimeout time.Duration
+}
+
+func (a *RestAPI) GetBalance(ctx echo.Context, address string) error {
+	// TODO implement me
+	panic("implement me")
+}
+
+func (a *RestAPI) OptionsBalance(ctx echo.Context, address string) error {
+	// TODO implement me
+	panic("implement me")
+}
+
+func (a *RestAPI) OptionsAuth(ctx echo.Context) error {
+	// TODO implement me
+	panic("implement me")
+}
+
+func (a *RestAPI) Auth(ctx echo.Context, params apiserver.AuthParams) error {
+	// TODO implement me
+	panic("implement me")
+}
+
+func (a *RestAPI) FormBinaryBearer(ctx echo.Context, params apiserver.FormBinaryBearerParams) error {
+	// TODO implement me
+	panic("implement me")
+}
+
+func (a *RestAPI) OptionsAuthBearer(ctx echo.Context) error {
+	// TODO implement me
+	panic("implement me")
+}
+
+func (a *RestAPI) ListContainers(ctx echo.Context, params apiserver.ListContainersParams) error {
+	// TODO implement me
+	panic("implement me")
+}
+
+func (a *RestAPI) OptionsContainersPutList(ctx echo.Context) error {
+	// TODO implement me
+	panic("implement me")
+}
+
+func (a *RestAPI) PutContainer(ctx echo.Context, params apiserver.PutContainerParams) error {
+	// TODO implement me
+	panic("implement me")
+}
+
+func (a *RestAPI) DeleteContainer(ctx echo.Context, containerId apiserver.ContainerId, params apiserver.DeleteContainerParams) error {
+	// TODO implement me
+	panic("implement me")
+}
+
+func (a *RestAPI) GetContainer(ctx echo.Context, containerId apiserver.ContainerId) error {
+	// TODO implement me
+	panic("implement me")
+}
+
+func (a *RestAPI) OptionsContainersGetDelete(ctx echo.Context, containerId apiserver.ContainerId) error {
+	// TODO implement me
+	panic("implement me")
+}
+
+func (a *RestAPI) GetContainerEACL(ctx echo.Context, containerId apiserver.ContainerId) error {
+	// TODO implement me
+	panic("implement me")
+}
+
+func (a *RestAPI) OptionsContainersEACL(ctx echo.Context, containerId apiserver.ContainerId) error {
+	// TODO implement me
+	panic("implement me")
+}
+
+func (a *RestAPI) PutContainerEACL(ctx echo.Context, containerId apiserver.ContainerId, params apiserver.PutContainerEACLParams) error {
+	// TODO implement me
+	panic("implement me")
+}
+
+func (a *RestAPI) GetContainerObject(ctx echo.Context, containerId apiserver.ContainerId, objectId apiserver.ObjectId, params apiserver.GetContainerObjectParams) error {
+	// TODO implement me
+	panic("implement me")
+}
+
+func (a *RestAPI) HeadContainerObject(ctx echo.Context, containerId apiserver.ContainerId, objectId apiserver.ObjectId, params apiserver.HeadContainerObjectParams) error {
+	// TODO implement me
+	panic("implement me")
+}
+
+func (a *RestAPI) OptionsContainerObject(ctx echo.Context, containerId apiserver.ContainerId, objectId apiserver.ObjectId) error {
+	// TODO implement me
+	panic("implement me")
+}
+
+func (a *RestAPI) GetByAttribute(ctx echo.Context, containerId apiserver.ContainerId, attrKey apiserver.AttrKey, attrVal apiserver.AttrVal, params apiserver.GetByAttributeParams) error {
+	// TODO implement me
+	panic("implement me")
+}
+
+func (a *RestAPI) HeadByAttribute(ctx echo.Context, containerId apiserver.ContainerId, attrKey apiserver.AttrKey, attrVal apiserver.AttrVal, params apiserver.HeadByAttributeParams) error {
+	// TODO implement me
+	panic("implement me")
+}
+
+func (a *RestAPI) OptionsByAttribute(ctx echo.Context, containerId apiserver.ContainerId, attrKey apiserver.AttrKey, attrVal apiserver.AttrVal) error {
+	// TODO implement me
+	panic("implement me")
+}
+
+func (a *RestAPI) OptionsObjectsPut(ctx echo.Context) error {
+	// TODO implement me
+	panic("implement me")
+}
+
+func (a *RestAPI) PutObject(ctx echo.Context, params apiserver.PutObjectParams) error {
+	// TODO implement me
+	panic("implement me")
+}
+
+func (a *RestAPI) OptionsObjectsSearch(ctx echo.Context, containerId string) error {
+	// TODO implement me
+	panic("implement me")
+}
+
+func (a *RestAPI) SearchObjects(ctx echo.Context, containerId apiserver.ContainerId, params apiserver.SearchObjectsParams) error {
+	// TODO implement me
+	panic("implement me")
+}
+
+func (a *RestAPI) DeleteObject(ctx echo.Context, containerId apiserver.ContainerId, objectId apiserver.ObjectId, params apiserver.DeleteObjectParams) error {
+	// TODO implement me
+	panic("implement me")
+}
+
+func (a *RestAPI) GetObjectInfo(ctx echo.Context, containerId apiserver.ContainerId, objectId apiserver.ObjectId, params apiserver.GetObjectInfoParams) error {
+	// TODO implement me
+	panic("implement me")
+}
+
+func (a *RestAPI) OptionsObjectsGetDelete(ctx echo.Context, containerId apiserver.ContainerId, objectId apiserver.ObjectId) error {
+	// TODO implement me
+	panic("implement me")
+}
+
+func (a *RestAPI) OptionsUploadContainerObject(ctx echo.Context, containerId apiserver.ContainerId) error {
+	// TODO implement me
+	panic("implement me")
+}
+
+func (a *RestAPI) UploadContainerObject(ctx echo.Context, containerId apiserver.ContainerId, params apiserver.UploadContainerObjectParams) error {
+	// TODO implement me
+	panic("implement me")
+}
+
+func (a *RestAPI) StartCallback() {
+	if a.gateMetric == nil {
+		return
+	}
+
+	a.gateMetric.SetHealth(1)
+}
+
+func (a *RestAPI) RunServices() {
+	go a.pprofService.Start()
+	go a.prometheusService.Start()
 }
