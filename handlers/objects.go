@@ -994,7 +994,8 @@ func (a *API) GetByAttribute(params operations.GetByAttributeParams, principal *
 		err = res.Close()
 
 		if err == nil || errors.Is(err, io.EOF) {
-			resp := a.logAndGetErrorResponse("object not found", err)
+			a.log.Info("object not found")
+			resp := util.NewErrorResponse(fmt.Errorf("object not found"))
 			return operations.NewGetContainerObjectNotFound().WithPayload(resp)
 		}
 
@@ -1039,7 +1040,8 @@ func (a *API) HeadByAttribute(params operations.HeadByAttributeParams, principal
 		err = res.Close()
 
 		if err == nil || errors.Is(err, io.EOF) {
-			resp := a.logAndGetErrorResponse("object not found", err)
+			a.log.Error("object not found")
+			resp := util.NewErrorResponse(fmt.Errorf("object not found"))
 			return operations.NewHeadContainerObjectNotFound().WithPayload(resp)
 		}
 
