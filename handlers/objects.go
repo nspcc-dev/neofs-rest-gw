@@ -10,6 +10,7 @@ import (
 	"io"
 	"mime/multipart"
 	"net/http"
+	"net/textproto"
 	"path"
 	"strconv"
 	"strings"
@@ -994,7 +995,8 @@ func (a *API) GetByAttribute(params operations.GetByAttributeParams, principal *
 		err = res.Close()
 
 		if err == nil || errors.Is(err, io.EOF) {
-			resp := a.logAndGetErrorResponse("object not found", err)
+			a.log.Info("object not found")
+			resp := util.NewErrorResponse(fmt.Errorf("object not found"))
 			return operations.NewGetContainerObjectNotFound().WithPayload(resp)
 		}
 
@@ -1039,7 +1041,8 @@ func (a *API) HeadByAttribute(params operations.HeadByAttributeParams, principal
 		err = res.Close()
 
 		if err == nil || errors.Is(err, io.EOF) {
-			resp := a.logAndGetErrorResponse("object not found", err)
+			a.log.Error("object not found")
+			resp := util.NewErrorResponse(fmt.Errorf("object not found"))
 			return operations.NewHeadContainerObjectNotFound().WithPayload(resp)
 		}
 
@@ -1055,6 +1058,11 @@ func (a *API) HeadByAttribute(params operations.HeadByAttributeParams, principal
 }
 
 func (a *API) search(ctx context.Context, principal *models.Principal, cid cid.ID, key, val string, op object.SearchMatchType) (*client.ObjectListReader, error) {
+	// Transform the key to the format used on upload.
+	// "cat" -> "Cat", "sOme-attr-KEY" -> "Some-Attr-Key",
+	// but "filename" and "filepath" in any case -> "FileName" and "FilePath".
+	key = formatSpecialAttribute(textproto.CanonicalMIMEHeaderKey(key))
+
 	filters := object.NewSearchFilters()
 	filters.AddRootFilter()
 	filters.AddFilter(key, val, op)
