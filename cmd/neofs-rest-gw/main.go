@@ -17,6 +17,7 @@ func main() {
 
 	v := config()
 	logger := newLogger(v)
+	zap.ReplaceGlobals(logger)
 	validateConfig(v, logger)
 
 	neofsAPI, err := newNeofsAPI(ctx, logger, v)
