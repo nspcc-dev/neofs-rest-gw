@@ -10,6 +10,19 @@ This document outlines major changes between releases.
 
 ### Changed
 
+## [0.7.2] - 2024-03-13
+
+### Fixed
+- Response for GET and HEAD methods in `get_by_attribute` when object is not 
+  found (#155)
+- Transform attribute key to Canonical MIME Header Key, which corresponds to
+  the format used on upload (#155)
+
+### Changed
+- Simplified auth test, dropped the unnecessary `neofs-crypto` dependency (#150)
+- Upgraded Go version to a minimum 1.20 and updated versions for GitHub Actions
+  and workflows (#149, #152)
+
 ## [0.7.1] - 2024-02-19
 
 ### Added
@@ -155,4 +168,5 @@ Please refer to [GitHub releases](https://github.com/nspcc-dev/neofs-rest-gw/rel
 [0.6.0]: https://github.com/nspcc-dev/neofs-rest-gw/compare/v0.5.0...v0.6.0
 [0.7.0]: https://github.com/nspcc-dev/neofs-rest-gw/compare/v0.6.0...v0.7.0
 [0.7.1]: https://github.com/nspcc-dev/neofs-rest-gw/compare/v0.7.0...v0.7.1
-[Unreleased]: https://github.com/nspcc-dev/neofs-rest-gw/compare/v0.7.1...master
+[0.7.2]: https://github.com/nspcc-dev/neofs-rest-gw/compare/v0.7.1...v0.7.2
+[Unreleased]: https://github.com/nspcc-dev/neofs-rest-gw/compare/v0.7.2...master
