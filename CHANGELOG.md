@@ -10,6 +10,8 @@ This document outlines major changes between releases.
 
 ### Changed
 
+- OpenAPI specification was updated to 3.0.1 version (#153)
+
 ## [0.7.2] - 2024-03-13
 
 ### Fixed
