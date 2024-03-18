@@ -4,13 +4,16 @@ This document outlines major changes between releases.
 
 ## [Unreleased]
 
-### Added
+## [0.8.0] - 2024-03-19
 
 ### Fixed
+- Handling nested path in get_by_attribute API (#153)
+- Static MIME type defined for APIs with dynamic one (#153)
 
 ### Changed
 
 - OpenAPI specification was updated to 3.0.1 version (#153)
+- Bumped google.golang.org/protobuf dependency from 1.32.0 to 1.33.0
 
 ## [0.7.2] - 2024-03-13
 
@@ -171,4 +174,5 @@ Please refer to [GitHub releases](https://github.com/nspcc-dev/neofs-rest-gw/rel
 [0.7.0]: https://github.com/nspcc-dev/neofs-rest-gw/compare/v0.6.0...v0.7.0
 [0.7.1]: https://github.com/nspcc-dev/neofs-rest-gw/compare/v0.7.0...v0.7.1
 [0.7.2]: https://github.com/nspcc-dev/neofs-rest-gw/compare/v0.7.1...v0.7.2
-[Unreleased]: https://github.com/nspcc-dev/neofs-rest-gw/compare/v0.7.2...master
+[0.8.0]: https://github.com/nspcc-dev/neofs-rest-gw/compare/v0.7.2...v0.8.0
+[Unreleased]: https://github.com/nspcc-dev/neofs-rest-gw/compare/v0.8.0...master
