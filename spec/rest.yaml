@@ -670,7 +670,8 @@ paths:
             This make the browser to download object as file instead of showing it on
             the page.
           schema:
-            type: boolean
+            type: string
+            example: 1, t, T, true, TRUE, True, y, yes, Y, YES, Yes
       responses:
         "200":
           $ref: '#/components/responses/ObjectContentOK'
@@ -723,7 +724,8 @@ paths:
             This make the browser to download object as file instead of showing it on
             the page.
           schema:
-            type: boolean
+            type: string
+            example: 1, t, T, true, TRUE, True, y, yes, Y, YES, Yes
       responses:
         "200":
           $ref: '#/components/responses/ObjectHeadOK'
@@ -834,7 +836,8 @@ paths:
             This makes the browser to download object as file instead of showing it
             on the page.
           schema:
-            type: boolean
+            type: string
+            example: 1, t, T, true, TRUE, True, y, yes, Y, YES, Yes
       responses:
         "200":
           $ref: '#/components/responses/ObjectContentOK'
@@ -889,7 +892,8 @@ paths:
             This makes the browser to download object as file instead of showing it
             on the page.
           schema:
-            type: boolean
+            type: string
+            example: 1, t, T, true, TRUE, True, y, yes, Y, YES, Yes
       responses:
         "200":
           $ref: '#/components/responses/ObjectHeadOK'

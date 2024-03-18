@@ -405,16 +405,11 @@ func (a *RestAPI) GetContainerObject(ctx echo.Context, containerID apiserver.Con
 		return ctx.JSON(http.StatusBadRequest, resp)
 	}
 
-	var download = "n"
-	if params.Download != nil && *params.Download {
-		download = "y"
-	}
-
-	return a.getByAddress(ctx, addr, download, principal)
+	return a.getByAddress(ctx, addr, params.Download, principal)
 }
 
 // getByAddress returns object (using container ID and object ID).
-func (a *RestAPI) getByAddress(ctx echo.Context, addr oid.Address, downloadParam string, principal string) error {
+func (a *RestAPI) getByAddress(ctx echo.Context, addr oid.Address, downloadParam *string, principal string) error {
 	var prm client.PrmObjectGet
 	if principal != "" {
 		btoken, err := getBearerTokenFromString(principal)
@@ -485,16 +480,11 @@ func (a *RestAPI) HeadContainerObject(ctx echo.Context, containerID apiserver.Co
 		return ctx.JSON(http.StatusBadRequest, resp)
 	}
 
-	var download = "n"
-	if params.Download != nil && *params.Download {
-		download = "y"
-	}
-
-	return a.headByAddress(ctx, addr, download, principal)
+	return a.headByAddress(ctx, addr, params.Download, principal)
 }
 
 // headByAddress returns object info (using container ID and object ID).
-func (a *RestAPI) headByAddress(ctx echo.Context, addr oid.Address, downloadParam string, principal string) error {
+func (a *RestAPI) headByAddress(ctx echo.Context, addr oid.Address, downloadParam *string, principal string) error {
 	var (
 		prm    client.PrmObjectHead
 		btoken *bearer.Token
@@ -554,7 +544,7 @@ func isNotFoundError(err error) bool {
 		errors.Is(err, apistatus.ErrObjectAlreadyRemoved)
 }
 
-func (a *RestAPI) setAttributes(ctx echo.Context, payloadSize uint64, cid string, oid string, header object.Object, download string) string {
+func (a *RestAPI) setAttributes(ctx echo.Context, payloadSize uint64, cid string, oid string, header object.Object, download *string) string {
 	ctx.Response().Header().Set("Content-Length", strconv.FormatUint(payloadSize, 10))
 	ctx.Response().Header().Set("X-Container-Id", cid)
 	ctx.Response().Header().Set("X-Object-Id", oid)
@@ -576,9 +566,11 @@ func (a *RestAPI) setAttributes(ctx echo.Context, payloadSize uint64, cid string
 
 			switch key {
 			case object.AttributeFileName:
-				switch download {
-				case "1", "t", "T", "true", "TRUE", "True", "y", "yes", "Y", "YES", "Yes":
-					dis = "attachment"
+				if download != nil {
+					switch *download {
+					case "1", "t", "T", "true", "TRUE", "True", "y", "yes", "Y", "YES", "Yes":
+						dis = "attachment"
+					}
 				}
 				ctx.Response().Header().Set("Content-Disposition", dis+"; filename="+path.Base(val))
 				ctx.Response().Header().Set("X-Attribute-FileName", val)
@@ -1069,12 +1061,7 @@ func (a *RestAPI) GetByAttribute(ctx echo.Context, containerID apiserver.Contain
 	addrObj.SetContainer(cnrID)
 	addrObj.SetObject(buf[0])
 
-	var download = "n"
-	if params.Download != nil && *params.Download {
-		download = "y"
-	}
-
-	return a.getByAddress(ctx, addrObj, download, principal)
+	return a.getByAddress(ctx, addrObj, params.Download, principal)
 }
 
 // HeadByAttribute handler that returns object info (payload and attributes) by a specific attribute.
@@ -1121,12 +1108,7 @@ func (a *RestAPI) HeadByAttribute(ctx echo.Context, containerID apiserver.Contai
 	addrObj.SetContainer(cnrID)
 	addrObj.SetObject(buf[0])
 
-	var download = "n"
-	if params.Download != nil && *params.Download {
-		download = "y"
-	}
-
-	return a.headByAddress(ctx, addrObj, download, principal)
+	return a.headByAddress(ctx, addrObj, params.Download, principal)
 }
 
 func (a *RestAPI) search(ctx context.Context, principal string, cid cid.ID, key, val string, op object.SearchMatchType) (*client.ObjectListReader, error) {
