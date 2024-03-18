@@ -217,3 +217,45 @@ func TestFilter(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, expected, result)
 }
+
+func Test_getOffsetAndLimit(t *testing.T) {
+	type args struct {
+		offset *int
+		limit  *int
+	}
+	tests := []struct {
+		name       string
+		args       args
+		wantOffset int
+		wantLimit  int
+		wantErr    bool
+	}{
+		{name: "default", args: args{}, wantOffset: offsetDefault, wantLimit: limitDefault, wantErr: false},
+		{name: "invalid offset", args: args{offset: newInt(offsetMin - 1)}, wantErr: true},
+		{name: "valid offset", args: args{offset: newInt(offsetMin)}, wantOffset: offsetMin, wantLimit: limitDefault, wantErr: false},
+		{name: "invalid limit, lower", args: args{limit: newInt(limitMin - 1)}, wantErr: true},
+		{name: "invalid limit, greater", args: args{limit: newInt(limitMax + 1)}, wantErr: true},
+		{name: "valid limit", args: args{limit: newInt(limitMin)}, wantOffset: offsetDefault, wantLimit: limitMin, wantErr: false},
+		{name: "valid limit", args: args{limit: newInt(limitMax)}, wantOffset: offsetDefault, wantLimit: limitMax, wantErr: false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, got1, err := getOffsetAndLimit(tt.args.offset, tt.args.limit)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("getOffsetAndLimit() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if got != tt.wantOffset {
+				t.Errorf("getOffsetAndLimit() got = %v, wantOffset %v", got, tt.wantOffset)
+			}
+			if got1 != tt.wantLimit {
+				t.Errorf("getOffsetAndLimit() got1 = %v, wantOffset %v", got1, tt.wantLimit)
+			}
+		})
+	}
+}
+
+func newInt(v int) *int {
+	return &v
+}

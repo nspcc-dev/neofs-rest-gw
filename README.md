@@ -44,13 +44,13 @@ Or you can build it using docker:
 $ make docker/all
 ```
 
-#### Generate go-swagger boilerplate code
+#### Generate openapi boilerplate code
 
-If you change the [spec file](./spec/rest.yaml) you have to re-generate go-swagger server code.
+If you change the [spec file](./spec/rest.yaml) you have to re-generate server code.
 
 You have several approaches:
 
-1. Run make. It automatically downloads `swagger` and generates boilerplate.
+1. Run make. It automatically downloads `oapi-codegen` and generates boilerplate.
 
 ```shell
 $ make
@@ -60,12 +60,6 @@ $ make
 
 ```shell
 $ make generate-server
-```
-
-Or using docker:
-
-```shell
-$ make docker/generate-server
 ```
 
 #### Other targets

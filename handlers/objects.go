@@ -10,7 +10,6 @@ import (
 	"io"
 	"mime/multipart"
 	"net/http"
-	"net/textproto"
 	"path"
 	"strconv"
 	"strings"
@@ -18,15 +17,12 @@ import (
 	"unicode"
 	"unicode/utf8"
 
-	"github.com/go-openapi/runtime"
-	"github.com/go-openapi/runtime/middleware"
-	"github.com/go-openapi/swag"
+	"github.com/labstack/echo/v4"
 	"github.com/nspcc-dev/neo-go/pkg/crypto/keys"
 	"github.com/nspcc-dev/neofs-api-go/v2/acl"
 	"github.com/nspcc-dev/neofs-api-go/v2/container"
 	"github.com/nspcc-dev/neofs-api-go/v2/refs"
-	"github.com/nspcc-dev/neofs-rest-gw/gen/models"
-	"github.com/nspcc-dev/neofs-rest-gw/gen/restapi/operations"
+	"github.com/nspcc-dev/neofs-rest-gw/handlers/apiserver"
 	"github.com/nspcc-dev/neofs-rest-gw/internal/util"
 	"github.com/nspcc-dev/neofs-sdk-go/bearer"
 	"github.com/nspcc-dev/neofs-sdk-go/client"
@@ -45,6 +41,9 @@ const (
 
 	attributeFilepathHTTP = "Filepath"
 	attributeFilenameHTTP = "Filename"
+
+	// according to the [http] package.
+	defaultMaxMemory = 32 << 20 // 32 MB
 )
 
 type readCloser struct {
@@ -52,37 +51,59 @@ type readCloser struct {
 	io.Closer
 }
 
-// PutObjects handler that uploads object to NeoFS.
-func (a *API) PutObjects(params operations.PutObjectParams, principal *models.Principal) middleware.Responder {
-	errorResponse := operations.NewPutObjectBadRequest()
-	ctx := params.HTTPRequest.Context()
+// PutObject handler that uploads object to NeoFS.
+func (a *RestAPI) PutObject(ctx echo.Context, params apiserver.PutObjectParams) error {
+	principal, err := getPrincipal(ctx)
+	if err != nil {
+		return ctx.JSON(http.StatusBadRequest, util.NewErrorResponse(err))
+	}
 
-	btoken, err := getBearerToken(principal, params.XBearerSignature, params.XBearerSignatureKey, *params.WalletConnect, *params.FullBearer)
+	var body apiserver.ObjectUpload
+	if err = ctx.Bind(&body); err != nil {
+		return ctx.JSON(http.StatusBadRequest, a.logAndGetErrorResponse("bind", err))
+	}
+
+	var (
+		fullBearer    apiserver.FullBearerToken
+		walletConnect apiserver.SignatureScheme
+	)
+	if params.FullBearer != nil {
+		fullBearer = *params.FullBearer
+	}
+	if params.WalletConnect != nil {
+		walletConnect = *params.WalletConnect
+	}
+
+	btoken, err := getBearerToken(principal, params.XBearerSignature, params.XBearerSignatureKey, walletConnect, fullBearer)
 	if err != nil {
 		resp := a.logAndGetErrorResponse("invalid bearer token", err)
-		return errorResponse.WithPayload(resp)
+		return ctx.JSON(http.StatusBadRequest, resp)
 	}
 
 	var cnrID cid.ID
-	if err = cnrID.DecodeString(*params.Object.ContainerID); err != nil {
+	if err = cnrID.DecodeString(body.ContainerId); err != nil {
 		resp := a.logAndGetErrorResponse("invalid container id", err)
-		return errorResponse.WithPayload(resp)
+		return ctx.JSON(http.StatusBadRequest, resp)
 	}
 
-	payload, err := base64.StdEncoding.DecodeString(params.Object.Payload)
-	if err != nil {
-		resp := a.logAndGetErrorResponse("invalid object payload", err)
-		return errorResponse.WithPayload(resp)
+	var payload []byte
+
+	if body.Payload != nil {
+		payload, err = base64.StdEncoding.DecodeString(*body.Payload)
+		if err != nil {
+			resp := a.logAndGetErrorResponse("invalid object payload", err)
+			return ctx.JSON(http.StatusBadRequest, resp)
+		}
 	}
 
 	prm := PrmAttributes{
 		DefaultTimestamp: a.defaultTimestamp,
-		DefaultFileName:  *params.Object.FileName,
+		DefaultFileName:  body.FileName,
 	}
-	attributes, err := GetObjectAttributes(ctx, a.pool, params.Object.Attributes, prm)
+	attributes, err := getObjectAttributes(ctx.Request().Context(), a.pool, body.Attributes, prm)
 	if err != nil {
 		resp := a.logAndGetErrorResponse("failed to get object attributes", err)
-		return errorResponse.WithPayload(resp)
+		return ctx.JSON(http.StatusBadRequest, resp)
 	}
 
 	var obj object.Object
@@ -95,10 +116,10 @@ func (a *API) PutObjects(params operations.PutObjectParams, principal *models.Pr
 		prmPutInit.WithBearerToken(*btoken)
 	}
 
-	writer, err := a.pool.ObjectPutInit(ctx, obj, a.signer, prmPutInit)
+	writer, err := a.pool.ObjectPutInit(ctx.Request().Context(), obj, a.signer, prmPutInit)
 	if err != nil {
 		resp := a.logAndGetErrorResponse("put object init", err)
-		return errorResponse.WithPayload(resp)
+		return ctx.JSON(http.StatusBadRequest, resp)
 	}
 
 	var objID oid.ID
@@ -108,92 +129,105 @@ func (a *API) PutObjects(params operations.PutObjectParams, principal *models.Pr
 	_, err = io.CopyBuffer(writer, data, chunk)
 	if err != nil {
 		resp := a.logAndGetErrorResponse("write", err)
-		return errorResponse.WithPayload(resp)
+		return ctx.JSON(http.StatusBadRequest, resp)
 	}
 
 	if err = writer.Close(); err != nil {
 		resp := a.logAndGetErrorResponse("writer close", err)
-		return errorResponse.WithPayload(resp)
+		return ctx.JSON(http.StatusBadRequest, resp)
 	}
 
 	objID = writer.GetResult().StoredObjectID()
 
-	var resp models.Address
-	resp.ContainerID = params.Object.ContainerID
-	resp.ObjectID = util.NewString(objID.String())
+	var resp apiserver.Address
+	resp.ContainerId = body.ContainerId
+	resp.ObjectId = objID.String()
 
-	return operations.NewPutObjectOK().
-		WithPayload(&resp).
-		WithAccessControlAllowOrigin("*")
+	ctx.Response().Header().Set(accessControlAllowOriginHeader, "*")
+	return ctx.JSON(http.StatusOK, resp)
 }
 
 // GetObjectInfo handler that get object info.
-func (a *API) GetObjectInfo(params operations.GetObjectInfoParams, principal *models.Principal) middleware.Responder {
-	errorResponse := operations.NewGetObjectInfoBadRequest()
-	ctx := params.HTTPRequest.Context()
-
-	addr, err := parseAddress(params.ContainerID, params.ObjectID)
+func (a *RestAPI) GetObjectInfo(ctx echo.Context, containerID apiserver.ContainerId, objectID apiserver.ObjectId, params apiserver.GetObjectInfoParams) error {
+	addr, err := parseAddress(containerID, objectID)
 	if err != nil {
 		resp := a.logAndGetErrorResponse("invalid address", err)
-		return errorResponse.WithPayload(resp)
+		return ctx.JSON(http.StatusBadRequest, resp)
 	}
 
-	btoken, err := getBearerToken(principal, params.XBearerSignature, params.XBearerSignatureKey, *params.WalletConnect, *params.FullBearer)
+	principal, err := getPrincipal(ctx)
+	if err != nil {
+		return ctx.JSON(http.StatusBadRequest, util.NewErrorResponse(err))
+	}
+
+	var (
+		fullBearer    apiserver.FullBearerToken
+		walletConnect apiserver.SignatureScheme
+	)
+	if params.FullBearer != nil {
+		fullBearer = *params.FullBearer
+	}
+	if params.WalletConnect != nil {
+		walletConnect = *params.WalletConnect
+	}
+
+	btoken, err := getBearerToken(principal, params.XBearerSignature, params.XBearerSignatureKey, walletConnect, fullBearer)
 	if err != nil {
 		resp := a.logAndGetErrorResponse("get bearer token", err)
-		return errorResponse.WithPayload(resp)
+		return ctx.JSON(http.StatusBadRequest, resp)
 	}
 
 	var prm client.PrmObjectHead
 	attachBearer(&prm, btoken)
 
-	header, err := a.pool.ObjectHead(ctx, addr.Container(), addr.Object(), a.signer, prm)
+	header, err := a.pool.ObjectHead(ctx.Request().Context(), addr.Container(), addr.Object(), a.signer, prm)
 	if err != nil {
 		resp := a.logAndGetErrorResponse("head object", err)
-		return errorResponse.WithPayload(resp)
+		return ctx.JSON(http.StatusBadRequest, resp)
 	}
 
-	var resp models.ObjectInfo
-	resp.ContainerID = util.NewString(params.ContainerID)
-	resp.ObjectID = util.NewString(params.ObjectID)
-	resp.OwnerID = util.NewString(header.OwnerID().String())
-	resp.Attributes = make([]*models.Attribute, len(header.Attributes()))
-	resp.ObjectSize = util.NewInteger(int64(header.PayloadSize()))
-	resp.PayloadSize = util.NewInteger(0)
+	var resp apiserver.ObjectInfo
+	resp.ContainerId = containerID
+	resp.ObjectId = objectID
+	resp.OwnerId = header.OwnerID().String()
+	resp.Attributes = make([]apiserver.Attribute, len(header.Attributes()))
+	resp.ObjectSize = header.PayloadSize()
 
 	for i, attr := range header.Attributes() {
-		resp.Attributes[i] = &models.Attribute{
-			Key:   util.NewString(attr.Key()),
-			Value: util.NewString(attr.Value()),
+		resp.Attributes[i] = apiserver.Attribute{
+			Key:   attr.Key(),
+			Value: attr.Value(),
 		}
 	}
 
 	if header.PayloadSize() == 0 {
-		return operations.NewGetObjectInfoOK().WithPayload(&resp)
+		ctx.Response().Header().Set(accessControlAllowOriginHeader, "*")
+		return ctx.JSON(http.StatusOK, resp)
 	}
 
 	offset, length, err := prepareOffsetLength(params, header.PayloadSize())
 	if err != nil {
 		errResp := a.logAndGetErrorResponse("invalid range param", err)
-		return errorResponse.WithPayload(errResp)
+		return ctx.JSON(http.StatusBadRequest, errResp)
 	}
 
-	if uint64(*params.MaxPayloadSize) < length {
-		return operations.NewGetObjectInfoOK().WithPayload(&resp)
+	if params.MaxPayloadSize != nil && uint64(*params.MaxPayloadSize) < length {
+		ctx.Response().Header().Set(accessControlAllowOriginHeader, "*")
+		return ctx.JSON(http.StatusOK, resp)
 	}
 
 	var prmRange client.PrmObjectRange
 	attachBearer(&prmRange, btoken)
 
-	rangeRes, err := a.pool.ObjectRangeInit(ctx, addr.Container(), addr.Object(), offset, length, a.signer, prmRange)
+	rangeRes, err := a.pool.ObjectRangeInit(ctx.Request().Context(), addr.Container(), addr.Object(), offset, length, a.signer, prmRange)
 	if err != nil {
 		errResp := a.logAndGetErrorResponse("range object", err)
-		return errorResponse.WithPayload(errResp)
+		return ctx.JSON(http.StatusBadRequest, errResp)
 	}
 
 	defer func() {
 		if err = rangeRes.Close(); err != nil {
-			a.log.Error("close range result", zap.Error(err))
+			zap.L().Error("close range result", zap.Error(err))
 		}
 	}()
 
@@ -202,36 +236,48 @@ func (a *API) GetObjectInfo(params operations.GetObjectInfoParams, principal *mo
 	payloadSize, err := io.Copy(encoder, rangeRes)
 	if err != nil {
 		errResp := a.logAndGetErrorResponse("encode object payload", err)
-		return errorResponse.WithPayload(errResp)
+		return ctx.JSON(http.StatusBadRequest, errResp)
 	}
 	if err = encoder.Close(); err != nil {
 		errResp := a.logAndGetErrorResponse("close encoder", err)
-		return errorResponse.WithPayload(errResp)
+		return ctx.JSON(http.StatusBadRequest, errResp)
 	}
 
-	resp.Payload = sb.String()
-	resp.PayloadSize = util.NewInteger(payloadSize)
+	resp.Payload = util.NewString(sb.String())
+	resp.PayloadSize = payloadSize
 
-	return operations.NewGetObjectInfoOK().
-		WithPayload(&resp).
-		WithAccessControlAllowOrigin("*")
+	ctx.Response().Header().Set(accessControlAllowOriginHeader, "*")
+	return ctx.JSON(http.StatusOK, resp)
 }
 
 // DeleteObject handler that removes object from NeoFS.
-func (a *API) DeleteObject(params operations.DeleteObjectParams, principal *models.Principal) middleware.Responder {
-	errorResponse := operations.NewDeleteObjectBadRequest()
-	ctx := params.HTTPRequest.Context()
-
-	addr, err := parseAddress(params.ContainerID, params.ObjectID)
+func (a *RestAPI) DeleteObject(ctx echo.Context, containerID apiserver.ContainerId, objectID apiserver.ObjectId, params apiserver.DeleteObjectParams) error {
+	addr, err := parseAddress(containerID, objectID)
 	if err != nil {
 		resp := a.logAndGetErrorResponse("invalid address", err)
-		return errorResponse.WithPayload(resp)
+		return ctx.JSON(http.StatusBadRequest, resp)
 	}
 
-	btoken, err := getBearerToken(principal, params.XBearerSignature, params.XBearerSignatureKey, *params.WalletConnect, *params.FullBearer)
+	principal, err := getPrincipal(ctx)
 	if err != nil {
-		resp := a.logAndGetErrorResponse("failed to get bearer token", err)
-		return errorResponse.WithPayload(resp)
+		return ctx.JSON(http.StatusBadRequest, util.NewErrorResponse(err))
+	}
+
+	var (
+		fullBearer    apiserver.FullBearerToken
+		walletConnect apiserver.SignatureScheme
+	)
+	if params.FullBearer != nil {
+		fullBearer = *params.FullBearer
+	}
+	if params.WalletConnect != nil {
+		walletConnect = *params.WalletConnect
+	}
+
+	btoken, err := getBearerToken(principal, params.XBearerSignature, params.XBearerSignatureKey, walletConnect, fullBearer)
+	if err != nil {
+		resp := a.logAndGetErrorResponse("get bearer token", err)
+		return ctx.JSON(http.StatusBadRequest, resp)
 	}
 
 	var prm client.PrmObjectDelete
@@ -240,58 +286,78 @@ func (a *API) DeleteObject(params operations.DeleteObjectParams, principal *mode
 	cl, err := a.pool.RawClient()
 	if err != nil {
 		resp := a.logAndGetErrorResponse("failed to get client", err)
-		return errorResponse.WithPayload(resp)
+		return ctx.JSON(http.StatusBadRequest, resp)
 	}
 
-	if _, err = cl.ObjectDelete(ctx, addr.Container(), addr.Object(), a.signer, prm); err != nil {
+	if _, err = cl.ObjectDelete(ctx.Request().Context(), addr.Container(), addr.Object(), a.signer, prm); err != nil {
 		resp := a.logAndGetErrorResponse("failed to delete object", err)
-		return errorResponse.WithPayload(resp)
+		return ctx.JSON(http.StatusBadRequest, resp)
 	}
 
-	return operations.NewDeleteObjectOK().
-		WithPayload(util.NewSuccessResponse()).
-		WithAccessControlAllowOrigin("*")
+	ctx.Response().Header().Set(accessControlAllowOriginHeader, "*")
+	return ctx.JSON(http.StatusOK, util.NewSuccessResponse())
 }
 
-// SearchObjects handler that removes object from NeoFS.
-func (a *API) SearchObjects(params operations.SearchObjectsParams, principal *models.Principal) middleware.Responder {
-	errorResponse := operations.NewSearchObjectsBadRequest()
-	ctx := params.HTTPRequest.Context()
-
+// SearchObjects handler that searches object in NeoFS.
+func (a *RestAPI) SearchObjects(ctx echo.Context, containerID apiserver.ContainerId, params apiserver.SearchObjectsParams) error {
 	var cnrID cid.ID
-	if err := cnrID.DecodeString(params.ContainerID); err != nil {
+	if err := cnrID.DecodeString(containerID); err != nil {
 		resp := a.logAndGetErrorResponse("invalid container id", err)
-		return errorResponse.WithPayload(resp)
+		return ctx.JSON(http.StatusBadRequest, resp)
 	}
 
-	btoken, err := getBearerToken(principal, params.XBearerSignature, params.XBearerSignatureKey, *params.WalletConnect, *params.FullBearer)
+	principal, err := getPrincipal(ctx)
 	if err != nil {
-		resp := a.logAndGetErrorResponse("failed to get bearer token", err)
-		return errorResponse.WithPayload(resp)
+		return ctx.JSON(http.StatusBadRequest, util.NewErrorResponse(err))
 	}
 
-	filters, err := util.ToNativeFilters(params.SearchFilters)
+	var (
+		fullBearer    apiserver.FullBearerToken
+		walletConnect apiserver.SignatureScheme
+	)
+	if params.FullBearer != nil {
+		fullBearer = *params.FullBearer
+	}
+	if params.WalletConnect != nil {
+		walletConnect = *params.WalletConnect
+	}
+
+	btoken, err := getBearerToken(principal, params.XBearerSignature, params.XBearerSignatureKey, walletConnect, fullBearer)
+	if err != nil {
+		resp := a.logAndGetErrorResponse("get bearer token", err)
+		return ctx.JSON(http.StatusBadRequest, resp)
+	}
+
+	var searchFilters apiserver.SearchFilters
+	if err = ctx.Bind(&searchFilters); err != nil {
+		return ctx.JSON(http.StatusBadRequest, a.logAndGetErrorResponse("bind", err))
+	}
+
+	filters, err := util.ToNativeFilters(searchFilters)
 	if err != nil {
 		resp := a.logAndGetErrorResponse("failed to transform to native", err)
-		return errorResponse.WithPayload(resp)
+		return ctx.JSON(http.StatusBadRequest, resp)
 	}
 
 	var prm client.PrmObjectSearch
 	attachBearer(&prm, btoken)
 	prm.SetFilters(filters)
 
-	resSearch, err := a.pool.ObjectSearchInit(ctx, cnrID, a.signer, prm)
+	resSearch, err := a.pool.ObjectSearchInit(ctx.Request().Context(), cnrID, a.signer, prm)
 	if err != nil {
 		resp := a.logAndGetErrorResponse("failed to search objects", err)
-		return errorResponse.WithPayload(resp)
+		return ctx.JSON(http.StatusBadRequest, resp)
 	}
 
-	offset := int(*params.Offset)
-	size := int(*params.Limit)
+	offset, limit, err := getOffsetAndLimit(params.Offset, params.Limit)
+	if err != nil {
+		resp := a.logAndGetErrorResponse("invalid parameter", err)
+		return ctx.JSON(http.StatusBadRequest, resp)
+	}
 
 	var iterateErr error
-	var obj *models.ObjectBaseInfo
-	var objects []*models.ObjectBaseInfo
+	var obj *apiserver.ObjectBaseInfo
+	var objects []apiserver.ObjectBaseInfo
 
 	i := 0
 	err = resSearch.Iterate(func(id oid.ID) bool {
@@ -300,77 +366,76 @@ func (a *API) SearchObjects(params operations.SearchObjectsParams, principal *mo
 			return false
 		}
 
-		if obj, iterateErr = headObjectBaseInfo(ctx, a.pool, cnrID, id, btoken, a.signer); iterateErr != nil {
+		if obj, iterateErr = headObjectBaseInfo(ctx.Request().Context(), a.pool, cnrID, id, btoken, a.signer); iterateErr != nil {
 			return true
 		}
 
-		objects = append(objects, obj)
+		if obj != nil {
+			objects = append(objects, *obj)
+		}
 
-		return len(objects) == size
+		return len(objects) == limit
 	})
 	if err == nil {
 		err = iterateErr
 	}
 	if err != nil {
 		resp := a.logAndGetErrorResponse("failed to search objects", err)
-		return errorResponse.WithPayload(resp)
+		return ctx.JSON(http.StatusBadRequest, resp)
 	}
 
-	list := &models.ObjectList{
-		Size:    util.NewInteger(int64(len(objects))),
+	list := &apiserver.ObjectList{
+		Size:    len(objects),
 		Objects: objects,
 	}
 
-	return operations.NewSearchObjectsOK().
-		WithPayload(list).
-		WithAccessControlAllowOrigin("*")
+	ctx.Response().Header().Set(accessControlAllowOriginHeader, "*")
+	return ctx.JSON(http.StatusOK, list)
 }
 
-// GetContainerObject handler that returns object (using container ID and object ID).
-func (a *API) GetContainerObject(params operations.GetContainerObjectParams, principal *models.Principal) middleware.Responder {
-	errorResponse := operations.NewGetContainerObjectBadRequest()
-	ctx := params.HTTPRequest.Context()
-
-	addr, err := parseAddress(params.ContainerID, params.ObjectID)
+func (a *RestAPI) GetContainerObject(ctx echo.Context, containerID apiserver.ContainerId, objectID apiserver.ObjectId, params apiserver.GetContainerObjectParams) error {
+	principal, err := getPrincipal(ctx)
 	if err != nil {
-		resp := a.logAndGetErrorResponse("invalid address", err)
-		return errorResponse.WithPayload(resp)
+		return ctx.JSON(http.StatusBadRequest, util.NewErrorResponse(err))
 	}
 
-	return a.getByAddress(ctx, NewGetContainerObjectBadRequestWrapper, addr, params.HTTPRequest.URL.Query().Get("download"), principal)
+	addr, err := parseAddress(containerID, objectID)
+	if err != nil {
+		resp := a.logAndGetErrorResponse("invalid address", err)
+		return ctx.JSON(http.StatusBadRequest, resp)
+	}
+
+	return a.getByAddress(ctx, addr, params.Download, principal)
 }
 
 // getByAddress returns object (using container ID and object ID).
-func (a *API) getByAddress(ctx context.Context, createErrorResponse ErrorResponseCreator, addr oid.Address, downloadParam string, principal *models.Principal) middleware.Responder {
-	errorResponse := createErrorResponse() // Use the passed function to create the error response
-
+func (a *RestAPI) getByAddress(ctx echo.Context, addr oid.Address, downloadParam *string, principal string) error {
 	var prm client.PrmObjectGet
-
-	if principal != nil {
-		btoken, err := getBearerTokenFromString(string(*principal))
+	if principal != "" {
+		btoken, err := getBearerTokenFromString(principal)
 		if err != nil {
 			resp := a.logAndGetErrorResponse("get bearer token", err)
-			return errorResponse.WithPayload(resp)
+			return ctx.JSON(http.StatusBadRequest, resp)
 		}
 		attachBearer(&prm, btoken)
 	}
 
-	header, payloadReader, err := a.pool.ObjectGetInit(ctx, addr.Container(), addr.Object(), a.signer, prm)
+	header, payloadReader, err := a.pool.ObjectGetInit(ctx.Request().Context(), addr.Container(), addr.Object(), a.signer, prm)
 	if err != nil {
 		if isNotFoundError(err) {
 			resp := a.logAndGetErrorResponse("not found", err)
-			return operations.NewGetContainerObjectNotFound().WithPayload(resp)
+			return ctx.JSON(http.StatusNotFound, resp)
 		}
 		resp := a.logAndGetErrorResponse("get object", err)
-		return errorResponse.WithPayload(resp)
+		return ctx.JSON(http.StatusBadRequest, resp)
 	}
 
-	payloadSize := header.PayloadSize()
-	res := operations.NewGetContainerObjectOK()
+	var (
+		payloadSize               = header.PayloadSize()
+		contentType               = a.setAttributes(ctx, payloadSize, addr.Container().String(), addr.Object().String(), header, downloadParam)
+		payload     io.ReadCloser = payloadReader
+	)
 
-	responder := a.setAttributes(res, payloadSize, addr.Container().String(), addr.Object().String(), header, downloadParam)
-	contentType := res.ContentType
-	var payload io.ReadCloser = payloadReader
 	if len(contentType) == 0 {
 		if payloadSize > 0 {
 			// determine the Content-Type from the payload head
@@ -381,7 +446,7 @@ func (a *API) getByAddress(ctx context.Context, createErrorResponse ErrorRespons
 			})
 			if err != nil {
 				resp := a.logAndGetErrorResponse("invalid  ContentType", err)
-				return errorResponse.WithPayload(resp)
+				return ctx.JSON(http.StatusBadRequest, resp)
 			}
 
 			// reset payload reader since a part of the data has been read
@@ -395,67 +460,65 @@ func (a *API) getByAddress(ctx context.Context, createErrorResponse ErrorRespons
 		} else {
 			contentType = http.DetectContentType(nil)
 		}
+
+		ctx.Response().Header().Set("Content-Type", contentType)
 	}
 
-	res.WithContentType(contentType).
-		WithPayload(payload)
-
-	if responder != nil {
-		return responder
-	}
-
-	return res
+	return ctx.Stream(http.StatusOK, contentType, payload)
 }
 
 // HeadContainerObject handler that returns object info (using container ID and object ID).
-func (a *API) HeadContainerObject(params operations.HeadContainerObjectParams, principal *models.Principal) middleware.Responder {
-	errorResponse := operations.NewHeadContainerObjectBadRequest()
-	ctx := params.HTTPRequest.Context()
-
-	addr, err := parseAddress(params.ContainerID, params.ObjectID)
+func (a *RestAPI) HeadContainerObject(ctx echo.Context, containerID apiserver.ContainerId, objectID apiserver.ObjectId, params apiserver.HeadContainerObjectParams) error {
+	principal, err := getPrincipal(ctx)
 	if err != nil {
-		resp := a.logAndGetErrorResponse("invalid address", err)
-		return errorResponse.WithPayload(resp)
+		return ctx.JSON(http.StatusBadRequest, util.NewErrorResponse(err))
 	}
 
-	return a.headByAddress(ctx, NewHeadContainerObjectBadRequestWrapper, addr, params.HTTPRequest.URL.Query().Get("download"), principal)
+	addr, err := parseAddress(containerID, objectID)
+	if err != nil {
+		resp := a.logAndGetErrorResponse("invalid address", err)
+		return ctx.JSON(http.StatusBadRequest, resp)
+	}
+
+	return a.headByAddress(ctx, addr, params.Download, principal)
 }
 
 // headByAddress returns object info (using container ID and object ID).
-func (a *API) headByAddress(ctx context.Context, createErrorResponse ErrorResponseCreator, addr oid.Address, downloadParam string, principal *models.Principal) middleware.Responder {
-	errorResponse := createErrorResponse() // Use the passed function to create the error response
-	var prm client.PrmObjectHead
+func (a *RestAPI) headByAddress(ctx echo.Context, addr oid.Address, downloadParam *string, principal string) error {
+	var (
+		prm    client.PrmObjectHead
+		btoken *bearer.Token
+		err    error
+	)
 
-	if principal != nil {
-		btoken, err := getBearerTokenFromString(string(*principal))
+	if principal != "" {
+		btoken, err = getBearerTokenFromString(principal)
 		if err != nil {
 			resp := a.logAndGetErrorResponse("get bearer token", err)
-			return errorResponse.WithPayload(resp)
+			return ctx.JSON(http.StatusBadRequest, resp)
 		}
 		attachBearer(&prm, btoken)
 	}
 
-	header, err := a.pool.ObjectHead(ctx, addr.Container(), addr.Object(), a.signer, prm)
+	header, err := a.pool.ObjectHead(ctx.Request().Context(), addr.Container(), addr.Object(), a.signer, prm)
 	if err != nil {
 		if isNotFoundError(err) {
 			resp := a.logAndGetErrorResponse("not found", err)
-			return operations.NewHeadContainerObjectNotFound().WithPayload(resp)
+			return ctx.JSON(http.StatusNotFound, resp)
 		}
 		resp := a.logAndGetErrorResponse("head object", err)
-		return errorResponse.WithPayload(resp)
+		return ctx.JSON(http.StatusBadRequest, resp)
 	}
 
 	payloadSize := header.PayloadSize()
-	res := operations.NewHeadContainerObjectOK()
-
-	responder := a.setAttributes(res, payloadSize, addr.Container().String(), addr.Object().String(), *header, downloadParam)
-	contentType := res.ContentType
+	contentType := a.setAttributes(ctx, payloadSize, addr.Container().String(), addr.Object().String(), *header, downloadParam)
 	if len(contentType) == 0 {
 		if payloadSize > 0 {
 			contentType, _, err = readContentType(payloadSize, func(sz uint64) (io.Reader, error) {
 				var prmRange client.PrmObjectRange
+				attachBearer(&prmRange, btoken)
 
-				resObj, err := a.pool.ObjectRangeInit(ctx, addr.Container(), addr.Object(), 0, sz, a.signer, prmRange)
+				resObj, err := a.pool.ObjectRangeInit(ctx.Request().Context(), addr.Container(), addr.Object(), 0, sz, a.signer, prmRange)
 				if err != nil {
 					return nil, err
 				}
@@ -463,20 +526,16 @@ func (a *API) headByAddress(ctx context.Context, createErrorResponse ErrorRespon
 			})
 			if err != nil {
 				resp := a.logAndGetErrorResponse("invalid  ContentType", err)
-				return errorResponse.WithPayload(resp)
+				return ctx.JSON(http.StatusBadRequest, resp)
 			}
 		} else {
 			contentType = http.DetectContentType(nil)
 		}
+
+		ctx.Response().Header().Set("Content-Type", contentType)
 	}
 
-	res.WithContentType(contentType)
-
-	if responder != nil {
-		return responder
-	}
-
-	return res
+	return nil
 }
 
 func isNotFoundError(err error) bool {
@@ -485,68 +544,59 @@ func isNotFoundError(err error) bool {
 		errors.Is(err, apistatus.ErrObjectAlreadyRemoved)
 }
 
-type attributeSetter interface {
-	SetContentLength(contentLength string)
-	SetContentType(contentType string)
-	SetXContainerID(xContainerID string)
-	SetXObjectID(xObjectID string)
-	SetXOwnerID(xOwnerID string)
-	SetContentDisposition(contentDisposition string)
-	SetXAttributeFileName(xAttributeFileName string)
-	SetXAttributeTimestamp(xAttributeTimestamp int64)
-	SetLastModified(lastModified string)
-	WriteResponse(rw http.ResponseWriter, producer runtime.Producer)
-}
+func (a *RestAPI) setAttributes(ctx echo.Context, payloadSize uint64, cid string, oid string, header object.Object, download *string) string {
+	ctx.Response().Header().Set("Content-Length", strconv.FormatUint(payloadSize, 10))
+	ctx.Response().Header().Set("X-Container-Id", cid)
+	ctx.Response().Header().Set("X-Object-Id", oid)
+	ctx.Response().Header().Set("X-Owner-Id", header.OwnerID().EncodeToString())
 
-func (a *API) setAttributes(res attributeSetter, payloadSize uint64, cid string, oid string, header object.Object, download string) middleware.Responder {
-	res.SetContentLength(strconv.FormatUint(payloadSize, 10))
-	res.SetXContainerID(cid)
-	res.SetXObjectID(oid)
-	res.SetXOwnerID(header.OwnerID().EncodeToString())
+	var (
+		contentType string
+		dis         = "inline"
+		attributes  = header.Attributes()
+	)
 
-	var responder middleware.Responder
-	dis := "inline"
-	attributes := header.Attributes()
 	if len(attributes) > 0 {
-		responder = middleware.ResponderFunc(func(rw http.ResponseWriter, pr runtime.Producer) {
-			for _, attr := range attributes {
-				key := attr.Key()
-				val := attr.Value()
-				if !isValidToken(key) || !isValidValue(val) {
-					continue
-				}
-				switch key {
-				case object.AttributeFileName:
-					switch download {
+		for _, attr := range attributes {
+			key := attr.Key()
+			val := attr.Value()
+			if !isValidToken(key) || !isValidValue(val) {
+				continue
+			}
+
+			switch key {
+			case object.AttributeFileName:
+				if download != nil {
+					switch *download {
 					case "1", "t", "T", "true", "TRUE", "True", "y", "yes", "Y", "YES", "Yes":
 						dis = "attachment"
 					}
-					res.SetContentDisposition(dis + "; filename=" + path.Base(val))
-					res.SetXAttributeFileName(val)
-				case object.AttributeTimestamp:
-					attrTimestamp, err := strconv.ParseInt(val, 10, 64)
-					if err != nil {
-						a.log.Info("attribute timestamp parsing error",
-							zap.String("container ID", cid),
-							zap.String("object ID", oid),
-							zap.Error(err))
-						continue
-					}
-					res.SetXAttributeTimestamp(attrTimestamp)
-					res.SetLastModified(time.Unix(attrTimestamp, 0).UTC().Format(http.TimeFormat))
-				case object.AttributeContentType:
-					res.SetContentType(val)
-				default:
-					if strings.HasPrefix(key, container.SysAttributePrefix) {
-						key = systemBackwardTranslator(key)
-					}
-					rw.Header().Set(userAttributeHeaderPrefix+key, attr.Value())
 				}
+				ctx.Response().Header().Set("Content-Disposition", dis+"; filename="+path.Base(val))
+				ctx.Response().Header().Set("X-Attribute-FileName", val)
+			case object.AttributeTimestamp:
+				attrTimestamp, err := strconv.ParseInt(val, 10, 64)
+				if err != nil {
+					a.log.Info("attribute timestamp parsing error",
+						zap.String("container ID", cid),
+						zap.String("object ID", oid),
+						zap.Error(err))
+					continue
+				}
+				ctx.Response().Header().Set("X-Attribute-Timestamp", val)
+				ctx.Response().Header().Set("Last-Modified", time.Unix(attrTimestamp, 0).UTC().Format(http.TimeFormat))
+			case object.AttributeContentType:
+				contentType = val
+			default:
+				if strings.HasPrefix(key, container.SysAttributePrefix) {
+					key = systemBackwardTranslator(key)
+				}
+				ctx.Response().Header().Set(userAttributeHeaderPrefix+key, attr.Value())
 			}
-			res.WriteResponse(rw, pr)
-		})
+		}
 	}
-	return responder
+
+	return contentType
 }
 
 // initializes io.Reader with the limited size and detects Content-Type from it.
@@ -625,7 +675,7 @@ func title(str string) string {
 	return string(r0) + str[size:]
 }
 
-func headObjectBaseInfo(ctx context.Context, p *pool.Pool, cnrID cid.ID, objID oid.ID, btoken *bearer.Token, signer user.Signer) (*models.ObjectBaseInfo, error) {
+func headObjectBaseInfo(ctx context.Context, p *pool.Pool, cnrID cid.ID, objID oid.ID, btoken *bearer.Token, signer user.Signer) (*apiserver.ObjectBaseInfo, error) {
 	var prm client.PrmObjectHead
 	attachBearer(&prm, btoken)
 
@@ -634,19 +684,21 @@ func headObjectBaseInfo(ctx context.Context, p *pool.Pool, cnrID cid.ID, objID o
 		return nil, fmt.Errorf("head: %w", err)
 	}
 
-	resp := &models.ObjectBaseInfo{
-		Address: &models.Address{
-			ContainerID: util.NewString(cnrID.String()),
-			ObjectID:    util.NewString(objID.String()),
+	resp := &apiserver.ObjectBaseInfo{
+		Address: apiserver.Address{
+			ContainerId: cnrID.String(),
+			ObjectId:    objID.String(),
 		},
 	}
 
 	for _, attr := range header.Attributes() {
 		switch attr.Key() {
 		case object.AttributeFileName:
-			resp.Name = attr.Value()
+			v := attr.Value()
+			resp.Name = &v
 		case object.AttributeFilePath:
-			resp.FilePath = attr.Value()
+			v := attr.Value()
+			resp.FilePath = &v
 		}
 	}
 
@@ -670,12 +722,12 @@ func parseAddress(containerID, objectID string) (oid.Address, error) {
 	return addr, nil
 }
 
-func getBearerToken(token *models.Principal, signature, key *string, isWalletConnect, isFullToken bool) (*bearer.Token, error) {
-	if token == nil {
+func getBearerToken(token string, signature, key *string, isWalletConnect, isFullToken bool) (*bearer.Token, error) {
+	if token == "" {
 		return nil, nil
 	}
 
-	bt := &BearerToken{Token: string(*token)}
+	bt := &BearerToken{Token: token}
 
 	if !isFullToken {
 		if signature == nil || key == nil {
@@ -763,7 +815,7 @@ func getBearerTokenFromString(token string) (*bearer.Token, error) {
 	return &btoken, nil
 }
 
-func prepareOffsetLength(params operations.GetObjectInfoParams, objSize uint64) (uint64, uint64, error) {
+func prepareOffsetLength(params apiserver.GetObjectInfoParams, objSize uint64) (uint64, uint64, error) {
 	var offset, length uint64
 	if params.RangeOffset != nil || params.RangeLength != nil {
 		if params.RangeOffset == nil || params.RangeLength == nil {
@@ -803,7 +855,7 @@ func attachOwner(obj *object.Object, btoken *bearer.Token) {
 }
 
 // UploadContainerObject handler that upload file as object with attributes to NeoFS.
-func (a *API) UploadContainerObject(params operations.UploadContainerObjectParams, principal *models.Principal) middleware.Responder {
+func (a *RestAPI) UploadContainerObject(ctx echo.Context, containerID apiserver.ContainerId, _ apiserver.UploadContainerObjectParams) error {
 	var (
 		header *multipart.FileHeader
 		file   multipart.File
@@ -812,40 +864,50 @@ func (a *API) UploadContainerObject(params operations.UploadContainerObjectParam
 		addr   oid.Address
 		btoken *bearer.Token
 	)
-	errorResponse := operations.NewUploadContainerObjectBadRequest()
-	ctx := params.HTTPRequest.Context()
 
 	var idCnr cid.ID
-	if err := idCnr.DecodeString(params.ContainerID); err != nil {
+	if err = idCnr.DecodeString(containerID); err != nil {
 		resp := a.logAndGetErrorResponse("invalid container id", err)
-		return errorResponse.WithPayload(resp)
+		return ctx.JSON(http.StatusBadRequest, resp)
 	}
 
-	if principal != nil {
-		btoken, err = getBearerTokenFromString(string(*principal))
+	principal, err := getPrincipal(ctx)
+	if err != nil {
+		return ctx.JSON(http.StatusBadRequest, util.NewErrorResponse(err))
+	}
+
+	if principal != "" {
+		btoken, err = getBearerTokenFromString(principal)
 		if err != nil {
 			resp := a.logAndGetErrorResponse("get bearer token", err)
-			return errorResponse.WithPayload(resp)
+			return ctx.JSON(http.StatusBadRequest, resp)
 		}
 	}
 
-	if swagFile, ok := params.Payload.(*swag.File); ok {
-		header = swagFile.Header
-		file = swagFile.Data
-	} else {
-		var fileKey string
-		for fileKey = range params.HTTPRequest.MultipartForm.File {
-			file, header, err = params.HTTPRequest.FormFile(fileKey)
-			if err != nil {
-				resp := a.logAndGetErrorResponse(fmt.Sprintf("get file %q from HTTP request", fileKey), err)
-				return errorResponse.WithPayload(resp)
-			}
-			break
+	if err = ctx.Request().ParseMultipartForm(defaultMaxMemory); err != nil {
+		resp := a.logAndGetErrorResponse("parse multi form", err)
+		return ctx.JSON(http.StatusBadRequest, resp)
+	}
+
+	if ctx.Request().MultipartForm == nil {
+		resp := a.logAndGetErrorResponse("multi form is nil", err)
+		return ctx.JSON(http.StatusBadRequest, resp)
+	}
+
+	var fileKey string
+	for fileKey = range ctx.Request().MultipartForm.File {
+		file, header, err = ctx.Request().FormFile(fileKey)
+		if err != nil {
+			resp := a.logAndGetErrorResponse(fmt.Sprintf("get file %q from HTTP request", fileKey), err)
+			return ctx.JSON(http.StatusBadRequest, resp)
 		}
-		if fileKey == "" {
-			resp := a.logAndGetErrorResponse("no multipart/form file", http.ErrMissingFile)
-			return errorResponse.WithPayload(resp)
-		}
+
+		break
+	}
+
+	if fileKey == "" {
+		resp := a.logAndGetErrorResponse("no multipart/form file", http.ErrMissingFile)
+		return ctx.JSON(http.StatusBadRequest, resp)
 	}
 
 	defer func() {
@@ -861,31 +923,22 @@ func (a *API) UploadContainerObject(params operations.UploadContainerObjectParam
 		)
 	}()
 
-	filtered, err := filterHeaders(a.log, params.HTTPRequest.Header)
+	filtered, err := filterHeaders(a.log, ctx.Request().Header)
 	if err != nil {
 		resp := a.logAndGetErrorResponse("could not process headers", err)
-		return errorResponse.WithPayload(resp)
+		return ctx.JSON(http.StatusBadRequest, resp)
 	}
 
 	if needParseExpiration(filtered) {
-		epochDuration, err := getEpochDurations(ctx, a.pool)
+		epochDuration, err := getEpochDurations(ctx.Request().Context(), a.pool)
 		if err != nil {
 			resp := a.logAndGetErrorResponse("could not get epoch durations from network info", err)
-			return errorResponse.WithPayload(resp)
+			return ctx.JSON(http.StatusBadRequest, resp)
 		}
 
-		now := time.Now()
-		if rawHeader := params.HTTPRequest.Header.Get("Date"); rawHeader != "" {
-			if parsed, err := time.Parse(http.TimeFormat, rawHeader); err != nil {
-				a.log.Warn("could not parse client time", zap.String("Date header", rawHeader), zap.Error(err))
-			} else {
-				now = parsed
-			}
-		}
-
-		if err = prepareExpirationHeader(filtered, epochDuration, now); err != nil {
+		if err = prepareExpirationHeader(filtered, epochDuration, time.Now()); err != nil {
 			resp := a.logAndGetErrorResponse("could not parse expiration header", err)
-			return errorResponse.WithPayload(resp)
+			return ctx.JSON(http.StatusBadRequest, resp)
 		}
 	}
 
@@ -924,38 +977,37 @@ func (a *API) UploadContainerObject(params operations.UploadContainerObjectParam
 		prmPutInit.WithBearerToken(*btoken)
 	}
 
-	writer, err := a.pool.ObjectPutInit(ctx, obj, a.signer, prmPutInit)
+	writer, err := a.pool.ObjectPutInit(ctx.Request().Context(), obj, a.signer, prmPutInit)
 	if err != nil {
 		resp := a.logAndGetErrorResponse("put object init", err)
-		return errorResponse.WithPayload(resp)
+		return ctx.JSON(http.StatusBadRequest, resp)
 	}
 
 	chunk := make([]byte, a.maxObjectSize)
 	_, err = io.CopyBuffer(writer, file, chunk)
 	if err != nil {
 		resp := a.logAndGetErrorResponse("write", err)
-		return errorResponse.WithPayload(resp)
+		return ctx.JSON(http.StatusBadRequest, resp)
 	}
 
 	if err = writer.Close(); err != nil {
 		resp := a.logAndGetErrorResponse("writer close", err)
-		return errorResponse.WithPayload(resp)
+		return ctx.JSON(http.StatusBadRequest, resp)
 	}
 
 	idObj = writer.GetResult().StoredObjectID()
 	addr.SetObject(idObj)
 	addr.SetContainer(idCnr)
 
-	var resp models.AddressForUpload
-	resp.ContainerID = &params.ContainerID
-	resp.ObjectID = util.NewString(idObj.String())
+	var resp apiserver.AddressForUpload
+	resp.ContainerId = containerID
+	resp.ObjectId = idObj.String()
 
-	return operations.NewUploadContainerObjectOK().
-		WithPayload(&resp).
-		WithAccessControlAllowOrigin("*")
+	ctx.Response().Header().Set(accessControlAllowOriginHeader, "*")
+	return ctx.JSON(http.StatusOK, resp)
 }
 
-func (a *API) setOwner(obj *object.Object, btoken *bearer.Token) {
+func (a *RestAPI) setOwner(obj *object.Object, btoken *bearer.Token) {
 	if btoken != nil {
 		owner := btoken.ResolveIssuer()
 		obj.SetOwnerID(&owner)
@@ -966,25 +1018,27 @@ func (a *API) setOwner(obj *object.Object, btoken *bearer.Token) {
 }
 
 // GetByAttribute handler that returns object (payload and attributes) by a specific attribute.
-func (a *API) GetByAttribute(params operations.GetByAttributeParams, principal *models.Principal) middleware.Responder {
-	errorResponse := operations.NewGetByAttributeBadRequest()
-	ctx := params.HTTPRequest.Context()
-
-	var cnrID cid.ID
-	if err := cnrID.DecodeString(params.ContainerID); err != nil {
-		resp := a.logAndGetErrorResponse("invalid container id", err)
-		return errorResponse.WithPayload(resp)
+func (a *RestAPI) GetByAttribute(ctx echo.Context, containerID apiserver.ContainerId, attrKey apiserver.AttrKey, attrVal apiserver.AttrVal, params apiserver.GetByAttributeParams) error {
+	principal, err := getPrincipal(ctx)
+	if err != nil {
+		return ctx.JSON(http.StatusBadRequest, util.NewErrorResponse(err))
 	}
 
-	res, err := a.search(ctx, principal, cnrID, params.AttrKey, params.AttrVal, object.MatchStringEqual)
+	var cnrID cid.ID
+	if err = cnrID.DecodeString(containerID); err != nil {
+		resp := a.logAndGetErrorResponse("invalid container id", err)
+		return ctx.JSON(http.StatusBadRequest, resp)
+	}
+
+	res, err := a.search(ctx.Request().Context(), principal, cnrID, attrKey, attrVal, object.MatchStringEqual)
 	if err != nil {
 		resp := a.logAndGetErrorResponse("could not search for objects", err)
-		return operations.NewGetContainerObjectNotFound().WithPayload(resp)
+		return ctx.JSON(http.StatusNotFound, resp)
 	}
 
 	defer func() {
 		if err = res.Close(); err != nil {
-			a.log.Error("failed to close resource", zap.Error(err))
+			zap.L().Error("failed to close resource", zap.Error(err))
 		}
 	}()
 
@@ -995,42 +1049,43 @@ func (a *API) GetByAttribute(params operations.GetByAttributeParams, principal *
 		err = res.Close()
 
 		if err == nil || errors.Is(err, io.EOF) {
-			a.log.Info("object not found")
-			resp := util.NewErrorResponse(fmt.Errorf("object not found"))
-			return operations.NewGetContainerObjectNotFound().WithPayload(resp)
+			resp := a.logAndGetErrorResponse("object not found", err)
+			return ctx.JSON(http.StatusNotFound, resp)
 		}
 
 		resp := a.logAndGetErrorResponse("read object list failed", err)
-		return operations.NewGetContainerObjectNotFound().WithPayload(resp)
+		return ctx.JSON(http.StatusNotFound, resp)
 	}
 
 	var addrObj oid.Address
 	addrObj.SetContainer(cnrID)
 	addrObj.SetObject(buf[0])
 
-	return a.getByAddress(ctx, NewGetByAttributeBadRequestWrapper, addrObj, params.HTTPRequest.URL.Query().Get("download"), principal)
+	return a.getByAddress(ctx, addrObj, params.Download, principal)
 }
 
 // HeadByAttribute handler that returns object info (payload and attributes) by a specific attribute.
-func (a *API) HeadByAttribute(params operations.HeadByAttributeParams, principal *models.Principal) middleware.Responder {
-	errorResponse := operations.NewHeadByAttributeBadRequest()
-	ctx := params.HTTPRequest.Context()
-
-	var cnrID cid.ID
-	if err := cnrID.DecodeString(params.ContainerID); err != nil {
-		resp := a.logAndGetErrorResponse("invalid container id", err)
-		return errorResponse.WithPayload(resp)
+func (a *RestAPI) HeadByAttribute(ctx echo.Context, containerID apiserver.ContainerId, attrKey apiserver.AttrKey, attrVal apiserver.AttrVal, params apiserver.HeadByAttributeParams) error {
+	principal, err := getPrincipal(ctx)
+	if err != nil {
+		return ctx.JSON(http.StatusBadRequest, util.NewErrorResponse(err))
 	}
 
-	res, err := a.search(ctx, principal, cnrID, params.AttrKey, params.AttrVal, object.MatchStringEqual)
+	var cnrID cid.ID
+	if err = cnrID.DecodeString(containerID); err != nil {
+		resp := a.logAndGetErrorResponse("invalid container id", err)
+		return ctx.JSON(http.StatusBadRequest, resp)
+	}
+
+	res, err := a.search(ctx.Request().Context(), principal, cnrID, attrKey, attrVal, object.MatchStringEqual)
 	if err != nil {
 		resp := a.logAndGetErrorResponse("could not search for objects", err)
-		return operations.NewHeadContainerObjectNotFound().WithPayload(resp)
+		return ctx.JSON(http.StatusNotFound, resp)
 	}
 
 	defer func() {
 		if err = res.Close(); err != nil {
-			a.log.Error("failed to close resource", zap.Error(err))
+			zap.L().Error("failed to close resource", zap.Error(err))
 		}
 	}()
 
@@ -1041,28 +1096,22 @@ func (a *API) HeadByAttribute(params operations.HeadByAttributeParams, principal
 		err = res.Close()
 
 		if err == nil || errors.Is(err, io.EOF) {
-			a.log.Error("object not found")
-			resp := util.NewErrorResponse(fmt.Errorf("object not found"))
-			return operations.NewHeadContainerObjectNotFound().WithPayload(resp)
+			resp := a.logAndGetErrorResponse("object not found", err)
+			return ctx.JSON(http.StatusNotFound, resp)
 		}
 
 		resp := a.logAndGetErrorResponse("read object list failed", err)
-		return operations.NewHeadContainerObjectNotFound().WithPayload(resp)
+		return ctx.JSON(http.StatusNotFound, resp)
 	}
 
 	var addrObj oid.Address
 	addrObj.SetContainer(cnrID)
 	addrObj.SetObject(buf[0])
 
-	return a.headByAddress(ctx, NewHeadByAttributeBadRequestWrapper, addrObj, params.HTTPRequest.URL.Query().Get("download"), principal)
+	return a.headByAddress(ctx, addrObj, params.Download, principal)
 }
 
-func (a *API) search(ctx context.Context, principal *models.Principal, cid cid.ID, key, val string, op object.SearchMatchType) (*client.ObjectListReader, error) {
-	// Transform the key to the format used on upload.
-	// "cat" -> "Cat", "sOme-attr-KEY" -> "Some-Attr-Key",
-	// but "filename" and "filepath" in any case -> "FileName" and "FilePath".
-	key = formatSpecialAttribute(textproto.CanonicalMIMEHeaderKey(key))
-
+func (a *RestAPI) search(ctx context.Context, principal string, cid cid.ID, key, val string, op object.SearchMatchType) (*client.ObjectListReader, error) {
 	filters := object.NewSearchFilters()
 	filters.AddRootFilter()
 	filters.AddFilter(key, val, op)
@@ -1070,8 +1119,8 @@ func (a *API) search(ctx context.Context, principal *models.Principal, cid cid.I
 	var prm client.PrmObjectSearch
 	prm.SetFilters(filters)
 
-	if principal != nil {
-		btoken, err := getBearerTokenFromString(string(*principal))
+	if principal != "" {
+		btoken, err := getBearerTokenFromString(principal)
 		if err != nil {
 			return nil, err
 		}

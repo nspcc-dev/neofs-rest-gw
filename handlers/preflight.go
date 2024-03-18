@@ -1,10 +1,12 @@
 package handlers
 
 import (
+	"net/http"
 	"strings"
 
-	"github.com/go-openapi/runtime/middleware"
-	"github.com/nspcc-dev/neofs-rest-gw/gen/restapi/operations"
+	"github.com/labstack/echo/v4"
+	"github.com/nspcc-dev/neofs-rest-gw/handlers/apiserver"
+	"github.com/nspcc-dev/neofs-rest-gw/internal/util"
 )
 
 const (
@@ -16,6 +18,9 @@ const (
 	methodPost   = "POST"
 	methodPut    = "PUT"
 	methodDelete = "DELETE"
+
+	accessControlAllowHeadersHeader = "Access-Control-Allow-Headers"
+	accessControlAllowMethodsHeader = "Access-Control-Allow-Methods"
 )
 
 func allowMethods(methods ...string) string {
@@ -25,86 +30,98 @@ func allowMethods(methods ...string) string {
 	return strings.Join(allowed, ", ")
 }
 
-func (a *API) OptionsAuth(operations.OptionsAuthParams) middleware.Responder {
-	return operations.NewOptionsAuthOK().
-		WithAccessControlAllowOrigin(allOrigins).
-		WithAccessControlAllowHeaders(allowHeaders).
-		WithAccessControlAllowMethods(allowMethods(methodPost))
+// OptionsAuth handler for the auth options request.
+func (a *RestAPI) OptionsAuth(ctx echo.Context) error {
+	ctx.Response().Header().Set(accessControlAllowOriginHeader, allOrigins)
+	ctx.Response().Header().Set(accessControlAllowHeadersHeader, allowHeaders)
+	ctx.Response().Header().Set(accessControlAllowMethodsHeader, allowMethods(methodPost))
+	return ctx.JSON(http.StatusOK, util.NewSuccessResponse())
 }
 
-func (a *API) OptionsAuthBearer(operations.OptionsAuthBearerParams) middleware.Responder {
-	return operations.NewOptionsAuthBearerOK().
-		WithAccessControlAllowOrigin(allOrigins).
-		WithAccessControlAllowHeaders(allowHeaders).
-		WithAccessControlAllowMethods(allowMethods(methodGet))
+// OptionsAuthBearer handler for the authBearer options request.
+func (a *RestAPI) OptionsAuthBearer(ctx echo.Context) error {
+	ctx.Response().Header().Set(accessControlAllowOriginHeader, allOrigins)
+	ctx.Response().Header().Set(accessControlAllowHeadersHeader, allowHeaders)
+	ctx.Response().Header().Set(accessControlAllowMethodsHeader, allowMethods(methodGet))
+	return ctx.JSON(http.StatusOK, util.NewSuccessResponse())
 }
 
-func (a *API) OptionsBalance(operations.OptionsBalanceParams) middleware.Responder {
-	return operations.NewOptionsBalanceOK().
-		WithAccessControlAllowOrigin(allOrigins).
-		WithAccessControlAllowHeaders(allowHeaders).
-		WithAccessControlAllowMethods(allowMethods(methodGet))
+// OptionsBalance handler for the balance options request.
+func (a *RestAPI) OptionsBalance(ctx echo.Context, _ string) error {
+	ctx.Response().Header().Set(accessControlAllowOriginHeader, allOrigins)
+	ctx.Response().Header().Set(accessControlAllowHeadersHeader, allowHeaders)
+	ctx.Response().Header().Set(accessControlAllowMethodsHeader, allowMethods(methodGet))
+	return ctx.JSON(http.StatusOK, util.NewSuccessResponse())
 }
 
-func (a *API) OptionsObjectSearch(operations.OptionsObjectsSearchParams) middleware.Responder {
-	return operations.NewOptionsObjectsSearchOK().
-		WithAccessControlAllowOrigin(allOrigins).
-		WithAccessControlAllowHeaders(allowHeaders).
-		WithAccessControlAllowMethods(allowMethods(methodPost))
+// OptionsObjectsSearch handler for the objectsSearch options request.
+func (a *RestAPI) OptionsObjectsSearch(ctx echo.Context, _ string) error {
+	ctx.Response().Header().Set(accessControlAllowOriginHeader, allOrigins)
+	ctx.Response().Header().Set(accessControlAllowHeadersHeader, allowHeaders)
+	ctx.Response().Header().Set(accessControlAllowMethodsHeader, allowMethods(methodPost))
+	return ctx.JSON(http.StatusOK, util.NewSuccessResponse())
 }
 
-func (a *API) OptionsObjectsPut(operations.OptionsObjectsPutParams) middleware.Responder {
-	return operations.NewOptionsObjectsPutOK().
-		WithAccessControlAllowOrigin(allOrigins).
-		WithAccessControlAllowHeaders(allowHeaders).
-		WithAccessControlAllowMethods(allowMethods(methodPut))
+// OptionsObjectsPut handler for the objectsPut options request.
+func (a *RestAPI) OptionsObjectsPut(ctx echo.Context) error {
+	ctx.Response().Header().Set(accessControlAllowOriginHeader, allOrigins)
+	ctx.Response().Header().Set(accessControlAllowHeadersHeader, allowHeaders)
+	ctx.Response().Header().Set(accessControlAllowMethodsHeader, allowMethods(methodPut))
+	return ctx.JSON(http.StatusOK, util.NewSuccessResponse())
 }
 
-func (a *API) OptionsObjectsGetDelete(operations.OptionsObjectsGetDeleteParams) middleware.Responder {
-	return operations.NewOptionsObjectsGetDeleteOK().
-		WithAccessControlAllowOrigin(allOrigins).
-		WithAccessControlAllowHeaders(allowHeaders).
-		WithAccessControlAllowMethods(allowMethods(methodGet, methodDelete))
+// OptionsObjectsGetDelete handler for the objectsGetDelete options request.
+func (a *RestAPI) OptionsObjectsGetDelete(ctx echo.Context, _ apiserver.ContainerId, _ apiserver.ObjectId) error {
+	ctx.Response().Header().Set(accessControlAllowOriginHeader, allOrigins)
+	ctx.Response().Header().Set(accessControlAllowHeadersHeader, allowHeaders)
+	ctx.Response().Header().Set(accessControlAllowMethodsHeader, allowMethods(methodGet, methodDelete))
+	return ctx.JSON(http.StatusOK, util.NewSuccessResponse())
 }
 
-func (a *API) OptionsContainersPutList(operations.OptionsContainersPutListParams) middleware.Responder {
-	return operations.NewOptionsContainersPutListOK().
-		WithAccessControlAllowOrigin(allOrigins).
-		WithAccessControlAllowHeaders(allowHeaders).
-		WithAccessControlAllowMethods(allowMethods(methodGet, methodPut))
+// OptionsContainersPutList handler for the containersPutList options request.
+func (a *RestAPI) OptionsContainersPutList(ctx echo.Context) error {
+	ctx.Response().Header().Set(accessControlAllowOriginHeader, allOrigins)
+	ctx.Response().Header().Set(accessControlAllowHeadersHeader, allowHeaders)
+	ctx.Response().Header().Set(accessControlAllowMethodsHeader, allowMethods(methodGet, methodPut))
+	return ctx.JSON(http.StatusOK, util.NewSuccessResponse())
 }
 
-func (a *API) OptionsContainersGetDelete(operations.OptionsContainersGetDeleteParams) middleware.Responder {
-	return operations.NewOptionsContainersGetDeleteOK().
-		WithAccessControlAllowOrigin(allOrigins).
-		WithAccessControlAllowHeaders(allowHeaders).
-		WithAccessControlAllowMethods(allowMethods(methodGet, methodDelete))
+// OptionsContainersGetDelete handler for the containersGetDelete options request.
+func (a *RestAPI) OptionsContainersGetDelete(ctx echo.Context, _ apiserver.ContainerId) error {
+	ctx.Response().Header().Set(accessControlAllowOriginHeader, allOrigins)
+	ctx.Response().Header().Set(accessControlAllowHeadersHeader, allowHeaders)
+	ctx.Response().Header().Set(accessControlAllowMethodsHeader, allowMethods(methodGet, methodDelete))
+	return ctx.JSON(http.StatusOK, util.NewSuccessResponse())
 }
 
-func (a *API) OptionsContainersEACL(operations.OptionsContainersEACLParams) middleware.Responder {
-	return operations.NewOptionsContainersEACLOK().
-		WithAccessControlAllowOrigin(allOrigins).
-		WithAccessControlAllowHeaders(allowHeaders).
-		WithAccessControlAllowMethods(allowMethods(methodGet, methodPut))
+// OptionsContainersEACL handler for the containersEACL options request.
+func (a *RestAPI) OptionsContainersEACL(ctx echo.Context, _ apiserver.ContainerId) error {
+	ctx.Response().Header().Set(accessControlAllowOriginHeader, allOrigins)
+	ctx.Response().Header().Set(accessControlAllowHeadersHeader, allowHeaders)
+	ctx.Response().Header().Set(accessControlAllowMethodsHeader, allowMethods(methodGet, methodPut))
+	return ctx.JSON(http.StatusOK, util.NewSuccessResponse())
 }
 
-func (a *API) OptionsContainerObject(operations.OptionsContainerObjectParams) middleware.Responder {
-	return operations.NewOptionsContainerObjectOK().
-		WithAccessControlAllowOrigin(allOrigins).
-		WithAccessControlAllowHeaders(allowHeaders).
-		WithAccessControlAllowMethods(allowMethods(methodGet, methodHead))
+// OptionsContainerObject handler for the containerObject options request.
+func (a *RestAPI) OptionsContainerObject(ctx echo.Context, _ apiserver.ContainerId, _ apiserver.ObjectId) error {
+	ctx.Response().Header().Set(accessControlAllowOriginHeader, allOrigins)
+	ctx.Response().Header().Set(accessControlAllowHeadersHeader, allowHeaders)
+	ctx.Response().Header().Set(accessControlAllowMethodsHeader, allowMethods(methodGet, methodHead))
+	return ctx.JSON(http.StatusOK, util.NewSuccessResponse())
 }
 
-func (a *API) OptionsUploadContainerObject(operations.OptionsUploadContainerObjectParams) middleware.Responder {
-	return operations.NewOptionsUploadContainerObjectOK().
-		WithAccessControlAllowOrigin(allOrigins).
-		WithAccessControlAllowHeaders(allowHeaders).
-		WithAccessControlAllowMethods(allowMethods(methodPost))
+// OptionsUploadContainerObject handler for the uploadContainerObject options request.
+func (a *RestAPI) OptionsUploadContainerObject(ctx echo.Context, _ apiserver.ContainerId) error {
+	ctx.Response().Header().Set(accessControlAllowOriginHeader, allOrigins)
+	ctx.Response().Header().Set(accessControlAllowHeadersHeader, allowHeaders)
+	ctx.Response().Header().Set(accessControlAllowMethodsHeader, allowMethods(methodPost))
+	return ctx.JSON(http.StatusOK, util.NewSuccessResponse())
 }
 
-func (a *API) OptionsByAttribute(operations.OptionsByAttributeParams) middleware.Responder {
-	return operations.NewOptionsByAttributeOK().
-		WithAccessControlAllowOrigin(allOrigins).
-		WithAccessControlAllowHeaders(allowHeaders).
-		WithAccessControlAllowMethods(allowMethods(methodGet, methodHead))
+// OptionsByAttribute handler for the byAttribute options request.
+func (a *RestAPI) OptionsByAttribute(ctx echo.Context, _ apiserver.ContainerId, _ apiserver.AttrKey, _ apiserver.AttrVal) error {
+	ctx.Response().Header().Set(accessControlAllowOriginHeader, allOrigins)
+	ctx.Response().Header().Set(accessControlAllowHeadersHeader, allowHeaders)
+	ctx.Response().Header().Set(accessControlAllowMethodsHeader, allowMethods(methodGet, methodHead))
+	return ctx.JSON(http.StatusOK, util.NewSuccessResponse())
 }

@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/nspcc-dev/neofs-rest-gw/gen/models"
+	"github.com/nspcc-dev/neofs-rest-gw/handlers/apiserver"
 	"github.com/nspcc-dev/neofs-sdk-go/bearer"
 	apistatus "github.com/nspcc-dev/neofs-sdk-go/client/status"
 	cid "github.com/nspcc-dev/neofs-sdk-go/container/id"
@@ -14,203 +14,179 @@ import (
 	"github.com/nspcc-dev/neofs-sdk-go/session"
 )
 
-// ToNativeAction converts models.Action to appropriate eacl.Action.
-func ToNativeAction(a *models.Action) (eacl.Action, error) {
-	if a == nil {
-		return eacl.ActionUnknown, fmt.Errorf("unsupported empty action")
-	}
-
-	switch *a {
-	case models.ActionALLOW:
+// ToNativeAction converts [apiserver.Action] to appropriate [eacl.Action].
+func ToNativeAction(a apiserver.Action) (eacl.Action, error) {
+	switch a {
+	case apiserver.ALLOW:
 		return eacl.ActionAllow, nil
-	case models.ActionDENY:
+	case apiserver.DENY:
 		return eacl.ActionDeny, nil
 	default:
-		return eacl.ActionUnknown, fmt.Errorf("unsupported action type: '%s'", *a)
+		return eacl.ActionUnknown, fmt.Errorf("unsupported action type: '%s'", a)
 	}
 }
 
-// FromNativeAction converts eacl.Action to appropriate models.Action.
-func FromNativeAction(a eacl.Action) (*models.Action, error) {
+// FromNativeAction converts [eacl.Action] to appropriate [apiserver.Action].
+func FromNativeAction(a eacl.Action) (apiserver.Action, error) {
 	switch a {
 	case eacl.ActionAllow:
-		return models.NewAction(models.ActionALLOW), nil
+		return apiserver.ALLOW, nil
 	case eacl.ActionDeny:
-		return models.NewAction(models.ActionDENY), nil
+		return apiserver.DENY, nil
 	default:
-		return nil, fmt.Errorf("unsupported action type: '%s'", a)
+		return "", fmt.Errorf("unsupported action type: '%s'", a)
 	}
 }
 
-// ToNativeOperation converts models.Operation to appropriate eacl.Operation.
-func ToNativeOperation(o *models.Operation) (eacl.Operation, error) {
-	if o == nil {
-		return eacl.OperationUnknown, fmt.Errorf("unsupported empty opertaion")
-	}
-
-	switch *o {
-	case models.OperationGET:
+// ToNativeOperation converts [apiserver.Operation] to appropriate [eacl.Operation].
+func ToNativeOperation(o apiserver.Operation) (eacl.Operation, error) {
+	switch o {
+	case apiserver.OperationGET:
 		return eacl.OperationGet, nil
-	case models.OperationHEAD:
+	case apiserver.OperationHEAD:
 		return eacl.OperationHead, nil
-	case models.OperationPUT:
+	case apiserver.OperationPUT:
 		return eacl.OperationPut, nil
-	case models.OperationDELETE:
+	case apiserver.OperationDELETE:
 		return eacl.OperationDelete, nil
-	case models.OperationSEARCH:
+	case apiserver.OperationSEARCH:
 		return eacl.OperationSearch, nil
-	case models.OperationRANGE:
+	case apiserver.OperationRANGE:
 		return eacl.OperationRange, nil
-	case models.OperationRANGEHASH:
+	case apiserver.OperationRANGEHASH:
 		return eacl.OperationRangeHash, nil
 	default:
-		return eacl.OperationUnknown, fmt.Errorf("unsupported operation type: '%s'", *o)
+		return eacl.OperationUnknown, fmt.Errorf("unsupported operation type: '%s'", o)
 	}
 }
 
-// FromNativeOperation converts eacl.Operation to appropriate models.Operation.
-func FromNativeOperation(o eacl.Operation) (*models.Operation, error) {
+// FromNativeOperation converts [eacl.Operation] to appropriate [apiserver.Operation].
+func FromNativeOperation(o eacl.Operation) (apiserver.Operation, error) {
 	switch o {
 	case eacl.OperationGet:
-		return models.NewOperation(models.OperationGET), nil
+		return apiserver.OperationGET, nil
 	case eacl.OperationHead:
-		return models.NewOperation(models.OperationHEAD), nil
+		return apiserver.OperationHEAD, nil
 	case eacl.OperationPut:
-		return models.NewOperation(models.OperationPUT), nil
+		return apiserver.OperationPUT, nil
 	case eacl.OperationDelete:
-		return models.NewOperation(models.OperationDELETE), nil
+		return apiserver.OperationDELETE, nil
 	case eacl.OperationSearch:
-		return models.NewOperation(models.OperationSEARCH), nil
+		return apiserver.OperationSEARCH, nil
 	case eacl.OperationRange:
-		return models.NewOperation(models.OperationRANGE), nil
+		return apiserver.OperationRANGE, nil
 	case eacl.OperationRangeHash:
-		return models.NewOperation(models.OperationRANGEHASH), nil
+		return apiserver.OperationRANGEHASH, nil
 	default:
-		return nil, fmt.Errorf("unsupported operation type: '%s'", o)
+		return "", fmt.Errorf("unsupported operation type: '%s'", o)
 	}
 }
 
-// ToNativeHeaderType converts models.HeaderType to appropriate eacl.FilterHeaderType.
-func ToNativeHeaderType(h *models.HeaderType) (eacl.FilterHeaderType, error) {
-	if h == nil {
-		return eacl.HeaderTypeUnknown, fmt.Errorf("unsupported empty header type")
-	}
-
-	switch *h {
-	case models.HeaderTypeOBJECT:
+// ToNativeHeaderType converts [apiserver.HeaderType] to appropriate [eacl.FilterHeaderType].
+func ToNativeHeaderType(h apiserver.HeaderType) (eacl.FilterHeaderType, error) {
+	switch h {
+	case apiserver.OBJECT:
 		return eacl.HeaderFromObject, nil
-	case models.HeaderTypeREQUEST:
+	case apiserver.REQUEST:
 		return eacl.HeaderFromRequest, nil
-	case models.HeaderTypeSERVICE:
+	case apiserver.SERVICE:
 		return eacl.HeaderFromService, nil
 	default:
-		return eacl.HeaderTypeUnknown, fmt.Errorf("unsupported header type: '%s'", *h)
+		return eacl.HeaderTypeUnknown, fmt.Errorf("unsupported header type: '%s'", h)
 	}
 }
 
-// FromNativeHeaderType converts eacl.FilterHeaderType to appropriate models.HeaderType.
-func FromNativeHeaderType(h eacl.FilterHeaderType) (*models.HeaderType, error) {
+// FromNativeHeaderType converts [eacl.FilterHeaderType] to appropriate [apiserver.HeaderType].
+func FromNativeHeaderType(h eacl.FilterHeaderType) (apiserver.HeaderType, error) {
 	switch h {
 	case eacl.HeaderFromObject:
-		return models.NewHeaderType(models.HeaderTypeOBJECT), nil
+		return apiserver.OBJECT, nil
 	case eacl.HeaderFromRequest:
-		return models.NewHeaderType(models.HeaderTypeREQUEST), nil
+		return apiserver.REQUEST, nil
 	case eacl.HeaderFromService:
-		return models.NewHeaderType(models.HeaderTypeSERVICE), nil
+		return apiserver.SERVICE, nil
 	default:
-		return nil, fmt.Errorf("unsupported header type: '%s'", h)
+		return "", fmt.Errorf("unsupported header type: '%s'", h)
 	}
 }
 
-// ToNativeMatchType converts models.MatchType to appropriate eacl.Match.
-func ToNativeMatchType(t *models.MatchType) (eacl.Match, error) {
-	if t == nil {
-		return eacl.MatchUnknown, fmt.Errorf("unsupported empty match type")
-	}
-
-	switch *t {
-	case models.MatchTypeSTRINGEQUAL:
+// ToNativeMatchType converts [apiserver.MatchType] to appropriate [eacl.Match].
+func ToNativeMatchType(t apiserver.MatchType) (eacl.Match, error) {
+	switch t {
+	case apiserver.STRINGEQUAL:
 		return eacl.MatchStringEqual, nil
-	case models.MatchTypeSTRINGNOTEQUAL:
+	case apiserver.STRINGNOTEQUAL:
 		return eacl.MatchStringNotEqual, nil
 	default:
-		return eacl.MatchUnknown, fmt.Errorf("unsupported match type: '%s'", *t)
+		return eacl.MatchUnknown, fmt.Errorf("unsupported match type: '%s'", t)
 	}
 }
 
-// FromNativeMatchType converts eacl.Match to appropriate models.MatchType.
-func FromNativeMatchType(t eacl.Match) (*models.MatchType, error) {
+// FromNativeMatchType converts [eacl.Match] to appropriate [apiserver.MatchType].
+func FromNativeMatchType(t eacl.Match) (apiserver.MatchType, error) {
 	switch t {
 	case eacl.MatchStringEqual:
-		return models.NewMatchType(models.MatchTypeSTRINGEQUAL), nil
+		return apiserver.STRINGEQUAL, nil
 	case eacl.MatchStringNotEqual:
-		return models.NewMatchType(models.MatchTypeSTRINGNOTEQUAL), nil
+		return apiserver.STRINGNOTEQUAL, nil
 	default:
-		return nil, fmt.Errorf("unsupported match type: '%s'", t)
+		return "", fmt.Errorf("unsupported match type: '%s'", t)
 	}
 }
 
-// ToNativeRole converts models.Role to appropriate eacl.Role.
-func ToNativeRole(r *models.Role) (eacl.Role, error) {
-	if r == nil {
-		return eacl.RoleUnknown, fmt.Errorf("unsupported empty role")
-	}
-
-	switch *r {
-	case models.RoleUSER:
+// ToNativeRole converts [apiserver.Role] to appropriate [eacl.Role].
+func ToNativeRole(r apiserver.Role) (eacl.Role, error) {
+	switch r {
+	case apiserver.USER:
 		return eacl.RoleUser, nil
-	case models.RoleSYSTEM:
+	case apiserver.SYSTEM:
 		return eacl.RoleSystem, nil
-	case models.RoleOTHERS:
+	case apiserver.OTHERS:
 		return eacl.RoleOthers, nil
-	case models.RoleKEYS:
+	case apiserver.KEYS:
 		return eacl.RoleUnknown, nil
 	default:
-		return 0, fmt.Errorf("unsupported role type: '%s'", *r)
+		return 0, fmt.Errorf("unsupported role type: '%s'", r)
 	}
 }
 
-// FromNativeRole converts eacl.Role to appropriate models.Role.
-func FromNativeRole(r eacl.Role) (*models.Role, error) {
+// FromNativeRole converts [eacl.Role] to appropriate [apiserver.Role].
+func FromNativeRole(r eacl.Role) (apiserver.Role, error) {
 	switch r {
 	case eacl.RoleUser:
-		return models.NewRole(models.RoleUSER), nil
+		return apiserver.USER, nil
 	case eacl.RoleSystem:
-		return models.NewRole(models.RoleSYSTEM), nil
+		return apiserver.SYSTEM, nil
 	case eacl.RoleOthers:
-		return models.NewRole(models.RoleOTHERS), nil
+		return apiserver.OTHERS, nil
 	case eacl.RoleUnknown:
-		return models.NewRole(models.RoleKEYS), nil
+		return apiserver.KEYS, nil
 	default:
-		return nil, fmt.Errorf("unsupported role type: '%s'", r)
+		return "", fmt.Errorf("unsupported role type: '%s'", r)
 	}
 }
 
-// ToNativeVerb converts models.Verb to appropriate session.ContainerSessionVerb.
-func ToNativeVerb(r *models.Verb) (session.ContainerVerb, error) {
-	if r == nil {
-		return 0, fmt.Errorf("unsupported empty verb type")
-	}
-
-	switch *r {
-	case models.VerbPUT:
+// ToNativeVerb converts [apiserver.Verb] to appropriate [session.ContainerVerb].
+func ToNativeVerb(r apiserver.Verb) (session.ContainerVerb, error) {
+	switch r {
+	case apiserver.VerbPUT:
 		return session.VerbContainerPut, nil
-	case models.VerbDELETE:
+	case apiserver.VerbDELETE:
 		return session.VerbContainerDelete, nil
-	case models.VerbSETEACL:
+	case apiserver.VerbSETEACL:
 		return session.VerbContainerSetEACL, nil
 	default:
-		return 0, fmt.Errorf("unsupported verb type: '%s'", *r)
+		return 0, fmt.Errorf("unsupported verb type: '%s'", r)
 	}
 }
 
-// ToNativeContainerToken converts models.Rule to appropriate session.Token.
-func ToNativeContainerToken(tokenRule *models.Rule) (session.Container, error) {
+// ToNativeContainerToken converts [apiserver.Rule] to appropriate [session.Container].
+func ToNativeContainerToken(tokenRule apiserver.Rule) (session.Container, error) {
 	var tok session.Container
 
-	if tokenRule.ContainerID != "" {
+	if tokenRule.ContainerId != nil && *tokenRule.ContainerId != "" {
 		var cnrID cid.ID
-		if err := cnrID.DecodeString(tokenRule.ContainerID); err != nil {
+		if err := cnrID.DecodeString(*tokenRule.ContainerId); err != nil {
 			return session.Container{}, fmt.Errorf("couldn't parse container id: %w", err)
 		}
 		tok.ApplyOnlyTo(cnrID)
@@ -225,8 +201,8 @@ func ToNativeContainerToken(tokenRule *models.Rule) (session.Container, error) {
 	return tok, nil
 }
 
-// ToNativeRecord converts models.Record to appropriate eacl.Record.
-func ToNativeRecord(r *models.Record) (*eacl.Record, error) {
+// ToNativeRecord converts [apiserver.Record] to appropriate [eacl.Record].
+func ToNativeRecord(r apiserver.Record) (*eacl.Record, error) {
 	var record eacl.Record
 
 	action, err := ToNativeAction(r.Action)
@@ -250,10 +226,10 @@ func ToNativeRecord(r *models.Record) (*eacl.Record, error) {
 		if err != nil {
 			return nil, err
 		}
-		if filter.Key == nil || filter.Value == nil {
+		if filter.Key == "" || filter.Value == "" {
 			return nil, fmt.Errorf("invalid filter")
 		}
-		record.AddFilter(headerType, matchType, *filter.Key, *filter.Value)
+		record.AddFilter(headerType, matchType, filter.Key, filter.Value)
 	}
 
 	targets := make([]eacl.Target, len(r.Targets))
@@ -269,58 +245,58 @@ func ToNativeRecord(r *models.Record) (*eacl.Record, error) {
 	return &record, nil
 }
 
-// FromNativeRecord converts eacl.Record to appropriate models.Record.
-func FromNativeRecord(r eacl.Record) (*models.Record, error) {
+// FromNativeRecord converts [eacl.Record] to appropriate [apiserver.Record].
+func FromNativeRecord(r eacl.Record) (apiserver.Record, error) {
 	var err error
-	var record models.Record
+	var record apiserver.Record
 
 	record.Action, err = FromNativeAction(r.Action())
 	if err != nil {
-		return nil, err
+		return record, err
 	}
 
 	record.Operation, err = FromNativeOperation(r.Operation())
 	if err != nil {
-		return nil, err
+		return record, err
 	}
 
-	record.Filters = make([]*models.Filter, len(r.Filters()))
+	record.Filters = make([]apiserver.Filter, len(r.Filters()))
 	for i, filter := range r.Filters() {
 		headerType, err := FromNativeHeaderType(filter.From())
 		if err != nil {
-			return nil, err
+			return record, err
 		}
 		matchType, err := FromNativeMatchType(filter.Matcher())
 		if err != nil {
-			return nil, err
+			return record, err
 		}
 
-		record.Filters[i] = &models.Filter{
+		record.Filters[i] = apiserver.Filter{
 			HeaderType: headerType,
-			Key:        NewString(filter.Key()),
+			Key:        filter.Key(),
 			MatchType:  matchType,
-			Value:      NewString(filter.Value()),
+			Value:      filter.Value(),
 		}
 	}
 
-	record.Targets = make([]*models.Target, len(r.Targets()))
+	record.Targets = make([]apiserver.Target, len(r.Targets()))
 	for i, target := range r.Targets() {
 		trgt, err := FromNativeTarget(target)
 		if err != nil {
-			return nil, err
+			return record, err
 		}
 		record.Targets[i] = trgt
 	}
 
-	return &record, nil
+	return record, nil
 }
 
-// ToNativeTarget converts models.Target to appropriate eacl.Target.
-func ToNativeTarget(t *models.Target) (*eacl.Target, error) {
+// ToNativeTarget converts [apiserver.Target] to appropriate [eacl.Target].
+func ToNativeTarget(t apiserver.Target) (*eacl.Target, error) {
 	var target eacl.Target
 
-	if len(t.Keys) > 0 && *t.Role != models.RoleKEYS {
-		return nil, fmt.Errorf("you cannot set binary keys with role other than '%s'", models.RoleKEYS)
+	if len(t.Keys) > 0 && t.Role != apiserver.KEYS {
+		return nil, fmt.Errorf("you cannot set binary keys with role other than '%s'", apiserver.KEYS)
 	}
 
 	role, err := ToNativeRole(t.Role)
@@ -342,14 +318,14 @@ func ToNativeTarget(t *models.Target) (*eacl.Target, error) {
 	return &target, nil
 }
 
-// FromNativeTarget converts eacl.Target to appropriate models.Target.
-func FromNativeTarget(t eacl.Target) (*models.Target, error) {
+// FromNativeTarget converts [eacl.Target] to appropriate [apiserver.Target].
+func FromNativeTarget(t eacl.Target) (apiserver.Target, error) {
 	var err error
-	var target models.Target
+	var target apiserver.Target
 
 	target.Role, err = FromNativeRole(t.Role())
 	if err != nil {
-		return nil, err
+		return target, err
 	}
 
 	target.Keys = make([]string, len(t.BinaryKeys()))
@@ -357,11 +333,11 @@ func FromNativeTarget(t eacl.Target) (*models.Target, error) {
 		target.Keys[i] = hex.EncodeToString(key)
 	}
 
-	return &target, nil
+	return target, nil
 }
 
-// ToNativeObjectToken converts []*models.Record to appropriate token.BearerToken.
-func ToNativeObjectToken(tokenRecords []*models.Record) (*bearer.Token, error) {
+// ToNativeObjectToken converts [][apiserver.Record] to appropriate [bearer.Token].
+func ToNativeObjectToken(tokenRecords []apiserver.Record) (*bearer.Token, error) {
 	table, err := ToNativeTable(tokenRecords)
 	if err != nil {
 		return nil, err
@@ -373,8 +349,8 @@ func ToNativeObjectToken(tokenRecords []*models.Record) (*bearer.Token, error) {
 	return &btoken, nil
 }
 
-// ToNativeTable converts records to eacl.Table.
-func ToNativeTable(records []*models.Record) (*eacl.Table, error) {
+// ToNativeTable converts records to [eacl.Table].
+func ToNativeTable(records []apiserver.Record) (*eacl.Table, error) {
 	table := eacl.NewTable()
 
 	for _, rec := range records {
@@ -388,28 +364,24 @@ func ToNativeTable(records []*models.Record) (*eacl.Table, error) {
 	return table, nil
 }
 
-// ToNativeMatchFilter converts models.SearchMatch to object.SearchMatchType.
-func ToNativeMatchFilter(s *models.SearchMatch) (object.SearchMatchType, error) {
-	if s == nil {
-		return object.MatchUnknown, fmt.Errorf("unsupported empty verb type")
-	}
-
-	switch *s {
-	case models.SearchMatchMatchStringEqual:
+// ToNativeMatchFilter converts [apiserver.SearchMatch] to [object.SearchMatchType].
+func ToNativeMatchFilter(s apiserver.SearchMatch) (object.SearchMatchType, error) {
+	switch s {
+	case apiserver.MatchStringEqual:
 		return object.MatchStringEqual, nil
-	case models.SearchMatchMatchStringNotEqual:
+	case apiserver.MatchStringNotEqual:
 		return object.MatchStringNotEqual, nil
-	case models.SearchMatchMatchNotPresent:
+	case apiserver.MatchNotPresent:
 		return object.MatchNotPresent, nil
-	case models.SearchMatchMatchCommonPrefix:
+	case apiserver.MatchCommonPrefix:
 		return object.MatchCommonPrefix, nil
 	default:
-		return object.MatchUnknown, fmt.Errorf("unsupported search match: '%s'", *s)
+		return object.MatchUnknown, fmt.Errorf("unsupported search match: '%s'", s)
 	}
 }
 
-// ToNativeFilters converts models.SearchFilters to object.SearchFilters.
-func ToNativeFilters(fs *models.SearchFilters) (object.SearchFilters, error) {
+// ToNativeFilters converts [apiserver.SearchFilters] to [object.SearchFilters].
+func ToNativeFilters(fs apiserver.SearchFilters) (object.SearchFilters, error) {
 	filters := object.NewSearchFilters()
 	filters.AddRootFilter()
 
@@ -419,7 +391,7 @@ func ToNativeFilters(fs *models.SearchFilters) (object.SearchFilters, error) {
 			return nil, err
 		}
 
-		filters.AddFilter(*f.Key, *f.Value, matchFilter)
+		filters.AddFilter(f.Key, f.Value, matchFilter)
 	}
 
 	return filters, nil
@@ -435,37 +407,27 @@ func NewInteger(val int64) *int64 {
 	return &val
 }
 
-// NewBool returns pointer to provided bool.
-func NewBool(val bool) *bool {
-	return &val
-}
-
 // NewSuccessResponse forms model.SuccessResponse.
-func NewSuccessResponse() *models.SuccessResponse {
-	return &models.SuccessResponse{
-		Success: NewBool(true),
+func NewSuccessResponse() *apiserver.SuccessResponse {
+	return &apiserver.SuccessResponse{
+		Success: true,
 	}
 }
 
-// NewErrorResponse forms model.ErrorResponse.
-func NewErrorResponse(err error) *models.ErrorResponse {
-	var code int64
-	t := models.ErrorTypeGW
-	if status, ok := unwrapErr(err).(apistatus.StatusV2); ok {
-		code = int64(status.ErrorToV2().Code())
-		t = models.ErrorTypeAPI
+// NewErrorResponse forms [apiserver.ErrorResponse].
+func NewErrorResponse(err error) *apiserver.ErrorResponse {
+	var code uint32
+	var statusErr apistatus.StatusV2
+	t := apiserver.GW
+
+	if errors.As(err, &statusErr) {
+		code = uint32(statusErr.ErrorToV2().Code())
+		t = apiserver.API
 	}
 
-	return &models.ErrorResponse{
+	return &apiserver.ErrorResponse{
 		Code:    code,
-		Message: NewString(err.Error()),
-		Type:    models.NewErrorType(t),
+		Message: err.Error(),
+		Type:    t,
 	}
-}
-
-func unwrapErr(err error) error {
-	for e := errors.Unwrap(err); e != nil; e = errors.Unwrap(err) {
-		err = e
-	}
-	return err
 }

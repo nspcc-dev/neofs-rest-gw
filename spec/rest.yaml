@@ -1,1467 +1,1729 @@
-swagger: "2.0"
+openapi: 3.0.1
+
 info:
   title: REST API NeoFS
   description: REST API for native integration with NeoFS. Using this API you can interact with NeoFS nodes and manage containers and objects.
   version: v1
 
-# host value is replaced by `external-address` in config.yaml
-host: localhost:8090
-basePath: /v1
-schemes:
-  - http
-
-securityDefinitions:
-  BearerAuth:
-    type: apiKey
-    in: header
-    name: Authorization
-    description: Bearer token body to provide with NeoFS request. Must have 'Bearer ' prefix.
-  CookieAuth:
-    type: apiKey
-    in: header
-    name: cookie
-    description: Bearer cookie with base64-encoded token contents.
+servers:
+  - url: http://localhost:8090/v1
 
 security:
   - BearerAuth: [ ]
   - CookieAuth: [ ]
 
-parameters:
-  signatureParam:
-    in: header
-    name: X-Bearer-Signature
-    description: Base64 encoded signature for bearer token.
-    type: string
-    required: false
-  signatureKeyParam:
-    in: header
-    name: X-Bearer-Signature-Key
-    description: Hex encoded the public part of the key that signed the bearer token.
-    type: string
-    required: false
-  signatureScheme:
-    in: query
-    name: walletConnect
-    description: Use wallet connect signature scheme or native NeoFS signature.
-    type: boolean
-    default: false
-  fullBearerToken:
-    in: query
-    name: fullBearer
-    description: Provided bearer token is final or gate should assemble it using signature.
-    type: boolean
-    default: false
-  containerId:
-    in: path
-    name: containerId
-    type: string
-    required: true
-    description: Base58 encoded container id.
-  objectId:
-    in: path
-    name: objectId
-    type: string
-    required: true
-    description: Base58 encoded object id.
-  attrKey:
-    in: path
-    name: attrKey
-    type: string
-    required: true
-    description: Object attribute key to search.
-  attrVal:
-    in: path
-    name: attrVal
-    type: string
-    required: true
-    description: Object attribute value to match.
-
 paths:
   /auth:
-    options:
-      operationId: optionsAuth
-      security: [ ]
-      responses:
-        200:
-          description: CORS
-          headers:
-            Access-Control-Allow-Origin:
-              type: string
-            Access-Control-Allow-Headers:
-              type: string
-            Access-Control-Allow-Methods:
-              type: string
     post:
-      operationId: auth
       summary: Form bearer token to further requests
-      security: [ ]
+      operationId: auth
       parameters:
-        - in: header
-          name: X-Bearer-Owner-Id
+        - name: X-Bearer-Owner-Id
+          in: header
           description: Owner Id (wallet address) that will sign the token.
-          type: string
           required: true
-        - in: header
-          description: Token lifetime in epoch.
-          name: X-Bearer-Lifetime
-          type: integer
-          default: 100
-        - in: header
-          description: Form token for all users or only for this gate.
-          name: X-Bearer-For-All-Users
-          type: boolean
-          default: false
-        - in: body
-          name: tokens
-          required: true
-          description: Bearer tokens to form.
           schema:
-            type: array
-            items:
-              $ref: '#/definitions/Bearer'
-      consumes:
-        - application/json
-      produces:
-        - application/json
+            type: string
+        - name: X-Bearer-Lifetime
+          in: header
+          description: Token lifetime in epoch.
+          schema:
+            type: integer
+            default: 100
+        - name: X-Bearer-For-All-Users
+          in: header
+          description: Form token for all users or only for this gate.
+          schema:
+            type: boolean
+            default: false
+      requestBody:
+        description: Bearer tokens to form.
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                $ref: '#/components/schemas/Bearer'
+        required: true
       responses:
-        200:
+        "200":
           description: Base64 encoded stable binary marshaled bearer token bodies.
           headers:
             Access-Control-Allow-Origin:
-              type: string
-          schema:
-            type: array
-            items:
-              $ref: '#/definitions/TokenResponse'
-        400:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TokenResponse'
+        "400":
           description: Bad request
-          schema:
-            $ref: '#/definitions/ErrorResponse'
-
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      security: [ ]
+      x-codegen-request-body-name: tokens
+    options:
+      operationId: optionsAuth
+      responses:
+        "200":
+          description: CORS
+          headers:
+            Access-Control-Allow-Origin:
+              schema:
+                type: string
+            Access-Control-Allow-Methods:
+              schema:
+                type: string
+            Access-Control-Allow-Headers:
+              schema:
+                type: string
+          content: { }
+      security: [ ]
   /auth/bearer:
+    get:
+      summary: Form binary bearer token
+      operationId: formBinaryBearer
+      parameters:
+        - $ref: '#/components/parameters/signatureParam'
+        - $ref: '#/components/parameters/signatureKeyParam'
+        - $ref: '#/components/parameters/signatureScheme'
+      responses:
+        "200":
+          description: Base64 encoded stable binary marshaled bearer token.
+          headers:
+            Access-Control-Allow-Origin:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BinaryBearer'
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
     options:
       operationId: optionsAuthBearer
-      security: [ ]
       responses:
-        200:
+        "200":
           description: CORS
           headers:
             Access-Control-Allow-Origin:
-              type: string
-            Access-Control-Allow-Headers:
-              type: string
+              schema:
+                type: string
             Access-Control-Allow-Methods:
-              type: string
-    get:
-      operationId: formBinaryBearer
-      summary: Form binary bearer token
-      parameters:
-        - $ref: '#/parameters/signatureParam'
-        - $ref: '#/parameters/signatureKeyParam'
-        - $ref: '#/parameters/signatureScheme'
-      produces:
-        - application/json
-      responses:
-        200:
-          description: Base64 encoded stable binary marshaled bearer token.
-          headers:
-            Access-Control-Allow-Origin:
-              type: string
-          schema:
-            $ref: '#/definitions/BinaryBearer'
-        400:
-          description: Bad request
-          schema:
-            $ref: '#/definitions/ErrorResponse'
-
+              schema:
+                type: string
+            Access-Control-Allow-Headers:
+              schema:
+                type: string
+          content: { }
+      security: [ ]
   /accounting/balance/{address}:
-    parameters:
-      - in: path
-        name: address
-        type: string
-        required: true
-        description: Base58 encoded wallet address.
-    options:
-      operationId: optionsBalance
-      security: [ ]
-      responses:
-        200:
-          description: CORS
-          headers:
-            Access-Control-Allow-Origin:
-              type: string
-            Access-Control-Allow-Headers:
-              type: string
-            Access-Control-Allow-Methods:
-              type: string
     get:
-      operationId: getBalance
       summary: Get balance in NeoFS
       description: Getting balance of provided wallet address in NeoFS.
-      security: [ ]
-      produces:
-        - application/json
-      responses:
-        200:
-          description: Balance of address in NeoFS
+      operationId: getBalance
+      parameters:
+        - name: address
+          in: path
+          description: Base58 encoded wallet address.
+          required: true
           schema:
-            $ref: '#/definitions/Balance'
+            type: string
+      responses:
+        "200":
+          description: Balance of address in NeoFS
           headers:
             Access-Control-Allow-Origin:
-              type: string
-        400:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Balance'
+        "400":
           description: Bad request
-          schema:
-            $ref: '#/definitions/ErrorResponse'
-
-  /objects:
-    options:
-      operationId: optionsObjectsPut
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
       security: [ ]
+    options:
+      operationId: optionsBalance
+      parameters:
+        - name: address
+          in: path
+          description: Base58 encoded wallet address.
+          required: true
+          schema:
+            type: string
       responses:
-        200:
+        "200":
           description: CORS
           headers:
             Access-Control-Allow-Origin:
-              type: string
-            Access-Control-Allow-Headers:
-              type: string
+              schema:
+                type: string
             Access-Control-Allow-Methods:
-              type: string
+              schema:
+                type: string
+            Access-Control-Allow-Headers:
+              schema:
+                type: string
+          content: { }
+      security: [ ]
+  /objects:
     put:
-      operationId: putObject
       summary: Upload object to NeoFS
+      operationId: putObject
       parameters:
-        - $ref: '#/parameters/signatureParam'
-        - $ref: '#/parameters/signatureKeyParam'
-        - $ref: '#/parameters/signatureScheme'
-        - $ref: '#/parameters/fullBearerToken'
-        - in: body
-          required: true
-          name: object
-          description: Object info to upload
-          schema:
-            $ref: '#/definitions/ObjectUpload'
-      consumes:
-        - application/json
-      produces:
-        - application/json
+        - $ref: '#/components/parameters/signatureParam'
+        - $ref: '#/components/parameters/signatureKeyParam'
+        - $ref: '#/components/parameters/signatureScheme'
+        - $ref: '#/components/parameters/fullBearerToken'
+      requestBody:
+        description: Object info to upload
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ObjectUpload'
+        required: true
       responses:
-        200:
+        "200":
+          description: Address of uploaded objects
           headers:
             Access-Control-Allow-Origin:
-              type: string
-          description: Address of uploaded objects
-          schema:
-            $ref: '#/definitions/Address'
-        400:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Address'
+        "400":
           description: Bad request
-          schema:
-            $ref: '#/definitions/ErrorResponse'
-
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      x-codegen-request-body-name: object
+    options:
+      operationId: optionsObjectsPut
+      responses:
+        "200":
+          description: CORS
+          headers:
+            Access-Control-Allow-Origin:
+              schema:
+                type: string
+            Access-Control-Allow-Methods:
+              schema:
+                type: string
+            Access-Control-Allow-Headers:
+              schema:
+                type: string
+          content: { }
+      security: [ ]
   /objects/{containerId}/search:
-    parameters:
-      - $ref: '#/parameters/containerId'
+    post:
+      summary: Search objects by filters
+      operationId: searchObjects
+      parameters:
+        - $ref: '#/components/parameters/signatureParam'
+        - $ref: '#/components/parameters/signatureKeyParam'
+        - $ref: '#/components/parameters/signatureScheme'
+        - $ref: '#/components/parameters/fullBearerToken'
+        - $ref: '#/components/parameters/containerId'
+        - name: offset
+          in: query
+          description: The number of containers to skip before starting to collect the
+            result set.
+          schema:
+            minimum: 0
+            type: integer
+            default: 0
+        - name: limit
+          in: query
+          description: The numbers of containers to return.
+          schema:
+            maximum: 10000
+            minimum: 1
+            type: integer
+            default: 100
+      requestBody:
+        description: Filters to search objects.
+        content:
+          '*/*':
+            schema:
+              $ref: '#/components/schemas/SearchFilters'
+        required: true
+      responses:
+        "200":
+          description: List of objects
+          headers:
+            Access-Control-Allow-Origin:
+              schema:
+                type: string
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ObjectList'
+        "400":
+          description: Bad request
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      security:
+        - { }
+        - BearerAuth: [ ]
+      x-codegen-request-body-name: searchFilters
     options:
       operationId: optionsObjectsSearch
-      security: [ ]
+      parameters:
+        - name: containerId
+          in: path
+          description: Base58 encoded container id.
+          required: true
+          schema:
+            type: string
       responses:
-        200:
+        "200":
           description: Base64 encoded stable binary marshaled bearer token.
           headers:
             Access-Control-Allow-Origin:
-              type: string
-            Access-Control-Allow-Headers:
-              type: string
+              schema:
+                type: string
             Access-Control-Allow-Methods:
-              type: string
-    post:
-      operationId: searchObjects
-      summary: Search objects by filters
-      security:
-        - {}
-        - BearerAuth: [ ]
-      parameters:
-        - $ref: '#/parameters/signatureParam'
-        - $ref: '#/parameters/signatureKeyParam'
-        - $ref: '#/parameters/signatureScheme'
-        - $ref: '#/parameters/fullBearerToken'
-        - in: query
-          name: offset
-          type: integer
-          default: 0
-          minimum: 0
-          description: The number of containers to skip before starting to collect the result set.
-        - in: query
-          name: limit
-          type: integer
-          default: 100
-          minimum: 1
-          maximum: 10000
-          description: The numbers of containers to return.
-        - in: body
-          required: true
-          name: searchFilters
-          description: Filters to search objects.
-          schema:
-            $ref: '#/definitions/SearchFilters'
-      responses:
-        200:
-          headers:
-            Access-Control-Allow-Origin:
-              type: string
-          description: List of objects
-          schema:
-            $ref: '#/definitions/ObjectList'
-        400:
-          description: Bad request
-          schema:
-            $ref: '#/definitions/ErrorResponse'
-
-  /objects/{containerId}/{objectId}:
-    parameters:
-      - $ref: '#/parameters/containerId'
-      - $ref: '#/parameters/objectId'
-    options:
-      operationId: optionsObjectsGetDelete
+              schema:
+                type: string
+            Access-Control-Allow-Headers:
+              schema:
+                type: string
+          content: { }
       security: [ ]
-      responses:
-        200:
-          description: CORS
-          headers:
-            Access-Control-Allow-Origin:
-              type: string
-            Access-Control-Allow-Headers:
-              type: string
-            Access-Control-Allow-Methods:
-              type: string
+  /objects/{containerId}/{objectId}:
     get:
-      operationId: getObjectInfo
       summary: Get object info by address
-      security:
-        - {}
-        - BearerAuth: [ ]
+      operationId: getObjectInfo
       parameters:
-        - $ref: '#/parameters/signatureParam'
-        - $ref: '#/parameters/signatureKeyParam'
-        - $ref: '#/parameters/signatureScheme'
-        - $ref: '#/parameters/fullBearerToken'
-        - in: query
-          name: range-offset
-          type: integer
-          minimum: 0
+        - $ref: '#/components/parameters/containerId'
+        - $ref: '#/components/parameters/objectId'
+        - $ref: '#/components/parameters/signatureParam'
+        - $ref: '#/components/parameters/signatureKeyParam'
+        - $ref: '#/components/parameters/signatureScheme'
+        - $ref: '#/components/parameters/fullBearerToken'
+        - name: range-offset
+          in: query
           description: Range offset to start reading data.
-        - in: query
-          name: range-length
-          type: integer
-          minimum: 1
+          schema:
+            minimum: 0
+            type: integer
+            format: int64
+        - name: range-length
+          in: query
           description: Length of data range.
-        - in: query
-          name: max-payload-size
-          type: integer
-          default: 4194304
-          minimum: 0
-          maximum: 524288000
+          schema:
+            minimum: 1
+            type: integer
+            format: int64
+        - name: max-payload-size
+          in: query
           description: |
             Max payload size (in bytes) that can be included in the response.
             If the actual size is greater than this params the payload won't be included in the response.
+          schema:
+            maximum: 524288000
+            minimum: 0
+            type: integer
+            default: 4194304
       responses:
-        200:
-          headers:
-            Access-Control-Allow-Origin:
-              type: string
+        "200":
           description: Object info
-          schema:
-            $ref: '#/definitions/ObjectInfo'
-        400:
-          description: Bad request
-          schema:
-            $ref: '#/definitions/ErrorResponse'
-    delete:
-      operationId: deleteObject
-      summary: Remove object from NeoFS
-      parameters:
-        - $ref: '#/parameters/signatureParam'
-        - $ref: '#/parameters/signatureKeyParam'
-        - $ref: '#/parameters/signatureScheme'
-        - $ref: '#/parameters/fullBearerToken'
-      responses:
-        200:
           headers:
             Access-Control-Allow-Origin:
-              type: string
+              schema:
+                type: string
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ObjectInfo'
+        "400":
+          description: Bad request
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      security:
+        - { }
+        - BearerAuth: [ ]
+    delete:
+      summary: Remove object from NeoFS
+      operationId: deleteObject
+      parameters:
+        - $ref: '#/components/parameters/containerId'
+        - $ref: '#/components/parameters/objectId'
+        - $ref: '#/components/parameters/signatureParam'
+        - $ref: '#/components/parameters/signatureKeyParam'
+        - $ref: '#/components/parameters/signatureScheme'
+        - $ref: '#/components/parameters/fullBearerToken'
+      responses:
+        "200":
           description: Successful deletion.
-          schema:
-            $ref: '#/definitions/SuccessResponse'
-        400:
+          headers:
+            Access-Control-Allow-Origin:
+              schema:
+                type: string
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        "400":
           description: Bad request.
-          schema:
-            $ref: '#/definitions/ErrorResponse'
-
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    options:
+      operationId: optionsObjectsGetDelete
+      parameters:
+        - $ref: '#/components/parameters/containerId'
+        - $ref: '#/components/parameters/objectId'
+      responses:
+        "200":
+          description: CORS
+          headers:
+            Access-Control-Allow-Origin:
+              schema:
+                type: string
+            Access-Control-Allow-Methods:
+              schema:
+                type: string
+            Access-Control-Allow-Headers:
+              schema:
+                type: string
+          content: { }
+      security: [ ]
   /containers:
+    get:
+      summary: Get list of containers
+      operationId: listContainers
+      parameters:
+        - name: ownerId
+          in: query
+          description: Base58 encoded owner id.
+          required: true
+          schema:
+            type: string
+        - name: offset
+          in: query
+          description: The number of containers to skip before starting to collect the
+            result set.
+          schema:
+            minimum: 0
+            type: integer
+            default: 0
+        - name: limit
+          in: query
+          description: The numbers of containers to return.
+          schema:
+            maximum: 10000
+            minimum: 1
+            type: integer
+            default: 100
+      responses:
+        "200":
+          description: Containers info.
+          headers:
+            Access-Control-Allow-Origin:
+              schema:
+                type: string
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ContainerList'
+        "400":
+          description: Bad request.
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      security: [ ]
+    put:
+      summary: Create new container in NeoFS
+      operationId: putContainer
+      parameters:
+        - $ref: '#/components/parameters/signatureParam'
+        - $ref: '#/components/parameters/signatureKeyParam'
+        - $ref: '#/components/parameters/signatureScheme'
+        - name: name-scope-global
+          in: query
+          description: Provide this parameter to register container name in NNS service.
+          schema:
+            type: boolean
+            default: false
+      requestBody:
+        description: Container info
+        content:
+          '*/*':
+            schema:
+              $ref: '#/components/schemas/ContainerPutInfo'
+        required: true
+      responses:
+        "200":
+          description: Identifier of the created container.
+          headers:
+            Access-Control-Allow-Origin:
+              schema:
+                type: string
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/PutContainerOK'
+        "400":
+          description: Bad request.
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      x-codegen-request-body-name: container
     options:
       operationId: optionsContainersPutList
-      security: [ ]
       responses:
-        200:
+        "200":
           description: CORS
           headers:
             Access-Control-Allow-Origin:
-              type: string
-            Access-Control-Allow-Headers:
-              type: string
-            Access-Control-Allow-Methods:
-              type: string
-    put:
-      operationId: putContainer
-      summary: Create new container in NeoFS
-      parameters:
-        - $ref: '#/parameters/signatureParam'
-        - $ref: '#/parameters/signatureKeyParam'
-        - $ref: '#/parameters/signatureScheme'
-        - in: query
-          name: name-scope-global
-          description: Provide this parameter to register container name in NNS service.
-          type: boolean
-          default: false
-        - in: body
-          name: container
-          required: true
-          description: Container info
-          schema:
-            $ref: '#/definitions/ContainerPutInfo'
-      responses:
-        200:
-          headers:
-            Access-Control-Allow-Origin:
-              type: string
-          description: Identifier of the created container.
-          schema:
-            type: object
-            properties:
-              containerId:
+              schema:
                 type: string
-            required:
-              - containerId
-            example:
-              containerId: 5HZTn5qkRnmgSz9gSrw22CEdPPk6nQhkwf2Mgzyvkikv
-        400:
-          description: Bad request.
-          schema:
-            $ref: '#/definitions/ErrorResponse'
-    get:
-      operationId: listContainers
-      summary: Get list of containers
+            Access-Control-Allow-Methods:
+              schema:
+                type: string
+            Access-Control-Allow-Headers:
+              schema:
+                type: string
+          content: { }
       security: [ ]
+  /containers/{containerId}:
+    get:
+      summary: Get container by id
+      operationId: getContainer
       parameters:
-        - in: query
-          name: ownerId
-          required: true
-          type: string
-          description: Base58 encoded owner id.
-        - in: query
-          name: offset
-          type: integer
-          default: 0
-          minimum: 0
-          description: The number of containers to skip before starting to collect the result set.
-        - in: query
-          name: limit
-          type: integer
-          default: 100
-          minimum: 1
-          maximum: 10000
-          description: The numbers of containers to return.
+        - $ref: '#/components/parameters/containerId'
       responses:
-        200:
+        "200":
+          description: Container info.
           headers:
             Access-Control-Allow-Origin:
-              type: string
-          description: Containers info.
-          schema:
-            $ref: '#/definitions/ContainerList'
-        400:
+              schema:
+                type: string
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ContainerInfo'
+        "400":
           description: Bad request.
-          schema:
-            $ref: '#/definitions/ErrorResponse'
-
-  /containers/{containerId}:
-    parameters:
-      - $ref: '#/parameters/containerId'
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      security: [ ]
+    delete:
+      summary: Delete container by id
+      operationId: deleteContainer
+      parameters:
+        - $ref: '#/components/parameters/containerId'
+        - $ref: '#/components/parameters/signatureParam'
+        - $ref: '#/components/parameters/signatureKeyParam'
+        - $ref: '#/components/parameters/signatureScheme'
+      responses:
+        "200":
+          description: Successful deletion.
+          headers:
+            Access-Control-Allow-Origin:
+              schema:
+                type: string
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        "400":
+          description: Bad request.
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
     options:
       operationId: optionsContainersGetDelete
-      security: [ ]
+      parameters:
+        - $ref: '#/components/parameters/containerId'
       responses:
-        200:
+        "200":
           description: CORS
           headers:
             Access-Control-Allow-Origin:
-              type: string
-            Access-Control-Allow-Headers:
-              type: string
+              schema:
+                type: string
             Access-Control-Allow-Methods:
-              type: string
-    get:
-      operationId: getContainer
-      summary: Get container by id
+              schema:
+                type: string
+            Access-Control-Allow-Headers:
+              schema:
+                type: string
+          content: { }
       security: [ ]
-      responses:
-        200:
-          headers:
-            Access-Control-Allow-Origin:
-              type: string
-          description: Container info.
-          schema:
-            $ref: '#/definitions/ContainerInfo'
-        400:
-          description: Bad request.
-          schema:
-            $ref: '#/definitions/ErrorResponse'
-    delete:
-      operationId: deleteContainer
-      summary: Delete container by id
-      parameters:
-        - $ref: '#/parameters/signatureParam'
-        - $ref: '#/parameters/signatureKeyParam'
-        - $ref: '#/parameters/signatureScheme'
-      responses:
-        200:
-          headers:
-            Access-Control-Allow-Origin:
-              type: string
-          description: Successful deletion.
-          schema:
-            $ref: '#/definitions/SuccessResponse'
-        400:
-          description: Bad request.
-          schema:
-            $ref: '#/definitions/ErrorResponse'
-
   /containers/{containerId}/eacl:
-    parameters:
-      - $ref: '#/parameters/containerId'
+    get:
+      summary: Get container EACL by id
+      operationId: getContainerEACL
+      parameters:
+        - $ref: '#/components/parameters/containerId'
+      responses:
+        "200":
+          description: Container EACL information.
+          headers:
+            Access-Control-Allow-Origin:
+              schema:
+                type: string
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/Eacl'
+        "400":
+          description: Bad request.
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      security: [ ]
+    put:
+      summary: Set container EACL by id
+      operationId: putContainerEACL
+      parameters:
+        - $ref: '#/components/parameters/containerId'
+        - $ref: '#/components/parameters/signatureParam'
+        - $ref: '#/components/parameters/signatureKeyParam'
+        - $ref: '#/components/parameters/signatureScheme'
+      requestBody:
+        description: EACL for container.
+        content:
+          '*/*':
+            schema:
+              $ref: '#/components/schemas/Eacl'
+        required: true
+      responses:
+        "200":
+          description: Successful EACL updating.
+          headers:
+            Access-Control-Allow-Origin:
+              schema:
+                type: string
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        "400":
+          description: Bad request.
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      x-codegen-request-body-name: eacl
     options:
       operationId: optionsContainersEACL
-      security: [ ]
+      parameters:
+        - $ref: '#/components/parameters/containerId'
       responses:
-        200:
+        "200":
           description: CORS
           headers:
             Access-Control-Allow-Origin:
-              type: string
-            Access-Control-Allow-Headers:
-              type: string
+              schema:
+                type: string
             Access-Control-Allow-Methods:
-              type: string
-    put:
-      operationId: putContainerEACL
-      summary: Set container EACL by id
-      parameters:
-        - $ref: '#/parameters/signatureParam'
-        - $ref: '#/parameters/signatureKeyParam'
-        - $ref: '#/parameters/signatureScheme'
-        - in: body
-          name: eacl
-          required: true
-          description: EACL for container.
-          schema:
-            $ref: '#/definitions/Eacl'
-      responses:
-        200:
-          headers:
-            Access-Control-Allow-Origin:
-              type: string
-          description: Successful EACL updating.
-          schema:
-            $ref: '#/definitions/SuccessResponse'
-        400:
-          description: Bad request.
-          schema:
-            $ref: '#/definitions/ErrorResponse'
-    get:
-      operationId: getContainerEACL
-      summary: Get container EACL by id
+              schema:
+                type: string
+            Access-Control-Allow-Headers:
+              schema:
+                type: string
+          content: { }
       security: [ ]
-      responses:
-        200:
-          headers:
-            Access-Control-Allow-Origin:
-              type: string
-          description: Container EACL information.
-          schema:
-            $ref: '#/definitions/Eacl'
-        400:
-          description: Bad request.
-          schema:
-            $ref: '#/definitions/ErrorResponse'
-
   /get/{containerId}/{objectId}:
-    parameters:
-      - $ref: '#/parameters/containerId'
-      - $ref: '#/parameters/objectId'
+    get:
+      summary: "Get object by container ID and object ID. Also returns custom users'\
+        \ header attributes `X-Attribute-*`. It returns the MIME type based on headers\
+        \ or object contents, so the actual Content-Type can differ from the list\
+        \ in the \"Response content type\" section."
+      operationId: getContainerObject
+      parameters:
+        - $ref: '#/components/parameters/containerId'
+        - $ref: '#/components/parameters/objectId'
+        - name: download
+          in: query
+          description: Set the Content-Disposition header as attachment in response.
+            This make the browser to download object as file instead of showing it on
+            the page.
+          schema:
+            type: string
+            example: 1, t, T, true, TRUE, True, y, yes, Y, YES, Yes
+      responses:
+        "200":
+          $ref: '#/components/responses/ObjectContentOK'
+        "400":
+          description: Bad request.
+          content:
+            application/octet-stream:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        "404":
+          description: Not found.
+          content:
+            application/octet-stream:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      security:
+        - { }
+        - BearerAuth: [ ]
+        - CookieAuth: [ ]
     options:
       operationId: optionsContainerObject
-      security: [ ]
+      parameters:
+        - $ref: '#/components/parameters/containerId'
+        - $ref: '#/components/parameters/objectId'
       responses:
-        200:
+        "200":
           description: CORS
           headers:
             Access-Control-Allow-Origin:
-              type: string
-            Access-Control-Allow-Headers:
-              type: string
+              schema:
+                type: string
             Access-Control-Allow-Methods:
-              type: string
-    get:
-      operationId: getContainerObject
-      summary: Get object by container ID and object ID. Also returns custom users' header attributes `X-Attribute-*`. It returns the MIME type based on headers or object contents, so the actual Content-Type can differ from the list in the "Response content type" section.
-      security:
-        - {}
-        - BearerAuth: [ ]
-        - CookieAuth: [ ]
-      produces:
-        - application/octet-stream
-      parameters:
-        - name: download
-          in: query
-          description: Set the Content-Disposition header as attachment in response. This make the browser to download object as file instead of showing it on the page.
-          required: false
-          type: boolean
-      responses:
-        200:
-          $ref: '#/responses/ObjectContentOK'
-        400:
-          $ref: '#/responses/BadRequest'
-        404:
-          $ref: '#/responses/NotFound'
+              schema:
+                type: string
+            Access-Control-Allow-Headers:
+              schema:
+                type: string
+          content: { }
+      security: [ ]
     head:
+      summary: Get object info (head) by container ID and object ID. Also returns
+        custom users' header attributes `X-Attribute-*`.
       operationId: headContainerObject
-      summary: Get object info (head) by container ID and object ID. Also returns custom users' header attributes `X-Attribute-*`.
-      security:
-        - {}
-        - BearerAuth: [ ]
-        - CookieAuth: [ ]
       parameters:
+        - $ref: '#/components/parameters/containerId'
+        - $ref: '#/components/parameters/objectId'
         - name: download
           in: query
-          description: Set the Content-Disposition header as attachment in response. This make the browser to download object as file instead of showing it on the page.
-          required: false
-          type: boolean
+          description: Set the Content-Disposition header as attachment in response.
+            This make the browser to download object as file instead of showing it on
+            the page.
+          schema:
+            type: string
+            example: 1, t, T, true, TRUE, True, y, yes, Y, YES, Yes
       responses:
-        200:
-          $ref: '#/responses/ObjectHeadOK'
-        400:
-          $ref: '#/responses/BadRequest'
-        404:
-          $ref: '#/responses/NotFound'
-  /upload/{containerId}:
-    parameters:
-      - $ref: '#/parameters/containerId'
-    options:
-      operationId: optionsUploadContainerObject
-      security: [ ]
-      responses:
-        200:
-          description: CORS
-          headers:
-            Access-Control-Allow-Origin:
-              type: string
-            Access-Control-Allow-Headers:
-              type: string
-            Access-Control-Allow-Methods:
-              type: string
-    post:
-      operationId: uploadContainerObject
-      summary: Upload object to NeoFS
+        "200":
+          $ref: '#/components/responses/ObjectHeadOK'
+        "400":
+          description: Bad request.
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        "404":
+          description: Not found.
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
       security:
         - { }
         - BearerAuth: [ ]
         - CookieAuth: [ ]
-      consumes:
-        - multipart/form-data
-      produces:
-        - application/json
+  /upload/{containerId}:
+    post:
+      summary: Upload object to NeoFS
+      operationId: uploadContainerObject
       parameters:
-        - name: payload
-          in: formData
-          required: false
-          type: file
-          description: The file to upload.  If no file is present in this field, any other field name will be accepted, except for an empty one.
+        - $ref: '#/components/parameters/containerId'
         - name: X-Attribute-Filename
           in: header
-          required: false
-          type: string
-          description: This attribute, in any combination of upper/lower case, will be added to the object as the `FileName` attribute. It will also be returned as the `FileName` attribute in GET/HEAD API calls for the object (/get/{containerId}/{objectId}) and the `name` in POST call search in a container (/objects/{containerId}/search).
+          description: "This attribute, in any combination of upper/lower case, will\
+          \ be added to the object as the `FileName` attribute. It will also be returned\
+          \ as the `FileName` attribute in GET/HEAD API calls for the object (/get/{containerId}/{objectId})\
+          \ and the `name` in POST call search in a container (/objects/{containerId}/search)."
+          schema:
+            type: string
         - name: X-Attribute-Filepath
           in: header
-          required: false
-          type: string
-          description: This attribute, in any combination of upper/lower case, will be added to the object as the `FilePath` attribute. It will also be returned as the `FilePath` attribute in GET/HEAD API calls for the object (/get/{containerId}/{objectId}) or the `filePath` in POST call search in a container (/objects/{containerId}/search).
+          description: "This attribute, in any combination of upper/lower case, will\
+          \ be added to the object as the `FilePath` attribute. It will also be returned\
+          \ as the `FilePath` attribute in GET/HEAD API calls for the object (/get/{containerId}/{objectId})\
+          \ or the `filePath` in POST call search in a container (/objects/{containerId}/search)."
+          schema:
+            type: string
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                payload:
+                  type: string
+                  description: "The file to upload.  If no file is present in this\
+                    \ field, any other field name will be accepted, except for an\
+                    \ empty one."
+                  format: binary
       responses:
-        200:
+        "200":
+          description: Address of uploaded objects.
           headers:
             Access-Control-Allow-Origin:
-              type: string
-          description: Address of uploaded objects.
-          schema:
-            $ref: '#/definitions/AddressForUpload'
-        400:
-          $ref: '#/responses/BadRequest'
-  /get_by_attribute/{containerId}/{attrKey}/{attrVal}:
-    parameters:
-      - $ref: '#/parameters/containerId'
-      - $ref: '#/parameters/attrKey'
-      - $ref: '#/parameters/attrVal'
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AddressForUpload'
+        "400":
+          description: Bad request.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      security:
+        - { }
+        - BearerAuth: [ ]
+        - CookieAuth: [ ]
     options:
-      operationId: optionsByAttribute
-      security: [ ]
+      operationId: optionsUploadContainerObject
+      parameters:
+        - $ref: '#/components/parameters/containerId'
       responses:
-        200:
+        "200":
           description: CORS
           headers:
             Access-Control-Allow-Origin:
-              type: string
-            Access-Control-Allow-Headers:
-              type: string
+              schema:
+                type: string
             Access-Control-Allow-Methods:
-              type: string
+              schema:
+                type: string
+            Access-Control-Allow-Headers:
+              schema:
+                type: string
+          content: { }
+      security: [ ]
+  /get_by_attribute/{containerId}/{attrKey}/{attrVal}:
     get:
+      summary: "Find and get an object (payload and attributes) by a specific attribute.\
+        \ If more than one object is found, an arbitrary one will be returned. It\
+        \ returns the MIME type based on headers or object contents, so the actual\
+        \ Content-Type can differ from the list in the \"Response content type\" section."
       operationId: getByAttribute
-      summary: Find and get an object (payload and attributes) by a specific attribute. If more than one object is found, an arbitrary one will be returned. It returns the MIME type based on headers or object contents, so the actual Content-Type can differ from the list in the "Response content type" section.
+      parameters:
+        - $ref: '#/components/parameters/containerId'
+        - $ref: '#/components/parameters/attrKey'
+        - $ref: '#/components/parameters/attrVal'
+        - name: download
+          in: query
+          description: Set the Content-Disposition header as attachment in response.
+            This makes the browser to download object as file instead of showing it
+            on the page.
+          schema:
+            type: string
+            example: 1, t, T, true, TRUE, True, y, yes, Y, YES, Yes
+      responses:
+        "200":
+          $ref: '#/components/responses/ObjectContentOK'
+        "400":
+          description: Bad request.
+          content:
+            application/octet-stream:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        "404":
+          description: Not found.
+          content:
+            application/octet-stream:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
       security:
         - { }
         - BearerAuth: [ ]
         - CookieAuth: [ ]
-      produces:
-        - application/octet-stream
+    options:
+      operationId: optionsByAttribute
       parameters:
-        - name: download
-          in: query
-          description: Set the Content-Disposition header as attachment in response. This makes the browser to download object as file instead of showing it on the page.
-          required: false
-          type: boolean
+        - $ref: '#/components/parameters/containerId'
+        - $ref: '#/components/parameters/attrKey'
+        - $ref: '#/components/parameters/attrVal'
       responses:
-        200:
-          $ref: '#/responses/ObjectContentOK'
-        400:
-          $ref: '#/responses/BadRequest'
-        404:
-          $ref: '#/responses/NotFound'
+        "200":
+          description: CORS
+          headers:
+            Access-Control-Allow-Origin:
+              schema:
+                type: string
+            Access-Control-Allow-Methods:
+              schema:
+                type: string
+            Access-Control-Allow-Headers:
+              schema:
+                type: string
+          content: { }
+      security: [ ]
     head:
+      summary: "Get object attributes by a specific attribute. If more than one object\
+        \ is found, an arbitrary one will be used to get attributes."
       operationId: headByAttribute
-      summary: Get object attributes by a specific attribute. If more than one object is found, an arbitrary one will be used to get attributes.
+      parameters:
+        - $ref: '#/components/parameters/containerId'
+        - $ref: '#/components/parameters/attrKey'
+        - $ref: '#/components/parameters/attrVal'
+        - name: download
+          in: query
+          description: Set the Content-Disposition header as attachment in response.
+            This makes the browser to download object as file instead of showing it
+            on the page.
+          schema:
+            type: string
+            example: 1, t, T, true, TRUE, True, y, yes, Y, YES, Yes
+      responses:
+        "200":
+          $ref: '#/components/responses/ObjectHeadOK'
+        "400":
+          description: Bad request.
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        "404":
+          description: Not found.
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
       security:
         - { }
         - BearerAuth: [ ]
         - CookieAuth: [ ]
-      parameters:
-        - name: download
-          in: query
-          description: Set the Content-Disposition header as attachment in response. This makes the browser to download object as file instead of showing it on the page.
-          required: false
-          type: boolean
-      responses:
-        200:
-          $ref: '#/responses/ObjectHeadOK'
-        400:
-          $ref: '#/responses/BadRequest'
-        404:
-          $ref: '#/responses/NotFound'
 
-definitions:
-  BinaryBearer:
-    description: Bearer token for object operations that is represented in binary form.
-    type: object
-    properties:
-      token:
-        description: Base64 encoded bearer token.
-        type: string
-    required:
-      - token
-    example:
-      token: ChIKDAoAGggIARABIgIIAxoCCGQSZgohA+J5jFWFMiOpyvMZBu9wwPTKsWsG0q206kVe63iuWP/wEkEE4SIV0QngnKppDf54QezUKmar7UQby6HzufT5yVIOvj7QEqZnOavrKW0chCeCwP0khda/j9k00ct6NMEDxQFW+g==
-  Bearer:
-    description: Bearer token that is expected to be formed.
-    type: object
-    properties:
-      name:
-        type: string
-      object:
-        type: array
-        items:
-          $ref: '#/definitions/Record'
-      container:
-        $ref: '#/definitions/Rule'
-    example:
-      - name: my-bearer-token
-        object:
-          - operation: GET
-            action: ALLOW
-            filters: [ ]
-            targets:
-              - role: OTHERS
-                keys: [ ]
-      - name: "my token to create container"
-        container:
-          verb: PUT
-  Record:
-    description: A single NeoFS EACL rule.
-    type: object
-    properties:
-      action:
-        $ref: '#/definitions/Action'
-      operation:
-        $ref: '#/definitions/Operation'
-      filters:
-        type: array
-        items:
-          $ref: '#/definitions/Filter'
-      targets:
-        type: array
-        items:
-          $ref: '#/definitions/Target'
-    required:
-      - action
-      - operation
-      - filters
-      - targets
-    example:
-      operation: GET
-      action: ALLOW
-      filters: [ ]
-      targets:
-        - role: OTHERS
-          keys: [ ]
-  Action:
-    description: Rule execution result action in NeoFS EACL. Either allows or denies access if the rule's filters match.
-    type: string
-    enum:
-      - ALLOW
-      - DENY
-  Operation:
-    description: Request's operation type to match in NeoFS EACL if the rule is applicable to a particular request.
-    type: string
-    enum:
-      - GET
-      - HEAD
-      - PUT
-      - DELETE
-      - SEARCH
-      - RANGE
-      - RANGEHASH
-  Filter:
-    description: Filter in NeoFS EACL to check particular properties of the request or the object.
-    type: object
-    properties:
-      headerType:
-        $ref: '#/definitions/HeaderType'
-      matchType:
-        $ref: '#/definitions/MatchType'
-      key:
-        type: string
-      value:
-        type: string
-    required:
-      - headerType
-      - matchType
-      - key
-      - value
-    example:
-      headerType: OBJECT
-      matchType: STRING_NOT_EQUAL
-      key: FileName
-      value: myfile
-  HeaderType:
-    description: Enumeration of possible sources of Headers to apply filters in NeoFS EACL.
-    type: string
-    enum:
-      - REQUEST
-      - OBJECT
-      - SERVICE
-  MatchType:
-    description: Match type in NeoFS EACL filter.
-    type: string
-    enum:
-      - STRING_EQUAL
-      - STRING_NOT_EQUAL
-  Target:
-    description: Target to apply the ACL rule. Can be a subject's role class or a list of public keys to match (KEYS role).
-    type: object
-    properties:
-      role:
-        $ref: '#/definitions/Role'
-      keys:
-        type: array
-        items:
+components:
+  schemas:
+    BinaryBearer:
+      required:
+        - token
+      type: object
+      properties:
+        token:
           type: string
-    required:
-      - role
-      - keys
-    example:
-      role: KEYS
-      keys:
-        - 021dc56fc6d81d581ae7605a8e00e0e0bab6cbad566a924a527339475a97a8e38e
-  Role:
-    description: Role for target in EACL.
-    type: string
-    enum:
-      - USER
-      - SYSTEM
-      - OTHERS
-      - KEYS
-  Rule:
-    description: Container session token rule.
-    type: object
-    properties:
-      verb:
-        $ref: '#/definitions/Verb'
-      containerId:
-        type: string
-    required:
-      - verb
-    example:
-      verb: DELETE
-      containerId: 6jvKJCQr6e47Yx8SsbSN3fNgzroUJVkY66Q9wqxYcAjc
-  Verb:
-    description: Verb that describes the allowed container operation for token.
-    type: string
-    enum:
-      - PUT
-      - DELETE
-      - SETEACL
-  TokenResponse:
-    description: Base64 encoded marshaled token (for container or for object operations).
-    type: object
-    properties:
-      name:
-        type: string
-      type:
-        $ref: '#/definitions/TokenType'
-      token:
-        type: string
-    required:
-      - type
-      - token
-    example:
-      - type: object
-        token: ClYKBAgCEA0aCAgDEAEiAggDGggIARACIgIIAxoICAIQAiICCAMaCAgDEAIiAggDGggIBBACIgIIAxoICAUQAiICCAMaCAgGEAIiAggDGggIBxACIgIIAxIbChk182WEDFuAqq3nssrGOaH0NK0ZhzF8bu+YGgQIaBgE
-      - type: container
-        token: ChCpanIBJCpJuJz42KOmGMSnEhsKGTWquaX2Lq6GhhO4faOYkLD0f9WkXuYJlq4aBAhnGAMiIQJgFcIEghQB5lq3AJZOVswInwc1IGhlQ7NCUh4DFO3UATIECAEQAQ==
-  TokenType:
-    description: Type of token.
-    type: string
-    enum:
-      - object
-      - container
-  ContainerPutInfo:
-    description: |
-      <p>Request body to create container. To specify container name use appropriate property (name provided in attributes will be ignored).<p>
-      <p>To create a container you must provide <code>PlacementPolicy</code> and <code>BasicACL</code>.</p>
+          description: Base64 encoded bearer token.
+      description: Bearer token for object operations that is represented in binary
+        form.
+      example:
+        token: ChIKDAoAGggIARABIgIIAxoCCGQSZgohA+J5jFWFMiOpyvMZBu9wwPTKsWsG0q206kVe63iuWP/wEkEE4SIV0QngnKppDf54QezUKmar7UQby6HzufT5yVIOvj7QEqZnOavrKW0chCeCwP0khda/j9k00ct6NMEDxQFW+g==
+    Bearer:
+      type: object
+      required:
+        - object
+      properties:
+        name:
+          type: string
+          x-go-type-skip-optional-pointer: true
+        object:
+          type: array
+          items:
+            $ref: '#/components/schemas/Record'
+        container:
+          $ref: '#/components/schemas/Rule'
+      description: Bearer token that is expected to be formed.
+      example:
+        - name: my-bearer-token
+          object:
+            - operation: GET
+              action: ALLOW
+              filters: [ ]
+              targets:
+                - role: OTHERS
+                  keys: [ ]
+        - name: my token to create container
+          container:
+            verb: PUT
+    Record:
+      required:
+        - action
+        - filters
+        - operation
+        - targets
+      type: object
+      properties:
+        action:
+          $ref: '#/components/schemas/Action'
+        operation:
+          $ref: '#/components/schemas/Operation'
+        filters:
+          type: array
+          items:
+            $ref: '#/components/schemas/Filter'
+        targets:
+          type: array
+          items:
+            $ref: '#/components/schemas/Target'
+      description: A single NeoFS EACL rule.
+      example:
+        operation: GET
+        action: ALLOW
+        filters: [ ]
+        targets:
+          - role: OTHERS
+            keys: [ ]
+    Action:
+      type: string
+      description: Rule execution result action in NeoFS EACL. Either allows or denies
+        access if the rule's filters match.
+      enum:
+        - ALLOW
+        - DENY
+    Operation:
+      type: string
+      description: Request's operation type to match in NeoFS EACL if the rule is
+        applicable to a particular request.
+      enum:
+        - GET
+        - HEAD
+        - PUT
+        - DELETE
+        - SEARCH
+        - RANGE
+        - RANGEHASH
+    Filter:
+      required:
+        - headerType
+        - key
+        - matchType
+        - value
+      type: object
+      properties:
+        headerType:
+          $ref: '#/components/schemas/HeaderType'
+        matchType:
+          $ref: '#/components/schemas/MatchType'
+        key:
+          type: string
+        value:
+          type: string
+      description: Filter in NeoFS EACL to check particular properties of the request
+        or the object.
+      example:
+        headerType: OBJECT
+        matchType: STRING_NOT_EQUAL
+        key: FileName
+        value: myfile
+    HeaderType:
+      type: string
+      description: Enumeration of possible sources of Headers to apply filters in
+        NeoFS EACL.
+      enum:
+        - REQUEST
+        - OBJECT
+        - SERVICE
+    MatchType:
+      type: string
+      description: Match type in NeoFS EACL filter.
+      enum:
+        - STRING_EQUAL
+        - STRING_NOT_EQUAL
+    Target:
+      required:
+        - keys
+        - role
+      type: object
+      properties:
+        role:
+          $ref: '#/components/schemas/Role'
+        keys:
+          type: array
+          items:
+            type: string
+      description: Target to apply the ACL rule. Can be a subject's role class or
+        a list of public keys to match (KEYS role).
+      example:
+        role: KEYS
+        keys:
+          - 021dc56fc6d81d581ae7605a8e00e0e0bab6cbad566a924a527339475a97a8e38e
+    Role:
+      type: string
+      description: Role for target in EACL.
+      enum:
+        - USER
+        - SYSTEM
+        - OTHERS
+        - KEYS
+    Rule:
+      required:
+        - verb
+      type: object
+      properties:
+        verb:
+          $ref: '#/components/schemas/Verb'
+        containerId:
+          type: string
+      description: Container session token rule.
+      example:
+        verb: DELETE
+        containerId: 6jvKJCQr6e47Yx8SsbSN3fNgzroUJVkY66Q9wqxYcAjc
+    Verb:
+      type: string
+      description: Verb that describes the allowed container operation for token.
+      enum:
+        - PUT
+        - DELETE
+        - SETEACL
+    TokenResponse:
+      required:
+        - token
+        - type
+      type: object
+      properties:
+        name:
+          type: string
+        type:
+          $ref: '#/components/schemas/TokenType'
+        token:
+          type: string
+      description: Base64 encoded marshaled token (for container or for object operations).
+      example:
+        - type: object
+          token: ClYKBAgCEA0aCAgDEAEiAggDGggIARACIgIIAxoICAIQAiICCAMaCAgDEAIiAggDGggIBBACIgIIAxoICAUQAiICCAMaCAgGEAIiAggDGggIBxACIgIIAxIbChk182WEDFuAqq3nssrGOaH0NK0ZhzF8bu+YGgQIaBgE
+        - type: container
+          token: ChCpanIBJCpJuJz42KOmGMSnEhsKGTWquaX2Lq6GhhO4faOYkLD0f9WkXuYJlq4aBAhnGAMiIQJgFcIEghQB5lq3AJZOVswInwc1IGhlQ7NCUh4DFO3UATIECAEQAQ==
+    TokenType:
+      type: string
+      description: Type of token.
+      enum:
+        - object
+        - container
+    ContainerPutInfo:
+      type: object
+      properties:
+        containerName:
+          type: string
+          x-go-type-skip-optional-pointer: true
+        placementPolicy:
+          type: string
+          x-go-type-skip-optional-pointer: true
+        basicAcl:
+          type: string
+          x-go-type-skip-optional-pointer: true
+        attributes:
+          type: array
+          x-go-type-skip-optional-pointer: true
+          items:
+            $ref: '#/components/schemas/Attribute'
+      description: |
+        <p>Request body to create container. To specify container name use appropriate property (name provided in attributes will be ignored).<p>
+        <p>To create a container you must provide <code>PlacementPolicy</code> and <code>BasicACL</code>.</p>
 
-      <h5>Placement policy</h5>
-      <p>Placement policy allows you control where and how the container (and its object) is stored. For example, you want to store 3 copies of every object, so you can use the following policy:</p>
-      <pre><code>REP 3</code></pre>
-      <p><a href="https://github.com/nspcc-dev/neofs-spec/blob/master/01-arch/02-policy.md">More about policy</a>.</p>
+        <h5>Placement policy</h5>
+        <p>Placement policy allows you control where and how the container (and its object) is stored. For example, you want to store 3 copies of every object, so you can use the following policy:</p>
+        <pre><code>REP 3</code></pre>
+        <p><a href="https://github.com/nspcc-dev/neofs-spec/blob/master/01-arch/02-policy.md">More about policy</a>.</p>
 
-      <h5>Basic ACL</h5>
-      <p>Basic ACL is a part of the container structure, and it is always created simultaneously with the container. Therefore, it is never subject to any changes. It is a 32-bit integer with a bit field in the following format:</p>
-      <p><img src="https://raw.githubusercontent.com/nspcc-dev/neofs-spec/046e623dc2d8134ab2b85fcaf831077d574561a2/01-arch/pic/acl-basic-private.svg" alt="ACL Basic"></p>
+        <h5>Basic ACL</h5>
+        <p>Basic ACL is a part of the container structure, and it is always created simultaneously with the container. Therefore, it is never subject to any changes. It is a 32-bit integer with a bit field in the following format:</p>
+        <p><img src="https://raw.githubusercontent.com/nspcc-dev/neofs-spec/046e623dc2d8134ab2b85fcaf831077d574561a2/01-arch/pic/acl-basic-private.svg" alt="ACL Basic"></p>
 
-      <table>
-          <thead>
-              <tr>
-                  <th>Symbol</th>
-                  <th>Meaning</th>
-                  <th>Description</th>
-              </tr>
-          </thead>
-          <tbody>
-              <tr>
-                  <td>B</td>
-                  <td>Bearer</td>
-                  <td>Allows using Bear Token ACL rules to replace eACL rules</td>
-              </tr>
-              <tr>
-                  <td>U</td>
-                  <td>User</td>
-                  <td>The owner of the container identified by the public key linked to the container</td>
-              </tr>
-              <tr>
-                  <td>S</td>
-                  <td>System</td>
-                  <td>Inner Ring and/or container nodes in the current version of network map. IR nodes can only perform <code>GetRangeHash</code>, <code>Head</code>, and <code>Search</code> necessary for data audit. Container nodes can only do things required for the replication.</td>
-              </tr>
-              <tr>
-                  <td>O</td>
-                  <td>Others</td>
-                  <td>Clients that do not match any of the categories above</td>
-              </tr>
-              <tr>
-                  <td>F</td>
-                  <td>Final</td>
-                  <td>Flag denying Extended ACL. If set, Basic ACL check is final, Extended ACL is ignored</td>
-              </tr>
-              <tr>
-                  <td>X</td>
-                  <td>Sticky</td>
-                  <td>Flag denying different owners of the request and the object. If set, object in <code>Put</code> request must have one <code>Owner</code> and be signed with the same signature. If not set, the object must be correct but can be of any owner. The nodes falling for <code>SYSTEM</code> role are exceptions from this rule. For them, the bit is ignored.</td>
-              </tr>
-              <tr>
-                  <td>0</td>
-                  <td>Deny</td>
-                  <td>Denies operation of the identified category</td>
-              </tr>
-              <tr>
-                  <td>1</td>
-                  <td>Allow</td>
-                  <td>Allows operation of the identified category</td>
-              </tr>
-          </tbody>
-      </table>
-      <p>To upload objects with a bearer token your container must have Bearer bits set. For example, you can use <code>0x0FBFBFFF</code> or predefined <code>eacl-public-read-write</code> values.</p>
-      <p>Also, don't forget to set appropriate eACL to restrict your container.</p>
-      <p><a href="https://github.com/nspcc-dev/neofs-spec/blob/master/01-arch/07-acl.md">More about ACL</a>.</p>
-    type: object
-    properties:
-      containerName:
-        type: string
-      placementPolicy:
-        type: string
-      basicAcl:
-        type: string
-      attributes:
-        type: array
-        items:
-          $ref: '#/definitions/Attribute'
-    example:
-      containerName: container
-      placementPolicy: "REP 3"
-      basicAcl: public-read-write
-      attributes:
-        - key: Custom-Attribute
-          value: value
-  ContainerInfo:
-    description: Information about container.
-    type: object
-    properties:
-      containerId:
-        type: string
-      containerName:
-        type: string
-      version:
-        type: string
-      ownerId:
-        type: string
-      basicAcl:
-        type: string
-      cannedAcl:
-        description: The friendly name for the basicAcl field.
-        type: string
-      placementPolicy:
-        type: string
-      attributes:
-        type: array
-        items:
-          $ref: '#/definitions/Attribute'
-    required:
-      - containerId
-      - containerName
-      - version
-      - ownerId
-      - basicAcl
-      - placementPolicy
-      - attributes
-    example:
-      containerId: 5HZTn5qkRnmgSz9gSrw22CEdPPk6nQhkwf2Mgzyvkikv
-      containerName: container
-      version: "2.11"
-      ownerId: NbUgTSFvPmsRxmGeWpuuGeJUoRoi6PErcM
-      basicAcl: "0x1fbf9fff"
-      placementPolicy: "REP 2"
-      attribute:
-        - key: Timestamp
-          value: "1648810072"
-        - key: Name
-          value: container
-  ContainerList:
-    description: List of containers info
-    type: object
-    properties:
-      size:
-        type: integer
-      containers:
-        type: array
-        items:
-          $ref: '#/definitions/ContainerInfo'
-    required:
-      - size
-      - containers
-    example:
-      size: 2
-      containers:
-        - containerId: 5HZTn5qkRnmgSz9gSrw22CEdPPk6nQhkwf2Mgzyvkikv
-          containerName: container
-          version: "2.11"
-          ownerId: NbUgTSFvPmsRxmGeWpuuGeJUoRoi6PErcM
-          basicAcl: "0x1fbf9fff"
-          placementPolicy: "REP 2"
-          attribute:
-            - key: Timestamp
-              value: "1648810072"
-            - key: Name
-              value: container
-        - containerId: FsE7HLQBBYc2WFJzuTXMcpspDEmwUxsD5YmNb2r25uUu
-          containerName: container2
-          version: "2.11"
-          ownerId: NbUgTSFvPmsRxmGeWpuuGeJUoRoi6PErcM
-          basicAcl: "0x1fbf9fff"
-          placementPolicy: "REP 1"
-          attribute:
-            - key: Name
-              value: container2
-  SearchFilters:
-    description: List of SearchFilter elements.
-    type: object
-    properties:
-      filters:
-        type: array
-        items:
-          $ref: '#/definitions/SearchFilter'
-    required:
-      - filters
-    example:
-      filters:
-        - key: FileName
-          value: some/prefix
-          match: MatchCommonPrefix
-        - key: CustomAttribute
-          value: tag-value
-          match: MatchStringEqual
-  SearchFilter:
-    description: Search filter to find objects.
-    type: object
-    properties:
-      key:
-        type: string
-      value:
-        type: string
-      match:
-        $ref: '#/definitions/SearchMatch'
-    required:
-      - key
-      - value
-      - match
-    example:
-      key: FileName
-      value: object-name
-      match: MatchStringEqual
-  SearchMatch:
-    description: Search match type.
-    type: string
-    enum:
-      - MatchStringEqual
-      - MatchStringNotEqual
-      - MatchNotPresent
-      - MatchCommonPrefix
-  ObjectList:
-    description: List of objects.
-    type: object
-    properties:
-      size:
-        type: integer
-      objects:
-        type: array
-        items:
-          $ref: '#/definitions/ObjectBaseInfo'
-    required:
-      - size
-      - objects
-    example:
-      size: 2
-      objects:
-        - name: "/my/object/name"
-          address:
-            objectId: 8N3o7Dtr6T1xteCt6eRwhpmJ7JhME58Hyu1dvaswuTDd
-            containerId: 5HZTn5qkRnmgSz9gSrw22CEdPPk6nQhkwf2Mgzyvkikv
-        - name: "/my/object/some/other/name"
-          address:
-            objectId: 3GbmMWusaWgMHokWui2zDunxMTzButuQMVLbtL3cDn8s
-            containerId: 5HZTn5qkRnmgSz9gSrw22CEdPPk6nQhkwf2Mgzyvkikv
-  ObjectBaseInfo:
-    description: Basic object information.
-    type: object
-    properties:
-      address:
-        $ref: '#/definitions/Address'
-      name:
-        type: string
-      filePath:
-        type: string
-    required:
-      - address
-    example:
-      name: "name.txt"
-      filePath: "/my/object/name.txt"
-      address:
+        <table>
+            <thead>
+                <tr>
+                    <th>Symbol</th>
+                    <th>Meaning</th>
+                    <th>Description</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>B</td>
+                    <td>Bearer</td>
+                    <td>Allows using Bear Token ACL rules to replace eACL rules</td>
+                </tr>
+                <tr>
+                    <td>U</td>
+                    <td>User</td>
+                    <td>The owner of the container identified by the public key linked to the container</td>
+                </tr>
+                <tr>
+                    <td>S</td>
+                    <td>System</td>
+                    <td>Inner Ring and/or container nodes in the current version of network map. IR nodes can only perform <code>GetRangeHash</code>, <code>Head</code>, and <code>Search</code> necessary for data audit. Container nodes can only do things required for the replication.</td>
+                </tr>
+                <tr>
+                    <td>O</td>
+                    <td>Others</td>
+                    <td>Clients that do not match any of the categories above</td>
+                </tr>
+                <tr>
+                    <td>F</td>
+                    <td>Final</td>
+                    <td>Flag denying Extended ACL. If set, Basic ACL check is final, Extended ACL is ignored</td>
+                </tr>
+                <tr>
+                    <td>X</td>
+                    <td>Sticky</td>
+                    <td>Flag denying different owners of the request and the object. If set, object in <code>Put</code> request must have one <code>Owner</code> and be signed with the same signature. If not set, the object must be correct but can be of any owner. The nodes falling for <code>SYSTEM</code> role are exceptions from this rule. For them, the bit is ignored.</td>
+                </tr>
+                <tr>
+                    <td>0</td>
+                    <td>Deny</td>
+                    <td>Denies operation of the identified category</td>
+                </tr>
+                <tr>
+                    <td>1</td>
+                    <td>Allow</td>
+                    <td>Allows operation of the identified category</td>
+                </tr>
+            </tbody>
+        </table>
+        <p>To upload objects with a bearer token your container must have Bearer bits set. For example, you can use <code>0x0FBFBFFF</code> or predefined <code>eacl-public-read-write</code> values.</p>
+        <p>Also, don't forget to set appropriate eACL to restrict your container.</p>
+        <p><a href="https://github.com/nspcc-dev/neofs-spec/blob/master/01-arch/07-acl.md">More about ACL</a>.</p>
+      example:
+        containerName: container
+        placementPolicy: REP 3
+        basicAcl: public-read-write
+        attributes:
+          - key: Custom-Attribute
+            value: value
+    ContainerInfo:
+      required:
+        - attributes
+        - basicAcl
+        - containerId
+        - containerName
+        - ownerId
+        - placementPolicy
+        - version
+      type: object
+      properties:
+        containerId:
+          type: string
+        containerName:
+          type: string
+        version:
+          type: string
+        ownerId:
+          type: string
+        basicAcl:
+          type: string
+        cannedAcl:
+          type: string
+          description: The friendly name for the basicAcl field.
+        placementPolicy:
+          type: string
+        attributes:
+          type: array
+          items:
+            $ref: '#/components/schemas/Attribute'
+      description: Information about container.
+      example:
+        containerId: 5HZTn5qkRnmgSz9gSrw22CEdPPk6nQhkwf2Mgzyvkikv
+        containerName: container
+        version: "2.11"
+        ownerId: NbUgTSFvPmsRxmGeWpuuGeJUoRoi6PErcM
+        basicAcl: 0x1fbf9fff
+        placementPolicy: REP 2
+        attribute:
+          - key: Timestamp
+            value: "1648810072"
+          - key: Name
+            value: container
+    ContainerList:
+      required:
+        - containers
+        - size
+      type: object
+      properties:
+        size:
+          type: integer
+        containers:
+          type: array
+          items:
+            $ref: '#/components/schemas/ContainerInfo'
+      description: List of containers info
+      example:
+        size: 2
+        containers:
+          - containerId: 5HZTn5qkRnmgSz9gSrw22CEdPPk6nQhkwf2Mgzyvkikv
+            containerName: container
+            version: "2.11"
+            ownerId: NbUgTSFvPmsRxmGeWpuuGeJUoRoi6PErcM
+            basicAcl: 0x1fbf9fff
+            placementPolicy: REP 2
+            attribute:
+              - key: Timestamp
+                value: "1648810072"
+              - key: Name
+                value: container
+          - containerId: FsE7HLQBBYc2WFJzuTXMcpspDEmwUxsD5YmNb2r25uUu
+            containerName: container2
+            version: "2.11"
+            ownerId: NbUgTSFvPmsRxmGeWpuuGeJUoRoi6PErcM
+            basicAcl: 0x1fbf9fff
+            placementPolicy: REP 1
+            attribute:
+              - key: Name
+                value: container2
+    SearchFilters:
+      required:
+        - filters
+      type: object
+      properties:
+        filters:
+          type: array
+          items:
+            $ref: '#/components/schemas/SearchFilter'
+      description: List of SearchFilter elements.
+      example:
+        filters:
+          - key: FileName
+            value: some/prefix
+            match: MatchCommonPrefix
+          - key: CustomAttribute
+            value: tag-value
+            match: MatchStringEqual
+    SearchFilter:
+      required:
+        - key
+        - match
+        - value
+      type: object
+      properties:
+        key:
+          type: string
+        value:
+          type: string
+        match:
+          $ref: '#/components/schemas/SearchMatch'
+      description: Search filter to find objects.
+      example:
+        key: FileName
+        value: object-name
+        match: MatchStringEqual
+    SearchMatch:
+      type: string
+      description: Search match type.
+      enum:
+        - MatchStringEqual
+        - MatchStringNotEqual
+        - MatchNotPresent
+        - MatchCommonPrefix
+    ObjectList:
+      required:
+        - objects
+        - size
+      type: object
+      properties:
+        size:
+          type: integer
+        objects:
+          type: array
+          items:
+            $ref: '#/components/schemas/ObjectBaseInfo'
+      description: List of objects.
+      example:
+        size: 2
+        objects:
+          - name: /my/object/name
+            address:
+              objectId: 8N3o7Dtr6T1xteCt6eRwhpmJ7JhME58Hyu1dvaswuTDd
+              containerId: 5HZTn5qkRnmgSz9gSrw22CEdPPk6nQhkwf2Mgzyvkikv
+          - name: /my/object/some/other/name
+            address:
+              objectId: 3GbmMWusaWgMHokWui2zDunxMTzButuQMVLbtL3cDn8s
+              containerId: 5HZTn5qkRnmgSz9gSrw22CEdPPk6nQhkwf2Mgzyvkikv
+    ObjectBaseInfo:
+      required:
+        - address
+      type: object
+      properties:
+        address:
+          $ref: '#/components/schemas/Address'
+        name:
+          type: string
+        filePath:
+          type: string
+      description: Basic object information.
+      example:
+        name: name.txt
+        filePath: /my/object/name.txt
+        address:
+          objectId: 8N3o7Dtr6T1xteCt6eRwhpmJ7JhME58Hyu1dvaswuTDd
+          containerId: 5HZTn5qkRnmgSz9gSrw22CEdPPk6nQhkwf2Mgzyvkikv
+    ObjectUpload:
+      required:
+        - containerId
+        - fileName
+      type: object
+      properties:
+        containerId:
+          type: string
+        fileName:
+          type: string
+        payload:
+          type: string
+        attributes:
+          type: array
+          x-go-type-skip-optional-pointer: true
+          items:
+            $ref: '#/components/schemas/Attribute'
+      description: "<p>Request body to create object.</p>\n<p>To create an object\
+        \ you must provide <code>containerId</code> and <code>fileName</code>.\nAdditionally,\
+        \ you can provide <code>payload</code> (base64 encoded data) and <code>attributes</code>.</p>\n\
+        \                          \n<p>Attribute is key-value data that is stored\
+        \ with the object. Key and value must be in UTF-8 format and must not be empty.</p>\n\
+        \                        \n<p>Valid attribute:</p>\n<ul>\n  <li><code>MyAttribute:\
+        \ 'some value'</code></li>\n</ul>\n                          \n<p>Invalid\
+        \ attribute:</p>\n<ul>\n  <li><code>MyAttribute: ''</code></li>\n</ul>\n \
+        \                         \n<p>Also, you can use this attribute to further\
+        \ object searching.</p>\n"
+      example:
+        containerId: 5HZTn5qkRnmgSz9gSrw22CEdPPk6nQhkwf2Mgzyvkikv
+        fileName: myFile.txt
+        payload: Y29udGVudCBvZiBmaWxl
+        attributes:
+          - key: User-Attribute
+            value: some-value
+    ObjectInfo:
+      required:
+        - attributes
+        - containerId
+        - objectId
+        - objectSize
+        - ownerId
+        - payloadSize
+      type: object
+      properties:
+        containerId:
+          type: string
+        objectId:
+          type: string
+        ownerId:
+          type: string
+        attributes:
+          type: array
+          items:
+            $ref: '#/components/schemas/Attribute'
+        objectSize:
+          type: integer
+          description: Object full payload size
+          format: uint64
+        payloadSize:
+          type: integer
+          description: Payload size in response
+          format: int64
+        payload:
+          type: string
+          description: Base64 encoded object payload
+      description: Object information.
+      example:
+        containerId: 5HZTn5qkRnmgSz9gSrw22CEdPPk6nQhkwf2Mgzyvkikv
+        objectId: 8N3o7Dtr6T1xteCt6eRwhpmJ7JhME58Hyu1dvaswuTDd
+        ownerId: NbUgTSFvPmsRxmGeWpuuGeJUoRoi6PErcM
+        attribute:
+          - key: Timestamp
+            value: "1648810072"
+          - key: Name
+            value: object
+    Address:
+      required:
+        - containerId
+        - objectId
+      type: object
+      properties:
+        containerId:
+          type: string
+        objectId:
+          type: string
+      description: Address of the object in NeoFS.
+      example:
         objectId: 8N3o7Dtr6T1xteCt6eRwhpmJ7JhME58Hyu1dvaswuTDd
         containerId: 5HZTn5qkRnmgSz9gSrw22CEdPPk6nQhkwf2Mgzyvkikv
-  ObjectUpload:
-    description: |
-      <p>Request body to create object.</p>
-      <p>To create an object you must provide <code>containerId</code> and <code>fileName</code>.
-      Additionally, you can provide <code>payload</code> (base64 encoded data) and <code>attributes</code>.</p>
-                                
-      <p>Attribute is key-value data that is stored with the object. Key and value must be in UTF-8 format and must not be empty.</p>
-                              
-      <p>Valid attribute:</p>
-      <ul>
-        <li><code>MyAttribute: 'some value'</code></li>
-      </ul>
-                                
-      <p>Invalid attribute:</p>
-      <ul>
-        <li><code>MyAttribute: ''</code></li>
-      </ul>
-                                
-      <p>Also, you can use this attribute to further object searching.</p>
-    type: object
-    properties:
-      containerId:
+    Eacl:
+      required:
+        - records
+        - containerId
+      type: object
+      properties:
+        containerId:
+          type: string
+        records:
+          type: array
+          items:
+            $ref: '#/components/schemas/Record'
+      description: EACL NeoFS table.
+      example:
+        containerId: 5HZTn5qkRnmgSz9gSrw22CEdPPk6nQhkwf2Mgzyvkikv
+        records:
+          - action: GET
+            operation: ALLOW
+            filters:
+              - headerType: OBJECT
+                matchType: STRING_EQUAL
+                key: FileName
+                value: myfile
+            targets:
+              - role: OTHERS
+    Attribute:
+      required:
+        - key
+        - value
+      type: object
+      properties:
+        key:
+          type: string
+        value:
+          type: string
+      description: Attribute is a pair of strings that can be attached to a container
+        or an object.
+      example:
+        key: User-Defined-Tag
+        value: tag value
+    Principal:
+      type: string
+    Balance:
+      required:
+        - address
+        - precision
+        - value
+      type: object
+      properties:
+        address:
+          type: string
+        value:
+          type: string
+        precision:
+          type: integer
+          format: uint32
+    ErrorType:
+      type: string
+      description: Error type. Allow determine source of the error.
+      enum:
+        - GW
+        - API
+    ErrorResponse:
+      required:
+        - message
+        - type
+      type: object
+      properties:
+        type:
+          $ref: '#/components/schemas/ErrorType'
+        code:
+          type: integer
+          format: uint32
+          x-go-type-skip-optional-pointer: true
+        message:
+          type: string
+      description: "<p>Error response.</p>\n<p>More about NeoFS status code you can\
+        \ find \n  <a href=\"https://github.com/nspcc-dev/neofs-spec/blob/master/20-api-v2/status.md\"\
+        >here</a>.</p>\n"
+      example:
+        type: API
+        code: 1024
+        message: incomplete object PUT by placement
+    SuccessResponse:
+      required:
+        - success
+      type: object
+      properties:
+        success:
+          type: boolean
+      description: Success response.
+      example:
+        success: true
+    AddressForUpload:
+      required:
+        - container_id
+        - object_id
+      type: object
+      properties:
+        container_id:
+          type: string
+        object_id:
+          type: string
+      description: Address of the object in NeoFS.
+      example:
+        object_id: 8N3o7Dtr6T1xteCt6eRwhpmJ7JhME58Hyu1dvaswuTDd
+        container_id: 5HZTn5qkRnmgSz9gSrw22CEdPPk6nQhkwf2Mgzyvkikv
+    PutContainerOK:
+      required:
+        - containerId
+      type: object
+      properties:
+        containerId:
+          type: string
+      example:
+        containerId: 5HZTn5qkRnmgSz9gSrw22CEdPPk6nQhkwf2Mgzyvkikv
+  responses:
+    ObjectContentOK:
+      description: Object.
+      headers:
+        Access-Control-Allow-Origin:
+          schema:
+            type: string
+        X-Attribute-FileName:
+          schema:
+            type: string
+        Content-Disposition:
+          schema:
+            type: string
+        X-Attribute-Timestamp:
+          schema:
+            type: integer
+        X-Object-Id:
+          schema:
+            type: string
+        Last-Modified:
+          schema:
+            type: string
+        X-Owner-Id:
+          schema:
+            type: string
+        X-Container-Id:
+          schema:
+            type: string
+        Content-Length:
+          schema:
+            type: string
+        Content-Type:
+          schema:
+            type: string
+      content:
+        '*/*':
+          schema:
+            type: string
+            format: binary
+    ObjectHeadOK:
+      description: Object info.
+      headers:
+        Access-Control-Allow-Origin:
+          schema:
+            type: string
+        X-Attribute-FileName:
+          schema:
+            type: string
+        Content-Disposition:
+          schema:
+            type: string
+        X-Attribute-Timestamp:
+          schema:
+            type: integer
+        X-Object-Id:
+          schema:
+            type: string
+        Last-Modified:
+          schema:
+            type: string
+        X-Owner-Id:
+          schema:
+            type: string
+        X-Container-Id:
+          schema:
+            type: string
+        Content-Length:
+          schema:
+            type: string
+        Content-Type:
+          schema:
+            type: string
+      content:
+        '*/*':
+          schema:
+            type: string
+            format: binary
+    BadRequest:
+      description: Bad request.
+      content:
+        '*/*':
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    NotFound:
+      description: Not found.
+      content:
+        '*/*':
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+  parameters:
+    signatureParam:
+      name: X-Bearer-Signature
+      in: header
+      description: Base64 encoded signature for bearer token.
+      schema:
         type: string
-      fileName:
+    signatureKeyParam:
+      name: X-Bearer-Signature-Key
+      in: header
+      description: Hex encoded the public part of the key that signed the bearer token.
+      schema:
         type: string
-      payload:
-        type: string
-      attributes:
-        type: array
-        items:
-          $ref: '#/definitions/Attribute'
-    required:
-      - containerId
-      - fileName
-    example:
-      containerId: 5HZTn5qkRnmgSz9gSrw22CEdPPk6nQhkwf2Mgzyvkikv
-      fileName: myFile.txt
-      payload: Y29udGVudCBvZiBmaWxl
-      attributes:
-        - key: User-Attribute
-          value: some-value
-  ObjectInfo:
-    description: Object information.
-    type: object
-    properties:
-      containerId:
-        type: string
-      objectId:
-        type: string
-      ownerId:
-        type: string
-      attributes:
-        type: array
-        items:
-          $ref: '#/definitions/Attribute'
-      objectSize:
-        type: integer
-        description: Object full payload size
-      payloadSize:
-        type: integer
-        description: Payload size in response
-      payload:
-        type: string
-        description: Base64 encoded object payload
-    required:
-      - containerId
-      - objectId
-      - ownerId
-      - attributes
-      - objectSize
-      - payloadSize
-    example:
-      containerId: 5HZTn5qkRnmgSz9gSrw22CEdPPk6nQhkwf2Mgzyvkikv
-      objectId: 8N3o7Dtr6T1xteCt6eRwhpmJ7JhME58Hyu1dvaswuTDd
-      ownerId: NbUgTSFvPmsRxmGeWpuuGeJUoRoi6PErcM
-      attribute:
-        - key: Timestamp
-          value: "1648810072"
-        - key: Name
-          value: object
-  Address:
-    description: Address of the object in NeoFS.
-    type: object
-    properties:
-      containerId:
-        type: string
-      objectId:
-        type: string
-    required:
-      - containerId
-      - objectId
-    example:
-      objectId: 8N3o7Dtr6T1xteCt6eRwhpmJ7JhME58Hyu1dvaswuTDd
-      containerId: 5HZTn5qkRnmgSz9gSrw22CEdPPk6nQhkwf2Mgzyvkikv
-  Eacl:
-    description: EACL NeoFS table.
-    type: object
-    properties:
-      containerId:
-        type: string
-        readOnly: true
-      records:
-        type: array
-        items:
-          $ref: '#/definitions/Record'
-    required:
-      - records
-    example:
-      containerId: 5HZTn5qkRnmgSz9gSrw22CEdPPk6nQhkwf2Mgzyvkikv
-      records:
-        - action: GET
-          operation: ALLOW
-          filters:
-            - headerType: OBJECT
-              matchType: STRING_EQUAL
-              key: FileName
-              value: myfile
-          targets:
-            - role: OTHERS
-  Attribute:
-    description: Attribute is a pair of strings that can be attached to a container or an object.
-    type: object
-    properties:
-      key:
-        type: string
-      value:
-        type: string
-    required:
-      - key
-      - value
-    example:
-      key: "User-Defined-Tag"
-      value: "tag value"
-  Principal:
-    type: string
-  Balance:
-    type: object
-    properties:
-      address:
-        type: string
-      value:
-        type: string
-      precision:
-        type: integer
-    required:
-      - address
-      - value
-      - precision
-  ErrorType:
-    description: Error type. Allow determine source of the error.
-    type: string
-    enum:
-      - GW
-      - API
-  ErrorResponse:
-    description: |
-      <p>Error response.</p>
-      <p>More about NeoFS status code you can find 
-        <a href="https://github.com/nspcc-dev/neofs-spec/blob/master/20-api-v2/status.md">here</a>.</p>
-    type: object
-    properties:
-      type:
-        $ref: '#/definitions/ErrorType'
-      code:
-        type: integer
-      message:
-        type: string
-    required:
-      - type
-      - message
-    example:
-      type: API
-      code: 1024
-      message: "incomplete object PUT by placement"
-  SuccessResponse:
-    description: Success response.
-    type: object
-    properties:
-      success:
+    signatureScheme:
+      name: walletConnect
+      in: query
+      description: Use wallet connect signature scheme or native NeoFS signature.
+      schema:
         type: boolean
-    required:
-      - success
-    example:
-      success: true
-  AddressForUpload:
-    description: Address of the object in NeoFS.
-    type: object
-    properties:
-      container_id:
+        default: false
+    fullBearerToken:
+      name: fullBearer
+      in: query
+      description: Provided bearer token is final or gate should assemble it using
+        signature.
+      schema:
+        type: boolean
+        default: false
+    containerId:
+      name: containerId
+      in: path
+      description: Base58 encoded container id.
+      required: true
+      schema:
         type: string
-      object_id:
+    objectId:
+      name: objectId
+      in: path
+      description: Base58 encoded object id.
+      required: true
+      schema:
         type: string
-    required:
-      - object_id
-      - container_id
-    example:
-      object_id: 8N3o7Dtr6T1xteCt6eRwhpmJ7JhME58Hyu1dvaswuTDd
-      container_id: 5HZTn5qkRnmgSz9gSrw22CEdPPk6nQhkwf2Mgzyvkikv
+    attrKey:
+      name: attrKey
+      in: path
+      description: Object attribute key to search.
+      required: true
+      schema:
+        type: string
+    attrVal:
+      name: attrVal
+      in: path
+      description: Object attribute value to match.
+      required: true
+      schema:
+        type: string
 
-responses:
-  ObjectContentOK:
-    description: Object.
-    headers:
-      Access-Control-Allow-Origin:
-        type: string
-      Content-Length:
-        type: string
-      Content-Type:
-        type: string
-      Content-Disposition:
-        type: string
-      Last-Modified:
-        type: string
-      X-Object-Id:
-        type: string
-      X-Owner-Id:
-        type: string
-      X-Container-Id:
-        type: string
-      X-Attribute-FileName:
-        type: string
-      X-Attribute-Timestamp:
-        type: integer
-    schema:
-      type: string
-      format: binary
-  ObjectHeadOK:
-    description: Object info.
-    headers:
-      Access-Control-Allow-Origin:
-        type: string
-      Content-Length:
-        type: string
-      Content-Type:
-        type: string
-      Content-Disposition:
-        type: string
-      Last-Modified:
-        type: string
-      X-Object-Id:
-        type: string
-      X-Owner-Id:
-        type: string
-      X-Container-Id:
-        type: string
-      X-Attribute-FileName:
-        type: string
-      X-Attribute-Timestamp:
-        type: integer
-    schema:
-      type: string
-      format: binary
-  BadRequest:
-    description: Bad request.
-    schema:
-      $ref: '#/definitions/ErrorResponse'
-  NotFound:
-    description: Not found.
-    schema:
-      $ref: '#/definitions/ErrorResponse'
+  securitySchemes:
+    BearerAuth:
+      type: apiKey
+      description: Bearer token body to provide with NeoFS request. Must have 'Bearer' prefix.
+      name: Authorization
+      in: header
+    CookieAuth:
+      type: apiKey
+      description: Bearer cookie with base64-encoded token contents.
+      name: cookie
+      in: header

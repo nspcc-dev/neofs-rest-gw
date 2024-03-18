@@ -15,7 +15,6 @@ import (
 	"github.com/nspcc-dev/neo-go/pkg/crypto/keys"
 	"github.com/nspcc-dev/neo-go/pkg/util"
 	"github.com/nspcc-dev/neo-go/pkg/wallet"
-	"github.com/nspcc-dev/neofs-rest-gw/gen/restapi"
 	"github.com/nspcc-dev/neofs-rest-gw/handlers"
 	"github.com/nspcc-dev/neofs-rest-gw/metrics"
 	"github.com/nspcc-dev/neofs-sdk-go/client"
@@ -76,6 +75,8 @@ const (
 	cmdWallet  = "wallet"
 	cmdAddress = "address"
 	cmdConfig  = "config"
+
+	baseURL = "/v1"
 )
 
 var ignore = map[string]struct{}{
@@ -123,7 +124,7 @@ func config() *viper.Viper {
 	peers := flagSet.StringArrayP(cmdPeers, "p", nil, "NeoFS nodes")
 
 	// init server flags
-	restapi.BindDefaultFlags(flagSet)
+	BindDefaultFlags(flagSet)
 
 	// set defaults:
 	// pool
@@ -199,24 +200,24 @@ func init() {
 }
 
 var serverFlags = []string{
-	restapi.FlagScheme,
-	restapi.FlagCleanupTimeout,
-	restapi.FlagGracefulTimeout,
-	restapi.FlagMaxHeaderSize,
-	restapi.FlagListenAddress,
-	restapi.FlagListenLimit,
-	restapi.FlagKeepAlive,
-	restapi.FlagReadTimeout,
-	restapi.FlagWriteTimeout,
-	restapi.FlagTLSListenAddress,
-	restapi.FlagTLSCertificate,
-	restapi.FlagTLSKey,
-	restapi.FlagTLSCa,
-	restapi.FlagTLSListenLimit,
-	restapi.FlagTLSKeepAlive,
-	restapi.FlagTLSReadTimeout,
-	restapi.FlagTLSWriteTimeout,
-	restapi.FlagExternalAddress,
+	FlagScheme,
+	FlagCleanupTimeout,
+	FlagGracefulTimeout,
+	FlagMaxHeaderSize,
+	FlagListenAddress,
+	FlagListenLimit,
+	FlagKeepAlive,
+	FlagReadTimeout,
+	FlagWriteTimeout,
+	FlagTLSListenAddress,
+	FlagTLSCertificate,
+	FlagTLSKey,
+	FlagTLSCa,
+	FlagTLSListenLimit,
+	FlagTLSKeepAlive,
+	FlagTLSReadTimeout,
+	FlagTLSWriteTimeout,
+	FlagExternalAddress,
 }
 
 var bindings = map[string]string{
@@ -401,30 +402,111 @@ func newLogger(v *viper.Viper) *zap.Logger {
 	return l
 }
 
-func serverConfig(v *viper.Viper) *restapi.ServerConfig {
-	return &restapi.ServerConfig{
-		EnabledListeners: v.GetStringSlice(cfgServerSection + restapi.FlagScheme),
-		CleanupTimeout:   v.GetDuration(cfgServerSection + restapi.FlagCleanupTimeout),
-		GracefulTimeout:  v.GetDuration(cfgServerSection + restapi.FlagGracefulTimeout),
-		MaxHeaderSize:    v.GetInt(cfgServerSection + restapi.FlagMaxHeaderSize),
+// ServerConfig contains parsed config for the Echo server.
+type ServerConfig struct {
+	EnabledListeners []string
+	CleanupTimeout   time.Duration
+	GracefulTimeout  time.Duration
+	MaxHeaderSize    int
 
-		ListenAddress: v.GetString(cfgServerSection + restapi.FlagListenAddress),
-		ListenLimit:   v.GetInt(cfgServerSection + restapi.FlagListenLimit),
-		KeepAlive:     v.GetDuration(cfgServerSection + restapi.FlagKeepAlive),
-		ReadTimeout:   v.GetDuration(cfgServerSection + restapi.FlagReadTimeout),
-		WriteTimeout:  v.GetDuration(cfgServerSection + restapi.FlagWriteTimeout),
+	ListenAddress string
+	ListenLimit   int
+	KeepAlive     time.Duration
+	ReadTimeout   time.Duration
+	WriteTimeout  time.Duration
 
-		TLSListenAddress: v.GetString(cfgServerSection + restapi.FlagTLSListenAddress),
-		TLSListenLimit:   v.GetInt(cfgServerSection + restapi.FlagTLSListenLimit),
-		TLSKeepAlive:     v.GetDuration(cfgServerSection + restapi.FlagTLSKeepAlive),
-		TLSReadTimeout:   v.GetDuration(cfgServerSection + restapi.FlagTLSReadTimeout),
-		TLSWriteTimeout:  v.GetDuration(cfgServerSection + restapi.FlagTLSWriteTimeout),
+	TLSListenAddress  string
+	TLSListenLimit    int
+	TLSKeepAlive      time.Duration
+	TLSReadTimeout    time.Duration
+	TLSWriteTimeout   time.Duration
+	TLSCertificate    string
+	TLSCertificateKey string
+	TLSCACertificate  string
 
-		ExternalAddress: v.GetString(cfgServerSection + restapi.FlagExternalAddress),
+	ExternalAddress string
+
+	SuccessfulStartCallback func()
+}
+
+const (
+	FlagScheme           = "scheme"
+	FlagCleanupTimeout   = "cleanup-timeout"
+	FlagGracefulTimeout  = "graceful-timeout"
+	FlagMaxHeaderSize    = "max-header-size"
+	FlagListenAddress    = "listen-address"
+	FlagListenLimit      = "listen-limit"
+	FlagKeepAlive        = "keep-alive"
+	FlagReadTimeout      = "read-timeout"
+	FlagWriteTimeout     = "write-timeout"
+	FlagTLSListenAddress = "tls-listen-address"
+	FlagTLSCertificate   = "tls-certificate"
+	FlagTLSKey           = "tls-key"
+	FlagTLSCa            = "tls-ca"
+	FlagTLSListenLimit   = "tls-listen-limit"
+	FlagTLSKeepAlive     = "tls-keep-alive"
+	FlagTLSReadTimeout   = "tls-read-timeout"
+	FlagTLSWriteTimeout  = "tls-write-timeout"
+	FlagExternalAddress  = "external-address"
+)
+
+var defaultSchemes []string
+
+func init() {
+	defaultSchemes = []string{
+		schemeHTTP,
 	}
 }
 
-func newNeofsAPI(ctx context.Context, logger *zap.Logger, v *viper.Viper) (*handlers.API, error) {
+func BindDefaultFlags(flagSet *pflag.FlagSet) {
+	flagSet.StringSlice(FlagScheme, defaultSchemes, "the listeners to enable, this can be repeated and defaults to the schemes in the swagger spec")
+
+	flagSet.Duration(FlagCleanupTimeout, 10*time.Second, "grace period for which to wait before killing idle connections")
+	flagSet.Duration(FlagGracefulTimeout, 15*time.Second, "grace period for which to wait before shutting down the server")
+	flagSet.Int(FlagMaxHeaderSize, 1000000, "controls the maximum number of bytes the server will read parsing the request header's keys and values, including the request line. It does not limit the size of the request body")
+
+	flagSet.String(FlagListenAddress, "localhost:8080", "the IP and port to listen on")
+	flagSet.Int(FlagListenLimit, 0, "limit the number of outstanding requests")
+	flagSet.Duration(FlagKeepAlive, 3*time.Minute, "sets the TCP keep-alive timeouts on accepted connections. It prunes dead TCP connections ( e.g. closing laptop mid-download)")
+	flagSet.Duration(FlagReadTimeout, 30*time.Second, "maximum duration before timing out read of the request")
+	flagSet.Duration(FlagWriteTimeout, 30*time.Second, "maximum duration before timing out write of the response")
+
+	flagSet.String(FlagTLSListenAddress, "localhost:8081", "the IP and port to listen on")
+	flagSet.String(FlagTLSCertificate, "", "the certificate file to use for secure connections")
+	flagSet.String(FlagTLSKey, "", "the private key file to use for secure connections (without passphrase)")
+	flagSet.String(FlagTLSCa, "", "the certificate authority certificate file to be used with mutual tls auth")
+	flagSet.Int(FlagTLSListenLimit, 0, "limit the number of outstanding requests")
+	flagSet.Duration(FlagTLSKeepAlive, 3*time.Minute, "sets the TCP keep-alive timeouts on accepted connections. It prunes dead TCP connections ( e.g. closing laptop mid-download)")
+	flagSet.Duration(FlagTLSReadTimeout, 30*time.Second, "maximum duration before timing out read of the request")
+	flagSet.Duration(FlagTLSWriteTimeout, 30*time.Second, "maximum duration before timing out write of the response")
+
+	flagSet.String(FlagExternalAddress, "localhost:8090", "the IP and port to be shown in the API documentation")
+}
+
+func serverConfig(v *viper.Viper) *ServerConfig {
+	return &ServerConfig{
+		EnabledListeners: v.GetStringSlice(cfgServerSection + FlagScheme),
+		CleanupTimeout:   v.GetDuration(cfgServerSection + FlagCleanupTimeout),
+		GracefulTimeout:  v.GetDuration(cfgServerSection + FlagGracefulTimeout),
+		MaxHeaderSize:    v.GetInt(cfgServerSection + FlagMaxHeaderSize),
+
+		ListenAddress: v.GetString(cfgServerSection + FlagListenAddress),
+		ListenLimit:   v.GetInt(cfgServerSection + FlagListenLimit),
+		KeepAlive:     v.GetDuration(cfgServerSection + FlagKeepAlive),
+		ReadTimeout:   v.GetDuration(cfgServerSection + FlagReadTimeout),
+		WriteTimeout:  v.GetDuration(cfgServerSection + FlagWriteTimeout),
+
+		TLSListenAddress: v.GetString(cfgServerSection + FlagTLSListenAddress),
+		TLSListenLimit:   v.GetInt(cfgServerSection + FlagTLSListenLimit),
+		TLSKeepAlive:     v.GetDuration(cfgServerSection + FlagTLSKeepAlive),
+		TLSReadTimeout:   v.GetDuration(cfgServerSection + FlagTLSReadTimeout),
+		TLSWriteTimeout:  v.GetDuration(cfgServerSection + FlagTLSWriteTimeout),
+
+		ExternalAddress: v.GetString(cfgServerSection + FlagExternalAddress),
+	}
+}
+
+func newNeofsAPI(ctx context.Context, logger *zap.Logger, v *viper.Viper) (*handlers.RestAPI, error) {
 	key, err := getNeoFSKey(logger, v)
 	if err != nil {
 		return nil, err
@@ -476,7 +558,7 @@ func newNeofsAPI(ctx context.Context, logger *zap.Logger, v *viper.Viper) (*hand
 	apiPrm.ServiceShutdownTimeout = defaultShutdownTimeout
 	apiPrm.MaxObjectSize = int64(ni.MaxObjectSize())
 
-	return handlers.New(&apiPrm), nil
+	return handlers.NewAPI(&apiPrm), nil
 }
 
 func fetchPeers(l *zap.Logger, v *viper.Viper) []pool.NodeParam {

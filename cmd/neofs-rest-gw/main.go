@@ -2,14 +2,29 @@ package main
 
 import (
 	"context"
-	"encoding/json"
+	"errors"
+	"fmt"
+	"net/http"
 	"os/signal"
 	"syscall"
 
-	"github.com/go-openapi/loads"
-	"github.com/nspcc-dev/neofs-rest-gw/gen/restapi"
-	"github.com/nspcc-dev/neofs-rest-gw/gen/restapi/operations"
+	"github.com/getkin/kin-openapi/openapi3"
+	"github.com/labstack/echo/v4"
+	"github.com/nspcc-dev/neofs-rest-gw/handlers/apiserver"
+	"github.com/nspcc-dev/neofs-rest-gw/static/docs"
+	middleware "github.com/oapi-codegen/echo-middleware"
 	"go.uber.org/zap"
+)
+
+const (
+	docsURL     = baseURL + "/docs"
+	swaggerURL  = docsURL + "/swagger.json"
+	schemeHTTP  = "http"
+	schemeHTTPS = "https"
+)
+
+var (
+	swaggerPayload []byte
 )
 
 func main() {
@@ -17,6 +32,7 @@ func main() {
 
 	v := config()
 	logger := newLogger(v)
+	zap.ReplaceGlobals(logger)
 	validateConfig(v, logger)
 
 	neofsAPI, err := newNeofsAPI(ctx, logger, v)
@@ -27,39 +43,64 @@ func main() {
 	serverCfg := serverConfig(v)
 	serverCfg.SuccessfulStartCallback = neofsAPI.StartCallback
 
-	// Unmarshal the JSON into a map
-	var swaggerMap map[string]interface{}
-	err = json.Unmarshal(restapi.SwaggerJSON, &swaggerMap)
+	swagger, err := apiserver.GetSwagger()
 	if err != nil {
-		logger.Fatal("unmarshaling SwaggerJSON", zap.Error(err))
+		logger.Fatal("get swagger definition", zap.Error(err))
 	}
 
-	swaggerMap["host"] = serverCfg.ExternalAddress
+	servers := make(openapi3.Servers, len(serverCfg.EnabledListeners))
 
-	// Marshal the map back into json.RawMessage
-	restapi.SwaggerJSON, err = json.MarshalIndent(swaggerMap, "", "    ")
-	if err != nil {
-		logger.Fatal("marshaling updated SwaggerJSON", zap.Error(err))
+	for i, scheme := range serverCfg.EnabledListeners {
+		switch scheme {
+		case schemeHTTP:
+			servers[i] = &openapi3.Server{
+				URL: fmt.Sprintf("%s://%s%s", scheme, serverCfg.ListenAddress, baseURL),
+			}
+		case schemeHTTPS:
+			servers[i] = &openapi3.Server{
+				URL: fmt.Sprintf("%s://%s%s", scheme, serverCfg.TLSListenAddress, baseURL),
+			}
+		default:
+			logger.Error("unknown scheme", zap.String("scheme", scheme))
+		}
 	}
 
-	swaggerSpec, err := loads.Analyzed(restapi.SwaggerJSON, "")
+	swagger.Servers = servers
+
+	swaggerPayload, err = swagger.MarshalJSON()
 	if err != nil {
-		logger.Fatal("init spec", zap.Error(err))
+		logger.Fatal("swagger marshal", zap.Error(err))
 	}
 
-	api := operations.NewNeofsRestGwAPI(swaggerSpec)
-	server := restapi.NewServer(api, serverCfg)
-	defer func() {
-		if err = server.Shutdown(); err != nil {
-			logger.Error("shutdown", zap.Error(err))
+	e := echo.New()
+	e.HideBanner = true
+	e.StaticFS(docsURL, docs.FS)
+	e.GET(swaggerURL, swaggerDocHandler)
+	e.GET("/", redirectHandler)
+
+	e.Group(baseURL, middleware.OapiRequestValidator(swagger))
+	apiserver.RegisterHandlersWithBaseURL(e, neofsAPI, baseURL)
+
+	neofsAPI.RunServices()
+
+	go func() {
+		if err = e.Start(serverCfg.ListenAddress); err != nil {
+			if !errors.Is(err, http.ErrServerClosed) {
+				logger.Fatal("start", zap.Error(err))
+			}
 		}
 	}()
 
-	server.ConfigureAPI(neofsAPI.Configure)
-	neofsAPI.RunServices()
-
-	// serve API
-	if err = server.Serve(); err != nil {
-		logger.Fatal("serve", zap.Error(err))
+	<-ctx.Done()
+	if err = e.Shutdown(ctx); err != nil {
+		logger.Fatal("shutdown", zap.Error(err))
 	}
+}
+
+func swaggerDocHandler(c echo.Context) error {
+	return c.JSONBlob(http.StatusOK, swaggerPayload)
+}
+
+func redirectHandler(c echo.Context) error {
+	return c.Redirect(http.StatusTemporaryRedirect, docsURL)
 }

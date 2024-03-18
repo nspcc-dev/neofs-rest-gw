@@ -8,7 +8,7 @@ import (
 
 	"github.com/nspcc-dev/neo-go/pkg/crypto/keys"
 	"github.com/nspcc-dev/neofs-api-go/v2/acl"
-	"github.com/nspcc-dev/neofs-rest-gw/gen/models"
+	"github.com/nspcc-dev/neofs-rest-gw/handlers/apiserver"
 	"github.com/nspcc-dev/neofs-rest-gw/internal/util"
 	"github.com/nspcc-dev/neofs-sdk-go/user"
 	"github.com/stretchr/testify/require"
@@ -22,12 +22,12 @@ func TestSign(t *testing.T) {
 
 	pubKeyHex := hex.EncodeToString(key.PublicKey().Bytes())
 
-	records := []*models.Record{{
-		Operation: models.NewOperation(models.OperationPUT),
-		Action:    models.NewAction(models.ActionALLOW),
-		Filters:   []*models.Filter{},
-		Targets: []*models.Target{{
-			Role: models.NewRole(models.RoleOTHERS),
+	records := []apiserver.Record{{
+		Operation: apiserver.OperationPUT,
+		Action:    apiserver.ALLOW,
+		Filters:   []apiserver.Filter{},
+		Targets: []apiserver.Target{{
+			Role: apiserver.OTHERS,
 			Keys: []string{},
 		}},
 	}}
