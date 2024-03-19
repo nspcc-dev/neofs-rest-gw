@@ -425,8 +425,6 @@ type ServerConfig struct {
 	TLSCACertificate  string
 
 	ExternalAddress string
-
-	SuccessfulStartCallback func()
 }
 
 const (

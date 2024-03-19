@@ -41,7 +41,6 @@ func main() {
 	}
 
 	serverCfg := serverConfig(v)
-	serverCfg.SuccessfulStartCallback = neofsAPI.StartCallback
 
 	swagger, err := apiserver.GetSwagger()
 	if err != nil {
