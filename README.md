@@ -130,6 +130,10 @@ Also, when you run rest-gw, you will see a line similar to:
 ```
 You will find an auto-redirect to the specification page via this link.
 
+### Migrating from HTTP gateway
+
+See [docs/migration-from-http.md](./docs/migration-from-http.md).
+
 ## Contributing
 
 Feel free to contribute to this project after reading the [contributing guidelines](CONTRIBUTING.md).
