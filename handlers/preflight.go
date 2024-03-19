@@ -6,7 +6,6 @@ import (
 
 	"github.com/labstack/echo/v4"
 	"github.com/nspcc-dev/neofs-rest-gw/handlers/apiserver"
-	"github.com/nspcc-dev/neofs-rest-gw/internal/util"
 )
 
 const (
@@ -35,7 +34,7 @@ func (a *RestAPI) OptionsAuth(ctx echo.Context) error {
 	ctx.Response().Header().Set(accessControlAllowOriginHeader, allOrigins)
 	ctx.Response().Header().Set(accessControlAllowHeadersHeader, allowHeaders)
 	ctx.Response().Header().Set(accessControlAllowMethodsHeader, allowMethods(methodPost))
-	return ctx.JSON(http.StatusOK, util.NewSuccessResponse())
+	return ctx.NoContent(http.StatusOK)
 }
 
 // OptionsAuthBearer handler for the authBearer options request.
@@ -43,7 +42,7 @@ func (a *RestAPI) OptionsAuthBearer(ctx echo.Context) error {
 	ctx.Response().Header().Set(accessControlAllowOriginHeader, allOrigins)
 	ctx.Response().Header().Set(accessControlAllowHeadersHeader, allowHeaders)
 	ctx.Response().Header().Set(accessControlAllowMethodsHeader, allowMethods(methodGet))
-	return ctx.JSON(http.StatusOK, util.NewSuccessResponse())
+	return ctx.NoContent(http.StatusOK)
 }
 
 // OptionsBalance handler for the balance options request.
@@ -51,7 +50,7 @@ func (a *RestAPI) OptionsBalance(ctx echo.Context, _ string) error {
 	ctx.Response().Header().Set(accessControlAllowOriginHeader, allOrigins)
 	ctx.Response().Header().Set(accessControlAllowHeadersHeader, allowHeaders)
 	ctx.Response().Header().Set(accessControlAllowMethodsHeader, allowMethods(methodGet))
-	return ctx.JSON(http.StatusOK, util.NewSuccessResponse())
+	return ctx.NoContent(http.StatusOK)
 }
 
 // OptionsObjectsSearch handler for the objectsSearch options request.
@@ -59,7 +58,7 @@ func (a *RestAPI) OptionsObjectsSearch(ctx echo.Context, _ string) error {
 	ctx.Response().Header().Set(accessControlAllowOriginHeader, allOrigins)
 	ctx.Response().Header().Set(accessControlAllowHeadersHeader, allowHeaders)
 	ctx.Response().Header().Set(accessControlAllowMethodsHeader, allowMethods(methodPost))
-	return ctx.JSON(http.StatusOK, util.NewSuccessResponse())
+	return ctx.NoContent(http.StatusOK)
 }
 
 // OptionsObjectsPut handler for the objectsPut options request.
@@ -67,7 +66,7 @@ func (a *RestAPI) OptionsObjectsPut(ctx echo.Context) error {
 	ctx.Response().Header().Set(accessControlAllowOriginHeader, allOrigins)
 	ctx.Response().Header().Set(accessControlAllowHeadersHeader, allowHeaders)
 	ctx.Response().Header().Set(accessControlAllowMethodsHeader, allowMethods(methodPut))
-	return ctx.JSON(http.StatusOK, util.NewSuccessResponse())
+	return ctx.NoContent(http.StatusOK)
 }
 
 // OptionsObjectsGetDelete handler for the objectsGetDelete options request.
@@ -75,7 +74,7 @@ func (a *RestAPI) OptionsObjectsGetDelete(ctx echo.Context, _ apiserver.Containe
 	ctx.Response().Header().Set(accessControlAllowOriginHeader, allOrigins)
 	ctx.Response().Header().Set(accessControlAllowHeadersHeader, allowHeaders)
 	ctx.Response().Header().Set(accessControlAllowMethodsHeader, allowMethods(methodGet, methodDelete))
-	return ctx.JSON(http.StatusOK, util.NewSuccessResponse())
+	return ctx.NoContent(http.StatusOK)
 }
 
 // OptionsContainersPutList handler for the containersPutList options request.
@@ -83,7 +82,7 @@ func (a *RestAPI) OptionsContainersPutList(ctx echo.Context) error {
 	ctx.Response().Header().Set(accessControlAllowOriginHeader, allOrigins)
 	ctx.Response().Header().Set(accessControlAllowHeadersHeader, allowHeaders)
 	ctx.Response().Header().Set(accessControlAllowMethodsHeader, allowMethods(methodGet, methodPut))
-	return ctx.JSON(http.StatusOK, util.NewSuccessResponse())
+	return ctx.NoContent(http.StatusOK)
 }
 
 // OptionsContainersGetDelete handler for the containersGetDelete options request.
@@ -91,7 +90,7 @@ func (a *RestAPI) OptionsContainersGetDelete(ctx echo.Context, _ apiserver.Conta
 	ctx.Response().Header().Set(accessControlAllowOriginHeader, allOrigins)
 	ctx.Response().Header().Set(accessControlAllowHeadersHeader, allowHeaders)
 	ctx.Response().Header().Set(accessControlAllowMethodsHeader, allowMethods(methodGet, methodDelete))
-	return ctx.JSON(http.StatusOK, util.NewSuccessResponse())
+	return ctx.NoContent(http.StatusOK)
 }
 
 // OptionsContainersEACL handler for the containersEACL options request.
@@ -99,7 +98,7 @@ func (a *RestAPI) OptionsContainersEACL(ctx echo.Context, _ apiserver.ContainerI
 	ctx.Response().Header().Set(accessControlAllowOriginHeader, allOrigins)
 	ctx.Response().Header().Set(accessControlAllowHeadersHeader, allowHeaders)
 	ctx.Response().Header().Set(accessControlAllowMethodsHeader, allowMethods(methodGet, methodPut))
-	return ctx.JSON(http.StatusOK, util.NewSuccessResponse())
+	return ctx.NoContent(http.StatusOK)
 }
 
 // OptionsContainerObject handler for the containerObject options request.
@@ -107,7 +106,7 @@ func (a *RestAPI) OptionsContainerObject(ctx echo.Context, _ apiserver.Container
 	ctx.Response().Header().Set(accessControlAllowOriginHeader, allOrigins)
 	ctx.Response().Header().Set(accessControlAllowHeadersHeader, allowHeaders)
 	ctx.Response().Header().Set(accessControlAllowMethodsHeader, allowMethods(methodGet, methodHead))
-	return ctx.JSON(http.StatusOK, util.NewSuccessResponse())
+	return ctx.NoContent(http.StatusOK)
 }
 
 // OptionsUploadContainerObject handler for the uploadContainerObject options request.
@@ -115,7 +114,7 @@ func (a *RestAPI) OptionsUploadContainerObject(ctx echo.Context, _ apiserver.Con
 	ctx.Response().Header().Set(accessControlAllowOriginHeader, allOrigins)
 	ctx.Response().Header().Set(accessControlAllowHeadersHeader, allowHeaders)
 	ctx.Response().Header().Set(accessControlAllowMethodsHeader, allowMethods(methodPost))
-	return ctx.JSON(http.StatusOK, util.NewSuccessResponse())
+	return ctx.NoContent(http.StatusOK)
 }
 
 // OptionsByAttribute handler for the byAttribute options request.
@@ -123,5 +122,5 @@ func (a *RestAPI) OptionsByAttribute(ctx echo.Context, _ apiserver.ContainerId, 
 	ctx.Response().Header().Set(accessControlAllowOriginHeader, allOrigins)
 	ctx.Response().Header().Set(accessControlAllowHeadersHeader, allowHeaders)
 	ctx.Response().Header().Set(accessControlAllowMethodsHeader, allowMethods(methodGet, methodHead))
-	return ctx.JSON(http.StatusOK, util.NewSuccessResponse())
+	return ctx.NoContent(http.StatusOK)
 }
