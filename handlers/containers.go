@@ -273,7 +273,7 @@ func checkContainerExtendable(ctx context.Context, p *pool.Pool, cnrID cid.ID) e
 	}
 
 	if !cnr.BasicACL().Extendable() {
-		return fmt.Errorf("container acl isn't extendable")
+		return errors.New("container acl isn't extendable")
 	}
 
 	return nil
@@ -535,7 +535,7 @@ func prepareSessionToken(st *SessionToken, isWalletConnect bool) (session.Contai
 	}
 
 	if !stoken.VerifySignature() {
-		return session.Container{}, fmt.Errorf("invalid signature")
+		return session.Container{}, errors.New("invalid signature")
 	}
 
 	return stoken, err

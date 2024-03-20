@@ -753,7 +753,7 @@ func prepareBearerToken(bt *BearerToken, isWalletConnect, isFullToken bool) (*be
 			return nil, fmt.Errorf("couldn't unmarshall bearer token: %w", err)
 		}
 		if !btoken.VerifySignature() {
-			return nil, fmt.Errorf("invalid signature")
+			return nil, errors.New("invalid signature")
 		}
 
 		return &btoken, nil
@@ -792,7 +792,7 @@ func prepareBearerToken(bt *BearerToken, isWalletConnect, isFullToken bool) (*be
 	}
 
 	if !btoken.VerifySignature() {
-		return nil, fmt.Errorf("invalid signature")
+		return nil, errors.New("invalid signature")
 	}
 
 	return &btoken, nil
@@ -809,7 +809,7 @@ func getBearerTokenFromString(token string) (*bearer.Token, error) {
 		return nil, fmt.Errorf("couldn't unmarshall bearer token: %w", err)
 	}
 	if !btoken.VerifySignature() {
-		return nil, fmt.Errorf("invalid signature")
+		return nil, errors.New("invalid signature")
 	}
 
 	return &btoken, nil

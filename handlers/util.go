@@ -99,7 +99,7 @@ func getEpochDurations(ctx context.Context, p *pool.Pool) (*epochDurations, erro
 	}
 
 	if res.blockPerEpoch == 0 {
-		return nil, fmt.Errorf("EpochDuration is zero")
+		return nil, errors.New("EpochDuration is zero")
 	}
 	return res, nil
 }

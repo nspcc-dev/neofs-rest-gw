@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -78,11 +79,11 @@ func getPrincipalFromHeader(ctx echo.Context) (string, error) {
 	}
 
 	if !strings.HasPrefix(headerValue, BearerPrefix) {
-		return "", fmt.Errorf("http auth: no bearer token")
+		return "", errors.New("http auth: no bearer token")
 	}
 
 	if headerValue = strings.TrimPrefix(headerValue, BearerPrefix); len(headerValue) == 0 {
-		return "", fmt.Errorf("http auth: bearer token is empty")
+		return "", errors.New("http auth: bearer token is empty")
 	}
 
 	return headerValue, nil
@@ -96,7 +97,7 @@ func getPrincipalFromCookie(ctx echo.Context) (string, error) {
 		if strings.HasPrefix(cookieValue, BearerCookiePrefix) {
 			bearerCookie = strings.TrimPrefix(cookieValue, BearerCookiePrefix)
 			if len(bearerCookie) == 0 {
-				return "", fmt.Errorf("cookie auth: bearer token is empty")
+				return "", errors.New("cookie auth: bearer token is empty")
 			}
 
 			return bearerCookie, nil

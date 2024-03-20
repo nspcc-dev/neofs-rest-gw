@@ -227,7 +227,7 @@ func ToNativeRecord(r apiserver.Record) (*eacl.Record, error) {
 			return nil, err
 		}
 		if filter.Key == "" || filter.Value == "" {
-			return nil, fmt.Errorf("invalid filter")
+			return nil, errors.New("invalid filter")
 		}
 		record.AddFilter(headerType, matchType, filter.Key, filter.Value)
 	}
