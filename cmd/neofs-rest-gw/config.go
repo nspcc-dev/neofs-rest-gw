@@ -335,7 +335,7 @@ func getKeyFromWallet(w *wallet.Wallet, addrStr string, password *string) (*keys
 	} else {
 		addr, err = flags.ParseAddress(addrStr)
 		if err != nil {
-			return nil, fmt.Errorf("invalid address")
+			return nil, fmt.Errorf("invalid address: %w", err)
 		}
 	}
 
@@ -347,7 +347,7 @@ func getKeyFromWallet(w *wallet.Wallet, addrStr string, password *string) (*keys
 	if password == nil {
 		pwd, err := input.ReadPassword("Enter password > ")
 		if err != nil {
-			return nil, fmt.Errorf("couldn't read password")
+			return nil, fmt.Errorf("couldn't read password: %w", err)
 		}
 		password = &pwd
 	}
