@@ -1049,8 +1049,7 @@ func (a *RestAPI) GetByAttribute(ctx echo.Context, containerID apiserver.Contain
 		err = res.Close()
 
 		if err == nil || errors.Is(err, io.EOF) {
-			resp := a.logAndGetErrorResponse("object not found", err)
-			return ctx.JSON(http.StatusNotFound, resp)
+			return ctx.JSON(http.StatusNotFound, util.NewErrorResponse(errors.New("object not found")))
 		}
 
 		resp := a.logAndGetErrorResponse("read object list failed", err)
@@ -1096,8 +1095,7 @@ func (a *RestAPI) HeadByAttribute(ctx echo.Context, containerID apiserver.Contai
 		err = res.Close()
 
 		if err == nil || errors.Is(err, io.EOF) {
-			resp := a.logAndGetErrorResponse("object not found", err)
-			return ctx.JSON(http.StatusNotFound, resp)
+			return ctx.JSON(http.StatusNotFound, util.NewErrorResponse(errors.New("object not found")))
 		}
 
 		resp := a.logAndGetErrorResponse("read object list failed", err)
