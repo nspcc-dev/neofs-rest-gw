@@ -28,7 +28,7 @@ var (
 )
 
 func main() {
-	ctx, _ := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 
 	v := config()
 	logger := newLogger(v)
@@ -41,7 +41,6 @@ func main() {
 	}
 
 	serverCfg := serverConfig(v)
-	serverCfg.SuccessfulStartCallback = neofsAPI.StartCallback
 
 	swagger, err := apiserver.GetSwagger()
 	if err != nil {
@@ -50,18 +49,20 @@ func main() {
 
 	servers := make(openapi3.Servers, len(serverCfg.EnabledListeners))
 
-	for i, scheme := range serverCfg.EnabledListeners {
-		switch scheme {
-		case schemeHTTP:
-			servers[i] = &openapi3.Server{
-				URL: fmt.Sprintf("%s://%s%s", scheme, serverCfg.ListenAddress, baseURL),
+	if serverCfg.ExternalAddress != "" {
+		for i, scheme := range serverCfg.EnabledListeners {
+			switch scheme {
+			case schemeHTTP:
+				servers[i] = &openapi3.Server{
+					URL: fmt.Sprintf("%s://%s%s", scheme, serverCfg.ExternalAddress, baseURL),
+				}
+			case schemeHTTPS:
+				servers[i] = &openapi3.Server{
+					URL: fmt.Sprintf("%s://%s%s", scheme, serverCfg.ExternalAddress, baseURL),
+				}
+			default:
+				logger.Error("unknown scheme", zap.String("scheme", scheme))
 			}
-		case schemeHTTPS:
-			servers[i] = &openapi3.Server{
-				URL: fmt.Sprintf("%s://%s%s", scheme, serverCfg.TLSListenAddress, baseURL),
-			}
-		default:
-			logger.Error("unknown scheme", zap.String("scheme", scheme))
 		}
 	}
 
@@ -84,10 +85,14 @@ func main() {
 	neofsAPI.RunServices()
 
 	go func() {
+		neofsAPI.StartCallback()
+
 		if err = e.Start(serverCfg.ListenAddress); err != nil {
 			if !errors.Is(err, http.ErrServerClosed) {
 				logger.Fatal("start", zap.Error(err))
 			}
+
+			cancel()
 		}
 	}()
 
