@@ -4,6 +4,9 @@ This document outlines major changes between releases.
 
 ## [Unreleased]
 
+### Changed
+- Option server.scheme should be interpreted as an array.
+
 ## [0.8.0] - 2024-03-19
 
 ### Fixed
