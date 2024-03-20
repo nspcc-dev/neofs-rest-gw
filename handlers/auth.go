@@ -9,9 +9,6 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
-	"github.com/nspcc-dev/neofs-api-go/v2/acl"
-	"github.com/nspcc-dev/neofs-api-go/v2/refs"
-	sessionv2 "github.com/nspcc-dev/neofs-api-go/v2/session"
 	"github.com/nspcc-dev/neofs-rest-gw/handlers/apiserver"
 	"github.com/nspcc-dev/neofs-rest-gw/internal/util"
 	"github.com/nspcc-dev/neofs-sdk-go/client"
@@ -156,9 +153,7 @@ func prepareObjectToken(ctx context.Context, params objectTokenParams, pool *poo
 	btoken.SetIat(iat)
 	btoken.SetExp(exp)
 
-	var v2token acl.BearerToken
-	btoken.WriteToV2(&v2token)
-	binaryBearer := v2token.GetBody().StableMarshal(nil)
+	binaryBearer := btoken.SignedData()
 
 	return &apiserver.TokenResponse{
 		Name:  &params.Name,
@@ -192,15 +187,9 @@ func prepareContainerTokens(ctx context.Context, params containerTokenParams, po
 	stoken.SetExp(exp)
 
 	stoken.SetAuthKey(pubKey)
+	stoken.SetIssuer(ownerID)
 
-	var v2token sessionv2.Token
-	stoken.WriteToV2(&v2token)
-
-	var issuer refs.OwnerID
-	ownerID.WriteToV2(&issuer)
-	v2token.GetBody().SetOwnerID(&issuer)
-
-	binaryToken := v2token.GetBody().StableMarshal(nil)
+	binaryToken := stoken.SignedData()
 
 	return &apiserver.TokenResponse{
 		Name:  &params.Name,
