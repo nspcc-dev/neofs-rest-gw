@@ -135,8 +135,8 @@ github.com/nspcc-dev/neo-go v0.105.1 h1:r0b2yIwLBi+ARBKU94gHL9oTFEB/XMJ0YlS2HN9Q
 github.com/nspcc-dev/neo-go v0.105.1/go.mod h1:GNh0cRALV/cuj+/xg2ZHDsrFbqcInqG7jjhqsLEnlNc=
 github.com/nspcc-dev/neofs-api-go/v2 v2.14.1-0.20240228163253-cb87bbd5e4eb h1:vvMxf818Ea2Ql+j9QX7zOlEXDrVlbAzR0DhGvrULilQ=
 github.com/nspcc-dev/neofs-api-go/v2 v2.14.1-0.20240228163253-cb87bbd5e4eb/go.mod h1:7Tm1NKEoUVVIUlkVwFrPh7GG5+Lmta2m7EGr4oVpBd8=
-github.com/nspcc-dev/neofs-sdk-go v1.0.0-rc.11.0.20240320100217-3efc5b301f92 h1:rNKbIw5xTfw4DNlHT4Eo9iX3jrHo1Y0Hu/ZZ2v51qww=
-github.com/nspcc-dev/neofs-sdk-go v1.0.0-rc.11.0.20240320100217-3efc5b301f92/go.mod h1:0WwnMTpMvbeKkU57+aLRtpOB7vu0eIpz7bu342ng8Gk=
+github.com/nspcc-dev/neofs-sdk-go v1.0.0-rc.11.0.20240322114634-ef09094c9027 h1:+FAz+7Es2DN7MCX7tNzd6EtvgC0tanO3bFwPke9Vs9o=
+github.com/nspcc-dev/neofs-sdk-go v1.0.0-rc.11.0.20240322114634-ef09094c9027/go.mod h1:0WwnMTpMvbeKkU57+aLRtpOB7vu0eIpz7bu342ng8Gk=
 github.com/nspcc-dev/rfc6979 v0.2.1 h1:8wWxkamHWFmO790GsewSoKUSJjVnL1fmdRpokU/RgRM=
 github.com/nspcc-dev/rfc6979 v0.2.1/go.mod h1:Tk7h5kyUWkhjyO3zUgFFhy1v2vQv3BvQEntakdtqrWc=
 github.com/nspcc-dev/tzhash v1.8.0 h1:pJvzME2mZzP/h5rcy/Wb6amT9FJBFeKbJ3HEnWEeUpY=

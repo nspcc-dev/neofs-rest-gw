@@ -7,7 +7,6 @@ import (
 	"testing"
 
 	"github.com/nspcc-dev/neo-go/pkg/crypto/keys"
-	"github.com/nspcc-dev/neofs-api-go/v2/acl"
 	"github.com/nspcc-dev/neofs-rest-gw/handlers/apiserver"
 	"github.com/nspcc-dev/neofs-rest-gw/internal/util"
 	"github.com/nspcc-dev/neofs-sdk-go/user"
@@ -41,10 +40,7 @@ func TestSign(t *testing.T) {
 	owner := signer.UserID()
 	btoken.ForUser(owner)
 
-	var v2token acl.BearerToken
-	btoken.WriteToV2(&v2token)
-
-	binaryBearer := v2token.GetBody().StableMarshal(nil)
+	binaryBearer := btoken.SignedData()
 	bearerBase64 := base64.StdEncoding.EncodeToString(binaryBearer)
 
 	signatureData, err := signer.Sign(binaryBearer)

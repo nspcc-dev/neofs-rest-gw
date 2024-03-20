@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	objectv2 "github.com/nspcc-dev/neofs-api-go/v2/object"
+	"github.com/nspcc-dev/neofs-sdk-go/object"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
 )
@@ -47,71 +47,71 @@ func TestPrepareExpirationHeader(t *testing.T) {
 	}{
 		{
 			name:     "valid epoch",
-			headers:  map[string]string{objectv2.SysAttributeExpEpoch: epoch},
-			expected: map[string]string{objectv2.SysAttributeExpEpoch: epoch},
+			headers:  map[string]string{object.AttributeExpirationEpoch: epoch},
+			expected: map[string]string{object.AttributeExpirationEpoch: epoch},
 		},
 		{
 			name: "valid epoch, valid duration",
 			headers: map[string]string{
-				objectv2.SysAttributeExpEpoch: epoch,
-				ExpirationDurationAttr:        duration,
+				object.AttributeExpirationEpoch: epoch,
+				ExpirationDurationAttr:          duration,
 			},
 			durations: defaultDurations,
-			expected:  map[string]string{objectv2.SysAttributeExpEpoch: epoch},
+			expected:  map[string]string{object.AttributeExpirationEpoch: epoch},
 		},
 		{
 			name: "valid epoch, valid rfc3339",
 			headers: map[string]string{
-				objectv2.SysAttributeExpEpoch: epoch,
-				ExpirationRFC3339Attr:         tomorrow.Format(time.RFC3339),
+				object.AttributeExpirationEpoch: epoch,
+				ExpirationRFC3339Attr:           tomorrow.Format(time.RFC3339),
 			},
 			durations: defaultDurations,
-			expected:  map[string]string{objectv2.SysAttributeExpEpoch: epoch},
+			expected:  map[string]string{object.AttributeExpirationEpoch: epoch},
 		},
 		{
 			name: "valid epoch, valid timestamp sec",
 			headers: map[string]string{
-				objectv2.SysAttributeExpEpoch: epoch,
-				ExpirationTimestampAttr:       timestampSec,
+				object.AttributeExpirationEpoch: epoch,
+				ExpirationTimestampAttr:         timestampSec,
 			},
 			durations: defaultDurations,
-			expected:  map[string]string{objectv2.SysAttributeExpEpoch: epoch},
+			expected:  map[string]string{object.AttributeExpirationEpoch: epoch},
 		},
 		{
 			name: "valid epoch, valid timestamp milli",
 			headers: map[string]string{
-				objectv2.SysAttributeExpEpoch: epoch,
-				ExpirationTimestampAttr:       timestampMilli,
+				object.AttributeExpirationEpoch: epoch,
+				ExpirationTimestampAttr:         timestampMilli,
 			},
 			durations: defaultDurations,
-			expected:  map[string]string{objectv2.SysAttributeExpEpoch: epoch},
+			expected:  map[string]string{object.AttributeExpirationEpoch: epoch},
 		},
 		{
 			name: "valid epoch, valid timestamp nano",
 			headers: map[string]string{
-				objectv2.SysAttributeExpEpoch: epoch,
-				ExpirationTimestampAttr:       timestampNano,
+				object.AttributeExpirationEpoch: epoch,
+				ExpirationTimestampAttr:         timestampNano,
 			},
 			durations: defaultDurations,
-			expected:  map[string]string{objectv2.SysAttributeExpEpoch: epoch},
+			expected:  map[string]string{object.AttributeExpirationEpoch: epoch},
 		},
 		{
 			name:      "valid timestamp sec",
 			headers:   map[string]string{ExpirationTimestampAttr: timestampSec},
 			durations: defaultDurations,
-			expected:  map[string]string{objectv2.SysAttributeExpEpoch: defaultExpEpoch},
+			expected:  map[string]string{object.AttributeExpirationEpoch: defaultExpEpoch},
 		},
 		{
 			name:      "valid duration",
 			headers:   map[string]string{ExpirationDurationAttr: duration},
 			durations: defaultDurations,
-			expected:  map[string]string{objectv2.SysAttributeExpEpoch: defaultExpEpoch},
+			expected:  map[string]string{object.AttributeExpirationEpoch: defaultExpEpoch},
 		},
 		{
 			name:      "valid rfc3339",
 			headers:   map[string]string{ExpirationRFC3339Attr: tomorrow.Format(time.RFC3339)},
 			durations: defaultDurations,
-			expected:  map[string]string{objectv2.SysAttributeExpEpoch: defaultExpEpoch},
+			expected:  map[string]string{object.AttributeExpirationEpoch: defaultExpEpoch},
 		},
 		{
 			name:    "valid max uint 64",
@@ -121,7 +121,7 @@ func TestPrepareExpirationHeader(t *testing.T) {
 				msPerBlock:    defaultDurations.msPerBlock,
 				blockPerEpoch: defaultDurations.blockPerEpoch,
 			},
-			expected: map[string]string{objectv2.SysAttributeExpEpoch: strconv.FormatUint(uint64(math.MaxUint64), 10)},
+			expected: map[string]string{object.AttributeExpirationEpoch: strconv.FormatUint(uint64(math.MaxUint64), 10)},
 		},
 		{
 			name:    "invalid timestamp sec",

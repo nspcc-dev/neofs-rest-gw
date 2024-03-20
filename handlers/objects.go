@@ -19,15 +19,14 @@ import (
 
 	"github.com/labstack/echo/v4"
 	"github.com/nspcc-dev/neo-go/pkg/crypto/keys"
-	"github.com/nspcc-dev/neofs-api-go/v2/acl"
-	"github.com/nspcc-dev/neofs-api-go/v2/container"
-	"github.com/nspcc-dev/neofs-api-go/v2/refs"
 	"github.com/nspcc-dev/neofs-rest-gw/handlers/apiserver"
 	"github.com/nspcc-dev/neofs-rest-gw/internal/util"
 	"github.com/nspcc-dev/neofs-sdk-go/bearer"
 	"github.com/nspcc-dev/neofs-sdk-go/client"
 	apistatus "github.com/nspcc-dev/neofs-sdk-go/client/status"
 	cid "github.com/nspcc-dev/neofs-sdk-go/container/id"
+	neofscrypto "github.com/nspcc-dev/neofs-sdk-go/crypto"
+	neofsecdsa "github.com/nspcc-dev/neofs-sdk-go/crypto/ecdsa"
 	"github.com/nspcc-dev/neofs-sdk-go/object"
 	oid "github.com/nspcc-dev/neofs-sdk-go/object/id"
 	"github.com/nspcc-dev/neofs-sdk-go/pool"
@@ -592,7 +591,7 @@ func (a *RestAPI) setAttributes(ctx echo.Context, payloadSize uint64, cid string
 			case object.AttributeContentType:
 				contentType = val
 			default:
-				if strings.HasPrefix(key, container.SysAttributePrefix) {
+				if strings.HasPrefix(key, SystemAttributePrefix) {
 					key = systemBackwardTranslator(key)
 				}
 				ctx.Response().Header().Set(userAttributeHeaderPrefix+key, attr.Value())
@@ -652,7 +651,7 @@ func isValidValue(s string) bool {
 // systemBackwardTranslator is used to convert headers looking like '__NEOFS__ATTR_NAME' to 'Neofs-Attr-Name'.
 func systemBackwardTranslator(key string) string {
 	// trim specified prefix '__NEOFS__'
-	key = strings.TrimPrefix(key, container.SysAttributePrefix)
+	key = strings.TrimPrefix(key, SystemAttributePrefix)
 
 	var res strings.Builder
 	res.WriteString("Neofs-")
@@ -751,8 +750,8 @@ func prepareBearerToken(bt *BearerToken, isWalletConnect, isFullToken bool) (*be
 		return nil, fmt.Errorf("can't base64-decode bearer token: %w", err)
 	}
 
+	var btoken bearer.Token
 	if isFullToken {
-		var btoken bearer.Token
 		if err = btoken.Unmarshal(data); err != nil {
 			return nil, fmt.Errorf("couldn't unmarshall bearer token: %w", err)
 		}
@@ -773,26 +772,24 @@ func prepareBearerToken(bt *BearerToken, isWalletConnect, isFullToken bool) (*be
 		return nil, fmt.Errorf("couldn't fetch bearer token owner key: %w", err)
 	}
 
-	body := new(acl.BearerTokenBody)
-	if err = body.Unmarshal(data); err != nil {
+	if err = btoken.UnmarshalSignedData(data); err != nil {
 		return nil, fmt.Errorf("can't unmarshal bearer token body: %w", err)
 	}
 
-	v2signature := new(refs.Signature)
-	v2signature.SetScheme(refs.ECDSA_SHA512)
+	var scheme neofscrypto.Scheme
+	var pubKey neofscrypto.PublicKey
 	if isWalletConnect {
-		v2signature.SetScheme(refs.ECDSA_RFC6979_SHA256_WALLET_CONNECT)
+		scheme = neofscrypto.ECDSA_WALLETCONNECT
+		pubKey = (*neofsecdsa.PublicKeyWalletConnect)(ownerKey)
+	} else {
+		scheme = neofscrypto.ECDSA_SHA512
+		pubKey = (*neofsecdsa.PublicKey)(ownerKey)
 	}
-	v2signature.SetSign(signature)
-	v2signature.SetKey(ownerKey.Bytes())
 
-	var v2btoken acl.BearerToken
-	v2btoken.SetBody(body)
-	v2btoken.SetSignature(v2signature)
-
-	var btoken bearer.Token
-	if err = btoken.ReadFromV2(v2btoken); err != nil {
-		return nil, fmt.Errorf("read from v2 token: %w", err)
+	err = btoken.Sign(neofscrypto.NewStaticSigner(scheme, signature, pubKey))
+	if err != nil {
+		// should never happen
+		return nil, fmt.Errorf("set pre-calculated signature of the token: %w", err)
 	}
 
 	if !btoken.VerifySignature() {
