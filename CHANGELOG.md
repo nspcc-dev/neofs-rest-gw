@@ -15,6 +15,12 @@ This document outlines major changes between releases.
 - OpenAPI specification was updated to 3.0.1 version (#153)
 - Bumped google.golang.org/protobuf dependency from 1.32.0 to 1.33.0
 
+### Updating from 0.7.2
+
+Notice that server.scheme setting is an array, it was not enforced in the
+previous version (it worked fine with a string), but 0.8.0 will not work with
+this incorrect configuration, so please check your configurations.
+
 ## [0.7.2] - 2024-03-13
 
 ### Fixed
