@@ -4,6 +4,14 @@ This document outlines major changes between releases.
 
 ## [Unreleased]
 
+## [0.8.1] - 2024-03-21
+
+### Fixed
+- Incorrect answer to OPTIONS request (#169)
+- Garbage in "object not found" error messages (#174)
+- Missing additional data in some error messages (#175)
+- Incorrect ExternalAddress option handling (#165)
+
 ## [0.8.0] - 2024-03-19
 
 ### Fixed
@@ -181,4 +189,5 @@ Please refer to [GitHub releases](https://github.com/nspcc-dev/neofs-rest-gw/rel
 [0.7.1]: https://github.com/nspcc-dev/neofs-rest-gw/compare/v0.7.0...v0.7.1
 [0.7.2]: https://github.com/nspcc-dev/neofs-rest-gw/compare/v0.7.1...v0.7.2
 [0.8.0]: https://github.com/nspcc-dev/neofs-rest-gw/compare/v0.7.2...v0.8.0
-[Unreleased]: https://github.com/nspcc-dev/neofs-rest-gw/compare/v0.8.0...master
+[0.8.1]: https://github.com/nspcc-dev/neofs-rest-gw/compare/v0.8.0...v0.8.1
+[Unreleased]: https://github.com/nspcc-dev/neofs-rest-gw/compare/v0.8.1...master
