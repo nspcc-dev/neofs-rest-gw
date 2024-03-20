@@ -28,7 +28,7 @@ var (
 )
 
 func main() {
-	ctx, _ := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 
 	v := config()
 	logger := newLogger(v)
@@ -85,10 +85,14 @@ func main() {
 	neofsAPI.RunServices()
 
 	go func() {
+		neofsAPI.StartCallback()
+
 		if err = e.Start(serverCfg.ListenAddress); err != nil {
 			if !errors.Is(err, http.ErrServerClosed) {
 				logger.Fatal("start", zap.Error(err))
 			}
+
+			cancel()
 		}
 	}()
 
