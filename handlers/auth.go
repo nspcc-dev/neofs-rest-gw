@@ -127,6 +127,10 @@ func (a *RestAPI) FormBinaryBearer(ctx echo.Context, params apiserver.FormBinary
 		return ctx.JSON(http.StatusBadRequest, resp)
 	}
 
+	if btoken == nil {
+		return ctx.JSON(http.StatusBadRequest, util.NewErrorResponse(errors.New("empty bearer token")))
+	}
+
 	resp := &apiserver.BinaryBearer{
 		Token: base64.StdEncoding.EncodeToString(btoken.Marshal()),
 	}

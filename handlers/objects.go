@@ -281,7 +281,9 @@ func (a *RestAPI) DeleteObject(ctx echo.Context, containerID apiserver.Container
 	}
 
 	var prm client.PrmObjectDelete
-	prm.WithBearerToken(*btoken)
+	if btoken != nil {
+		prm.WithBearerToken(*btoken)
+	}
 
 	cl, err := a.pool.RawClient()
 	if err != nil {
