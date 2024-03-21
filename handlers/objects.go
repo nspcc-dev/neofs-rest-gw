@@ -281,7 +281,9 @@ func (a *RestAPI) DeleteObject(ctx echo.Context, containerID apiserver.Container
 	}
 
 	var prm client.PrmObjectDelete
-	prm.WithBearerToken(*btoken)
+	if btoken != nil {
+		prm.WithBearerToken(*btoken)
+	}
 
 	cl, err := a.pool.RawClient()
 	if err != nil {
@@ -464,6 +466,7 @@ func (a *RestAPI) getByAddress(ctx echo.Context, addr oid.Address, downloadParam
 		ctx.Response().Header().Set("Content-Type", contentType)
 	}
 
+	ctx.Response().Header().Set(accessControlAllowOriginHeader, "*")
 	return ctx.Stream(http.StatusOK, contentType, payload)
 }
 
@@ -480,6 +483,7 @@ func (a *RestAPI) HeadContainerObject(ctx echo.Context, containerID apiserver.Co
 		return ctx.JSON(http.StatusBadRequest, resp)
 	}
 
+	ctx.Response().Header().Set(accessControlAllowOriginHeader, "*")
 	return a.headByAddress(ctx, addr, params.Download, principal)
 }
 
@@ -1106,6 +1110,7 @@ func (a *RestAPI) HeadByAttribute(ctx echo.Context, containerID apiserver.Contai
 	addrObj.SetContainer(cnrID)
 	addrObj.SetObject(buf[0])
 
+	ctx.Response().Header().Set(accessControlAllowOriginHeader, "*")
 	return a.headByAddress(ctx, addrObj, params.Download, principal)
 }
 
