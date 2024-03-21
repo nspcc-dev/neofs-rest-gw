@@ -136,9 +136,11 @@ func runTests(ctx context.Context, t *testing.T, key *keys.PrivateKey, node stri
 	t.Run("rest get object", func(t *testing.T) { restObjectGet(ctx, t, clientPool, &owner, cnrID, signer) })
 	t.Run("rest get object unauthenticated", func(t *testing.T) { restObjectGetUnauthenticated(ctx, t, clientPool, &owner, cnrID, signer) })
 	t.Run("rest get object full bearer", func(t *testing.T) { restObjectGetFullBearer(ctx, t, clientPool, &owner, cnrID, signer) })
+	t.Run("rest get object with bearer in cookie", func(t *testing.T) { restObjectGetBearerCookie(ctx, t, clientPool, &owner, cnrID, signer) })
 	t.Run("rest delete object", func(t *testing.T) { restObjectDelete(ctx, t, clientPool, &owner, cnrID, signer) })
 	t.Run("rest search objects", func(t *testing.T) { restObjectsSearch(ctx, t, clientPool, &owner, cnrID, signer) })
 	t.Run("rest upload object", func(t *testing.T) { restObjectUpload(ctx, t, clientPool, cnrID, signer) })
+	t.Run("rest upload object with bearer in cookie", func(t *testing.T) { restObjectUploadCookie(ctx, t, clientPool, cnrID, signer) })
 	t.Run("rest head object", func(t *testing.T) { restObjectHead(ctx, t, clientPool, &owner, cnrID, signer) })
 	t.Run("rest head by attribute", func(t *testing.T) { restObjectHeadByAttribute(ctx, t, clientPool, &owner, cnrID, signer) })
 	t.Run("rest get by attribute", func(t *testing.T) { restObjectGetByAttribute(ctx, t, clientPool, &owner, cnrID, signer) })
@@ -1084,6 +1086,12 @@ func restObjectGetUnauthenticated(ctx context.Context, t *testing.T, p *pool.Poo
 }
 
 func restObjectGetFullBearer(ctx context.Context, t *testing.T, p *pool.Pool, ownerID *user.ID, cnrID cid.ID, signer user.Signer) {
+	restObjectGetWithBearer(ctx, t, p, ownerID, cnrID, signer, false)
+}
+func restObjectGetBearerCookie(ctx context.Context, t *testing.T, p *pool.Pool, ownerID *user.ID, cnrID cid.ID, signer user.Signer) {
+	restObjectGetWithBearer(ctx, t, p, ownerID, cnrID, signer, true)
+}
+func restObjectGetWithBearer(ctx context.Context, t *testing.T, p *pool.Pool, ownerID *user.ID, cnrID cid.ID, signer user.Signer, cookie bool) {
 	content := []byte("some content")
 	attributes := map[string]string{
 		object.AttributeFileName: "get-obj-name",
@@ -1140,7 +1148,11 @@ func restObjectGetFullBearer(ctx context.Context, t *testing.T, p *pool.Pool, ow
 
 	request, err = http.NewRequest(http.MethodGet, testHost+"/v1/objects/"+cnrID.EncodeToString()+"/"+objID.EncodeToString()+"?"+query.Encode(), nil)
 	require.NoError(t, err)
-	request.Header.Add("Authorization", "Bearer "+resp.Token)
+	if cookie {
+		request.Header.Add("Cookie", "Bearer="+resp.Token+";")
+	} else {
+		request.Header.Add("Authorization", "Bearer "+resp.Token)
+	}
 
 	objInfo := &apiserver.ObjectInfo{}
 	doRequest(t, httpClient, request, http.StatusOK, objInfo)
@@ -1767,6 +1779,12 @@ func restBalance(_ context.Context, t *testing.T) {
 }
 
 func restObjectUpload(ctx context.Context, t *testing.T, clientPool *pool.Pool, cnrID cid.ID, signer user.Signer) {
+	restObjectUploadInt(ctx, t, clientPool, cnrID, signer, false)
+}
+func restObjectUploadCookie(ctx context.Context, t *testing.T, clientPool *pool.Pool, cnrID cid.ID, signer user.Signer) {
+	restObjectUploadInt(ctx, t, clientPool, cnrID, signer, true)
+}
+func restObjectUploadInt(ctx context.Context, t *testing.T, clientPool *pool.Pool, cnrID cid.ID, signer user.Signer, cookie bool) {
 	bt := apiserver.Bearer{
 		Object: []apiserver.Record{{
 			Operation: apiserver.OperationPUT,
@@ -1817,8 +1835,11 @@ func restObjectUpload(ctx context.Context, t *testing.T, clientPool *pool.Pool, 
 	require.NoError(t, err)
 
 	request.Header.Set("Content-Type", writer.FormDataContentType())
-	request.Header.Add("Authorization", "Bearer "+base64.StdEncoding.EncodeToString(actualTokenRaw))
-
+	if cookie {
+		request.Header.Add("Cookie", "Bearer="+base64.StdEncoding.EncodeToString(actualTokenRaw)+";")
+	} else {
+		request.Header.Add("Authorization", "Bearer "+base64.StdEncoding.EncodeToString(actualTokenRaw))
+	}
 	addr := &apiserver.AddressForUpload{}
 	doRequest(t, httpClient, request, http.StatusOK, addr)
 
