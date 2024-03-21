@@ -131,6 +131,7 @@ func (a *RestAPI) FormBinaryBearer(ctx echo.Context, params apiserver.FormBinary
 		Token: base64.StdEncoding.EncodeToString(btoken.Marshal()),
 	}
 
+	ctx.Response().Header().Set(accessControlAllowOriginHeader, "*")
 	return ctx.JSON(http.StatusOK, resp)
 }
 

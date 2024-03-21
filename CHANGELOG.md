@@ -4,6 +4,9 @@ This document outlines major changes between releases.
 
 ## [Unreleased]
 
+### Fixed
+- CORS for auth bearer request (#180)
+
 ## [0.8.1] - 2024-03-21
 
 ### Fixed
