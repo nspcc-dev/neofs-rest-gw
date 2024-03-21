@@ -43,9 +43,10 @@ type SessionToken struct {
 }
 
 const (
+	// BearerCookieName is the name of the bearer cookie.
+	BearerCookieName = "Bearer"
 	// BearerPrefix is the prefix for authorization token.
-	BearerPrefix       = "Bearer "
-	BearerCookiePrefix = "Bearer="
+	BearerPrefix = BearerCookieName + " "
 
 	accessControlAllowOriginHeader = "Access-Control-Allow-Origin"
 	authorizationHeader            = "Authorization"
@@ -90,17 +91,13 @@ func getPrincipalFromHeader(ctx echo.Context) (string, error) {
 }
 
 func getPrincipalFromCookie(ctx echo.Context) (string, error) {
-	var bearerCookie string
-
 	for _, cookie := range ctx.Request().Cookies() {
-		cookieValue := strings.TrimSpace(cookie.Value)
-		if strings.HasPrefix(cookieValue, BearerCookiePrefix) {
-			bearerCookie = strings.TrimPrefix(cookieValue, BearerCookiePrefix)
-			if len(bearerCookie) == 0 {
+		if cookie.Name == BearerCookieName {
+			if len(cookie.Value) == 0 {
 				return "", errors.New("cookie auth: bearer token is empty")
 			}
 
-			return bearerCookie, nil
+			return cookie.Value, nil
 		}
 	}
 
