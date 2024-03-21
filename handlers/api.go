@@ -43,9 +43,10 @@ type SessionToken struct {
 }
 
 const (
-	// BearerPrefix is the prefix for authorization token.
-	BearerPrefix       = "Bearer "
-	BearerCookiePrefix = "Bearer="
+	// bearerCookieName is the name of the bearer cookie.
+	bearerCookieName = "Bearer"
+	// bearerPrefix is the prefix for authorization token.
+	bearerPrefix = bearerCookieName + " "
 
 	accessControlAllowOriginHeader = "Access-Control-Allow-Origin"
 	authorizationHeader            = "Authorization"
@@ -78,11 +79,11 @@ func getPrincipalFromHeader(ctx echo.Context) (string, error) {
 		return "", nil
 	}
 
-	if !strings.HasPrefix(headerValue, BearerPrefix) {
+	if !strings.HasPrefix(headerValue, bearerPrefix) {
 		return "", errors.New("http auth: no bearer token")
 	}
 
-	if headerValue = strings.TrimPrefix(headerValue, BearerPrefix); len(headerValue) == 0 {
+	if headerValue = strings.TrimPrefix(headerValue, bearerPrefix); len(headerValue) == 0 {
 		return "", errors.New("http auth: bearer token is empty")
 	}
 
@@ -90,17 +91,13 @@ func getPrincipalFromHeader(ctx echo.Context) (string, error) {
 }
 
 func getPrincipalFromCookie(ctx echo.Context) (string, error) {
-	var bearerCookie string
-
 	for _, cookie := range ctx.Request().Cookies() {
-		cookieValue := strings.TrimSpace(cookie.Value)
-		if strings.HasPrefix(cookieValue, BearerCookiePrefix) {
-			bearerCookie = strings.TrimPrefix(cookieValue, BearerCookiePrefix)
-			if len(bearerCookie) == 0 {
+		if cookie.Name == bearerCookieName {
+			if len(cookie.Value) == 0 {
 				return "", errors.New("cookie auth: bearer token is empty")
 			}
 
-			return bearerCookie, nil
+			return cookie.Value, nil
 		}
 	}
 
@@ -117,16 +114,7 @@ func getPrincipal(ctx echo.Context) (string, error) {
 		return principal, nil
 	}
 
-	principal, err = getPrincipalFromCookie(ctx)
-	if err != nil {
-		return "", err
-	}
-
-	if principal != "" {
-		return principal, nil
-	}
-
-	return "", nil
+	return getPrincipalFromCookie(ctx)
 }
 
 func (a *RestAPI) logAndGetErrorResponse(msg string, err error, fields ...zap.Field) *apiserver.ErrorResponse {
