@@ -114,16 +114,7 @@ func getPrincipal(ctx echo.Context) (string, error) {
 		return principal, nil
 	}
 
-	principal, err = getPrincipalFromCookie(ctx)
-	if err != nil {
-		return "", err
-	}
-
-	if principal != "" {
-		return principal, nil
-	}
-
-	return "", nil
+	return getPrincipalFromCookie(ctx)
 }
 
 func (a *RestAPI) logAndGetErrorResponse(msg string, err error, fields ...zap.Field) *apiserver.ErrorResponse {
