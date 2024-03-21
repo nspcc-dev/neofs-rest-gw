@@ -4,8 +4,11 @@ This document outlines major changes between releases.
 
 ## [Unreleased]
 
+## [0.8.2] - 2024-03-21
+
 ### Fixed
-- CORS for auth bearer request (#180)
+- Fetching bearer token from cookie (#179)
+- CORS for auth bearer and other requests (#180, #182)
 
 ## [0.8.1] - 2024-03-21
 
@@ -193,4 +196,5 @@ Please refer to [GitHub releases](https://github.com/nspcc-dev/neofs-rest-gw/rel
 [0.7.2]: https://github.com/nspcc-dev/neofs-rest-gw/compare/v0.7.1...v0.7.2
 [0.8.0]: https://github.com/nspcc-dev/neofs-rest-gw/compare/v0.7.2...v0.8.0
 [0.8.1]: https://github.com/nspcc-dev/neofs-rest-gw/compare/v0.8.0...v0.8.1
-[Unreleased]: https://github.com/nspcc-dev/neofs-rest-gw/compare/v0.8.1...master
+[0.8.2]: https://github.com/nspcc-dev/neofs-rest-gw/compare/v0.8.1...v0.8.2
+[Unreleased]: https://github.com/nspcc-dev/neofs-rest-gw/compare/v0.8.2...master
