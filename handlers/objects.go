@@ -654,7 +654,7 @@ func systemBackwardTranslator(key string) string {
 	key = strings.TrimPrefix(key, SystemAttributePrefix)
 
 	var res strings.Builder
-	res.WriteString("Neofs-")
+	res.WriteString(neofsAttributeHeaderPrefix)
 
 	strs := strings.Split(key, "_")
 	for i, s := range strs {
