@@ -1318,7 +1318,6 @@ func restContainerGet(ctx context.Context, t *testing.T, owner user.ID, cnrID ci
 	require.Equal(t, cnrID.EncodeToString(), cnrInfo.ContainerId)
 	require.Equal(t, owner.EncodeToString(), cnrInfo.OwnerId)
 	require.Equal(t, containerName, cnrInfo.ContainerName)
-	require.NotEmpty(t, cnrInfo.Version)
 }
 
 func restContainerDelete(ctx context.Context, t *testing.T, clientPool *pool.Pool, owner user.ID, signer user.Signer) {

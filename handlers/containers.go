@@ -25,7 +25,6 @@ import (
 	"github.com/nspcc-dev/neofs-sdk-go/pool"
 	"github.com/nspcc-dev/neofs-sdk-go/session"
 	"github.com/nspcc-dev/neofs-sdk-go/user"
-	"github.com/nspcc-dev/neofs-sdk-go/version"
 	"github.com/nspcc-dev/neofs-sdk-go/waiter"
 	"go.uber.org/zap"
 )
@@ -310,7 +309,6 @@ func getContainerInfo(ctx context.Context, p *pool.Pool, cnrID cid.ID) (*apiserv
 		CannedAcl:       util.NewString(friendlyBasicACL(cnr.BasicACL())),
 		PlacementPolicy: sb.String(),
 		Attributes:      attrs,
-		Version:         getContainerVersion(cnr).String(),
 	}, nil
 }
 
@@ -335,19 +333,6 @@ func friendlyBasicACL(basicACL acl.Basic) string {
 	default:
 		return ""
 	}
-}
-
-func getContainerVersion(cnr container.Container) version.Version {
-	var v2cnr containerv2.Container
-	cnr.WriteToV2(&v2cnr)
-
-	var cnrVersion version.Version
-	v2version := v2cnr.GetVersion()
-	if v2version != nil {
-		cnrVersion = version.Version(*v2version)
-	}
-
-	return cnrVersion
 }
 
 func parseContainerID(containerID string) (cid.ID, error) {
