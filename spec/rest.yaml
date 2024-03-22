@@ -1208,14 +1208,11 @@ components:
         - containerName
         - ownerId
         - placementPolicy
-        - version
       type: object
       properties:
         containerId:
           type: string
         containerName:
-          type: string
-        version:
           type: string
         ownerId:
           type: string
@@ -1234,7 +1231,6 @@ components:
       example:
         containerId: 5HZTn5qkRnmgSz9gSrw22CEdPPk6nQhkwf2Mgzyvkikv
         containerName: container
-        version: "2.11"
         ownerId: NbUgTSFvPmsRxmGeWpuuGeJUoRoi6PErcM
         basicAcl: 0x1fbf9fff
         placementPolicy: REP 2
@@ -1261,7 +1257,6 @@ components:
         containers:
           - containerId: 5HZTn5qkRnmgSz9gSrw22CEdPPk6nQhkwf2Mgzyvkikv
             containerName: container
-            version: "2.11"
             ownerId: NbUgTSFvPmsRxmGeWpuuGeJUoRoi6PErcM
             basicAcl: 0x1fbf9fff
             placementPolicy: REP 2
@@ -1272,7 +1267,6 @@ components:
                 value: container
           - containerId: FsE7HLQBBYc2WFJzuTXMcpspDEmwUxsD5YmNb2r25uUu
             containerName: container2
-            version: "2.11"
             ownerId: NbUgTSFvPmsRxmGeWpuuGeJUoRoi6PErcM
             basicAcl: 0x1fbf9fff
             placementPolicy: REP 1

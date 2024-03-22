@@ -4,6 +4,9 @@ This document outlines major changes between releases.
 
 ## [Unreleased]
 
+### Removed
+- Unused `version` field of container info (#186)
+
 ## [0.8.2] - 2024-03-21
 
 ### Fixed
