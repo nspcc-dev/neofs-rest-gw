@@ -9,8 +9,9 @@ import (
 )
 
 const (
-	allOrigins   = "*"
-	allowHeaders = "X-Bearer-For-All-Users, X-Bearer-Lifetime, X-Bearer-Owner-Id, X-Bearer-Signature, X-Bearer-Signature-Key, Content-Type, Authorization"
+	allOrigins        = "*"
+	allowHeaders      = "X-Bearer-For-All-Users, X-Bearer-Lifetime, X-Bearer-Owner-Id, X-Bearer-Signature, X-Bearer-Signature-Key, Content-Type, Authorization"
+	allowUploadHeader = "*"
 
 	methodGet    = "GET"
 	methodHead   = "HEAD"
@@ -112,7 +113,7 @@ func (a *RestAPI) OptionsContainerObject(ctx echo.Context, _ apiserver.Container
 // OptionsUploadContainerObject handler for the uploadContainerObject options request.
 func (a *RestAPI) OptionsUploadContainerObject(ctx echo.Context, _ apiserver.ContainerId) error {
 	ctx.Response().Header().Set(accessControlAllowOriginHeader, allOrigins)
-	ctx.Response().Header().Set(accessControlAllowHeadersHeader, allowHeaders)
+	ctx.Response().Header().Set(accessControlAllowHeadersHeader, allowUploadHeader)
 	ctx.Response().Header().Set(accessControlAllowMethodsHeader, allowMethods(methodPost))
 	return ctx.NoContent(http.StatusOK)
 }
