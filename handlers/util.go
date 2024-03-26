@@ -10,14 +10,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/nspcc-dev/neofs-api-go/v2/container"
-	objectv2 "github.com/nspcc-dev/neofs-api-go/v2/object"
-	sessionv2 "github.com/nspcc-dev/neofs-api-go/v2/session"
 	"github.com/nspcc-dev/neofs-rest-gw/handlers/apiserver"
 	"github.com/nspcc-dev/neofs-sdk-go/client"
 	"github.com/nspcc-dev/neofs-sdk-go/container/acl"
 	"github.com/nspcc-dev/neofs-sdk-go/object"
 	"github.com/nspcc-dev/neofs-sdk-go/pool"
+	"github.com/nspcc-dev/neofs-sdk-go/session"
 	"go.uber.org/zap"
 )
 
@@ -36,9 +34,11 @@ type epochDurations struct {
 const (
 	SystemAttributePrefix = "__NEOFS__"
 
-	ExpirationDurationAttr  = SystemAttributePrefix + "EXPIRATION_DURATION"
-	ExpirationTimestampAttr = SystemAttributePrefix + "EXPIRATION_TIMESTAMP"
-	ExpirationRFC3339Attr   = SystemAttributePrefix + "EXPIRATION_RFC3339"
+	ExpirationDurationAttr       = SystemAttributePrefix + "EXPIRATION_DURATION"
+	ExpirationTimestampAttr      = SystemAttributePrefix + "EXPIRATION_TIMESTAMP"
+	ExpirationRFC3339Attr        = SystemAttributePrefix + "EXPIRATION_RFC3339"
+	containerDomainNameAttribute = SystemAttributePrefix + "NAME"
+	containerDomainZoneAttribute = SystemAttributePrefix + "ZONE"
 
 	neofsAttributeHeaderPrefix = "Neofs-"
 
@@ -112,7 +112,7 @@ func needParseExpiration(headers map[string]string) bool {
 }
 
 func prepareExpirationHeader(headers map[string]string, epochDurations *epochDurations, now time.Time) error {
-	expirationInEpoch := headers[objectv2.SysAttributeExpEpoch]
+	expirationInEpoch := headers[object.AttributeExpirationEpoch]
 
 	if timeRFC3339, ok := headers[ExpirationRFC3339Attr]; ok {
 		expTime, err := time.Parse(time.RFC3339, timeRFC3339)
@@ -155,7 +155,7 @@ func prepareExpirationHeader(headers map[string]string, epochDurations *epochDur
 	}
 
 	if expirationInEpoch != "" {
-		headers[objectv2.SysAttributeExpEpoch] = expirationInEpoch
+		headers[object.AttributeExpirationEpoch] = expirationInEpoch
 	}
 
 	return nil
@@ -175,7 +175,7 @@ func updateExpirationHeader(headers map[string]string, durations *epochDurations
 		expirationEpoch = currentEpoch + numEpoch
 	}
 
-	headers[objectv2.SysAttributeExpEpoch] = strconv.FormatUint(expirationEpoch, 10)
+	headers[object.AttributeExpirationEpoch] = strconv.FormatUint(expirationEpoch, 10)
 }
 
 // IsObjectToken check that provided token is for object.
@@ -194,7 +194,7 @@ func IsObjectToken(token apiserver.Bearer) (bool, error) {
 	return isObject, nil
 }
 
-func formSessionTokenFromHeaders(principal string, signature, key *string, verb sessionv2.ContainerSessionVerb) (*SessionToken, error) {
+func formSessionTokenFromHeaders(principal string, signature, key *string, verb session.ContainerVerb) (*SessionToken, error) {
 	if signature == nil || key == nil {
 		return nil, errors.New("missed signature or key header")
 	}
@@ -248,7 +248,7 @@ func decodeBasicACL(input string) (acl.Basic, error) {
 
 func systemTranslator(key, prefix string) string {
 	// replace the specified prefix with `__NEOFS__`
-	key = strings.Replace(key, prefix, container.SysAttributePrefix, 1)
+	key = strings.Replace(key, prefix, SystemAttributePrefix, 1)
 
 	// replace `-` with `_`
 	key = strings.ReplaceAll(key, "-", "_")
