@@ -7,8 +7,8 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/labstack/echo/v4 v4.11.4
 	github.com/nspcc-dev/neo-go v0.105.1
-	github.com/nspcc-dev/neofs-api-go/v2 v2.14.0
-	github.com/nspcc-dev/neofs-sdk-go v1.0.0-rc.11.0.20231220200831-1db2fbf3c1ad
+	github.com/nspcc-dev/neofs-api-go/v2 v2.14.1-0.20240305074711-35bc78d84dc4
+	github.com/nspcc-dev/neofs-sdk-go v1.0.0-rc.11.0.20240326133951-7f940dcb37d8
 	github.com/oapi-codegen/echo-middleware v1.0.1
 	github.com/oapi-codegen/runtime v1.1.1
 	github.com/spf13/pflag v1.0.5
@@ -89,7 +89,6 @@ require (
 	github.com/moby/term v0.5.0 // indirect
 	github.com/morikuni/aec v1.0.0 // indirect
 	github.com/mr-tron/base58 v1.2.0 // indirect
-	github.com/nspcc-dev/neofs-crypto v0.4.1 // indirect
 	github.com/nspcc-dev/rfc6979 v0.2.1 // indirect
 	github.com/nspcc-dev/tzhash v1.8.0 // indirect
 	github.com/opencontainers/go-digest v1.0.0 // indirect
