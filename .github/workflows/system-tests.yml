@@ -181,7 +181,6 @@ jobs:
 
       - name: Run rest gw system tests
         timeout-minutes: 120
-        if: github.event_name == 'pull_request'
         run: |
           source venv.pytest/bin/activate && pytest --alluredir=${{ env.ALLURE_RESULTS_DIR }} pytest_tests/tests/services/rest_gate
         working-directory: neofs-testcases
