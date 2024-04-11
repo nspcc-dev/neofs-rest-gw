@@ -123,6 +123,13 @@ You can see swagger specification using the following url
 
 * http://localhost:8090/v1/docs
 
+## Known issues
+
+Using `%` in path parameters [leads to error](https://github.com/nspcc-dev/neofs-rest-gw/issues/195). For instance, getting object by attribute:
+* /v1/get_by_attribute/A9pnctophx5PFt4eUd8d2aa6otjgnQZNzyvt3HCeygFD/cat%25jpeg/cat%25jpeg
+
+> cat%25jpeg - already URL escaped string, original value is cat%jpeg.
+
 Also, when you run rest-gw, you will see a line similar to:
 ```shell
 ...

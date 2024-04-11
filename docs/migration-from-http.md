@@ -33,3 +33,6 @@ symbols in headers (like "@") which was never intended to happen (it violates
 [HTTP specification](https://datatracker.ietf.org/doc/html/rfc7230#section-3.2.6)),
 but was purely an implementation specifics. This is no longer allowed, but if
 you have any problem with that it just means you should fix your application.
+
+There is a limitation for `$ATTRIBUTE_NAME` and `$ATTRIBUTE_VALUE`. These parameters
+should not contain `%` symbol. Using percent symbol [leads to error](https://github.com/nspcc-dev/neofs-rest-gw/issues/195).
