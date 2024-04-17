@@ -76,8 +76,13 @@ func main() {
 	e := echo.New()
 	e.HideBanner = true
 	e.StaticFS(docsURL, docs.FS)
+	e.Add(http.MethodHead, docsURL+"*", echo.StaticDirectoryHandler(docs.FS, false))
+
 	e.GET(swaggerURL, swaggerDocHandler)
+	e.HEAD(swaggerURL, swaggerDocHandler)
+
 	e.GET("/", redirectHandler)
+	e.HEAD("/", redirectHandler)
 
 	e.Group(baseURL, middleware.OapiRequestValidator(swagger))
 	apiserver.RegisterHandlersWithBaseURL(e, neofsAPI, baseURL)
