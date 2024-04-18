@@ -12,59 +12,48 @@ There are some custom types used for brevity:
 
 | Section      | Description                                     |
 |--------------|-------------------------------------------------|
-| no section   | [General parameters](#general-section)          |
+| `server`     | [Server parameters](#server-section)            |
 | `wallet`     | [Wallet configuration](#wallet-section)         |
 | `pool`       | [Pool configuration](#pool-section)             |
 | `logger`     | [Logger configuration](#logger-section)         |
 | `pprof`      | [Pprof configuration](#pprof-section)           |
 | `prometheus` | [Prometheus configuration](#prometheus-section) |
 
-# General section
+# Server section
 
 ```yaml
-scheme: [ http ]
+endpoints:
+  - address: localhost:8080
+    external-address: localhost:8090
+    tls:
+      enabled: false
+      certificate: /path/to/tls/cert
+      key: /path/to/tls/key
+      ca-certificate: /path/to/tls/ca
+    keep-alive: 3m
+    read-timeout: 30s
+    write-timeout: 30s
 cleanup-timeout: 10s
 graceful-timeout: 15s
 max-header-size: 1000000
-
-listen-address: localhost:8080
 listen-limit: 0
-keep-alive: 3m
-read-timeout: 30s
-write-timeout: 30s
-
-tls-listen-address: localhost:8081
-tls-certificate: /path/to/tls/cert
-tls-key: /path/to/tls/key
-tls-ca: /path/to/tls/ca
-tls-listen-limit: 0
-tls-keep-alive: 3m
-tls-read-timeout: 30s
-tls-write-timeout: 30s
-
-external-address: localhost:8090
 ```
 
-| Parameter            | Type       | Default value    | Description                                                                                                                                                                         |
-|----------------------|------------|------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `scheme`             | `[]string` | `[http]`         | The listeners to enable, this can be repeated and defaults to the schemes in the swagger spec.                                                                                      |
-| `cleanup-timeout`    | `duration` | `10s`            | Grace period for which to wait before killing idle connections.                                                                                                                     |
-| `graceful-timeout`   | `duration` | `15s`            | Grace period for which to wait before shutting down the server.                                                                                                                     |
-| `max-header-size`    | `int`      | `1000000`        | Controls the maximum number of bytes the server will read parsing the request header's keys and values, including the request line. It does not limit the size of the request body. |
-| `listen-address`     | `string`   | `localhost:8080` | The IP and port to listen on.                                                                                                                                                       |
-| `listen-limit`       | `int`      | `0`              | Limit the number of outstanding requests. `0` means no limit                                                                                                                        |                                                                                                                         |
-| `keep-alive`         | `duration` | `3m`             | Sets the TCP keep-alive timeouts on accepted connections.                                                                                                                           |
-| `read-timeout`       | `duration` | `30s`            | Maximum duration before timing out read of the request. It prunes dead TCP connections (e.g. closing laptop mid-download).                                                          |
-| `write-timeout`      | `duration` | `30s`            | Maximum duration before timing out write of the response.                                                                                                                           |
-| `tls-listen-address` | `string`   | `localhost:8081` | The IP and port to listen on for TLS.                                                                                                                                               |
-| `tls-certificate`    | `string`   |                  | The certificate file to use for secure connections.                                                                                                                                 |
-| `tls-key`            | `string`   |                  | The private key file to use for secure connections (without passphrase).                                                                                                            |
-| `tls-ca`             | `string`   |                  | The certificate authority certificate file to be used with mutual tls auth.                                                                                                         |
-| `tls-listen-limit`   | `int`      | `0`              | Limit the number of outstanding requests for TLS. `0` means no limit                                                                                                                |                                                                                                                         |
-| `tls-keep-alive`     | `duration` | `3m`             | Sets the TCP keep-alive timeouts on accepted connections for TLS.                                                                                                                   |
-| `tls-read-timeout`   | `duration` | `30s`            | Maximum duration before timing out read of the request for TLS. It prunes dead TCP connections (e.g. closing laptop mid-download).                                                  |
-| `tls-write-timeout`  | `duration` | `30s`            | Maximum duration before timing out write of the response for TLS.                                                                                                                   |
-| `external-address`   | `string`   | `localhost:8090` | The IP and port to be shown in the API documentation.                                                                                                                               |
+| Parameter                       | Type       | Default value    | Description                                                                                                                                                                         |
+|---------------------------------|------------|------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `cleanup-timeout`               | `duration` | `10s`            | Grace period for which to wait before killing idle connections.                                                                                                                     |
+| `graceful-timeout`              | `duration` | `15s`            | Grace period for which to wait before shutting down the server.                                                                                                                     |
+| `max-header-size`               | `int`      | `1000000`        | Controls the maximum number of bytes the server will read parsing the request header's keys and values, including the request line. It does not limit the size of the request body. |
+| `listen-limit`                  | `int`      | `0`              | Limit the number of outstanding requests. `0` means no limit                                                                                                                        |                                                                                                                         |
+| `endpoint.[0].listen-address`   | `string`   | `localhost:8080` | The IP and port to listen on.                                                                                                                                                       |
+| `endpoint.[0].keep-alive`       | `duration` | `3m`             | Sets the TCP keep-alive timeouts on accepted connections.                                                                                                                           |
+| `endpoint.[0].read-timeout`     | `duration` | `30s`            | Maximum duration before timing out read of the request. It prunes dead TCP connections (e.g. closing laptop mid-download).                                                          |
+| `endpoint.[0].write-timeout`    | `duration` | `30s`            | Maximum duration before timing out write of the response.                                                                                                                           |
+| `endpoint.[0].tls.enabled`      | `bool`     | `false`          | Use TLS for a gRPC connection (min version is TLS 1.2).                                                                                                                             |
+| `endpoint.[0].tls.certificate`  | `string`   |                  | The certificate file to use for secure connections.                                                                                                                                 |
+| `endpoint.[0].tls.key`          | `string`   |                  | The private key file to use for secure connections (without passphrase).                                                                                                            |
+| `endpoint.[0].tls.ca`           | `string`   |                  | The certificate authority certificate file to be used with mutual tls auth.                                                                                                         |
+| `endpoint.[0].external-address` | `string`   | `localhost:8090` | The IP and port to be shown in the API documentation.                                                                                                                               |
 
 # `wallet` section
 
