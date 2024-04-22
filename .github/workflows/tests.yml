@@ -46,9 +46,11 @@ jobs:
         run: make cover
 
       - name: Upload coverage results to Codecov
-        uses: codecov/codecov-action@v2
+        uses: codecov/codecov-action@v4
         with:
-          fail_ci_if_error: false
+          token: ${{ secrets.CODECOV_TOKEN }}
+          slug: nspcc-dev/neofs-rest-gw
+          fail_ci_if_error: true
           files: ./coverage.txt
           verbose: true
 
