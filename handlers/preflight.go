@@ -125,3 +125,11 @@ func (a *RestAPI) OptionsByAttribute(ctx echo.Context, _ apiserver.ContainerId, 
 	ctx.Response().Header().Set(accessControlAllowMethodsHeader, allowMethods(methodGet, methodHead))
 	return ctx.NoContent(http.StatusOK)
 }
+
+// OptionsNetworkInfo handler for the network options request.
+func (a *RestAPI) OptionsNetworkInfo(ctx echo.Context) error {
+	ctx.Response().Header().Set(accessControlAllowOriginHeader, allOrigins)
+	ctx.Response().Header().Set(accessControlAllowHeadersHeader, allowHeaders)
+	ctx.Response().Header().Set(accessControlAllowMethodsHeader, allowMethods(methodGet))
+	return ctx.NoContent(http.StatusOK)
+}
