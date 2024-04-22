@@ -31,8 +31,6 @@ jobs:
     name: Coverage
     runs-on: ubuntu-22.04
 
-    env:
-      CGO_ENABLED: 1
     steps:
       - uses: actions/checkout@v4
         with:
