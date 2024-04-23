@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"bytes"
+	"crypto/ecdsa"
 	"encoding/base64"
 	"encoding/hex"
 	"testing"
@@ -13,6 +14,7 @@ import (
 	neofscrypto "github.com/nspcc-dev/neofs-sdk-go/crypto"
 	neofsecdsa "github.com/nspcc-dev/neofs-sdk-go/crypto/ecdsa"
 	"github.com/nspcc-dev/neofs-sdk-go/crypto/test"
+	"github.com/nspcc-dev/neofs-sdk-go/user"
 	"github.com/stretchr/testify/require"
 )
 
@@ -88,17 +90,23 @@ func TestPrepareBearerToken(t *testing.T) {
 	signer := test.RandomSigner(t)
 	token := bearertest.Token(t)
 
+	keyHex := hex.EncodeToString(neofscrypto.PublicKeyBytes(signer.Public()))
+	pKey, err := keys.NewPublicKeyFromString(keyHex)
+	require.NoError(t, err)
+	usrID := user.ResolveFromECDSAPublicKey(ecdsa.PublicKey(*pKey))
+
+	token.SetIssuer(usrID)
+
 	sig, err := signer.Sign(token.SignedData())
 	require.NoError(t, err)
 
-	err = token.Sign(neofscrypto.NewStaticSigner(signer.Scheme(), sig, signer.Public()))
+	err = token.Sign(user.NewSigner(neofscrypto.NewStaticSigner(signer.Scheme(), sig, signer.Public()), usrID))
 	require.NoError(t, err)
 	require.True(t, token.VerifySignature())
 
 	tokenB64 := base64.StdEncoding.EncodeToString(token.Marshal())
 	unsignedTokenB64 := base64.StdEncoding.EncodeToString(token.SignedData())
 	sigHex := hex.EncodeToString(sig)
-	keyHex := hex.EncodeToString(neofscrypto.PublicKeyBytes(signer.Public()))
 
 	t.Run("invalid base64", func(t *testing.T) {
 		_, err := prepareBearerToken(&BearerToken{
@@ -138,7 +146,7 @@ func TestPrepareBearerToken(t *testing.T) {
 			sig := bytes.Clone(sig)
 			sig[0]++
 
-			err = tokenCp.Sign(neofscrypto.NewStaticSigner(signer.Scheme(), sig, signer.Public()))
+			err = tokenCp.Sign(user.NewSigner(neofscrypto.NewStaticSigner(signer.Scheme(), sig, signer.Public()), usrID))
 			require.NoError(t, err)
 
 			_, err = prepareBearerToken(&BearerToken{
@@ -185,7 +193,7 @@ func TestPrepareBearerToken(t *testing.T) {
 	t.Run("invalid signature", func(t *testing.T) {
 		tokenCp := token
 
-		err = tokenCp.Sign(neofscrypto.NewStaticSigner(signer.Scheme(), sig, signer.Public()))
+		err = tokenCp.Sign(user.NewSigner(neofscrypto.NewStaticSigner(signer.Scheme(), sig, signer.Public()), usrID))
 		require.NoError(t, err)
 		require.True(t, tokenCp.VerifySignature())
 
@@ -193,7 +201,7 @@ func TestPrepareBearerToken(t *testing.T) {
 		sig := bytes.Clone(sig)
 		sig[0]++
 
-		err = tokenCp.Sign(neofscrypto.NewStaticSigner(signer.Scheme(), sig, signer.Public()))
+		err = tokenCp.Sign(user.NewSigner(neofscrypto.NewStaticSigner(signer.Scheme(), sig, signer.Public()), usrID))
 		require.NoError(t, err)
 
 		_, err = prepareBearerToken(&BearerToken{
@@ -211,11 +219,13 @@ func TestPrepareBearerToken(t *testing.T) {
 		keyHex := hex.EncodeToString(key.PublicKey().Bytes())
 		tokenCp := token
 		unsignedTokenB64 := base64.StdEncoding.EncodeToString(tokenCp.SignedData())
+		usrID := user.ResolveFromECDSAPublicKey(ecdsa.PublicKey(*key.PublicKey()))
+		tokenCp.SetIssuer(usrID)
 
 		sig, err := signer.Sign(tokenCp.SignedData())
 		require.NoError(t, err)
 
-		err = tokenCp.Sign(neofscrypto.NewStaticSigner(signer.Scheme(), sig, signer.Public()))
+		err = tokenCp.Sign(user.NewSigner(neofscrypto.NewStaticSigner(signer.Scheme(), sig, signer.Public()), usrID))
 		require.NoError(t, err)
 		require.True(t, tokenCp.VerifySignature())
 
@@ -230,7 +240,7 @@ func TestPrepareBearerToken(t *testing.T) {
 		// corrupt signature
 		sig[0]++
 
-		err = tokenCp.Sign(neofscrypto.NewStaticSigner(signer.Scheme(), sig, signer.Public()))
+		err = tokenCp.Sign(user.NewSigner(neofscrypto.NewStaticSigner(signer.Scheme(), sig, signer.Public()), usrID))
 		require.NoError(t, err)
 
 		_, err = prepareBearerToken(&BearerToken{

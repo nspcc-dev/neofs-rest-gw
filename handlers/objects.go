@@ -3,6 +3,7 @@ package handlers
 import (
 	"bytes"
 	"context"
+	"crypto/ecdsa"
 	"encoding/base64"
 	"encoding/hex"
 	"errors"
@@ -786,7 +787,8 @@ func prepareBearerToken(bt *BearerToken, isWalletConnect, isFullToken bool) (*be
 		pubKey = (*neofsecdsa.PublicKey)(ownerKey)
 	}
 
-	err = btoken.Sign(neofscrypto.NewStaticSigner(scheme, signature, pubKey))
+	err = btoken.Sign(user.NewSigner(neofscrypto.NewStaticSigner(scheme, signature, pubKey),
+		user.ResolveFromECDSAPublicKey(ecdsa.PublicKey(*ownerKey))))
 	if err != nil {
 		// should never happen
 		return nil, fmt.Errorf("set pre-calculated signature of the token: %w", err)

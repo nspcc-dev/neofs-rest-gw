@@ -142,6 +142,12 @@ func prepareObjectToken(ctx context.Context, params objectTokenParams, pool *poo
 		return nil, fmt.Errorf("couldn't transform token to native: %w", err)
 	}
 
+	var issuer user.ID
+	if err = issuer.DecodeString(params.XBearerOwnerID); err != nil {
+		return nil, fmt.Errorf("invalid bearer owner: %w", err)
+	}
+	btoken.SetIssuer(issuer)
+
 	if !params.XBearerForAllUsers {
 		btoken.ForUser(owner)
 	}

@@ -39,6 +39,7 @@ func TestSign(t *testing.T) {
 	signer := user.NewAutoIDSigner(key.PrivateKey)
 	owner := signer.UserID()
 	btoken.ForUser(owner)
+	btoken.SetIssuer(signer.UserID())
 
 	binaryBearer := btoken.SignedData()
 	bearerBase64 := base64.StdEncoding.EncodeToString(binaryBearer)
