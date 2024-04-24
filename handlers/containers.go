@@ -12,20 +12,18 @@ import (
 
 	"github.com/labstack/echo/v4"
 	"github.com/nspcc-dev/neo-go/pkg/crypto/keys"
-	containerv2 "github.com/nspcc-dev/neofs-api-go/v2/container"
-	"github.com/nspcc-dev/neofs-api-go/v2/refs"
-	sessionv2 "github.com/nspcc-dev/neofs-api-go/v2/session"
 	"github.com/nspcc-dev/neofs-rest-gw/handlers/apiserver"
 	"github.com/nspcc-dev/neofs-rest-gw/internal/util"
 	"github.com/nspcc-dev/neofs-sdk-go/client"
 	"github.com/nspcc-dev/neofs-sdk-go/container"
 	"github.com/nspcc-dev/neofs-sdk-go/container/acl"
 	cid "github.com/nspcc-dev/neofs-sdk-go/container/id"
+	neofscrypto "github.com/nspcc-dev/neofs-sdk-go/crypto"
+	neofsecdsa "github.com/nspcc-dev/neofs-sdk-go/crypto/ecdsa"
 	"github.com/nspcc-dev/neofs-sdk-go/netmap"
 	"github.com/nspcc-dev/neofs-sdk-go/pool"
 	"github.com/nspcc-dev/neofs-sdk-go/session"
 	"github.com/nspcc-dev/neofs-sdk-go/user"
-	"github.com/nspcc-dev/neofs-sdk-go/version"
 	"github.com/nspcc-dev/neofs-sdk-go/waiter"
 	"go.uber.org/zap"
 )
@@ -49,7 +47,7 @@ func (a *RestAPI) PutContainer(ctx echo.Context, params apiserver.PutContainerPa
 		return ctx.JSON(http.StatusBadRequest, util.NewErrorResponse(err))
 	}
 
-	st, err := formSessionTokenFromHeaders(principal, params.XBearerSignature, params.XBearerSignatureKey, sessionv2.ContainerVerbPut)
+	st, err := formSessionTokenFromHeaders(principal, params.XBearerSignature, params.XBearerSignatureKey, session.VerbContainerPut)
 	if err != nil {
 		resp := a.logAndGetErrorResponse("invalid session token headers", err)
 		return ctx.JSON(http.StatusBadRequest, resp)
@@ -121,7 +119,7 @@ func (a *RestAPI) PutContainerEACL(ctx echo.Context, containerID apiserver.Conta
 		return ctx.JSON(http.StatusBadRequest, util.NewErrorResponse(err))
 	}
 
-	st, err := formSessionTokenFromHeaders(principal, params.XBearerSignature, params.XBearerSignatureKey, sessionv2.ContainerVerbSetEACL)
+	st, err := formSessionTokenFromHeaders(principal, params.XBearerSignature, params.XBearerSignatureKey, session.VerbContainerSetEACL)
 	if err != nil {
 		resp := a.logAndGetErrorResponse("invalid session token headers", err)
 		return ctx.JSON(http.StatusBadRequest, resp)
@@ -230,7 +228,7 @@ func (a *RestAPI) DeleteContainer(ctx echo.Context, containerID apiserver.Contai
 		return ctx.JSON(http.StatusBadRequest, util.NewErrorResponse(err))
 	}
 
-	st, err := formSessionTokenFromHeaders(principal, params.XBearerSignature, params.XBearerSignatureKey, sessionv2.ContainerVerbDelete)
+	st, err := formSessionTokenFromHeaders(principal, params.XBearerSignature, params.XBearerSignatureKey, session.VerbContainerDelete)
 	if err != nil {
 		resp := a.logAndGetErrorResponse("invalid session token headers", err)
 		return ctx.JSON(http.StatusBadRequest, resp)
@@ -310,7 +308,7 @@ func getContainerInfo(ctx context.Context, p *pool.Pool, cnrID cid.ID) (*apiserv
 		CannedAcl:       util.NewString(friendlyBasicACL(cnr.BasicACL())),
 		PlacementPolicy: sb.String(),
 		Attributes:      attrs,
-		Version:         getContainerVersion(cnr).String(),
+		Version:         cnr.Version().String(),
 	}, nil
 }
 
@@ -335,19 +333,6 @@ func friendlyBasicACL(basicACL acl.Basic) string {
 	default:
 		return ""
 	}
-}
-
-func getContainerVersion(cnr container.Container) version.Version {
-	var v2cnr containerv2.Container
-	cnr.WriteToV2(&v2cnr)
-
-	var cnrVersion version.Version
-	v2version := v2cnr.GetVersion()
-	if v2version != nil {
-		cnrVersion = version.Version(*v2version)
-	}
-
-	return cnrVersion
 }
 
 func parseContainerID(containerID string) (cid.ID, error) {
@@ -430,7 +415,7 @@ func createContainer(ctx context.Context, p *pool.Pool, stoken session.Container
 	for _, attr := range request.Attributes {
 		switch attr.Key {
 		case attributeName, attributeTimestamp,
-			containerv2.SysAttributeName, containerv2.SysAttributeZone:
+			containerDomainNameAttribute, containerDomainZoneAttribute:
 		default:
 			cnr.SetAttribute(attr.Key, attr.Value)
 		}
@@ -506,32 +491,29 @@ func prepareSessionToken(st *SessionToken, isWalletConnect bool) (session.Contai
 		return session.Container{}, fmt.Errorf("couldn't fetch session token owner key: %w", err)
 	}
 
-	body := new(sessionv2.TokenBody)
-	if err = body.Unmarshal(data); err != nil {
+	var stoken session.Container
+	if err = stoken.UnmarshalSignedData(data); err != nil {
 		return session.Container{}, fmt.Errorf("can't unmarshal session token: %w", err)
 	}
 
-	if sessionContext, ok := body.GetContext().(*sessionv2.ContainerSessionContext); !ok {
-		return session.Container{}, errors.New("expected container session context but got something different")
-	} else if sessionContext.Verb() != st.Verb {
-		return session.Container{}, fmt.Errorf("invalid container session verb '%s', expected: '%s'", sessionContext.Verb().String(), st.Verb.String())
+	if !stoken.AssertVerb(st.Verb) {
+		return session.Container{}, errors.New("wrong container session verb")
 	}
 
-	v2signature := new(refs.Signature)
-	v2signature.SetScheme(refs.ECDSA_SHA512)
+	var scheme neofscrypto.Scheme
+	var pubKey neofscrypto.PublicKey
 	if isWalletConnect {
-		v2signature.SetScheme(refs.ECDSA_RFC6979_SHA256_WALLET_CONNECT)
+		scheme = neofscrypto.ECDSA_WALLETCONNECT
+		pubKey = (*neofsecdsa.PublicKeyWalletConnect)(ownerKey)
+	} else {
+		scheme = neofscrypto.ECDSA_SHA512
+		pubKey = (*neofsecdsa.PublicKey)(ownerKey)
 	}
-	v2signature.SetSign(signature)
-	v2signature.SetKey(ownerKey.Bytes())
 
-	var v2token sessionv2.Token
-	v2token.SetBody(body)
-	v2token.SetSignature(v2signature)
-
-	var stoken session.Container
-	if err = stoken.ReadFromV2(v2token); err != nil {
-		return session.Container{}, fmt.Errorf("read from v2 token: %w", err)
+	err = stoken.Sign(user.NewSigner(neofscrypto.NewStaticSigner(scheme, signature, pubKey), stoken.Issuer()))
+	if err != nil {
+		// should never happen
+		return session.Container{}, fmt.Errorf("set pre-calculated signature of the token: %w", err)
 	}
 
 	if !stoken.VerifySignature() {

@@ -89,8 +89,7 @@ func runLocalTests(ctx context.Context, t *testing.T, key *keys.PrivateKey) {
 
 func runTestInContainer(rootCtx context.Context, t *testing.T, key *keys.PrivateKey) {
 	versions := []dockerImage{
-		{image: "nspccdev/neofs-aio", version: "0.37.0"},
-		{image: "nspccdev/neofs-aio", version: "0.38.1"},
+		{image: "nspccdev/neofs-aio", version: "0.41.0"},
 	}
 
 	for _, version := range versions {
@@ -153,7 +152,7 @@ func runTests(ctx context.Context, t *testing.T, key *keys.PrivateKey, node stri
 func createDockerContainer(ctx context.Context, t *testing.T, image, version string) testcontainers.Container {
 	req := testcontainers.ContainerRequest{
 		Image:      image,
-		WaitingFor: wait.NewLogStrategy("aio container started").WithStartupTimeout(30 * time.Second),
+		WaitingFor: wait.NewLogStrategy("aio container started").WithStartupTimeout(2 * time.Minute),
 		Name:       "restgw-aio-test-" + version,
 		Hostname:   "aio",
 		HostConfigModifier: func(hostConfig *dockerContainer.HostConfig) {
