@@ -913,6 +913,45 @@ paths:
         - { }
         - BearerAuth: [ ]
         - CookieAuth: [ ]
+  /network-info:
+    get:
+      summary: "Get network settings"
+      operationId: getNetworkInfo
+      responses:
+        "200":
+          description: Network information from NeoFS.
+          headers:
+            Access-Control-Allow-Origin:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NetworkInfoOK'
+        "400":
+          description: Bad request.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      security: [ ]
+    options:
+      operationId: optionsNetworkInfo
+      responses:
+        "200":
+          description: CORS
+          headers:
+            Access-Control-Allow-Origin:
+              schema:
+                type: string
+            Access-Control-Allow-Methods:
+              schema:
+                type: string
+            Access-Control-Allow-Headers:
+              schema:
+                type: string
+          content: { }
+      security: [ ]
 
 components:
   schemas:
@@ -1570,6 +1609,51 @@ components:
           type: string
       example:
         containerId: 5HZTn5qkRnmgSz9gSrw22CEdPPk6nQhkwf2Mgzyvkikv
+    NetworkInfoOK:
+      required:
+        - containerFee
+        - auditFee
+        - withdrawalFee
+        - namedContainerFee
+        - epochDuration
+        - maxObjectSize
+        - homomorphicHashingDisabled
+        - storagePrice
+      type: object
+      properties:
+        containerFee:
+          type: integer
+          format: uint64
+        auditFee:
+          type: integer
+          format: uint64
+        withdrawalFee:
+          type: integer
+          format: uint64
+        namedContainerFee:
+          type: integer
+          format: uint64
+        epochDuration:
+          type: integer
+          format: uint64
+        maxObjectSize:
+          type: integer
+          format: uint64
+        homomorphicHashingDisabled:
+          type: boolean
+        storagePrice:
+          type: integer
+          format: uint64
+      description: Network information from NeoFS.
+      example:
+        auditFee: 0
+        containerFee: 0
+        epochDuration: 240
+        homomorphicHashingDisabled: false
+        maxObjectSize: 67108864
+        namedContainerFee: 0
+        storagePrice: 0
+        withdrawalFee: 0
   responses:
     ObjectContentOK:
       description: Object.
