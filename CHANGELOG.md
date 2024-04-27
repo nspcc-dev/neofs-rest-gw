@@ -4,6 +4,15 @@ This document outlines major changes between releases.
 
 ## [Unreleased]
 
+### Updating from 0.8.3
+
+Notice that configuration parameters in the `server` section were reorganized. 
+For example e.g.`server.schema` and `tls-listen-limit` were removed, and some 
+others were moved inside the array `endpoints`. Check your configuration with 
+the help of the [gate-configuration.md](./docs/gate-configuration.md) and 
+[config](./config/config.yaml). Also, flags in the command arguments were 
+changed.
+
 ## [0.8.3] - 2024-03-25
 
 ### Fixed

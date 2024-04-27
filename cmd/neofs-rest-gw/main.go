@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"crypto/tls"
 	"errors"
 	"fmt"
 	"net/http"
@@ -47,32 +48,6 @@ func main() {
 		logger.Fatal("get swagger definition", zap.Error(err))
 	}
 
-	servers := make(openapi3.Servers, len(serverCfg.EnabledListeners))
-
-	if serverCfg.ExternalAddress != "" {
-		for i, scheme := range serverCfg.EnabledListeners {
-			switch scheme {
-			case schemeHTTP:
-				servers[i] = &openapi3.Server{
-					URL: fmt.Sprintf("%s://%s%s", scheme, serverCfg.ExternalAddress, baseURL),
-				}
-			case schemeHTTPS:
-				servers[i] = &openapi3.Server{
-					URL: fmt.Sprintf("%s://%s%s", scheme, serverCfg.ExternalAddress, baseURL),
-				}
-			default:
-				logger.Error("unknown scheme", zap.String("scheme", scheme))
-			}
-		}
-	}
-
-	swagger.Servers = servers
-
-	swaggerPayload, err = swagger.MarshalJSON()
-	if err != nil {
-		logger.Fatal("swagger marshal", zap.Error(err))
-	}
-
 	e := echo.New()
 	e.HideBanner = true
 	e.StaticFS(docsURL, docs.FS)
@@ -87,23 +62,71 @@ func main() {
 	e.Group(baseURL, middleware.OapiRequestValidator(swagger))
 	apiserver.RegisterHandlersWithBaseURL(e, neofsAPI, baseURL)
 
+	servers := make(openapi3.Servers, len(serverCfg.Endpoints))
+	for i, endpointInfo := range serverCfg.Endpoints {
+		if endpointInfo.ExternalAddress != "" {
+			var scheme string
+			// Determine the scheme based on whether TLS is enabled and set up e.TLSServer.
+			if endpointInfo.TLS.Enabled {
+				scheme = schemeHTTPS
+				e.TLSServer.ReadTimeout = endpointInfo.ReadTimeout
+				e.TLSServer.WriteTimeout = endpointInfo.WriteTimeout
+				e.TLSServer.IdleTimeout = endpointInfo.KeepAlive
+
+				if endpointInfo.TLS.CertCAFile != "" {
+					ca, err := loadCA(endpointInfo.TLS.CertCAFile)
+					if err != nil {
+						logger.Fatal("reading server certificate", zap.Error(err))
+					}
+					e.TLSServer.TLSConfig = &tls.Config{ClientCAs: ca}
+				}
+			} else {
+				scheme = schemeHTTP
+			}
+			servers[i] = &openapi3.Server{
+				URL: fmt.Sprintf("%s://%s%s", scheme, endpointInfo.ExternalAddress, baseURL),
+			}
+		} else {
+			logger.Info("Endpoint with missing external-address", zap.String("address", endpointInfo.Address))
+		}
+	}
+	swagger.Servers = servers
+
+	swaggerPayload, err = swagger.MarshalJSON()
+	if err != nil {
+		logger.Fatal("swagger marshal", zap.Error(err))
+	}
+
 	neofsAPI.RunServices()
 
-	go func() {
-		neofsAPI.StartCallback()
+	for i := range serverCfg.Endpoints {
+		go func(i int) {
+			endpointInfo := serverCfg.Endpoints[i]
+			logger.Info("starting server", zap.String("address", endpointInfo.Address))
 
-		if err = e.Start(serverCfg.ListenAddress); err != nil {
-			if !errors.Is(err, http.ErrServerClosed) {
-				logger.Fatal("start", zap.Error(err))
+			if endpointInfo.TLS.Enabled {
+				if err = e.StartTLS(endpointInfo.Address, endpointInfo.TLS.CertFile, endpointInfo.TLS.KeyFile); err != nil {
+					if !errors.Is(err, http.ErrServerClosed) {
+						logger.Fatal("start https", zap.Error(err))
+					}
+					cancel()
+				}
+			} else {
+				if err = e.Start(endpointInfo.Address); err != nil {
+					if !errors.Is(err, http.ErrServerClosed) {
+						logger.Fatal("start http", zap.Error(err))
+					}
+					cancel()
+				}
 			}
+		}(i)
+	}
 
-			cancel()
-		}
-	}()
+	go neofsAPI.StartCallback()
 
 	<-ctx.Done()
 	if err = e.Shutdown(ctx); err != nil {
-		logger.Fatal("shutdown", zap.Error(err))
+		logger.Fatal("shutdown http and https", zap.Error(err))
 	}
 }
 
