@@ -33,11 +33,11 @@ on:
 jobs:
   build_bin:
     name: Build binary
-    runs-on: ubuntu-22.04
+    runs-on: ${{ matrix.os.name }}
     strategy:
       matrix:
-        go_os: [ linux, darwin ]
-        go_arch: [ amd64, arm64 ]
+        os: [{ name: ubuntu-22.04, bin-name: linux }, { name: macos-12, bin-name: darwin }] # { name: windows-2022, bin-name: windows }
+        arch: [amd64, arm64]
 
     steps:
       - uses: actions/checkout@v4
@@ -55,21 +55,21 @@ jobs:
         run: if [[ $(make version) == *"dirty"* ]]; then exit 1; fi
 
       - name: Build CLI
-        run: BUILD_OS=${{ matrix.go_os }} BUILD_ARCH=${{ matrix.go_arch }} make
+        run: BUILD_OS=${{ matrix.os.bin-name }} BUILD_ARCH=${{ matrix.arch }} make
 
       - name: Rename CLI binary
-        run: mv ./bin/neofs-rest-gw* ./bin/neofs-rest-gw-${{ matrix.go_os }}-${{ matrix.go_arch }}${{ (matrix.go_os == 'windows' && '.exe') || '' }}
+        run: mv ./bin/neofs-rest-gw* ./bin/neofs-rest-gw-${{ matrix.os.bin-name }}-${{ matrix.arch }}${{ (matrix.os.bin-name == 'windows' && '.exe') || '' }}
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: neofs-rest-gw-${{ matrix.go_os }}-${{ matrix.go_arch }}
+          name: neofs-rest-gw-${{ matrix.os.bin-name }}-${{ matrix.arch }}
           path: ./bin/neofs-rest-gw*
           if-no-files-found: error
 
       - name: Attach binary to the release as an asset
         if: ${{ github.event_name == 'release' }}
-        run: gh release upload ${{ github.event.release.tag_name }} ./bin/neofs-rest-gw-${{ matrix.go_os }}-${{ matrix.go_arch }}${{ (matrix.go_os == 'windows' && '.exe') || '' }}
+        run: gh release upload ${{ github.event.release.tag_name }} ./bin/neofs-rest-gw-${{ matrix.os.bin-name }}-${{ matrix.arch }}${{ (matrix.os.bin-name == 'windows' && '.exe') || '' }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
