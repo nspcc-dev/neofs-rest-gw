@@ -82,9 +82,20 @@ func (a *RestAPI) NewUploadContainerObject(ctx echo.Context, containerID apiserv
 		}
 	}
 	// sets Timestamp attribute if it wasn't set from header and enabled by settings
-	if _, ok := filtered[object.AttributeTimestamp]; !ok && a.defaultTimestamp {
-		timestamp := object.NewAttribute(object.AttributeTimestamp, strconv.FormatInt(time.Now().Unix(), 10))
-		attributes = append(attributes, *timestamp)
+	if _, ok := filtered[object.AttributeTimestamp]; !ok {
+		if a.defaultTimestamp {
+			timestamp := object.NewAttribute(object.AttributeTimestamp, strconv.FormatInt(time.Now().Unix(), 10))
+			attributes = append(attributes, *timestamp)
+		} else if date := ctx.Request().Header.Get("Date"); len(date) > 0 {
+			parsedTime, err := time.Parse(time.RFC1123, date)
+			if err != nil {
+				resp := a.logAndGetErrorResponse("could not parse header Date", err)
+				return ctx.JSON(http.StatusBadRequest, resp)
+			}
+
+			timestamp := object.NewAttribute(object.AttributeTimestamp, strconv.FormatInt(parsedTime.Unix(), 10))
+			attributes = append(attributes, *timestamp)
+		}
 	}
 
 	var obj object.Object
