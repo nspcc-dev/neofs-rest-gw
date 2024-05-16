@@ -782,6 +782,26 @@ paths:
         - { }
         - BearerAuth: [ ]
         - CookieAuth: [ ]
+    options:
+      operationId: newOptionsContainerObject
+      parameters:
+        - $ref: '#/components/parameters/containerId'
+        - $ref: '#/components/parameters/objectId'
+      responses:
+        "200":
+          description: CORS
+          headers:
+            Access-Control-Allow-Origin:
+              schema:
+                type: string
+            Access-Control-Allow-Methods:
+              schema:
+                type: string
+            Access-Control-Allow-Headers:
+              schema:
+                type: string
+          content: { }
+      security: [ ]
     head:
       summary: Get object info (head) by container ID and object ID. Also, returns custom users'
         object attributes in header `X-Attributes`.
@@ -962,6 +982,25 @@ paths:
         - { }
         - BearerAuth: [ ]
         - CookieAuth: [ ]
+    options:
+      operationId: newOptionsUploadContainerObject
+      parameters:
+        - $ref: '#/components/parameters/containerId'
+      responses:
+        "200":
+          description: CORS
+          headers:
+            Access-Control-Allow-Origin:
+              schema:
+                type: string
+            Access-Control-Allow-Methods:
+              schema:
+                type: string
+            Access-Control-Allow-Headers:
+              schema:
+                type: string
+          content: { }
+      security: [ ]
   /get_by_attribute/{containerId}/{attrKey}/{attrVal}:
     get:
       summary: "Find and get an object (payload and attributes) by a specific attribute.\
@@ -1095,6 +1134,27 @@ paths:
         - { }
         - BearerAuth: [ ]
         - CookieAuth: [ ]
+    options:
+      operationId: newOptionsByAttribute
+      parameters:
+        - $ref: '#/components/parameters/containerId'
+        - $ref: '#/components/parameters/attrKey'
+        - $ref: '#/components/parameters/attrVal'
+      responses:
+        "200":
+          description: CORS
+          headers:
+            Access-Control-Allow-Origin:
+              schema:
+                type: string
+            Access-Control-Allow-Methods:
+              schema:
+                type: string
+            Access-Control-Allow-Headers:
+              schema:
+                type: string
+          content: { }
+      security: [ ]
     head:
       summary: "Get object attributes by a specific attribute. If more than one object\
         \ is found, an arbitrary one will be used to get attributes.\
