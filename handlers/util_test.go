@@ -3,6 +3,7 @@ package handlers
 import (
 	"math"
 	"net/http"
+	"reflect"
 	"strconv"
 	"testing"
 	"time"
@@ -258,4 +259,97 @@ func Test_getOffsetAndLimit(t *testing.T) {
 
 func newInt(v int) *int {
 	return &v
+}
+
+func stringPtr(s string) *string {
+	return &s
+}
+func Test_paramIsPositive(t *testing.T) {
+	type args struct {
+		s *string
+	}
+	tests := []struct {
+		name string
+		args args
+		want bool
+	}{
+		{name: "empty string", args: args{stringPtr("")}, want: false},
+		{name: "false string", args: args{stringPtr("false")}, want: false},
+		{name: "random string", args: args{stringPtr("@$FC1*")}, want: false},
+		{name: "0 number", args: args{stringPtr("0")}, want: false},
+		{name: "2 number", args: args{stringPtr("2")}, want: false},
+		{name: "1 number", args: args{stringPtr("1")}, want: true},
+		{name: "true string", args: args{stringPtr("true")}, want: true},
+		{name: "YES string", args: args{stringPtr("YES")}, want: true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := paramIsPositive(tt.args.s); got != tt.want {
+				t.Errorf("paramIsPositive() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func Test_parseAndFilterAttributes(t *testing.T) {
+	type args struct {
+		logger   *zap.Logger
+		jsonAttr *string
+	}
+
+	l := zap.NewExample()
+
+	var nilStr *string
+	errStr1, errStr2, errStr3 := "", "{", "JSON"
+	emptyStr1, emptyStr2, emptyStr3, emptyStr4 := `{}`, `{"":""}`, `{"key":""}`, `{"":"val"}`
+	str1 := `{
+		"skip empty":"",
+		"":"skip empty",
+		"__NEOFS__EXPIRATION_DURATION":"1000s",
+		"file-N%me":"simple %bj filename",
+		"writer":"Leo Tolstoy",
+		"Chapter1":"pe@ce",
+		"chapter2":"war"}`
+
+	emptyMap := make(map[string]string)
+	map1 := map[string]string{
+		"__NEOFS__EXPIRATION_DURATION": "1000s",
+		"file-N%me":                    "simple %bj filename",
+		"writer":                       "Leo Tolstoy",
+		"Chapter1":                     "pe@ce",
+		"chapter2":                     "war",
+	}
+
+	tests := []struct {
+		name    string
+		args    args
+		want    map[string]string
+		wantErr bool
+	}{
+		{name: "nil str pointer", args: args{l, nilStr}, want: emptyMap, wantErr: false},
+
+		{name: "wrong string 1", args: args{l, &errStr1}, want: nil, wantErr: true},
+		{name: "wrong string 2", args: args{l, &errStr2}, want: nil, wantErr: true},
+		{name: "wrong string 3", args: args{l, &errStr3}, want: nil, wantErr: true},
+
+		{name: "empty result map 1", args: args{l, &emptyStr1}, want: emptyMap, wantErr: false},
+		{name: "empty result map 2", args: args{l, &emptyStr2}, want: emptyMap, wantErr: false},
+		{name: "empty result map 3", args: args{l, &emptyStr3}, want: emptyMap, wantErr: false},
+		{name: "empty result map 4", args: args{l, &emptyStr4}, want: emptyMap, wantErr: false},
+
+		{name: "correct", args: args{l, &str1}, want: map1, wantErr: false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := parseAndFilterAttributes(tt.args.logger, tt.args.jsonAttr)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("parseAndFilterAttributes() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("parseAndFilterAttributes() got = %v, want %v", got, tt.want)
+			}
+		})
+	}
 }
