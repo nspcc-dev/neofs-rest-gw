@@ -34,21 +34,23 @@ const (
 
 	defaultShutdownTimeout = 15 * time.Second
 
-	defaultPoolErrorThreshold uint32 = 100
+	defaultPoolErrorThreshold   uint32 = 100
+	defaultPoolDefaultTimestamp bool   = false
 
 	// Pool config.
-	cmdNodeDialTimeout    = "node-dial-timeout"
-	cfgNodeDialTimeout    = "pool." + cmdNodeDialTimeout
-	cmdHealthcheckTimeout = "healthcheck-timeout"
-	cfgHealthcheckTimeout = "pool." + cmdHealthcheckTimeout
-	cmdRebalance          = "rebalance-timer"
-	cfgRebalance          = "pool." + cmdRebalance
-	cfgPoolErrorThreshold = "pool.error-threshold"
-	cmdPeers              = "peers"
-	cfgPeers              = "pool." + cmdPeers
-	cfgPeerAddress        = "address"
-	cfgPeerPriority       = "priority"
-	cfgPeerWeight         = "weight"
+	cmdNodeDialTimeout      = "node-dial-timeout"
+	cfgNodeDialTimeout      = "pool." + cmdNodeDialTimeout
+	cmdHealthcheckTimeout   = "healthcheck-timeout"
+	cfgHealthcheckTimeout   = "pool." + cmdHealthcheckTimeout
+	cmdRebalance            = "rebalance-timer"
+	cfgRebalance            = "pool." + cmdRebalance
+	cfgPoolErrorThreshold   = "pool.error-threshold"
+	cfgPoolDefaultTimestamp = "pool.default-timestamp"
+	cmdPeers                = "peers"
+	cfgPeers                = "pool." + cmdPeers
+	cfgPeerAddress          = "address"
+	cfgPeerPriority         = "priority"
+	cfgPeerWeight           = "weight"
 
 	// Metrics / Profiler.
 	cfgPrometheusEnabled = "prometheus.enabled"
@@ -153,6 +155,7 @@ func config() *viper.Viper {
 	// set defaults:
 	// pool
 	v.SetDefault(cfgPoolErrorThreshold, defaultPoolErrorThreshold)
+	v.SetDefault(cfgPoolDefaultTimestamp, defaultPoolDefaultTimestamp)
 
 	// metrics
 	v.SetDefault(cfgPprofAddress, "localhost:8091")
@@ -269,18 +272,19 @@ var bindings = map[string]string{
 }
 
 var knownConfigParams = map[string]struct{}{
-	cfgWalletAddress:      {},
-	cfgWalletPath:         {},
-	cfgWalletPassphrase:   {},
-	cfgRebalance:          {},
-	cfgHealthcheckTimeout: {},
-	cfgNodeDialTimeout:    {},
-	cfgPoolErrorThreshold: {},
-	cfgLoggerLevel:        {},
-	cfgPrometheusEnabled:  {},
-	cfgPrometheusAddress:  {},
-	cfgPprofEnabled:       {},
-	cfgPprofAddress:       {},
+	cfgWalletAddress:        {},
+	cfgWalletPath:           {},
+	cfgWalletPassphrase:     {},
+	cfgRebalance:            {},
+	cfgHealthcheckTimeout:   {},
+	cfgNodeDialTimeout:      {},
+	cfgPoolErrorThreshold:   {},
+	cfgPoolDefaultTimestamp: {},
+	cfgLoggerLevel:          {},
+	cfgPrometheusEnabled:    {},
+	cfgPrometheusAddress:    {},
+	cfgPprofEnabled:         {},
+	cfgPprofAddress:         {},
 }
 
 func validateConfig(cfg *viper.Viper, logger *zap.Logger) {
@@ -575,6 +579,8 @@ func newNeofsAPI(ctx context.Context, logger *zap.Logger, v *viper.Viper) (*hand
 
 	apiPrm.ServiceShutdownTimeout = defaultShutdownTimeout
 	apiPrm.MaxObjectSize = int64(ni.MaxObjectSize())
+
+	apiPrm.DefaultTimestamp = v.GetBool(cfgPoolDefaultTimestamp)
 
 	return handlers.NewAPI(&apiPrm), nil
 }
