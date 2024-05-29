@@ -26,6 +26,8 @@ pool:
   rebalance-timer: 30s
   # The number of errors on connection after which node is considered as unhealthy.
   error-threshold: 100
+  # By default, add a Timestamp to the object upon creation.
+  default-timestamp: false
 
   # Nodes configuration.
   # This configuration make gateway use the first node (grpc://s01.neofs.devenv:8080)
