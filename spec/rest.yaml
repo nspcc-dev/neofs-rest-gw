@@ -181,6 +181,7 @@ paths:
       security: [ ]
   /objects:
     put:
+      deprecated: true
       summary: Upload object to NeoFS
       operationId: putObject
       parameters:
@@ -214,6 +215,7 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
       x-codegen-request-body-name: object
     options:
+      deprecated: true
       operationId: optionsObjectsPut
       responses:
         "200":
@@ -310,7 +312,8 @@ paths:
       security: [ ]
   /objects/{containerId}/{objectId}:
     get:
-      summary: Get object info by address
+      deprecated: true
+      summary: Get object info by address. Please use `/objects/{containerId}/by_id/{objectId}` API.
       operationId: getObjectInfo
       parameters:
         - $ref: '#/components/parameters/containerId'
@@ -656,10 +659,11 @@ paths:
       security: [ ]
   /get/{containerId}/{objectId}:
     get:
+      deprecated: true
       summary: "Get object by container ID and object ID. Also returns custom users'\
         \ header attributes `X-Attribute-*`. It returns the MIME type based on headers\
         \ or object contents, so the actual Content-Type can differ from the list\
-        \ in the \"Response content type\" section."
+        \ in the \"Response content type\" section. Please use `/objects/{containerId}/by_id/{objectId}` API."
       operationId: getContainerObject
       parameters:
         - $ref: '#/components/parameters/containerId'
@@ -692,6 +696,7 @@ paths:
         - BearerAuth: [ ]
         - CookieAuth: [ ]
     options:
+      deprecated: true
       operationId: optionsContainerObject
       parameters:
         - $ref: '#/components/parameters/containerId'
@@ -712,6 +717,7 @@ paths:
           content: { }
       security: [ ]
     head:
+      deprecated: true
       summary: Get object info (head) by container ID and object ID. Also returns
         custom users' header attributes `X-Attribute-*`.
       operationId: headContainerObject
@@ -838,7 +844,8 @@ paths:
         - CookieAuth: [ ]
   /upload/{containerId}:
     post:
-      summary: Upload object to NeoFS
+      deprecated: true
+      summary: Upload object to NeoFS. Please use `/objects/{containerId}` API.
       operationId: uploadContainerObject
       parameters:
         - $ref: '#/components/parameters/containerId'
@@ -892,6 +899,7 @@ paths:
         - BearerAuth: [ ]
         - CookieAuth: [ ]
     options:
+      deprecated: true
       operationId: optionsUploadContainerObject
       parameters:
         - $ref: '#/components/parameters/containerId'
@@ -1003,10 +1011,12 @@ paths:
       security: [ ]
   /get_by_attribute/{containerId}/{attrKey}/{attrVal}:
     get:
+      deprecated: true
       summary: "Find and get an object (payload and attributes) by a specific attribute.\
         \ If more than one object is found, an arbitrary one will be returned. It\
         \ returns the MIME type based on headers or object contents, so the actual\
-        \ Content-Type can differ from the list in the \"Response content type\" section."
+        \ Content-Type can differ from the list in the \"Response content type\" section.\
+        \ Please use `/objects/{containerId}/by_attribute/{attrKey}/{attrVal}` API."
       operationId: getByAttribute
       parameters:
         - $ref: '#/components/parameters/containerId'
@@ -1040,6 +1050,7 @@ paths:
         - BearerAuth: [ ]
         - CookieAuth: [ ]
     options:
+      deprecated: true
       operationId: optionsByAttribute
       parameters:
         - $ref: '#/components/parameters/containerId'
@@ -1061,6 +1072,7 @@ paths:
           content: { }
       security: [ ]
     head:
+      deprecated: true
       summary: "Get object attributes by a specific attribute. If more than one object\
         \ is found, an arbitrary one will be used to get attributes."
       operationId: headByAttribute
