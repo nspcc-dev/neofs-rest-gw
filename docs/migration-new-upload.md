@@ -17,6 +17,15 @@ NeoFS. All attributes are passed directly to NeoFS. Additionally,
 `X-Neofs-EXPIRATION*` headers are available to set object expiration. Learn 
 more in the Swagger documentation (`/v1/docs`).
 
+Notice that while the `/upload` API required you to create a multipart/form-data
+payload, with new API you can just push object payload in the HTTP BODY.
+However, whereas previously you always had a file name passed with the form
+data, now you need to pass it as an attribute.
+
+Compared to the old `/objects` API you no longer need to serialize object
+payload into JSON which is more effective, container ID is passed in the path
+and attributes can be added via `X-Attributes`.
+
 Also, please note that the object attribute "Timestamp" can now be filled in
 three ways: through the header `X-Attributes`, automatically if
 "DefaultTimestamp" is enabled by settings, or in a new third way. The `Date`
@@ -32,3 +41,8 @@ approach is searching for an object by attribute with a GET request to
 both requests, all custom object attributes will be placed in the 
 `X-Attributes` header. Additionally, you can send a HEAD request to both paths
 to get object information without the object itself.
+
+Compared to the old `/objects/{containerId}/{objectId}` API you now get
+payload in HTTP BODY which is easier to integrate for most applications. You
+no longer can request a range of an object, if you need it please submit an
+issue.
