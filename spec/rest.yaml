@@ -1110,7 +1110,8 @@ paths:
   /objects/{containerId}/by_attribute/{attrKey}/{attrVal}:
     get:
       summary: "Find and get an object (payload and attributes) by a specific attribute.\
-        \ If more than one object is found, an arbitrary one will be returned. It\
+        \ If more than one object is found, an arbitrary one will be returned (use\
+        \ `/objects/{containerId}/search` API if this is not desired). It\
         \ returns the MIME type based on headers or object contents, so the actual\
         \ Content-Type can differ from the list in the \"Response content type\" section.\
         \ Also, returns custom users' object attributes in header `X-Attributes`."
@@ -1169,7 +1170,8 @@ paths:
       security: [ ]
     head:
       summary: "Get object attributes by a specific attribute. If more than one object\
-        \ is found, an arbitrary one will be used to get attributes.\
+        \ is found, an arbitrary one will be used to get attributes (use\
+        \ `/objects/{containerId}/search` API if this is not desired).\
         \ Also, returns custom users' object attributes in header `X-Attributes`."
       operationId: newHeadByAttribute
       parameters:

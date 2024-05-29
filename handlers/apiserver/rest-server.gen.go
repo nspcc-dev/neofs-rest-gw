@@ -770,10 +770,10 @@ type ServerInterface interface {
 	// Upload object to NeoFS
 	// (POST /objects/{containerId})
 	NewUploadContainerObject(ctx echo.Context, containerId ContainerId, params NewUploadContainerObjectParams) error
-	// Find and get an object (payload and attributes) by a specific attribute. If more than one object is found, an arbitrary one will be returned. It returns the MIME type based on headers or object contents, so the actual Content-Type can differ from the list in the "Response content type" section. Also, returns custom users' object attributes in header `X-Attributes`.
+	// Find and get an object (payload and attributes) by a specific attribute. If more than one object is found, an arbitrary one will be returned (use `/objects/{containerId}/search` API if this is not desired). It returns the MIME type based on headers or object contents, so the actual Content-Type can differ from the list in the "Response content type" section. Also, returns custom users' object attributes in header `X-Attributes`.
 	// (GET /objects/{containerId}/by_attribute/{attrKey}/{attrVal})
 	NewGetByAttribute(ctx echo.Context, containerId ContainerId, attrKey AttrKey, attrVal AttrVal, params NewGetByAttributeParams) error
-	// Get object attributes by a specific attribute. If more than one object is found, an arbitrary one will be used to get attributes. Also, returns custom users' object attributes in header `X-Attributes`.
+	// Get object attributes by a specific attribute. If more than one object is found, an arbitrary one will be used to get attributes (use `/objects/{containerId}/search` API if this is not desired). Also, returns custom users' object attributes in header `X-Attributes`.
 	// (HEAD /objects/{containerId}/by_attribute/{attrKey}/{attrVal})
 	NewHeadByAttribute(ctx echo.Context, containerId ContainerId, attrKey AttrKey, attrVal AttrVal, params NewHeadByAttributeParams) error
 
@@ -2462,19 +2462,19 @@ var swaggerSpec = []string{
 	"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",
-	"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",
+	"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",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file
