@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"math"
@@ -274,26 +275,16 @@ func filterHeaders(l *zap.Logger, header http.Header) (map[string]string, error)
 
 		value := values[0]
 
-		// checks that the key and the val not empty
-		if len(key) == 0 || len(value) == 0 {
+		// checks that the key and the val not empty and the key has attribute prefix
+		if !isValidKeyValue(key, value) {
 			continue
 		}
 
-		// checks that the key has attribute prefix
-		if !strings.HasPrefix(key, userAttributeHeaderPrefix) {
-			continue
-		}
-
-		// removing attribute prefix
-		clearKey := strings.TrimPrefix(key, userAttributeHeaderPrefix)
-
-		// checks that it's a system NeoFS header
-		if strings.HasPrefix(clearKey, neofsAttributeHeaderPrefix) {
-			clearKey = systemTranslator(clearKey, neofsAttributeHeaderPrefix)
-		}
+		// removing attribute prefix and checks that it's a system NeoFS header
+		clearKey := processKey(key)
 
 		// checks that the attribute key is not empty
-		if len(clearKey) == 0 {
+		if clearKey == "" {
 			continue
 		}
 
@@ -347,4 +338,65 @@ func getOffsetAndLimit(offset, limit *int) (int, int, error) {
 	}
 
 	return off, lim, nil
+}
+
+func isValidKeyValue(key, value string) bool {
+	return len(key) > 0 && len(value) > 0 && strings.HasPrefix(key, userAttributeHeaderPrefix)
+}
+
+func processKey(key string) string {
+	clearKey := strings.TrimPrefix(key, userAttributeHeaderPrefix)
+	if strings.HasPrefix(clearKey, neofsAttributeHeaderPrefix) {
+		return systemTranslator(clearKey, neofsAttributeHeaderPrefix)
+	}
+	return clearKey
+}
+
+func parseAndFilterAttributes(logger *zap.Logger, jsonAttr *string) (map[string]string, error) {
+	parsed := make(map[string]string)
+	if jsonAttr == nil {
+		logger.Debug("JSON attribute pointer is nil")
+		return parsed, nil
+	}
+
+	if err := json.Unmarshal([]byte(*jsonAttr), &parsed); err != nil {
+		return nil, err
+	}
+
+	result := filterAttributes(logger, parsed)
+	return result, nil
+}
+
+func filterAttributes(logger *zap.Logger, attributes map[string]string) map[string]string {
+	for key, value := range attributes {
+		if key == "" || value == "" {
+			delete(attributes, key)
+			continue
+		}
+		logger.Debug("Added attribute to result object", zap.String("key", key), zap.String("value", value))
+	}
+	return attributes
+}
+
+func paramIsPositive(s *string) bool {
+	if s != nil {
+		switch *s {
+		case "1", "t", "T", "true", "TRUE", "True", "y", "yes", "Y", "YES", "Yes":
+			return true
+		}
+	}
+	return false
+}
+
+func addExpirationHeaders(headers map[string]string, params apiserver.NewUploadContainerObjectParams) {
+	// Add non-empty string pointer values to the map
+	if params.XNeofsEXPIRATIONDURATION != nil && *params.XNeofsEXPIRATIONDURATION != "" {
+		headers[ExpirationDurationAttr] = *params.XNeofsEXPIRATIONDURATION
+	}
+	if params.XNeofsEXPIRATIONTIMESTAMP != nil && *params.XNeofsEXPIRATIONTIMESTAMP != "" {
+		headers[ExpirationTimestampAttr] = *params.XNeofsEXPIRATIONTIMESTAMP
+	}
+	if params.XNeofsEXPIRATIONRFC3339 != nil && *params.XNeofsEXPIRATIONRFC3339 != "" {
+		headers[ExpirationRFC3339Attr] = *params.XNeofsEXPIRATIONRFC3339
+	}
 }

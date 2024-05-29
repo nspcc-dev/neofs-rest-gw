@@ -6,6 +6,7 @@ import (
 	"crypto/ecdsa"
 	"encoding/base64"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -38,6 +39,7 @@ import (
 const (
 	sizeToDetectType          = 512
 	userAttributeHeaderPrefix = "X-Attribute-"
+	userAttributesHeader      = "X-Attributes"
 
 	attributeFilepathHTTP = "Filepath"
 	attributeFilenameHTTP = "Filename"
@@ -49,6 +51,15 @@ const (
 type readCloser struct {
 	io.Reader
 	io.Closer
+}
+
+type setAttributeParams struct {
+	cid         string
+	oid         string
+	payloadSize uint64
+	download    *string
+	useJSON     bool
+	header      object.Object
 }
 
 // PutObject handler that uploads object to NeoFS.
@@ -395,6 +406,7 @@ func (a *RestAPI) SearchObjects(ctx echo.Context, containerID apiserver.Containe
 	return ctx.JSON(http.StatusOK, list)
 }
 
+// GetContainerObject handler that returns object (using container ID and object ID).
 func (a *RestAPI) GetContainerObject(ctx echo.Context, containerID apiserver.ContainerId, objectID apiserver.ObjectId, params apiserver.GetContainerObjectParams) error {
 	principal, err := getPrincipal(ctx)
 	if err != nil {
@@ -407,11 +419,11 @@ func (a *RestAPI) GetContainerObject(ctx echo.Context, containerID apiserver.Con
 		return ctx.JSON(http.StatusBadRequest, resp)
 	}
 
-	return a.getByAddress(ctx, addr, params.Download, principal)
+	return a.getByAddress(ctx, addr, params.Download, principal, false)
 }
 
 // getByAddress returns object (using container ID and object ID).
-func (a *RestAPI) getByAddress(ctx echo.Context, addr oid.Address, downloadParam *string, principal string) error {
+func (a *RestAPI) getByAddress(ctx echo.Context, addr oid.Address, downloadParam *string, principal string, useJSON bool) error {
 	var prm client.PrmObjectGet
 	if principal != "" {
 		btoken, err := getBearerTokenFromString(principal)
@@ -432,11 +444,17 @@ func (a *RestAPI) getByAddress(ctx echo.Context, addr oid.Address, downloadParam
 		return ctx.JSON(http.StatusBadRequest, resp)
 	}
 
-	var (
-		payloadSize               = header.PayloadSize()
-		contentType               = a.setAttributes(ctx, payloadSize, addr.Container().String(), addr.Object().String(), header, downloadParam)
-		payload     io.ReadCloser = payloadReader
-	)
+	payloadSize := header.PayloadSize()
+	param := setAttributeParams{
+		cid:         addr.Container().String(),
+		oid:         addr.Object().String(),
+		payloadSize: payloadSize,
+		download:    downloadParam,
+		useJSON:     useJSON,
+		header:      header,
+	}
+	contentType := a.setAttributes(ctx, param)
+	payload := io.ReadCloser(payloadReader)
 
 	if len(contentType) == 0 {
 		if payloadSize > 0 {
@@ -484,11 +502,11 @@ func (a *RestAPI) HeadContainerObject(ctx echo.Context, containerID apiserver.Co
 	}
 
 	ctx.Response().Header().Set(accessControlAllowOriginHeader, "*")
-	return a.headByAddress(ctx, addr, params.Download, principal)
+	return a.headByAddress(ctx, addr, params.Download, principal, false)
 }
 
 // headByAddress returns object info (using container ID and object ID).
-func (a *RestAPI) headByAddress(ctx echo.Context, addr oid.Address, downloadParam *string, principal string) error {
+func (a *RestAPI) headByAddress(ctx echo.Context, addr oid.Address, downloadParam *string, principal string, useJSON bool) error {
 	var (
 		prm    client.PrmObjectHead
 		btoken *bearer.Token
@@ -515,7 +533,15 @@ func (a *RestAPI) headByAddress(ctx echo.Context, addr oid.Address, downloadPara
 	}
 
 	payloadSize := header.PayloadSize()
-	contentType := a.setAttributes(ctx, payloadSize, addr.Container().String(), addr.Object().String(), *header, downloadParam)
+	param := setAttributeParams{
+		cid:         addr.Container().String(),
+		oid:         addr.Object().String(),
+		payloadSize: payloadSize,
+		download:    downloadParam,
+		useJSON:     useJSON,
+		header:      *header,
+	}
+	contentType := a.setAttributes(ctx, param)
 	if len(contentType) == 0 {
 		if payloadSize > 0 {
 			contentType, _, err = readContentType(payloadSize, func(sz uint64) (io.Reader, error) {
@@ -548,16 +574,18 @@ func isNotFoundError(err error) bool {
 		errors.Is(err, apistatus.ErrObjectAlreadyRemoved)
 }
 
-func (a *RestAPI) setAttributes(ctx echo.Context, payloadSize uint64, cid string, oid string, header object.Object, download *string) string {
-	ctx.Response().Header().Set("Content-Length", strconv.FormatUint(payloadSize, 10))
-	ctx.Response().Header().Set("X-Container-Id", cid)
-	ctx.Response().Header().Set("X-Object-Id", oid)
-	ctx.Response().Header().Set("X-Owner-Id", header.OwnerID().EncodeToString())
+func (a *RestAPI) setAttributes(ctx echo.Context, params setAttributeParams) string {
+	ctx.Response().Header().Set("Content-Length", strconv.FormatUint(params.payloadSize, 10))
+
+	attrJSON := make(map[string]string)
+	ctx.Response().Header().Set("X-Container-Id", params.cid)
+	ctx.Response().Header().Set("X-Object-Id", params.oid)
+	ctx.Response().Header().Set("X-Owner-Id", params.header.OwnerID().EncodeToString())
 
 	var (
 		contentType string
 		dis         = "inline"
-		attributes  = header.Attributes()
+		attributes  = params.header.Attributes()
 	)
 
 	if len(attributes) > 0 {
@@ -570,34 +598,55 @@ func (a *RestAPI) setAttributes(ctx echo.Context, payloadSize uint64, cid string
 
 			switch key {
 			case object.AttributeFileName:
-				if download != nil {
-					switch *download {
-					case "1", "t", "T", "true", "TRUE", "True", "y", "yes", "Y", "YES", "Yes":
-						dis = "attachment"
-					}
+				if paramIsPositive(params.download) {
+					dis = "attachment"
 				}
 				ctx.Response().Header().Set("Content-Disposition", dis+"; filename="+path.Base(val))
-				ctx.Response().Header().Set("X-Attribute-FileName", val)
+				if params.useJSON {
+					attrJSON[key] = val
+				} else {
+					ctx.Response().Header().Set(userAttributeHeaderPrefix+key, val)
+				}
 			case object.AttributeTimestamp:
 				attrTimestamp, err := strconv.ParseInt(val, 10, 64)
 				if err != nil {
 					a.log.Info("attribute timestamp parsing error",
-						zap.String("container ID", cid),
-						zap.String("object ID", oid),
+						zap.String("container ID", params.cid),
+						zap.String("object ID", params.oid),
 						zap.Error(err))
 					continue
 				}
-				ctx.Response().Header().Set("X-Attribute-Timestamp", val)
+				if params.useJSON {
+					attrJSON[key] = val
+				} else {
+					ctx.Response().Header().Set(userAttributeHeaderPrefix+key, val)
+				}
 				ctx.Response().Header().Set("Last-Modified", time.Unix(attrTimestamp, 0).UTC().Format(http.TimeFormat))
 			case object.AttributeContentType:
 				contentType = val
 			default:
-				if strings.HasPrefix(key, SystemAttributePrefix) {
-					key = systemBackwardTranslator(key)
+				if params.useJSON {
+					attrJSON[key] = attr.Value()
+				} else {
+					if strings.HasPrefix(key, SystemAttributePrefix) {
+						key = systemBackwardTranslator(key)
+					}
+					ctx.Response().Header().Set(userAttributeHeaderPrefix+key, attr.Value())
 				}
-				ctx.Response().Header().Set(userAttributeHeaderPrefix+key, attr.Value())
 			}
 		}
+	}
+
+	if params.useJSON {
+		// Marshal the map to a JSON string
+		s, err := json.Marshal(attrJSON)
+		if err != nil {
+			a.log.Info("marshal attributes error",
+				zap.String("container ID", params.cid),
+				zap.String("object ID", params.oid),
+				zap.Error(err))
+		}
+		ctx.Response().Header().Set(userAttributesHeader, string(s))
 	}
 
 	return contentType
@@ -1063,7 +1112,7 @@ func (a *RestAPI) GetByAttribute(ctx echo.Context, containerID apiserver.Contain
 	addrObj.SetContainer(cnrID)
 	addrObj.SetObject(buf[0])
 
-	return a.getByAddress(ctx, addrObj, params.Download, principal)
+	return a.getByAddress(ctx, addrObj, params.Download, principal, false)
 }
 
 // HeadByAttribute handler that returns object info (payload and attributes) by a specific attribute.
@@ -1110,7 +1159,7 @@ func (a *RestAPI) HeadByAttribute(ctx echo.Context, containerID apiserver.Contai
 	addrObj.SetObject(buf[0])
 
 	ctx.Response().Header().Set(accessControlAllowOriginHeader, "*")
-	return a.headByAddress(ctx, addrObj, params.Download, principal)
+	return a.headByAddress(ctx, addrObj, params.Download, principal, false)
 }
 
 func (a *RestAPI) search(ctx context.Context, principal string, cid cid.ID, key, val string, op object.SearchMatchType) (*client.ObjectListReader, error) {

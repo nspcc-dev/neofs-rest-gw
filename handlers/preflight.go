@@ -133,3 +133,27 @@ func (a *RestAPI) OptionsNetworkInfo(ctx echo.Context) error {
 	ctx.Response().Header().Set(accessControlAllowMethodsHeader, allowMethods(methodGet))
 	return ctx.NoContent(http.StatusOK)
 }
+
+// NewOptionsUploadContainerObject handler for the upload object options request.
+func (a *RestAPI) NewOptionsUploadContainerObject(ctx echo.Context, _ apiserver.ContainerId) error {
+	ctx.Response().Header().Set(accessControlAllowOriginHeader, allOrigins)
+	ctx.Response().Header().Set(accessControlAllowHeadersHeader, allowUploadHeader)
+	ctx.Response().Header().Set(accessControlAllowMethodsHeader, allowMethods(methodPost))
+	return ctx.NoContent(http.StatusOK)
+}
+
+// NewOptionsContainerObject handler for the create object options request.
+func (a *RestAPI) NewOptionsContainerObject(ctx echo.Context, _ apiserver.ContainerId, _ apiserver.ObjectId) error {
+	ctx.Response().Header().Set(accessControlAllowOriginHeader, allOrigins)
+	ctx.Response().Header().Set(accessControlAllowHeadersHeader, allowHeaders)
+	ctx.Response().Header().Set(accessControlAllowMethodsHeader, allowMethods(methodGet, methodHead))
+	return ctx.NoContent(http.StatusOK)
+}
+
+// NewOptionsByAttribute handler for the find by attribute options request.
+func (a *RestAPI) NewOptionsByAttribute(ctx echo.Context, _ apiserver.ContainerId, _ apiserver.AttrKey, _ apiserver.AttrVal) error {
+	ctx.Response().Header().Set(accessControlAllowOriginHeader, allOrigins)
+	ctx.Response().Header().Set(accessControlAllowHeadersHeader, allowHeaders)
+	ctx.Response().Header().Set(accessControlAllowMethodsHeader, allowMethods(methodGet, methodHead))
+	return ctx.NoContent(http.StatusOK)
+}

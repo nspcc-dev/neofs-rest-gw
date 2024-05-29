@@ -147,6 +147,12 @@ func runTests(ctx context.Context, t *testing.T, key *keys.PrivateKey, node stri
 	t.Run("rest check mix tokens up", func(t *testing.T) { mixTokens(ctx, t, cnrID) })
 
 	t.Run("rest balance", func(t *testing.T) { restBalance(ctx, t) })
+
+	t.Run("rest new upload object", func(t *testing.T) { restNewObjectUpload(ctx, t, clientPool, cnrID, signer) })
+	t.Run("rest new upload object with bearer in cookie", func(t *testing.T) { restNewObjectUploadCookie(ctx, t, clientPool, cnrID, signer) })
+	t.Run("rest new head object", func(t *testing.T) { restNewObjectHead(ctx, t, clientPool, &owner, cnrID, signer) })
+	t.Run("rest new head by attribute", func(t *testing.T) { restNewObjectHeadByAttribute(ctx, t, clientPool, &owner, cnrID, signer) })
+	t.Run("rest new get by attribute", func(t *testing.T) { restNewObjectGetByAttribute(ctx, t, clientPool, &owner, cnrID, signer) })
 }
 
 func createDockerContainer(ctx context.Context, t *testing.T, image, version string) testcontainers.Container {
@@ -1862,4 +1868,485 @@ func restObjectUploadInt(ctx context.Context, t *testing.T, clientPool *pool.Poo
 	for _, attribute := range res.Attributes() {
 		require.Equal(t, attributes[attribute.Key()], attribute.Value(), attribute.Key())
 	}
+}
+
+func restNewObjectUpload(ctx context.Context, t *testing.T, clientPool *pool.Pool, cnrID cid.ID, signer user.Signer) {
+	restNewObjectUploadInt(ctx, t, clientPool, cnrID, signer, false)
+}
+func restNewObjectUploadCookie(ctx context.Context, t *testing.T, clientPool *pool.Pool, cnrID cid.ID, signer user.Signer) {
+	restNewObjectUploadInt(ctx, t, clientPool, cnrID, signer, true)
+}
+func restNewObjectUploadInt(ctx context.Context, t *testing.T, clientPool *pool.Pool, cnrID cid.ID, signer user.Signer, cookie bool) {
+	bt := apiserver.Bearer{
+		Object: []apiserver.Record{{
+			Operation: apiserver.OperationPUT,
+			Action:    apiserver.ALLOW,
+			Filters:   []apiserver.Filter{},
+			Targets: []apiserver.Target{{
+				Role: apiserver.OTHERS,
+				Keys: []string{},
+			}},
+		}},
+	}
+	bt.Object = append(bt.Object, getRestrictBearerRecords()...)
+
+	httpClient := defaultHTTPClient()
+	bearerTokens := makeAuthTokenRequest(ctx, t, []apiserver.Bearer{bt}, httpClient, false)
+	bearerToken := bearerTokens[0]
+
+	query := make(url.Values)
+	query.Add(walletConnectQuery, strconv.FormatBool(useWalletConnect))
+
+	// check that object bearer token is valid
+	request, err := http.NewRequest(http.MethodGet, testHost+"/v1/auth/bearer?"+query.Encode(), nil)
+	require.NoError(t, err)
+	prepareCommonHeaders(request.Header, bearerToken)
+	resp := &apiserver.BinaryBearer{}
+	doRequest(t, httpClient, request, http.StatusOK, resp)
+
+	actualTokenRaw, err := base64.StdEncoding.DecodeString(resp.Token)
+	require.NoError(t, err)
+
+	content := "content of file"
+	attributes := map[string]string{
+		object.AttributeFileName:    "newFile.txt",
+		object.AttributeContentType: "application/octet-stream",
+		"User-Attribute":            "user value",
+		"FREE-case-kEy":             "other value",
+	}
+	attributesJSON, err := json.Marshal(attributes)
+	require.NoError(t, err)
+
+	body := bytes.NewBufferString(content)
+	request, err = http.NewRequest(http.MethodPost, testHost+"/v1/objects/"+cnrID.String(), body)
+	require.NoError(t, err)
+
+	request.Header.Set("Content-Type", "text/plain")
+	request.Header.Set("X-Attributes", string(attributesJSON))
+	if cookie {
+		request.Header.Add("Cookie", "Bearer="+base64.StdEncoding.EncodeToString(actualTokenRaw)+";")
+	} else {
+		request.Header.Add("Authorization", "Bearer "+base64.StdEncoding.EncodeToString(actualTokenRaw))
+	}
+	addr := &apiserver.AddressForUpload{}
+	doRequest(t, httpClient, request, http.StatusOK, addr)
+
+	request.Header.Set("Content-Type", "text/plain")
+
+	var CID cid.ID
+	err = CID.DecodeString(addr.ContainerId)
+	require.NoError(t, err)
+
+	var id oid.ID
+	err = id.DecodeString(addr.ObjectId)
+	require.NoError(t, err)
+
+	var prm client.PrmObjectGet
+	res, payloadReader, err := clientPool.ObjectGetInit(ctx, CID, id, signer, prm)
+	require.NoError(t, err)
+
+	payload := bytes.NewBuffer(nil)
+	_, err = io.Copy(payload, payloadReader)
+	require.NoError(t, err)
+	require.Equal(t, content, payload.String())
+
+	for _, attribute := range res.Attributes() {
+		require.Equal(t, attributes[attribute.Key()], attribute.Value(), attribute.Key())
+	}
+}
+
+func restNewObjectHead(ctx context.Context, t *testing.T, p *pool.Pool, ownerID *user.ID, cnrID cid.ID, signer user.Signer) {
+	bearer := apiserver.Bearer{
+		Object: []apiserver.Record{
+			{
+				Operation: apiserver.OperationHEAD,
+				Action:    apiserver.ALLOW,
+				Filters:   []apiserver.Filter{},
+				Targets: []apiserver.Target{{
+					Role: apiserver.OTHERS,
+					Keys: []string{},
+				}},
+			},
+			{
+				Operation: apiserver.OperationRANGE,
+				Action:    apiserver.ALLOW,
+				Filters:   []apiserver.Filter{},
+				Targets: []apiserver.Target{{
+					Role: apiserver.OTHERS,
+					Keys: []string{},
+				}},
+			},
+		},
+	}
+	bearer.Object = append(bearer.Object, getRestrictBearerRecords()...)
+
+	httpClient := defaultHTTPClient()
+	bearerTokens := makeAuthTokenRequest(ctx, t, []apiserver.Bearer{bearer}, httpClient, false)
+	bearerToken := bearerTokens[0]
+
+	query := make(url.Values)
+	query.Add(walletConnectQuery, strconv.FormatBool(useWalletConnect))
+
+	request, err := http.NewRequest(http.MethodGet, testHost+"/v1/auth/bearer?"+query.Encode(), nil)
+	require.NoError(t, err)
+	prepareCommonHeaders(request.Header, bearerToken)
+	resp := &apiserver.BinaryBearer{}
+	doRequest(t, httpClient, request, http.StatusOK, resp)
+
+	var (
+		content      = []byte("some content")
+		fileNameAttr = "head-obj-name-echo"
+		attrKey      = "user-attribute"
+		attrValue    = "user value"
+
+		attributes = map[string]string{
+			object.AttributeFileName:  fileNameAttr,
+			object.AttributeTimestamp: strconv.FormatInt(time.Now().Unix(), 10),
+			attrKey:                   attrValue,
+		}
+	)
+
+	t.Run("head", func(t *testing.T) {
+		objID := createObject(ctx, t, p, ownerID, cnrID, attributes, content, signer)
+		createTS := time.Now().Unix()
+
+		request, err = http.NewRequest(http.MethodHead, testHost+"/v1/objects/"+cnrID.EncodeToString()+"/by_id/"+objID.EncodeToString()+"?"+query.Encode(), nil)
+		require.NoError(t, err)
+		prepareCommonHeaders(request.Header, bearerToken)
+		request.Header.Set("Authorization", "Bearer "+resp.Token)
+
+		headers, _ := doRequest(t, httpClient, request, http.StatusOK, nil)
+		require.NotEmpty(t, headers)
+
+		for key, vals := range headers {
+			require.Len(t, vals, 1)
+
+			switch key {
+			case "X-Attributes":
+				var customAttr map[string]string
+				err := json.Unmarshal([]byte(vals[0]), &customAttr)
+				require.NoError(t, err)
+				require.Equal(t, fileNameAttr, customAttr[object.AttributeFileName])
+				require.Equal(t, attrValue, customAttr[attrKey])
+				require.Equal(t, strconv.FormatInt(createTS, 10), customAttr[object.AttributeTimestamp])
+			case "Content-Disposition":
+				require.Equal(t, "inline; filename="+fileNameAttr, vals[0])
+			case "X-Object-Id":
+				require.Equal(t, objID.String(), vals[0])
+			case "Last-Modified":
+				require.Equal(t, time.Unix(createTS, 0).UTC().Format(http.TimeFormat), vals[0])
+			case "X-Owner-Id":
+				require.Equal(t, signer.UserID().String(), vals[0])
+			case "X-Container-Id":
+				require.Equal(t, cnrID.String(), vals[0])
+			case "Content-Length":
+				require.Equal(t, strconv.FormatInt(int64(len(content)), 10), vals[0])
+			case "Content-Type":
+				require.Equal(t, "text/plain; charset=utf-8", vals[0])
+			case "Date":
+				require.Equal(t, time.Unix(createTS, 0).UTC().Format(http.TimeFormat), vals[0])
+			case "Access-Control-Allow-Origin":
+				require.Equal(t, "*", vals[0])
+			}
+		}
+	})
+
+	t.Run("custom content-type", func(t *testing.T) {
+		customContentType := "some/type"
+		attributes[object.AttributeContentType] = customContentType
+
+		objID := createObject(ctx, t, p, ownerID, cnrID, attributes, content, signer)
+		createTS := time.Now().Unix()
+
+		request, err = http.NewRequest(http.MethodHead, testHost+"/v1/objects/"+cnrID.EncodeToString()+"/by_id/"+objID.EncodeToString()+"?"+query.Encode(), nil)
+		require.NoError(t, err)
+		prepareCommonHeaders(request.Header, bearerToken)
+		request.Header.Set("Authorization", "Bearer "+resp.Token)
+
+		headers, _ := doRequest(t, httpClient, request, http.StatusOK, nil)
+		require.NotEmpty(t, headers)
+
+		for key, vals := range headers {
+			require.Len(t, vals, 1)
+
+			switch key {
+			case "X-Attributes":
+				var customAttr map[string]string
+				err := json.Unmarshal([]byte(vals[0]), &customAttr)
+				require.NoError(t, err)
+				require.Equal(t, fileNameAttr, customAttr[object.AttributeFileName])
+				require.Equal(t, attrValue, customAttr[attrKey])
+				require.Equal(t, strconv.FormatInt(createTS, 10), customAttr[object.AttributeTimestamp])
+			case "Content-Disposition":
+				require.Equal(t, "inline; filename="+fileNameAttr, vals[0])
+			case "X-Object-Id":
+				require.Equal(t, objID.String(), vals[0])
+			case "Last-Modified":
+				require.Equal(t, time.Unix(createTS, 0).UTC().Format(http.TimeFormat), vals[0])
+			case "X-Owner-Id":
+				require.Equal(t, signer.UserID().String(), vals[0])
+			case "X-Container-Id":
+				require.Equal(t, cnrID.String(), vals[0])
+			case "Content-Length":
+				require.Equal(t, strconv.FormatInt(int64(len(content)), 10), vals[0])
+			case "Content-Type":
+				require.Equal(t, customContentType, vals[0])
+			case "Date":
+				require.Equal(t, time.Unix(createTS, 0).UTC().Format(http.TimeFormat), vals[0])
+			case "Access-Control-Allow-Origin":
+				require.Equal(t, "*", vals[0])
+			}
+		}
+	})
+}
+
+func restNewObjectHeadByAttribute(ctx context.Context, t *testing.T, p *pool.Pool, ownerID *user.ID, cnrID cid.ID, signer user.Signer) {
+	bearer := apiserver.Bearer{
+		Object: []apiserver.Record{
+			{
+				Operation: apiserver.OperationHEAD,
+				Action:    apiserver.ALLOW,
+				Filters:   []apiserver.Filter{},
+				Targets: []apiserver.Target{{
+					Role: apiserver.OTHERS,
+					Keys: []string{},
+				}},
+			},
+			{
+				Operation: apiserver.OperationRANGE,
+				Action:    apiserver.ALLOW,
+				Filters:   []apiserver.Filter{},
+				Targets: []apiserver.Target{{
+					Role: apiserver.OTHERS,
+					Keys: []string{},
+				}},
+			},
+			{
+				Operation: apiserver.OperationSEARCH,
+				Action:    apiserver.ALLOW,
+				Filters:   []apiserver.Filter{},
+				Targets: []apiserver.Target{{
+					Role: apiserver.OTHERS,
+					Keys: []string{},
+				}},
+			},
+		},
+	}
+	bearer.Object = append(bearer.Object, getRestrictBearerRecords()...)
+
+	httpClient := defaultHTTPClient()
+	bearerTokens := makeAuthTokenRequest(ctx, t, []apiserver.Bearer{bearer}, httpClient, false)
+	bearerToken := bearerTokens[0]
+
+	query := make(url.Values)
+	query.Add(walletConnectQuery, strconv.FormatBool(useWalletConnect))
+
+	request, err := http.NewRequest(http.MethodGet, testHost+"/v1/auth/bearer?"+query.Encode(), nil)
+	require.NoError(t, err)
+	prepareCommonHeaders(request.Header, bearerToken)
+	resp := &apiserver.BinaryBearer{}
+	doRequest(t, httpClient, request, http.StatusOK, resp)
+
+	var (
+		content      = []byte("some content")
+		fileNameAttr = "new-head-obj-by-attr-name-echo"
+		attrKey      = "soME-attribute"
+		attrValue    = "user value"
+		attributes   = map[string]string{
+			object.AttributeFileName:  fileNameAttr,
+			object.AttributeTimestamp: strconv.FormatInt(time.Now().Unix(), 10),
+			attrKey:                   attrValue,
+		}
+	)
+
+	t.Run("head", func(t *testing.T) {
+		objID := createObject(ctx, t, p, ownerID, cnrID, attributes, content, signer)
+		createTS := time.Now().Unix()
+
+		request, err = http.NewRequest(http.MethodHead, testHost+"/v1/objects/"+cnrID.EncodeToString()+"/by_attribute/"+object.AttributeFileName+"/"+fileNameAttr+"?"+query.Encode(), nil)
+		require.NoError(t, err)
+		prepareCommonHeaders(request.Header, bearerToken)
+		request.Header.Set("Authorization", "Bearer "+resp.Token)
+
+		headers, _ := doRequest(t, httpClient, request, http.StatusOK, nil)
+		require.NotEmpty(t, headers)
+
+		for key, vals := range headers {
+			require.Len(t, vals, 1)
+
+			switch key {
+			case "X-Attributes":
+				var customAttr map[string]string
+				err := json.Unmarshal([]byte(vals[0]), &customAttr)
+				require.NoError(t, err)
+				require.Equal(t, fileNameAttr, customAttr[object.AttributeFileName])
+				require.Equal(t, attrValue, customAttr[attrKey])
+				require.Equal(t, strconv.FormatInt(createTS, 10), customAttr[object.AttributeTimestamp])
+			case "Content-Disposition":
+				require.Equal(t, "inline; filename="+fileNameAttr, vals[0])
+			case "X-Object-Id":
+				require.Equal(t, objID.String(), vals[0])
+			case "Last-Modified":
+				require.Equal(t, time.Unix(createTS, 0).UTC().Format(http.TimeFormat), vals[0])
+			case "X-Owner-Id":
+				require.Equal(t, signer.UserID().String(), vals[0])
+			case "X-Container-Id":
+				require.Equal(t, cnrID.String(), vals[0])
+			case "Content-Length":
+				require.Equal(t, strconv.FormatInt(int64(len(content)), 10), vals[0])
+			case "Content-Type":
+				require.Equal(t, "text/plain; charset=utf-8", vals[0])
+			case "Date":
+				require.Equal(t, time.Unix(createTS, 0).UTC().Format(http.TimeFormat), vals[0])
+			case "Access-Control-Allow-Origin":
+				require.Equal(t, "*", vals[0])
+			}
+		}
+	})
+
+	t.Run("head multi-segment path attribute", func(t *testing.T) {
+		multiSegmentName := "path/" + fileNameAttr
+		attributes[object.AttributeFileName] = multiSegmentName
+
+		objID := createObject(ctx, t, p, ownerID, cnrID, attributes, content, signer)
+		createTS := time.Now().Unix()
+
+		request, err = http.NewRequest(http.MethodHead, testHost+"/v1/objects/"+cnrID.EncodeToString()+"/by_attribute/"+object.AttributeFileName+"/"+multiSegmentName+"?"+query.Encode(), nil)
+		require.NoError(t, err)
+		prepareCommonHeaders(request.Header, bearerToken)
+		request.Header.Set("Authorization", "Bearer "+resp.Token)
+
+		headers, _ := doRequest(t, httpClient, request, http.StatusOK, nil)
+		require.NotEmpty(t, headers)
+
+		for key, vals := range headers {
+			require.Len(t, vals, 1)
+
+			switch key {
+			case "X-Attributes":
+				var customAttr map[string]string
+				err := json.Unmarshal([]byte(vals[0]), &customAttr)
+				require.NoError(t, err)
+				require.Equal(t, multiSegmentName, customAttr[object.AttributeFileName])
+				require.Equal(t, attrValue, customAttr[attrKey])
+				require.Equal(t, strconv.FormatInt(createTS, 10), customAttr[object.AttributeTimestamp])
+			case "Content-Disposition":
+				require.Equal(t, "inline; filename="+fileNameAttr, vals[0])
+			case "X-Object-Id":
+				require.Equal(t, objID.String(), vals[0])
+			case "Last-Modified":
+				require.Equal(t, time.Unix(createTS, 0).UTC().Format(http.TimeFormat), vals[0])
+			case "X-Owner-Id":
+				require.Equal(t, signer.UserID().String(), vals[0])
+			case "X-Container-Id":
+				require.Equal(t, cnrID.String(), vals[0])
+			case "Content-Length":
+				require.Equal(t, strconv.FormatInt(int64(len(content)), 10), vals[0])
+			case "Content-Type":
+				require.Equal(t, "text/plain; charset=utf-8", vals[0])
+			case "Date":
+				require.Equal(t, time.Unix(createTS, 0).UTC().Format(http.TimeFormat), vals[0])
+			case "Access-Control-Allow-Origin":
+				require.Equal(t, "*", vals[0])
+			}
+		}
+	})
+}
+
+func restNewObjectGetByAttribute(ctx context.Context, t *testing.T, p *pool.Pool, ownerID *user.ID, cnrID cid.ID, signer user.Signer) {
+	bearer := apiserver.Bearer{
+		Object: []apiserver.Record{
+			{
+				Operation: apiserver.OperationGET,
+				Action:    apiserver.ALLOW,
+				Filters:   []apiserver.Filter{},
+				Targets: []apiserver.Target{{
+					Role: apiserver.OTHERS,
+					Keys: []string{},
+				}},
+			},
+			{
+				Operation: apiserver.OperationSEARCH,
+				Action:    apiserver.ALLOW,
+				Filters:   []apiserver.Filter{},
+				Targets: []apiserver.Target{{
+					Role: apiserver.OTHERS,
+					Keys: []string{},
+				}},
+			},
+		},
+	}
+	bearer.Object = append(bearer.Object, getRestrictBearerRecords()...)
+
+	httpClient := defaultHTTPClient()
+	bearerTokens := makeAuthTokenRequest(ctx, t, []apiserver.Bearer{bearer}, httpClient, false)
+	bearerToken := bearerTokens[0]
+
+	query := make(url.Values)
+	query.Add(walletConnectQuery, strconv.FormatBool(useWalletConnect))
+
+	request, err := http.NewRequest(http.MethodGet, testHost+"/v1/auth/bearer?"+query.Encode(), nil)
+	require.NoError(t, err)
+	prepareCommonHeaders(request.Header, bearerToken)
+	resp := &apiserver.BinaryBearer{}
+	doRequest(t, httpClient, request, http.StatusOK, resp)
+
+	var (
+		content      = []byte("some content")
+		fileNameAttr = "new-get-obj-by-attr-name-echo"
+		createTS     = time.Now().Unix()
+		attrKey      = "user-attribute"
+		attrValue    = "user value"
+		attributes   = map[string]string{
+			object.AttributeFileName:  fileNameAttr,
+			object.AttributeTimestamp: strconv.FormatInt(createTS, 10),
+			attrKey:                   attrValue,
+		}
+	)
+
+	t.Run("get", func(t *testing.T) {
+		objID := createObject(ctx, t, p, ownerID, cnrID, attributes, content, signer)
+
+		request, err = http.NewRequest(http.MethodGet, testHost+"/v1/objects/"+cnrID.EncodeToString()+"/by_attribute/"+object.AttributeFileName+"/"+fileNameAttr+"?"+query.Encode(), nil)
+		require.NoError(t, err)
+		prepareCommonHeaders(request.Header, bearerToken)
+		request.Header.Set("Authorization", "Bearer "+resp.Token)
+
+		headers, rawPayload := doRequest(t, httpClient, request, http.StatusOK, nil)
+		require.NotEmpty(t, headers)
+
+		for key, vals := range headers {
+			require.Len(t, vals, 1)
+
+			switch key {
+			case "X-Attributes":
+				var customAttr map[string]string
+				err := json.Unmarshal([]byte(vals[0]), &customAttr)
+				require.NoError(t, err)
+				require.Equal(t, fileNameAttr, customAttr[object.AttributeFileName])
+				require.Equal(t, attrValue, customAttr[attrKey])
+				require.Equal(t, strconv.FormatInt(createTS, 10), customAttr[object.AttributeTimestamp])
+			case "Content-Disposition":
+				require.Equal(t, "inline; filename="+fileNameAttr, vals[0])
+			case "X-Object-Id":
+				require.Equal(t, objID.String(), vals[0])
+			case "Last-Modified":
+				require.Equal(t, time.Unix(createTS, 0).UTC().Format(http.TimeFormat), vals[0])
+			case "X-Owner-Id":
+				require.Equal(t, signer.UserID().String(), vals[0])
+			case "X-Container-Id":
+				require.Equal(t, cnrID.String(), vals[0])
+			case "Content-Length":
+				require.Equal(t, strconv.FormatInt(int64(len(content)), 10), vals[0])
+			case "Content-Type":
+				require.Equal(t, "text/plain; charset=utf-8", vals[0])
+			case "Date":
+				require.Equal(t, time.Unix(createTS, 0).UTC().Format(http.TimeFormat), vals[0])
+			case "Access-Control-Allow-Origin":
+				require.Equal(t, "*", vals[0])
+			}
+		}
+
+		require.Equal(t, content, rawPayload)
+	})
 }

@@ -745,6 +745,97 @@ paths:
         - { }
         - BearerAuth: [ ]
         - CookieAuth: [ ]
+  /objects/{containerId}/by_id/{objectId}:
+    get:
+      summary: "Get object by container ID and object ID. Also, returns custom users'\
+        \ object attributes in header `X-Attributes`. It returns the MIME type based on headers\
+        \ or object contents, so the actual Content-Type can differ from the list\
+        \ in the \"Response content type\" section."
+      operationId: newGetContainerObject
+      parameters:
+        - $ref: '#/components/parameters/containerId'
+        - $ref: '#/components/parameters/objectId'
+        - name: download
+          in: query
+          description: Set the Content-Disposition header as attachment in response.
+            This make the browser to download object as file instead of showing it on
+            the page.
+          schema:
+            type: string
+            example: 1, t, T, true, TRUE, True, y, yes, Y, YES, Yes
+      responses:
+        "200":
+          $ref: '#/components/responses/NewObjectContentOK'
+        "400":
+          description: Bad request.
+          content:
+            application/octet-stream:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        "404":
+          description: Not found.
+          content:
+            application/octet-stream:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      security:
+        - { }
+        - BearerAuth: [ ]
+        - CookieAuth: [ ]
+    options:
+      operationId: newOptionsContainerObject
+      parameters:
+        - $ref: '#/components/parameters/containerId'
+        - $ref: '#/components/parameters/objectId'
+      responses:
+        "200":
+          description: CORS
+          headers:
+            Access-Control-Allow-Origin:
+              schema:
+                type: string
+            Access-Control-Allow-Methods:
+              schema:
+                type: string
+            Access-Control-Allow-Headers:
+              schema:
+                type: string
+          content: { }
+      security: [ ]
+    head:
+      summary: Get object info (head) by container ID and object ID. Also, returns custom users'
+        object attributes in header `X-Attributes`.
+      operationId: newHeadContainerObject
+      parameters:
+        - $ref: '#/components/parameters/containerId'
+        - $ref: '#/components/parameters/objectId'
+        - name: download
+          in: query
+          description: Set the Content-Disposition header as attachment in response.
+            This make the browser to download object as file instead of showing it on
+            the page.
+          schema:
+            type: string
+            example: 1, t, T, true, TRUE, True, y, yes, Y, YES, Yes
+      responses:
+        "200":
+          $ref: '#/components/responses/NewObjectHeadOK'
+        "400":
+          description: Bad request.
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        "404":
+          description: Not found.
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      security:
+        - { }
+        - BearerAuth: [ ]
+        - CookieAuth: [ ]
   /upload/{containerId}:
     post:
       summary: Upload object to NeoFS
@@ -802,6 +893,97 @@ paths:
         - CookieAuth: [ ]
     options:
       operationId: optionsUploadContainerObject
+      parameters:
+        - $ref: '#/components/parameters/containerId'
+      responses:
+        "200":
+          description: CORS
+          headers:
+            Access-Control-Allow-Origin:
+              schema:
+                type: string
+            Access-Control-Allow-Methods:
+              schema:
+                type: string
+            Access-Control-Allow-Headers:
+              schema:
+                type: string
+          content: { }
+      security: [ ]
+  /objects/{containerId}:
+    post:
+      summary: Upload object to NeoFS
+      operationId: newUploadContainerObject
+      parameters:
+        - $ref: '#/components/parameters/containerId'
+        - name: X-Attributes
+          in: header
+          description: |
+            All attributes are in a JSON-formatted map of key-value pairs, where the key is the 
+            attribute name and the value is the attribute value.
+            You can also use the special attribute:
+            - `__NEOFS__EXPIRATION_EPOCH` - specifies the expiration epoch used by NeoFS. 
+            This attribute should be used if you are familiar with the NeoFS epoch system. 
+            More information can be found here: [NeoFS Specifications](https://github.com/nspcc-dev/neofs-spec/blob/master/01-arch/01-netmap.md).
+            Instead of this attribute you can use one of `X-Neofs-*` headers below.
+          schema:
+            type: string
+        - name: X-Neofs-EXPIRATION_RFC3339
+          in: header
+          description: |
+            Specifies the expiration time in RFC3339 format. Examples:
+            - "2024-12-31T23:59:59Z" represents the last moment of 2024 in UTC.
+            - "2024-12-31T15:59:59-08:00" represents 3:59 PM on December 31, 2024, Pacific Time.\
+            It will be formatted into the `__NEOFS__EXPIRATION_EPOCH` attribute in the created object.
+          schema:
+            type: string
+        - name: X-Neofs-EXPIRATION_TIMESTAMP
+          in: header
+          description: Specifies the exact timestamp of object expiration. It will be formatted
+            into the `__NEOFS__EXPIRATION_EPOCH` attribute in the created object.
+          schema:
+            type: string
+        - name: X-Neofs-EXPIRATION_DURATION
+          in: header
+          description: | 
+            Specifies the duration until object expiration in Go's duration format. Examples:
+            - "300s" represents 5 minutes.
+            - "2h45m" represents 2 hours and 45 minutes. \
+            It will be formatted into the `__NEOFS__EXPIRATION_EPOCH` attribute in the created object.
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/octet-stream:
+            schema:
+              type: string
+              format: binary
+              description: "The file to upload.  If no file is present in this\
+                    \ field, any other field name will be accepted, except for an\
+                    \ empty one."
+      responses:
+        "200":
+          description: Address of uploaded objects.
+          headers:
+            Access-Control-Allow-Origin:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AddressForUpload'
+        "400":
+          description: Bad request.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      security:
+        - { }
+        - BearerAuth: [ ]
+        - CookieAuth: [ ]
+    options:
+      operationId: newOptionsUploadContainerObject
       parameters:
         - $ref: '#/components/parameters/containerId'
       responses:
@@ -897,6 +1079,102 @@ paths:
       responses:
         "200":
           $ref: '#/components/responses/ObjectHeadOK'
+        "400":
+          description: Bad request.
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        "404":
+          description: Not found.
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      security:
+        - { }
+        - BearerAuth: [ ]
+        - CookieAuth: [ ]
+  /objects/{containerId}/by_attribute/{attrKey}/{attrVal}:
+    get:
+      summary: "Find and get an object (payload and attributes) by a specific attribute.\
+        \ If more than one object is found, an arbitrary one will be returned. It\
+        \ returns the MIME type based on headers or object contents, so the actual\
+        \ Content-Type can differ from the list in the \"Response content type\" section.\
+        \ Also, returns custom users' object attributes in header `X-Attributes`."
+      operationId: newGetByAttribute
+      parameters:
+        - $ref: '#/components/parameters/containerId'
+        - $ref: '#/components/parameters/attrKey'
+        - $ref: '#/components/parameters/attrVal'
+        - name: download
+          in: query
+          description: Set the Content-Disposition header as attachment in response.
+            This makes the browser to download object as file instead of showing it
+            on the page.
+          schema:
+            type: string
+            example: 1, t, T, true, TRUE, True, y, yes, Y, YES, Yes
+      responses:
+        "200":
+          $ref: '#/components/responses/NewObjectContentOK'
+        "400":
+          description: Bad request.
+          content:
+            application/octet-stream:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        "404":
+          description: Not found.
+          content:
+            application/octet-stream:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      security:
+        - { }
+        - BearerAuth: [ ]
+        - CookieAuth: [ ]
+    options:
+      operationId: newOptionsByAttribute
+      parameters:
+        - $ref: '#/components/parameters/containerId'
+        - $ref: '#/components/parameters/attrKey'
+        - $ref: '#/components/parameters/attrVal'
+      responses:
+        "200":
+          description: CORS
+          headers:
+            Access-Control-Allow-Origin:
+              schema:
+                type: string
+            Access-Control-Allow-Methods:
+              schema:
+                type: string
+            Access-Control-Allow-Headers:
+              schema:
+                type: string
+          content: { }
+      security: [ ]
+    head:
+      summary: "Get object attributes by a specific attribute. If more than one object\
+        \ is found, an arbitrary one will be used to get attributes.\
+        \ Also, returns custom users' object attributes in header `X-Attributes`."
+      operationId: newHeadByAttribute
+      parameters:
+        - $ref: '#/components/parameters/containerId'
+        - $ref: '#/components/parameters/attrKey'
+        - $ref: '#/components/parameters/attrVal'
+        - name: download
+          in: query
+          description: Set the Content-Disposition header as attachment in response.
+            This makes the browser to download object as file instead of showing it
+            on the page.
+          schema:
+            type: string
+            example: 1, t, T, true, TRUE, True, y, yes, Y, YES, Yes
+      responses:
+        "200":
+          $ref: '#/components/responses/NewObjectHeadOK'
         "400":
           description: Bad request.
           content:
@@ -1693,6 +1971,43 @@ components:
           schema:
             type: string
             format: binary
+    NewObjectContentOK:
+      description: Object.
+      headers:
+        X-Attributes:
+          schema:
+            type: string
+          description: All object attributes are included here in JSON formatted key-value map,
+            except for `X-Object-Id`, `X-Container-Id`, `X-Owner-Id`.
+        Access-Control-Allow-Origin:
+          schema:
+            type: string
+        Content-Disposition:
+          schema:
+            type: string
+        X-Object-Id:
+          schema:
+            type: string
+        Last-Modified:
+          schema:
+            type: string
+        X-Owner-Id:
+          schema:
+            type: string
+        X-Container-Id:
+          schema:
+            type: string
+        Content-Length:
+          schema:
+            type: string
+        Content-Type:
+          schema:
+            type: string
+      content:
+        '*/*':
+          schema:
+            type: string
+            format: binary
     ObjectHeadOK:
       description: Object info.
       headers:
@@ -1708,6 +2023,43 @@ components:
         X-Attribute-Timestamp:
           schema:
             type: integer
+        X-Object-Id:
+          schema:
+            type: string
+        Last-Modified:
+          schema:
+            type: string
+        X-Owner-Id:
+          schema:
+            type: string
+        X-Container-Id:
+          schema:
+            type: string
+        Content-Length:
+          schema:
+            type: string
+        Content-Type:
+          schema:
+            type: string
+      content:
+        '*/*':
+          schema:
+            type: string
+            format: binary
+    NewObjectHeadOK:
+      description: Object info.
+      headers:
+        X-Attributes:
+          schema:
+            type: string
+          description: All object attributes are included here in JSON formatted key-value map,
+            except for `X-Object-Id`, `X-Container-Id`, `X-Owner-Id`.
+        Access-Control-Allow-Origin:
+          schema:
+            type: string
+        Content-Disposition:
+          schema:
+            type: string
         X-Object-Id:
           schema:
             type: string
