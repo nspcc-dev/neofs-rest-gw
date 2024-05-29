@@ -942,13 +942,14 @@ paths:
             Specifies the expiration time in RFC3339 format. Examples:
             - "2024-12-31T23:59:59Z" represents the last moment of 2024 in UTC.
             - "2024-12-31T15:59:59-08:00" represents 3:59 PM on December 31, 2024, Pacific Time.\
-            It will be formatted into the `__NEOFS__EXPIRATION_EPOCH` attribute in the created object.
+            It will be rounded to the next epoch and used to set the `__NEOFS__EXPIRATION_EPOCH`
+            attribute of the created object.
           schema:
             type: string
         - name: X-Neofs-EXPIRATION_TIMESTAMP
           in: header
-          description: Specifies the exact timestamp of object expiration. It will be formatted
-            into the `__NEOFS__EXPIRATION_EPOCH` attribute in the created object.
+          description: Specifies the exact timestamp of object expiration. It will be rounded
+            to the next epoch and stored in the `__NEOFS__EXPIRATION_EPOCH` attribute of the created object.
           schema:
             type: string
         - name: X-Neofs-EXPIRATION_DURATION
@@ -957,7 +958,7 @@ paths:
             Specifies the duration until object expiration in Go's duration format. Examples:
             - "300s" represents 5 minutes.
             - "2h45m" represents 2 hours and 45 minutes. \
-            It will be formatted into the `__NEOFS__EXPIRATION_EPOCH` attribute in the created object.
+            It will be rounded to the next epoch and used to set the `__NEOFS__EXPIRATION_EPOCH` attribute of the created object.
           schema:
             type: string
       requestBody:
