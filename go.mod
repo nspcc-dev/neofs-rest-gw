@@ -7,7 +7,7 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/labstack/echo/v4 v4.11.4
 	github.com/nspcc-dev/neo-go v0.106.0
-	github.com/nspcc-dev/neofs-sdk-go v1.0.0-rc.11.0.20240423143337-3cdb540f5511
+	github.com/nspcc-dev/neofs-sdk-go v1.0.0-rc.12
 	github.com/oapi-codegen/echo-middleware v1.0.1
 	github.com/oapi-codegen/runtime v1.1.1
 	github.com/spf13/pflag v1.0.5
