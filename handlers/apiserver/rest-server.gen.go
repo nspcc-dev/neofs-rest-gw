@@ -559,24 +559,24 @@ type NewUploadContainerObjectParams struct {
 	// - `__NEOFS__EXPIRATION_EPOCH` - specifies the expiration epoch used by NeoFS.
 	// This attribute should be used if you are familiar with the NeoFS epoch system.
 	// More information can be found here: [NeoFS Specifications](https://github.com/nspcc-dev/neofs-spec/blob/master/01-arch/01-netmap.md).
-	// Instead of this attribute you can use one of `X-Neofs-*` headers below.
+	// Instead of this attribute you can use one of `X-Neofs-Expiration-*` headers below.
 	XAttributes *string `json:"X-Attributes,omitempty"`
 
-	// XNeofsEXPIRATIONRFC3339 Specifies the expiration time in RFC3339 format. Examples:
+	// XNeofsExpirationRFC3339 Specifies the expiration time in RFC3339 format. Examples:
 	// - "2024-12-31T23:59:59Z" represents the last moment of 2024 in UTC.
 	// - "2024-12-31T15:59:59-08:00" represents 3:59 PM on December 31, 2024, Pacific Time.\
 	// It will be rounded to the next epoch and used to set the `__NEOFS__EXPIRATION_EPOCH`
 	// attribute of the created object.
-	XNeofsEXPIRATIONRFC3339 *string `json:"X-Neofs-EXPIRATION_RFC3339,omitempty"`
+	XNeofsExpirationRFC3339 *string `json:"X-Neofs-Expiration-RFC3339,omitempty"`
 
-	// XNeofsEXPIRATIONTIMESTAMP Specifies the exact timestamp of object expiration. It will be rounded to the next epoch and stored in the `__NEOFS__EXPIRATION_EPOCH` attribute of the created object.
-	XNeofsEXPIRATIONTIMESTAMP *string `json:"X-Neofs-EXPIRATION_TIMESTAMP,omitempty"`
+	// XNeofsExpirationTimestamp Specifies the exact timestamp of object expiration. It will be rounded to the next epoch and stored in the `__NEOFS__EXPIRATION_EPOCH` attribute of the created object.
+	XNeofsExpirationTimestamp *string `json:"X-Neofs-Expiration-Timestamp,omitempty"`
 
-	// XNeofsEXPIRATIONDURATION Specifies the duration until object expiration in Go's duration format. Examples:
+	// XNeofsExpirationDuration Specifies the duration until object expiration in Go's duration format. Examples:
 	// - "300s" represents 5 minutes.
 	// - "2h45m" represents 2 hours and 45 minutes. \
 	// It will be rounded to the next epoch and used to set the `__NEOFS__EXPIRATION_EPOCH` attribute of the created object.
-	XNeofsEXPIRATIONDURATION *string `json:"X-Neofs-EXPIRATION_DURATION,omitempty"`
+	XNeofsExpirationDuration *string `json:"X-Neofs-Expiration-Duration,omitempty"`
 }
 
 // NewGetByAttributeParams defines parameters for NewGetByAttribute.
@@ -1628,50 +1628,50 @@ func (w *ServerInterfaceWrapper) NewUploadContainerObject(ctx echo.Context) erro
 
 		params.XAttributes = &XAttributes
 	}
-	// ------------- Optional header parameter "X-Neofs-EXPIRATION_RFC3339" -------------
-	if valueList, found := headers[http.CanonicalHeaderKey("X-Neofs-EXPIRATION_RFC3339")]; found {
-		var XNeofsEXPIRATIONRFC3339 string
+	// ------------- Optional header parameter "X-Neofs-Expiration-RFC3339" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("X-Neofs-Expiration-RFC3339")]; found {
+		var XNeofsExpirationRFC3339 string
 		n := len(valueList)
 		if n != 1 {
-			return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Expected one value for X-Neofs-EXPIRATION_RFC3339, got %d", n))
+			return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Expected one value for X-Neofs-Expiration-RFC3339, got %d", n))
 		}
 
-		err = runtime.BindStyledParameterWithOptions("simple", "X-Neofs-EXPIRATION_RFC3339", valueList[0], &XNeofsEXPIRATIONRFC3339, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false})
+		err = runtime.BindStyledParameterWithOptions("simple", "X-Neofs-Expiration-RFC3339", valueList[0], &XNeofsExpirationRFC3339, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false})
 		if err != nil {
-			return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter X-Neofs-EXPIRATION_RFC3339: %s", err))
+			return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter X-Neofs-Expiration-RFC3339: %s", err))
 		}
 
-		params.XNeofsEXPIRATIONRFC3339 = &XNeofsEXPIRATIONRFC3339
+		params.XNeofsExpirationRFC3339 = &XNeofsExpirationRFC3339
 	}
-	// ------------- Optional header parameter "X-Neofs-EXPIRATION_TIMESTAMP" -------------
-	if valueList, found := headers[http.CanonicalHeaderKey("X-Neofs-EXPIRATION_TIMESTAMP")]; found {
-		var XNeofsEXPIRATIONTIMESTAMP string
+	// ------------- Optional header parameter "X-Neofs-Expiration-Timestamp" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("X-Neofs-Expiration-Timestamp")]; found {
+		var XNeofsExpirationTimestamp string
 		n := len(valueList)
 		if n != 1 {
-			return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Expected one value for X-Neofs-EXPIRATION_TIMESTAMP, got %d", n))
+			return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Expected one value for X-Neofs-Expiration-Timestamp, got %d", n))
 		}
 
-		err = runtime.BindStyledParameterWithOptions("simple", "X-Neofs-EXPIRATION_TIMESTAMP", valueList[0], &XNeofsEXPIRATIONTIMESTAMP, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false})
+		err = runtime.BindStyledParameterWithOptions("simple", "X-Neofs-Expiration-Timestamp", valueList[0], &XNeofsExpirationTimestamp, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false})
 		if err != nil {
-			return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter X-Neofs-EXPIRATION_TIMESTAMP: %s", err))
+			return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter X-Neofs-Expiration-Timestamp: %s", err))
 		}
 
-		params.XNeofsEXPIRATIONTIMESTAMP = &XNeofsEXPIRATIONTIMESTAMP
+		params.XNeofsExpirationTimestamp = &XNeofsExpirationTimestamp
 	}
-	// ------------- Optional header parameter "X-Neofs-EXPIRATION_DURATION" -------------
-	if valueList, found := headers[http.CanonicalHeaderKey("X-Neofs-EXPIRATION_DURATION")]; found {
-		var XNeofsEXPIRATIONDURATION string
+	// ------------- Optional header parameter "X-Neofs-Expiration-Duration" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("X-Neofs-Expiration-Duration")]; found {
+		var XNeofsExpirationDuration string
 		n := len(valueList)
 		if n != 1 {
-			return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Expected one value for X-Neofs-EXPIRATION_DURATION, got %d", n))
+			return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Expected one value for X-Neofs-Expiration-Duration, got %d", n))
 		}
 
-		err = runtime.BindStyledParameterWithOptions("simple", "X-Neofs-EXPIRATION_DURATION", valueList[0], &XNeofsEXPIRATIONDURATION, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false})
+		err = runtime.BindStyledParameterWithOptions("simple", "X-Neofs-Expiration-Duration", valueList[0], &XNeofsExpirationDuration, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false})
 		if err != nil {
-			return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter X-Neofs-EXPIRATION_DURATION: %s", err))
+			return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter X-Neofs-Expiration-Duration: %s", err))
 		}
 
-		params.XNeofsEXPIRATIONDURATION = &XNeofsEXPIRATIONDURATION
+		params.XNeofsExpirationDuration = &XNeofsExpirationDuration
 	}
 
 	// Invoke the callback with all the unmarshaled arguments
@@ -2457,26 +2457,26 @@ var swaggerSpec = []string{
 	"70YVJmV6dfCmn+qqW0Vt5OfajXutiypAm5HwGWtpZUA7XoDTrYIvnz+fdc8PBp8/dz/0e5ftYe/87HO3",
 	"f945+gKqgWWiDVx072Fd0UHebFWWxmgelHa4cYfJqphsSnzbCm0SPJblHgRqxtDBNoY0qq+qSj6ocZl8",
 	"ClUMKB/EiauL+v0/aQMBgbNd8FF1HWgrShW1+fTyhx7/alZdxB3o1RzrVe3G7UV2e6rwZ7wmqDTTxuDL",
-	"h+qZHP6PL6EPaIRsMqvJ2p8F127b8frWK1woGhSRKLiEfHnQ2djYeKMr09ZAV3kNmCT/jdFqtDarzVZ1",
-	"ozlsbexuvdndevPXjQGo0A+YfmcUARsyDhwifSBkDEQnVfO2U8sM09xSw1QbO7uNRnIsMQPonwLign1k",
-	"InkPaqNZkQNWQB8qO3iIHVS7ublxezzyvAmKR8/3uuiea24RmyKweZl26Cxg6/imSiXQBzWYF5BJUTY2",
-	"qEbvjxENitMnKMcfFRuPkVM6HMvhQlcu1u7CRRt8GSJWQMOwd9odDNun/R9BhKUftgC+y7GdRYJY0yF5",
-	"waKGBUy90WiwJONtAQe70g+i+XW6ueUkm7TAlPi6tMxm1B48FyOCJ+XD/Sv1D2NpcY4yCm9xPCB7P1B6",
-	"NkM9tgbUc67a4cmAxq/iR/k2L7Kl+2oOZOF3/c6+PN8CHEPTRB5HVkW/yapKGriqjLaQs7X4CwLqXm2O",
-	"V/PhH9ChDwgt1vQXKNO/pLfjEX7RAhW8WLdeGroo9ISdodk6HPubxSiEsbWOyP4GEVnwclG4U1Xjl0FN",
-	"VVwdMzG4S2TFQUyR9ernDumqFwjy85GyYSUcioZ4ZhL7kgjoZoTjOoL720rHdRD3PxHEfQIh94SCpISH",
-	"cx0+/vmjaUsSzZeo0+uM8rWevNaTn/KKyxNI559ZlV2qgq4lylq3XF9TWeGayj+nzq1vqPxEippS98tU",
-	"m9aZT+rVmxWrIsYqL1kFZcKTb+Q9canwZ6of+mvkNiiKnofpOb9splblB7Mz1mU3H19280kKZCTfPss5",
-	"S/VPKnYqX+eKBcqetWBG7PHvHLhSz3//NytklFFPPiVLaMRJIJSQ6HnGxblxLEXowuMr6WFYXILvX7AE",
-	"frEs13V5vycpLXOJHHIX+nGjuwuxAn8lbgQrdtbp/GuWfpQ6kHqBCroTBNQZLI8QcY4DiqAlDnMLclh0",
-	"XlLRs5pzeofpJdjl25vGqkf4CXInfCpODvmsvJxmMQy27FEShmYZGE7hPQhisQx/Q+AldsFoLmOx8rUU",
-	"nU2JXdP2rShnLPRh3Li9cdwVJAfBDExkohJVgY2oOjDTngo144y4L/iS4QsQ4sD7qh6mKubM12c2m282",
-	"NxqbMZ1mq7XZ2tlJ6jWN5y8nHtvPi9P9fxPtIe3KGM3Dh6Z+rNRNSUP3iepurh0UZR0UKrlt4R2Ikpe0",
-	"1lcinsVtsAz7/8QNieTlgIq8HuHOgUmcEXZVOq/Mk/QQrdtkhigwIUOVKCnUiqXdRq5zmWUbvH79JRF+",
-	"10m78hpEPFVoQS+ZYtwd1o+67X0ZSDehbTP9eFY47cuFBQJfhfc0vrhydOyC/vlgKMcKrFt5OSRyrr1c",
-	"6OR7VStxcaAqluPC1DtiJV4keV6y9CGfrk6WVK+nIYtu/WUcTvAPUkb7TB+ZnO34NscepLwudMKq0CmT",
-	"0iD5prBWnv5rCduZt4jXKdz/2RTuMqpeoNmlYSgHAKJ3wcHkU1tsQc693XrdJia0p4Tx3Z3Gm0b9rmk8",
-	"fHr4vwAAAP//MDii/2nSAAA=",
+	"h+qZHL4b4qv6x5fQHTRCNpnVZBnQghu47Xip6xXuFg2KqBXcR7486GxsbLzRRWproKscCExywo3RarQ2",
+	"q81WdaM5bG3sbr3Z3Xrz140BqFAVmH5yFAEbMg4cIt0hZAxEJ1X+tlPLDNPcUsNUGzu7jUZyLDED6J8C",
+	"4oJ9ZCJ5JWqjWZEDVkAfKpN4iB1Uu7m5cXs8csIJ4kcv+bronmvGEfsjMH+Z9u0s4PD4/krl0gflmBeQ",
+	"KUNkjd4fIxoUB1FQmT+qOx4jp/Q9lsOFLmKsPYeL9voyRKyAhvi7Ao9GhKXfuAC+y7GdRYJY0yF5waKG",
+	"BUy90WiwJONtAQe70iWi+XW6ueUkm7TAlPi6ysxm1B48FyOCJ+XD2PsgS+p0lNF9i0MD2auC0skZqrQ1",
+	"oF521b5PBjR+FT/KZ3qRLT1ZcyBrwOsn9+VRF+AYmibyOLIq+nlWVd3AVRW1hcitxR8TUFdscxycD/+A",
+	"On1AaLHSv0Cv/iUdH49wkRZo48Vq9tIoRqFT7AzN1pHZ3yxcIeyudXD2NwjOgpeLIp+qML+Mb6o665iJ",
+	"wV0iiw9iiqxXP3d0Vz1GkJ+alI0w4VA0xJOU2JdEbDcjHNfB3N9WOq7juf+JeO4TCLknFCQlnJ3rSPLP",
+	"H1hbknO+RJ1eJ5ev9eS1nvyUt12eQDr/zKrsUhV0LVHWuuX6xsoKN1b+OXVufVnlJ1LUlLpfpvC0ToJS",
+	"D+CsWCAxVoTJKqgYnnwu74mrhj9TKdFfI81BUfQ8zNT5ZZO2Kj+YqLGuwPn4CpxPUisj+Qxazlmqf1Kx",
+	"U/lQVyxQ9qy1M2LvgOfAlXoJ/L9ZLKOMevIpWU0jTgKhhEQvNS5Ok2MpQhceX0kPw+JqfP+CJfCLJbyu",
+	"K/09SZWZS+SQu9CPG11jiNX6K3E5WLGzzuxfs/Sj1IHUY1TQnSCgzmB5hIhzHFAELXGYW5DDovOSip7V",
+	"nNM7TC/BLt/eNFY9wk+QO+FTcXLIF+blNIthsGWPkjA0y8BwCu9BEItl+BsCL7ELRnMZi5UPp+jESuya",
+	"tm9FOWOhD+PG7Y3jriA5CGZgIhOVqApsRIWCmfZUqBlnxH3BlwxfgBAH3lf1MFUxZ74+s9l8s7nR2Izp",
+	"NFutzdbOTlKvaTx/ZfHYfl6c+f+baA9pV8ZoHr459WNVb0oauk9UgnPtoCjroFDJbQuvQ5S8r7W+HfEs",
+	"boNl2P8nLksk7wlU5E0Jdw5M4oywq9J5ZZ6kh2jdJjNEgQkZqkRJoVYs7TZyncss2+Ah7C+J8LtO2pU3",
+	"IuKpQgt6yRTj7rB+1G3vy0C6CW2b6Xe0wmlfLqwV+Cq8svHFlaNjF/TPB0M5VmDdynsikXPt5UIn36ta",
+	"iYsDVbEcF6aeFCvxOMnzkqUP+XR1sqR6PQ1ZdOsv43CCf5Ay2mf6yORsx7c59iDldaETVoVOmZQGyeeF",
+	"tfL0X0vYzjxLvE7h/s+mcJdR9QLNLg1DOQAQvQsOJp/aYgty7u3W6zYxoT0ljO/uNN406ndN4+HTw/8F",
+	"AAD//1b7aih00gAA",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file

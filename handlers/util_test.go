@@ -305,7 +305,7 @@ func Test_parseAndFilterAttributes(t *testing.T) {
 	str1 := `{
 		"skip empty":"",
 		"":"skip empty",
-		"__NEOFS__EXPIRATION_DURATION":"1000s",
+		"__NEOFS__EXPIRATION_EPOCH":"1000",
 		"file-N%me":"simple %bj filename",
 		"writer":"Leo Tolstoy",
 		"Chapter1":"pe@ce",
@@ -313,11 +313,11 @@ func Test_parseAndFilterAttributes(t *testing.T) {
 
 	emptyMap := make(map[string]string)
 	map1 := map[string]string{
-		"__NEOFS__EXPIRATION_DURATION": "1000s",
-		"file-N%me":                    "simple %bj filename",
-		"writer":                       "Leo Tolstoy",
-		"Chapter1":                     "pe@ce",
-		"chapter2":                     "war",
+		"__NEOFS__EXPIRATION_EPOCH": "1000",
+		"file-N%me":                 "simple %bj filename",
+		"writer":                    "Leo Tolstoy",
+		"Chapter1":                  "pe@ce",
+		"chapter2":                  "war",
 	}
 
 	tests := []struct {

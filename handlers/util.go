@@ -390,13 +390,13 @@ func paramIsPositive(s *string) bool {
 
 func addExpirationHeaders(headers map[string]string, params apiserver.NewUploadContainerObjectParams) {
 	// Add non-empty string pointer values to the map
-	if params.XNeofsEXPIRATIONDURATION != nil && *params.XNeofsEXPIRATIONDURATION != "" {
-		headers[ExpirationDurationAttr] = *params.XNeofsEXPIRATIONDURATION
+	if params.XNeofsExpirationDuration != nil && *params.XNeofsExpirationDuration != "" {
+		headers[ExpirationDurationAttr] = *params.XNeofsExpirationDuration
 	}
-	if params.XNeofsEXPIRATIONTIMESTAMP != nil && *params.XNeofsEXPIRATIONTIMESTAMP != "" {
-		headers[ExpirationTimestampAttr] = *params.XNeofsEXPIRATIONTIMESTAMP
+	if params.XNeofsExpirationTimestamp != nil && *params.XNeofsExpirationTimestamp != "" {
+		headers[ExpirationTimestampAttr] = *params.XNeofsExpirationTimestamp
 	}
-	if params.XNeofsEXPIRATIONRFC3339 != nil && *params.XNeofsEXPIRATIONRFC3339 != "" {
-		headers[ExpirationRFC3339Attr] = *params.XNeofsEXPIRATIONRFC3339
+	if params.XNeofsExpirationRFC3339 != nil && *params.XNeofsExpirationRFC3339 != "" {
+		headers[ExpirationRFC3339Attr] = *params.XNeofsExpirationRFC3339
 	}
 }
