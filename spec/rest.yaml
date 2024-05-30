@@ -933,10 +933,10 @@ paths:
             - `__NEOFS__EXPIRATION_EPOCH` - specifies the expiration epoch used by NeoFS. 
             This attribute should be used if you are familiar with the NeoFS epoch system. 
             More information can be found here: [NeoFS Specifications](https://github.com/nspcc-dev/neofs-spec/blob/master/01-arch/01-netmap.md).
-            Instead of this attribute you can use one of `X-Neofs-*` headers below.
+            Instead of this attribute you can use one of `X-Neofs-Expiration-*` headers below.
           schema:
             type: string
-        - name: X-Neofs-EXPIRATION_RFC3339
+        - name: X-Neofs-Expiration-RFC3339
           in: header
           description: |
             Specifies the expiration time in RFC3339 format. Examples:
@@ -946,13 +946,13 @@ paths:
             attribute of the created object.
           schema:
             type: string
-        - name: X-Neofs-EXPIRATION_TIMESTAMP
+        - name: X-Neofs-Expiration-Timestamp
           in: header
           description: Specifies the exact timestamp of object expiration. It will be rounded
             to the next epoch and stored in the `__NEOFS__EXPIRATION_EPOCH` attribute of the created object.
           schema:
             type: string
-        - name: X-Neofs-EXPIRATION_DURATION
+        - name: X-Neofs-Expiration-Duration
           in: header
           description: | 
             Specifies the duration until object expiration in Go's duration format. Examples:

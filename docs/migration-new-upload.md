@@ -14,7 +14,7 @@ like "FilePath", "FileName", and "Timestamp", can be passed in a JSON-formatted
 key-value map. Thanks to the JSON format of this header, we no longer face
 issues with the case-insensitivity of the gateway and the case-sensitivity of
 NeoFS. All attributes are passed directly to NeoFS. Additionally, 
-`X-Neofs-EXPIRATION*` headers are available to set object expiration. Learn 
+`X-Neofs-Expiration-*` headers are available to set object expiration. Learn 
 more in the Swagger documentation (`/v1/docs`).
 
 Notice that while the `/upload` API required you to create a multipart/form-data
