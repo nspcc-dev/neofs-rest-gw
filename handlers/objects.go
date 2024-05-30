@@ -588,6 +588,11 @@ func (a *RestAPI) setAttributes(ctx echo.Context, params setAttributeParams) str
 		attributes  = params.header.Attributes()
 	)
 
+	if paramIsPositive(params.download) {
+		dis = "attachment"
+	}
+	ctx.Response().Header().Set("Content-Disposition", dis)
+
 	if len(attributes) > 0 {
 		for _, attr := range attributes {
 			key := attr.Key()
@@ -598,10 +603,8 @@ func (a *RestAPI) setAttributes(ctx echo.Context, params setAttributeParams) str
 
 			switch key {
 			case object.AttributeFileName:
-				if paramIsPositive(params.download) {
-					dis = "attachment"
-				}
-				ctx.Response().Header().Set("Content-Disposition", dis+"; filename="+path.Base(val))
+				// Add FileName to Content-Disposition
+				ctx.Response().Header().Set("Content-Disposition", ctx.Response().Header().Get("Content-Disposition")+"; filename="+path.Base(val))
 				if params.useJSON {
 					attrJSON[key] = val
 				} else {
