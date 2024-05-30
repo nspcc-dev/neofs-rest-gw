@@ -6,18 +6,18 @@ This document outlines major changes between releases.
 
 ### Updating from 0.8.3
 
-Notice that configuration parameters in the `server` section were reorganized. 
-For example e.g.`server.schema` and `tls-listen-limit` were removed, and some 
-others were moved inside the array `endpoints`. Check your configuration with 
-the help of the [gate-configuration.md](./docs/gate-configuration.md) and 
-[config](./config/config.yaml). Also, flags in the command arguments were 
+Notice that configuration parameters in the `server` section were reorganized.
+For example e.g.`server.schema` and `tls-listen-limit` were removed, and some
+others were moved inside the array `endpoints`. Check your configuration with
+the help of the [gate-configuration.md](./docs/gate-configuration.md) and
+[config](./config/config.yaml). Also, flags in the command arguments were
 changed.
 
 A new upload object request has been introduced: `/objects/{containerId}`. This
 is a POST request that accepts the `X-Attributes` header, where all custom
-object attributes can be included in a JSON-formatted key-value map. Also, new 
+object attributes can be included in a JSON-formatted key-value map. Also, new
 GET and HEAD requests are added for object downloading:
-`/objects/{containerId}/by_id/{objectId}` and 
+`/objects/{containerId}/by_id/{objectId}` and
 `/objects/{containerId}/by_attribute/{attrKey}/{attrVal}`.
 For more information, see the [migration documentation](./docs/migration-new-upload.md).
 In the future, we plan to use these requests as the only option for object
@@ -62,7 +62,7 @@ this incorrect configuration, so please check your configurations.
 ## [0.7.2] - 2024-03-13
 
 ### Fixed
-- Response for GET and HEAD methods in `get_by_attribute` when object is not 
+- Response for GET and HEAD methods in `get_by_attribute` when object is not
   found (#155)
 - Transform attribute key to Canonical MIME Header Key, which corresponds to
   the format used on upload (#155)
