@@ -181,6 +181,7 @@ paths:
       security: [ ]
   /objects:
     put:
+      deprecated: true
       summary: Upload object to NeoFS
       operationId: putObject
       parameters:
@@ -214,6 +215,7 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
       x-codegen-request-body-name: object
     options:
+      deprecated: true
       operationId: optionsObjectsPut
       responses:
         "200":
@@ -310,7 +312,8 @@ paths:
       security: [ ]
   /objects/{containerId}/{objectId}:
     get:
-      summary: Get object info by address
+      deprecated: true
+      summary: Get object info by address. Please use `/objects/{containerId}/by_id/{objectId}` API.
       operationId: getObjectInfo
       parameters:
         - $ref: '#/components/parameters/containerId'
@@ -656,10 +659,11 @@ paths:
       security: [ ]
   /get/{containerId}/{objectId}:
     get:
+      deprecated: true
       summary: "Get object by container ID and object ID. Also returns custom users'\
         \ header attributes `X-Attribute-*`. It returns the MIME type based on headers\
         \ or object contents, so the actual Content-Type can differ from the list\
-        \ in the \"Response content type\" section."
+        \ in the \"Response content type\" section. Please use `/objects/{containerId}/by_id/{objectId}` API."
       operationId: getContainerObject
       parameters:
         - $ref: '#/components/parameters/containerId'
@@ -692,6 +696,7 @@ paths:
         - BearerAuth: [ ]
         - CookieAuth: [ ]
     options:
+      deprecated: true
       operationId: optionsContainerObject
       parameters:
         - $ref: '#/components/parameters/containerId'
@@ -712,6 +717,7 @@ paths:
           content: { }
       security: [ ]
     head:
+      deprecated: true
       summary: Get object info (head) by container ID and object ID. Also returns
         custom users' header attributes `X-Attribute-*`.
       operationId: headContainerObject
@@ -838,7 +844,8 @@ paths:
         - CookieAuth: [ ]
   /upload/{containerId}:
     post:
-      summary: Upload object to NeoFS
+      deprecated: true
+      summary: Upload object to NeoFS. Please use `/objects/{containerId}` API.
       operationId: uploadContainerObject
       parameters:
         - $ref: '#/components/parameters/containerId'
@@ -892,6 +899,7 @@ paths:
         - BearerAuth: [ ]
         - CookieAuth: [ ]
     options:
+      deprecated: true
       operationId: optionsUploadContainerObject
       parameters:
         - $ref: '#/components/parameters/containerId'
@@ -934,13 +942,14 @@ paths:
             Specifies the expiration time in RFC3339 format. Examples:
             - "2024-12-31T23:59:59Z" represents the last moment of 2024 in UTC.
             - "2024-12-31T15:59:59-08:00" represents 3:59 PM on December 31, 2024, Pacific Time.\
-            It will be formatted into the `__NEOFS__EXPIRATION_EPOCH` attribute in the created object.
+            It will be rounded to the next epoch and used to set the `__NEOFS__EXPIRATION_EPOCH`
+            attribute of the created object.
           schema:
             type: string
         - name: X-Neofs-EXPIRATION_TIMESTAMP
           in: header
-          description: Specifies the exact timestamp of object expiration. It will be formatted
-            into the `__NEOFS__EXPIRATION_EPOCH` attribute in the created object.
+          description: Specifies the exact timestamp of object expiration. It will be rounded
+            to the next epoch and stored in the `__NEOFS__EXPIRATION_EPOCH` attribute of the created object.
           schema:
             type: string
         - name: X-Neofs-EXPIRATION_DURATION
@@ -949,7 +958,7 @@ paths:
             Specifies the duration until object expiration in Go's duration format. Examples:
             - "300s" represents 5 minutes.
             - "2h45m" represents 2 hours and 45 minutes. \
-            It will be formatted into the `__NEOFS__EXPIRATION_EPOCH` attribute in the created object.
+            It will be rounded to the next epoch and used to set the `__NEOFS__EXPIRATION_EPOCH` attribute of the created object.
           schema:
             type: string
       requestBody:
@@ -1003,10 +1012,12 @@ paths:
       security: [ ]
   /get_by_attribute/{containerId}/{attrKey}/{attrVal}:
     get:
+      deprecated: true
       summary: "Find and get an object (payload and attributes) by a specific attribute.\
         \ If more than one object is found, an arbitrary one will be returned. It\
         \ returns the MIME type based on headers or object contents, so the actual\
-        \ Content-Type can differ from the list in the \"Response content type\" section."
+        \ Content-Type can differ from the list in the \"Response content type\" section.\
+        \ Please use `/objects/{containerId}/by_attribute/{attrKey}/{attrVal}` API."
       operationId: getByAttribute
       parameters:
         - $ref: '#/components/parameters/containerId'
@@ -1040,6 +1051,7 @@ paths:
         - BearerAuth: [ ]
         - CookieAuth: [ ]
     options:
+      deprecated: true
       operationId: optionsByAttribute
       parameters:
         - $ref: '#/components/parameters/containerId'
@@ -1061,6 +1073,7 @@ paths:
           content: { }
       security: [ ]
     head:
+      deprecated: true
       summary: "Get object attributes by a specific attribute. If more than one object\
         \ is found, an arbitrary one will be used to get attributes."
       operationId: headByAttribute
@@ -1098,7 +1111,8 @@ paths:
   /objects/{containerId}/by_attribute/{attrKey}/{attrVal}:
     get:
       summary: "Find and get an object (payload and attributes) by a specific attribute.\
-        \ If more than one object is found, an arbitrary one will be returned. It\
+        \ If more than one object is found, an arbitrary one will be returned (use\
+        \ `/objects/{containerId}/search` API if this is not desired). It\
         \ returns the MIME type based on headers or object contents, so the actual\
         \ Content-Type can differ from the list in the \"Response content type\" section.\
         \ Also, returns custom users' object attributes in header `X-Attributes`."
@@ -1157,7 +1171,8 @@ paths:
       security: [ ]
     head:
       summary: "Get object attributes by a specific attribute. If more than one object\
-        \ is found, an arbitrary one will be used to get attributes.\
+        \ is found, an arbitrary one will be used to get attributes (use\
+        \ `/objects/{containerId}/search` API if this is not desired).\
         \ Also, returns custom users' object attributes in header `X-Attributes`."
       operationId: newHeadByAttribute
       parameters:
