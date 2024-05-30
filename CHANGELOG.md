@@ -4,20 +4,38 @@ This document outlines major changes between releases.
 
 ## [Unreleased]
 
+## [0.9.0] - 2024-05-30
+
+### Added
+- HEAD request handling for documentation (#199)
+- Darwin binaries (#204)
+- `network-info` path to request network parameters (#198)
+- Proper TLS server support (#200)
+- DefaultTimestamp configuration (#209)
+- New upload/download APIs (#206, #210, #211, #214)
+
+### Changed
+- github.com/nspcc-dev/neofs-sdk-go dependency to v1.0.0-rc.12 (#191, #176, #212)
+- golang.org/x/net dependency to 0.23.0 (#201)
+- Documentation to reflect known limitations (#196)
+- github.com/nspcc-dev/neofs-api-go/v2 is no longer used (#176)
+- Server listener configuration to conform to other NeoFS services (#200)
+- github.com/nspcc-dev/neo-go dependency to v0.106.0 (#208)
+
 ### Updating from 0.8.3
 
-Notice that configuration parameters in the `server` section were reorganized. 
-For example e.g.`server.schema` and `tls-listen-limit` were removed, and some 
-others were moved inside the array `endpoints`. Check your configuration with 
-the help of the [gate-configuration.md](./docs/gate-configuration.md) and 
-[config](./config/config.yaml). Also, flags in the command arguments were 
+Notice that configuration parameters in the `server` section were reorganized.
+For example e.g.`server.schema` and `tls-listen-limit` were removed, and some
+others were moved inside the array `endpoints`. Check your configuration with
+the help of the [gate-configuration.md](./docs/gate-configuration.md) and
+[config](./config/config.yaml). Also, flags in the command arguments were
 changed.
 
 A new upload object request has been introduced: `/objects/{containerId}`. This
 is a POST request that accepts the `X-Attributes` header, where all custom
-object attributes can be included in a JSON-formatted key-value map. Also, new 
+object attributes can be included in a JSON-formatted key-value map. Also, new
 GET and HEAD requests are added for object downloading:
-`/objects/{containerId}/by_id/{objectId}` and 
+`/objects/{containerId}/by_id/{objectId}` and
 `/objects/{containerId}/by_attribute/{attrKey}/{attrVal}`.
 For more information, see the [migration documentation](./docs/migration-new-upload.md).
 In the future, we plan to use these requests as the only option for object
@@ -62,7 +80,7 @@ this incorrect configuration, so please check your configurations.
 ## [0.7.2] - 2024-03-13
 
 ### Fixed
-- Response for GET and HEAD methods in `get_by_attribute` when object is not 
+- Response for GET and HEAD methods in `get_by_attribute` when object is not
   found (#155)
 - Transform attribute key to Canonical MIME Header Key, which corresponds to
   the format used on upload (#155)
@@ -222,4 +240,5 @@ Please refer to [GitHub releases](https://github.com/nspcc-dev/neofs-rest-gw/rel
 [0.8.1]: https://github.com/nspcc-dev/neofs-rest-gw/compare/v0.8.0...v0.8.1
 [0.8.2]: https://github.com/nspcc-dev/neofs-rest-gw/compare/v0.8.1...v0.8.2
 [0.8.3]: https://github.com/nspcc-dev/neofs-rest-gw/compare/v0.8.2...v0.8.3
-[Unreleased]: https://github.com/nspcc-dev/neofs-rest-gw/compare/v0.8.3...master
+[0.9.0]: https://github.com/nspcc-dev/neofs-rest-gw/compare/v0.8.3...v0.9.0
+[Unreleased]: https://github.com/nspcc-dev/neofs-rest-gw/compare/v0.9.0...master
