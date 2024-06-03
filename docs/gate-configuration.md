@@ -12,31 +12,32 @@ There are some custom types used for brevity:
 
 | Section      | Description                                     |
 |--------------|-------------------------------------------------|
-| `server`     | [Server parameters](#server-section)            |
+| `server`     | [Server configuration](#server-section)         |
 | `wallet`     | [Wallet configuration](#wallet-section)         |
 | `pool`       | [Pool configuration](#pool-section)             |
 | `logger`     | [Logger configuration](#logger-section)         |
 | `pprof`      | [Pprof configuration](#pprof-section)           |
 | `prometheus` | [Prometheus configuration](#prometheus-section) |
 
-# Server section
+# `server` section
 
 ```yaml
-endpoints:
-  - address: localhost:8080
-    external-address: localhost:8090
-    tls:
-      enabled: false
-      certificate: /path/to/tls/cert
-      key: /path/to/tls/key
-      ca-certificate: /path/to/tls/ca
-    keep-alive: 3m
-    read-timeout: 30s
-    write-timeout: 30s
-cleanup-timeout: 10s
-graceful-timeout: 15s
-max-header-size: 1000000
-listen-limit: 0
+server:
+  endpoints:
+    - address: localhost:8080
+      external-address: localhost:8090
+      tls:
+        enabled: false
+        certificate: /path/to/tls/cert
+        key: /path/to/tls/key
+        ca-certificate: /path/to/tls/ca
+      keep-alive: 3m
+      read-timeout: 30s
+      write-timeout: 30s
+  cleanup-timeout: 10s
+  graceful-timeout: 15s
+  max-header-size: 1000000
+  listen-limit: 0
 ```
 
 | Parameter                       | Type       | Default value    | Description                                                                                                                                                                         |
@@ -45,7 +46,7 @@ listen-limit: 0
 | `graceful-timeout`              | `duration` | `15s`            | Grace period for which to wait before shutting down the server.                                                                                                                     |
 | `max-header-size`               | `int`      | `1000000`        | Controls the maximum number of bytes the server will read parsing the request header's keys and values, including the request line. It does not limit the size of the request body. |
 | `listen-limit`                  | `int`      | `0`              | Limit the number of outstanding requests. `0` means no limit                                                                                                                        |                                                                                                                         |
-| `endpoint.[0].listen-address`   | `string`   | `localhost:8080` | The IP and port to listen on.                                                                                                                                                       |
+| `endpoint.[0].address`          | `string`   | `localhost:8080` | The IP and port to listen on.                                                                                                                                                       |
 | `endpoint.[0].keep-alive`       | `duration` | `3m`             | Sets the TCP keep-alive timeouts on accepted connections.                                                                                                                           |
 | `endpoint.[0].read-timeout`     | `duration` | `30s`            | Maximum duration before timing out read of the request. It prunes dead TCP connections (e.g. closing laptop mid-download).                                                          |
 | `endpoint.[0].write-timeout`    | `duration` | `30s`            | Maximum duration before timing out write of the response.                                                                                                                           |
