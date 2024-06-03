@@ -144,7 +144,7 @@ func config() *viper.Viper {
 	flagSet.Duration(cfgEndpointKeepAlive, 3*time.Minute, "sets the TCP keep-alive timeouts on accepted connections. It prunes dead TCP connections ( e.g. closing laptop mid-download)")
 	flagSet.Duration(cfgEndpointReadTimeout, 30*time.Second, "maximum duration before timing out read of the request")
 	flagSet.Duration(cfgEndpointWriteTimeout, 30*time.Second, "maximum duration before timing out write of the response")
-	flagSet.String(cfgEndpointExternalAddress, "localhost:8090", "the IP and port to be shown in the API documentation")
+	flagSet.String(cfgEndpointExternalAddress, "", "the full URL address needs to be shown in the API documentation")
 
 	// init server flags
 	BindDefaultFlags(flagSet)
