@@ -285,6 +285,7 @@ var knownConfigParams = map[string]struct{}{
 	cfgPrometheusAddress:    {},
 	cfgPprofEnabled:         {},
 	cfgPprofAddress:         {},
+	cmdListenAddress:        {},
 }
 
 func validateConfig(cfg *viper.Viper, logger *zap.Logger) {
