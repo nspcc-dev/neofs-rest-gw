@@ -56,8 +56,10 @@ server:
   endpoints:
     # The IP and port to listen on.
     - address: localhost:8081
-      # The IP and port to be shown in the API documentation.
-      external-address: localhost:8091
+      # The full URL address needs to be shown in the API documentation,
+      # including the scheme (http/https), host, and port.
+      # If not set, will be generated from `address` and `tls.enabled`.
+      external-address: https://localhost:8091
       tls:
         # Use TLS for a gRPC connection (min version is TLS 1.2).
         enabled: true
@@ -76,7 +78,7 @@ server:
       write-timeout: 30s
 
     - address: localhost:8080
-      external-address: localhost:8090
+      external-address: http://localhost:8090
       tls:
         enabled: false
         certificate: /path/to/tls/cert

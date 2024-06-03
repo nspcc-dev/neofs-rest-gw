@@ -62,32 +62,34 @@ func main() {
 	e.Group(baseURL, middleware.OapiRequestValidator(swagger))
 	apiserver.RegisterHandlersWithBaseURL(e, neofsAPI, baseURL)
 
+	var serverURL string
 	servers := make(openapi3.Servers, len(serverCfg.Endpoints))
 	for i, endpointInfo := range serverCfg.Endpoints {
 		if endpointInfo.ExternalAddress != "" {
-			var scheme string
-			// Determine the scheme based on whether TLS is enabled and set up e.TLSServer.
-			if endpointInfo.TLS.Enabled {
-				scheme = schemeHTTPS
-				e.TLSServer.ReadTimeout = endpointInfo.ReadTimeout
-				e.TLSServer.WriteTimeout = endpointInfo.WriteTimeout
-				e.TLSServer.IdleTimeout = endpointInfo.KeepAlive
-
-				if endpointInfo.TLS.CertCAFile != "" {
-					ca, err := loadCA(endpointInfo.TLS.CertCAFile)
-					if err != nil {
-						logger.Fatal("reading server certificate", zap.Error(err))
-					}
-					e.TLSServer.TLSConfig = &tls.Config{ClientCAs: ca}
-				}
-			} else {
-				scheme = schemeHTTP
-			}
-			servers[i] = &openapi3.Server{
-				URL: fmt.Sprintf("%s://%s%s", scheme, endpointInfo.ExternalAddress, baseURL),
-			}
+			serverURL = fmt.Sprintf("%s%s", endpointInfo.ExternalAddress, baseURL)
 		} else {
-			logger.Info("Endpoint with missing external-address", zap.String("address", endpointInfo.Address))
+			scheme := getScheme(endpointInfo.TLS.Enabled)
+			serverURL = fmt.Sprintf("%s://%s%s", scheme, endpointInfo.Address, baseURL)
+			logger.Info("Endpoint with missing external-address",
+				zap.String("address", endpointInfo.Address),
+				zap.String("set external-address", serverURL))
+		}
+		servers[i] = &openapi3.Server{
+			URL: serverURL,
+		}
+
+		if endpointInfo.TLS.Enabled {
+			e.TLSServer.ReadTimeout = endpointInfo.ReadTimeout
+			e.TLSServer.WriteTimeout = endpointInfo.WriteTimeout
+			e.TLSServer.IdleTimeout = endpointInfo.KeepAlive
+
+			if endpointInfo.TLS.CertCAFile != "" {
+				ca, err := loadCA(endpointInfo.TLS.CertCAFile)
+				if err != nil {
+					logger.Fatal("reading server certificate", zap.Error(err))
+				}
+				e.TLSServer.TLSConfig = &tls.Config{ClientCAs: ca}
+			}
 		}
 	}
 	swagger.Servers = servers
@@ -136,4 +138,11 @@ func swaggerDocHandler(c echo.Context) error {
 
 func redirectHandler(c echo.Context) error {
 	return c.Redirect(http.StatusTemporaryRedirect, docsURL)
+}
+
+func getScheme(tlsEnabled bool) string {
+	if tlsEnabled {
+		return schemeHTTPS
+	}
+	return schemeHTTP
 }

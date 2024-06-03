@@ -53,7 +53,7 @@ listen-limit: 0
 | `endpoint.[0].tls.certificate`  | `string`   |                  | The certificate file to use for secure connections.                                                                                                                                 |
 | `endpoint.[0].tls.key`          | `string`   |                  | The private key file to use for secure connections (without passphrase).                                                                                                            |
 | `endpoint.[0].tls.ca`           | `string`   |                  | The certificate authority certificate file to be used with mutual tls auth.                                                                                                         |
-| `endpoint.[0].external-address` | `string`   | `localhost:8090` | The IP and port to be shown in the API documentation.                                                                                                                               |
+| `endpoint.[0].external-address` | `string`   |                  | The full URL address needs to be shown in the API documentation, including the scheme (http/https), host, and port. If not set, will be generated from `address` and `tls.enabled`. |
 
 # `wallet` section
 
