@@ -2008,7 +2008,10 @@ func restNewObjectHead(ctx context.Context, t *testing.T, p *pool.Pool, ownerID 
 
 	t.Run("head", func(t *testing.T) {
 		objID := createObject(ctx, t, p, ownerID, cnrID, attributes, content, signer)
-		createTS := time.Now().Unix()
+
+		attrTS := getObjectCreateTimestamp(ctx, t, p, cnrID, objID, signer)
+		createTS, err := strconv.ParseInt(attrTS, 10, 64)
+		require.NoError(t, err)
 
 		request, err = http.NewRequest(http.MethodHead, testHost+"/v1/objects/"+cnrID.EncodeToString()+"/by_id/"+objID.EncodeToString()+"?"+query.Encode(), nil)
 		require.NoError(t, err)
@@ -2056,7 +2059,10 @@ func restNewObjectHead(ctx context.Context, t *testing.T, p *pool.Pool, ownerID 
 		attributes[object.AttributeContentType] = customContentType
 
 		objID := createObject(ctx, t, p, ownerID, cnrID, attributes, content, signer)
-		createTS := time.Now().Unix()
+
+		attrTS := getObjectCreateTimestamp(ctx, t, p, cnrID, objID, signer)
+		createTS, err := strconv.ParseInt(attrTS, 10, 64)
+		require.NoError(t, err)
 
 		request, err = http.NewRequest(http.MethodHead, testHost+"/v1/objects/"+cnrID.EncodeToString()+"/by_id/"+objID.EncodeToString()+"?"+query.Encode(), nil)
 		require.NoError(t, err)
@@ -2161,7 +2167,10 @@ func restNewObjectHeadByAttribute(ctx context.Context, t *testing.T, p *pool.Poo
 
 	t.Run("head", func(t *testing.T) {
 		objID := createObject(ctx, t, p, ownerID, cnrID, attributes, content, signer)
-		createTS := time.Now().Unix()
+
+		attrTS := getObjectCreateTimestamp(ctx, t, p, cnrID, objID, signer)
+		createTS, err := strconv.ParseInt(attrTS, 10, 64)
+		require.NoError(t, err)
 
 		request, err = http.NewRequest(http.MethodHead, testHost+"/v1/objects/"+cnrID.EncodeToString()+"/by_attribute/"+object.AttributeFileName+"/"+fileNameAttr+"?"+query.Encode(), nil)
 		require.NoError(t, err)
@@ -2209,7 +2218,10 @@ func restNewObjectHeadByAttribute(ctx context.Context, t *testing.T, p *pool.Poo
 		attributes[object.AttributeFileName] = multiSegmentName
 
 		objID := createObject(ctx, t, p, ownerID, cnrID, attributes, content, signer)
-		createTS := time.Now().Unix()
+
+		attrTS := getObjectCreateTimestamp(ctx, t, p, cnrID, objID, signer)
+		createTS, err := strconv.ParseInt(attrTS, 10, 64)
+		require.NoError(t, err)
 
 		request, err = http.NewRequest(http.MethodHead, testHost+"/v1/objects/"+cnrID.EncodeToString()+"/by_attribute/"+object.AttributeFileName+"/"+multiSegmentName+"?"+query.Encode(), nil)
 		require.NoError(t, err)
@@ -2349,4 +2361,21 @@ func restNewObjectGetByAttribute(ctx context.Context, t *testing.T, p *pool.Pool
 
 		require.Equal(t, content, rawPayload)
 	})
+}
+
+func getObjectCreateTimestamp(ctx context.Context, t *testing.T, clientPool *pool.Pool, CID cid.ID, id oid.ID, signer user.Signer) string {
+	var prm client.PrmObjectGet
+	res, payloadReader, err := clientPool.ObjectGetInit(ctx, CID, id, signer, prm)
+	require.NoError(t, err)
+
+	payload := bytes.NewBuffer(nil)
+	_, err = io.Copy(payload, payloadReader)
+	require.NoError(t, err)
+
+	for _, attribute := range res.Attributes() {
+		if attribute.Key() == object.AttributeTimestamp {
+			return attribute.Value()
+		}
+	}
+	return ""
 }
