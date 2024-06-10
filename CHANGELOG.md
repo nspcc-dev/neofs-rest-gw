@@ -4,6 +4,16 @@ This document outlines major changes between releases.
 
 ## [Unreleased]
 
+## [0.10.0] - 2024-06-10
+
+### Fixed
+- Documentation for the `server` section (#220)
+- "unknown config parameter listen-address" warning (#220)
+
+### Changed
+- `external-address` configuration behavior to include scheme (#218)
+- Timestamp is no longer logged if program is not running in TTY (#222)
+
 ### Updating from 0.9.0
 
 Notice that the configuration parameter `external-address` in the
@@ -248,4 +258,5 @@ Please refer to [GitHub releases](https://github.com/nspcc-dev/neofs-rest-gw/rel
 [0.8.2]: https://github.com/nspcc-dev/neofs-rest-gw/compare/v0.8.1...v0.8.2
 [0.8.3]: https://github.com/nspcc-dev/neofs-rest-gw/compare/v0.8.2...v0.8.3
 [0.9.0]: https://github.com/nspcc-dev/neofs-rest-gw/compare/v0.8.3...v0.9.0
-[Unreleased]: https://github.com/nspcc-dev/neofs-rest-gw/compare/v0.9.0...master
+[0.10.0]: https://github.com/nspcc-dev/neofs-rest-gw/compare/v0.9.0...v0.10.0
+[Unreleased]: https://github.com/nspcc-dev/neofs-rest-gw/compare/v0.10.0...master
