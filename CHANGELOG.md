@@ -6,9 +6,9 @@ This document outlines major changes between releases.
 
 ### Updating from 0.9.0
 
-Notice that the configuration parameter `external-address` in the 
+Notice that the configuration parameter `external-address` in the
 `server.endpoints` section now also includes the scheme (http/https), not just
-the host and port. If `external-address` is not set, it will be generated from 
+the host and port. If `external-address` is not set, it will be generated from
 `address` and `tls.enabled`.
 
 ## [0.9.0] - 2024-05-30
