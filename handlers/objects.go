@@ -954,6 +954,15 @@ func (a *RestAPI) UploadContainerObject(ctx echo.Context, containerID apiserver.
 			resp := a.logAndGetErrorResponse(fmt.Sprintf("get file %q from HTTP request", fileKey), err)
 			return ctx.JSON(http.StatusBadRequest, resp)
 		}
+		defer func() {
+			err := file.Close()
+			a.log.Debug(
+				"close temporary multipart/form file",
+				zap.Stringer("address", addr),
+				zap.String("filename", header.Filename),
+				zap.Error(err),
+			)
+		}()
 
 		break
 	}
@@ -962,19 +971,6 @@ func (a *RestAPI) UploadContainerObject(ctx echo.Context, containerID apiserver.
 		resp := a.logAndGetErrorResponse("no multipart/form file", http.ErrMissingFile)
 		return ctx.JSON(http.StatusBadRequest, resp)
 	}
-
-	defer func() {
-		if file == nil {
-			return
-		}
-		err := file.Close()
-		a.log.Debug(
-			"close temporary multipart/form file",
-			zap.Stringer("address", addr),
-			zap.String("filename", header.Filename),
-			zap.Error(err),
-		)
-	}()
 
 	filtered, err := filterHeaders(a.log, ctx.Request().Header)
 	if err != nil {
