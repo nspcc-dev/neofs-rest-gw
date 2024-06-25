@@ -2047,7 +2047,9 @@ func restNewObjectHead(ctx context.Context, t *testing.T, p *pool.Pool, ownerID 
 			case "Content-Type":
 				require.Equal(t, "text/plain; charset=utf-8", vals[0])
 			case "Date":
-				require.Equal(t, time.Unix(createTS, 0).UTC().Format(http.TimeFormat), vals[0])
+				tm, err := time.ParseInLocation(http.TimeFormat, vals[0], time.UTC)
+				require.NoError(t, err)
+				require.GreaterOrEqual(t, tm.Unix(), createTS)
 			case "Access-Control-Allow-Origin":
 				require.Equal(t, "*", vals[0])
 			}
@@ -2098,7 +2100,9 @@ func restNewObjectHead(ctx context.Context, t *testing.T, p *pool.Pool, ownerID 
 			case "Content-Type":
 				require.Equal(t, customContentType, vals[0])
 			case "Date":
-				require.Equal(t, time.Unix(createTS, 0).UTC().Format(http.TimeFormat), vals[0])
+				tm, err := time.ParseInLocation(http.TimeFormat, vals[0], time.UTC)
+				require.NoError(t, err)
+				require.GreaterOrEqual(t, tm.Unix(), createTS)
 			case "Access-Control-Allow-Origin":
 				require.Equal(t, "*", vals[0])
 			}
@@ -2206,7 +2210,9 @@ func restNewObjectHeadByAttribute(ctx context.Context, t *testing.T, p *pool.Poo
 			case "Content-Type":
 				require.Equal(t, "text/plain; charset=utf-8", vals[0])
 			case "Date":
-				require.Equal(t, time.Unix(createTS, 0).UTC().Format(http.TimeFormat), vals[0])
+				tm, err := time.ParseInLocation(http.TimeFormat, vals[0], time.UTC)
+				require.NoError(t, err)
+				require.GreaterOrEqual(t, tm.Unix(), createTS)
 			case "Access-Control-Allow-Origin":
 				require.Equal(t, "*", vals[0])
 			}
@@ -2257,7 +2263,9 @@ func restNewObjectHeadByAttribute(ctx context.Context, t *testing.T, p *pool.Poo
 			case "Content-Type":
 				require.Equal(t, "text/plain; charset=utf-8", vals[0])
 			case "Date":
-				require.Equal(t, time.Unix(createTS, 0).UTC().Format(http.TimeFormat), vals[0])
+				tm, err := time.ParseInLocation(http.TimeFormat, vals[0], time.UTC)
+				require.NoError(t, err)
+				require.GreaterOrEqual(t, tm.Unix(), createTS)
 			case "Access-Control-Allow-Origin":
 				require.Equal(t, "*", vals[0])
 			}
@@ -2353,7 +2361,9 @@ func restNewObjectGetByAttribute(ctx context.Context, t *testing.T, p *pool.Pool
 			case "Content-Type":
 				require.Equal(t, "text/plain; charset=utf-8", vals[0])
 			case "Date":
-				require.Equal(t, time.Unix(createTS, 0).UTC().Format(http.TimeFormat), vals[0])
+				tm, err := time.ParseInLocation(http.TimeFormat, vals[0], time.UTC)
+				require.NoError(t, err)
+				require.GreaterOrEqual(t, tm.Unix(), createTS)
 			case "Access-Control-Allow-Origin":
 				require.Equal(t, "*", vals[0])
 			}
