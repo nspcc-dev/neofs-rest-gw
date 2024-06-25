@@ -1036,8 +1036,15 @@ func (a *RestAPI) UploadContainerObject(ctx echo.Context, containerID apiserver.
 		return ctx.JSON(http.StatusBadRequest, resp)
 	}
 
-	chunk := make([]byte, a.payloadBufferSize)
-	_, err = io.CopyBuffer(writer, file, chunk)
+	var buf []byte
+	if header.Size > 0 && uint64(header.Size) < a.payloadBufferSize {
+		buf = make([]byte, header.Size)
+	} else {
+		// Size field is not documented, so we cannot be sure what exactly non-positive
+		// values mean. Thus, it's better to keep default behavior for them.
+		buf = make([]byte, a.payloadBufferSize)
+	}
+	_, err = io.CopyBuffer(writer, file, buf)
 	if err != nil {
 		resp := a.logAndGetErrorResponse("write", err)
 		return ctx.JSON(http.StatusBadRequest, resp)
