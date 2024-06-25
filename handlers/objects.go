@@ -1036,7 +1036,7 @@ func (a *RestAPI) UploadContainerObject(ctx echo.Context, containerID apiserver.
 		return ctx.JSON(http.StatusBadRequest, resp)
 	}
 
-	chunk := make([]byte, a.maxObjectSize)
+	chunk := make([]byte, a.payloadBufferSize)
 	_, err = io.CopyBuffer(writer, file, chunk)
 	if err != nil {
 		resp := a.logAndGetErrorResponse("write", err)

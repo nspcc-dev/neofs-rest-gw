@@ -114,7 +114,7 @@ func (a *RestAPI) NewUploadContainerObject(ctx echo.Context, containerID apiserv
 		return ctx.JSON(http.StatusBadRequest, resp)
 	}
 
-	chunk := make([]byte, a.maxObjectSize)
+	chunk := make([]byte, a.payloadBufferSize)
 	_, err = io.CopyBuffer(writer, ctx.Request().Body, chunk)
 	if err != nil {
 		resp := a.logAndGetErrorResponse("write", err)
