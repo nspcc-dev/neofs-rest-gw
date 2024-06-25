@@ -135,9 +135,7 @@ func (a *RestAPI) PutObject(ctx echo.Context, params apiserver.PutObjectParams) 
 
 	var objID oid.ID
 
-	data := bytes.NewReader(payload)
-	chunk := make([]byte, a.maxObjectSize)
-	_, err = io.CopyBuffer(writer, data, chunk)
+	_, err = writer.Write(payload)
 	if err != nil {
 		resp := a.logAndGetErrorResponse("write", err)
 		return ctx.JSON(http.StatusBadRequest, resp)
