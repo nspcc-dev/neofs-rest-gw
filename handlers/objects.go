@@ -117,38 +117,18 @@ func (a *RestAPI) PutObject(ctx echo.Context, params apiserver.PutObjectParams) 
 		return ctx.JSON(http.StatusBadRequest, resp)
 	}
 
-	var obj object.Object
-	obj.SetContainerID(cnrID)
-	attachOwner(&obj, btoken)
-	obj.SetAttributes(attributes...)
+	var hdr object.Object
+	hdr.SetContainerID(cnrID)
+	attachOwner(&hdr, btoken)
+	hdr.SetAttributes(attributes...)
 
-	var prmPutInit client.PrmObjectPutInit
-	if btoken != nil {
-		prmPutInit.WithBearerToken(*btoken)
-	}
-
-	writer, err := a.pool.ObjectPutInit(ctx.Request().Context(), obj, a.signer, prmPutInit)
+	objID, err := a.putObject(ctx, hdr, btoken, func(w io.Writer) error {
+		_, err := w.Write(payload)
+		return err
+	})
 	if err != nil {
-		resp := a.logAndGetErrorResponse("put object init", err)
-		return ctx.JSON(http.StatusBadRequest, resp)
+		return err
 	}
-
-	var objID oid.ID
-
-	data := bytes.NewReader(payload)
-	chunk := make([]byte, a.maxObjectSize)
-	_, err = io.CopyBuffer(writer, data, chunk)
-	if err != nil {
-		resp := a.logAndGetErrorResponse("write", err)
-		return ctx.JSON(http.StatusBadRequest, resp)
-	}
-
-	if err = writer.Close(); err != nil {
-		resp := a.logAndGetErrorResponse("writer close", err)
-		return ctx.JSON(http.StatusBadRequest, resp)
-	}
-
-	objID = writer.GetResult().StoredObjectID()
 
 	var resp apiserver.Address
 	resp.ContainerId = body.ContainerId
@@ -915,7 +895,6 @@ func (a *RestAPI) UploadContainerObject(ctx echo.Context, containerID apiserver.
 		header *multipart.FileHeader
 		file   multipart.File
 		err    error
-		idObj  oid.ID
 		addr   oid.Address
 		btoken *bearer.Token
 	)
@@ -956,6 +935,15 @@ func (a *RestAPI) UploadContainerObject(ctx echo.Context, containerID apiserver.
 			resp := a.logAndGetErrorResponse(fmt.Sprintf("get file %q from HTTP request", fileKey), err)
 			return ctx.JSON(http.StatusBadRequest, resp)
 		}
+		defer func() {
+			err := file.Close()
+			a.log.Debug(
+				"close temporary multipart/form file",
+				zap.Stringer("address", addr),
+				zap.String("filename", header.Filename),
+				zap.Error(err),
+			)
+		}()
 
 		break
 	}
@@ -964,19 +952,6 @@ func (a *RestAPI) UploadContainerObject(ctx echo.Context, containerID apiserver.
 		resp := a.logAndGetErrorResponse("no multipart/form file", http.ErrMissingFile)
 		return ctx.JSON(http.StatusBadRequest, resp)
 	}
-
-	defer func() {
-		if file == nil {
-			return
-		}
-		err := file.Close()
-		a.log.Debug(
-			"close temporary multipart/form file",
-			zap.Stringer("address", addr),
-			zap.String("filename", header.Filename),
-			zap.Error(err),
-		)
-	}()
 
 	filtered, err := filterHeaders(a.log, ctx.Request().Header)
 	if err != nil {
@@ -1022,35 +997,27 @@ func (a *RestAPI) UploadContainerObject(ctx echo.Context, containerID apiserver.
 		attributes = append(attributes, *timestamp)
 	}
 
-	var obj object.Object
-	obj.SetContainerID(idCnr)
-	a.setOwner(&obj, btoken)
-	obj.SetAttributes(attributes...)
+	var hdr object.Object
+	hdr.SetContainerID(idCnr)
+	a.setOwner(&hdr, btoken)
+	hdr.SetAttributes(attributes...)
 
-	var prmPutInit client.PrmObjectPutInit
-	if btoken != nil {
-		prmPutInit.WithBearerToken(*btoken)
-	}
-
-	writer, err := a.pool.ObjectPutInit(ctx.Request().Context(), obj, a.signer, prmPutInit)
+	idObj, err := a.putObject(ctx, hdr, btoken, func(w io.Writer) error {
+		var buf []byte
+		if header.Size > 0 && uint64(header.Size) < a.payloadBufferSize {
+			buf = make([]byte, header.Size)
+		} else {
+			// Size field is not documented, so we cannot be sure what exactly non-positive
+			// values mean. Thus, it's better to keep default behavior for them.
+			buf = make([]byte, a.payloadBufferSize)
+		}
+		_, err = io.CopyBuffer(w, file, buf)
+		return err
+	})
 	if err != nil {
-		resp := a.logAndGetErrorResponse("put object init", err)
-		return ctx.JSON(http.StatusBadRequest, resp)
+		return err
 	}
 
-	chunk := make([]byte, a.maxObjectSize)
-	_, err = io.CopyBuffer(writer, file, chunk)
-	if err != nil {
-		resp := a.logAndGetErrorResponse("write", err)
-		return ctx.JSON(http.StatusBadRequest, resp)
-	}
-
-	if err = writer.Close(); err != nil {
-		resp := a.logAndGetErrorResponse("writer close", err)
-		return ctx.JSON(http.StatusBadRequest, resp)
-	}
-
-	idObj = writer.GetResult().StoredObjectID()
 	addr.SetObject(idObj)
 	addr.SetContainer(idCnr)
 

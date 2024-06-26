@@ -11,7 +11,6 @@ import (
 	"github.com/nspcc-dev/neofs-rest-gw/handlers/apiserver"
 	"github.com/nspcc-dev/neofs-rest-gw/internal/util"
 	"github.com/nspcc-dev/neofs-sdk-go/bearer"
-	"github.com/nspcc-dev/neofs-sdk-go/client"
 	cid "github.com/nspcc-dev/neofs-sdk-go/container/id"
 	"github.com/nspcc-dev/neofs-sdk-go/object"
 	oid "github.com/nspcc-dev/neofs-sdk-go/object/id"
@@ -22,7 +21,6 @@ import (
 func (a *RestAPI) NewUploadContainerObject(ctx echo.Context, containerID apiserver.ContainerId, params apiserver.NewUploadContainerObjectParams) error {
 	var (
 		err    error
-		idObj  oid.ID
 		addr   oid.Address
 		btoken *bearer.Token
 	)
@@ -98,35 +96,26 @@ func (a *RestAPI) NewUploadContainerObject(ctx echo.Context, containerID apiserv
 		}
 	}
 
-	var obj object.Object
-	obj.SetContainerID(idCnr)
-	a.setOwner(&obj, btoken)
-	obj.SetAttributes(attributes...)
+	var hdr object.Object
+	hdr.SetContainerID(idCnr)
+	a.setOwner(&hdr, btoken)
+	hdr.SetAttributes(attributes...)
 
-	var prmPutInit client.PrmObjectPutInit
-	if btoken != nil {
-		prmPutInit.WithBearerToken(*btoken)
-	}
-
-	writer, err := a.pool.ObjectPutInit(ctx.Request().Context(), obj, a.signer, prmPutInit)
+	idObj, err := a.putObject(ctx, hdr, btoken, func(w io.Writer) error {
+		var err error
+		if cln := ctx.Request().ContentLength; cln >= 0 && uint64(cln) < a.payloadBufferSize { // negative means unknown
+			if cln != 0 { // otherwise io.CopyBuffer panics
+				_, err = io.CopyBuffer(w, ctx.Request().Body, make([]byte, cln))
+			}
+		} else {
+			_, err = io.CopyBuffer(w, ctx.Request().Body, make([]byte, a.payloadBufferSize))
+		}
+		return err
+	})
 	if err != nil {
-		resp := a.logAndGetErrorResponse("put object init", err)
-		return ctx.JSON(http.StatusBadRequest, resp)
+		return err
 	}
 
-	chunk := make([]byte, a.maxObjectSize)
-	_, err = io.CopyBuffer(writer, ctx.Request().Body, chunk)
-	if err != nil {
-		resp := a.logAndGetErrorResponse("write", err)
-		return ctx.JSON(http.StatusBadRequest, resp)
-	}
-
-	if err = writer.Close(); err != nil {
-		resp := a.logAndGetErrorResponse("writer close", err)
-		return ctx.JSON(http.StatusBadRequest, resp)
-	}
-
-	idObj = writer.GetResult().StoredObjectID()
 	addr.SetObject(idObj)
 	addr.SetContainer(idCnr)
 

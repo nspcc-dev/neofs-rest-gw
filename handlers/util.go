@@ -5,16 +5,20 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"math"
 	"net/http"
 	"strconv"
 	"strings"
 	"time"
 
+	"github.com/labstack/echo/v4"
 	"github.com/nspcc-dev/neofs-rest-gw/handlers/apiserver"
+	"github.com/nspcc-dev/neofs-sdk-go/bearer"
 	"github.com/nspcc-dev/neofs-sdk-go/client"
 	"github.com/nspcc-dev/neofs-sdk-go/container/acl"
 	"github.com/nspcc-dev/neofs-sdk-go/object"
+	oid "github.com/nspcc-dev/neofs-sdk-go/object/id"
 	"github.com/nspcc-dev/neofs-sdk-go/pool"
 	"github.com/nspcc-dev/neofs-sdk-go/session"
 	"go.uber.org/zap"
@@ -399,4 +403,30 @@ func addExpirationHeaders(headers map[string]string, params apiserver.NewUploadC
 	if params.XNeofsExpirationRFC3339 != nil && *params.XNeofsExpirationRFC3339 != "" {
 		headers[ExpirationRFC3339Attr] = *params.XNeofsExpirationRFC3339
 	}
+}
+
+// shares code of NeoFS object recording performed by various RestAPI methods.
+func (a *RestAPI) putObject(ctx echo.Context, hdr object.Object, bt *bearer.Token, wp func(io.Writer) error) (oid.ID, error) {
+	var opts client.PrmObjectPutInit
+	if bt != nil {
+		opts.WithBearerToken(*bt)
+	}
+	writer, err := a.pool.ObjectPutInit(ctx.Request().Context(), hdr, a.signer, opts)
+	if err != nil {
+		resp := a.logAndGetErrorResponse("put object init", err)
+		return oid.ID{}, ctx.JSON(http.StatusBadRequest, resp)
+	}
+
+	err = wp(writer)
+	if err != nil {
+		resp := a.logAndGetErrorResponse("write", err)
+		return oid.ID{}, ctx.JSON(http.StatusBadRequest, resp)
+	}
+
+	if err = writer.Close(); err != nil {
+		resp := a.logAndGetErrorResponse("writer close", err)
+		return oid.ID{}, ctx.JSON(http.StatusBadRequest, resp)
+	}
+
+	return writer.GetResult().StoredObjectID(), nil
 }

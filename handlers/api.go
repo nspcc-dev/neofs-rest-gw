@@ -23,7 +23,8 @@ type PrmAPI struct {
 	Pool             *pool.Pool
 	Key              *keys.PrivateKey
 	DefaultTimestamp bool
-	MaxObjectSize    int64
+	// Size limit for buffering of object payloads. Must be positive.
+	MaxPayloadBufferSize uint64
 
 	GateMetric             *metrics.GateMetrics
 	PrometheusService      *metrics.Service
@@ -55,21 +56,24 @@ const (
 //go:generate go run github.com/deepmap/oapi-codegen/cmd/oapi-codegen --config=server.cfg.yaml ../spec/rest.yaml
 
 // NewAPI creates a new RestAPI using specified logger, connection pool and other parameters.
-func NewAPI(prm *PrmAPI) *RestAPI {
+func NewAPI(prm *PrmAPI) (*RestAPI, error) {
+	if prm.MaxPayloadBufferSize == 0 {
+		return nil, errors.New("zero payload buffer size limit")
+	}
 	signer := user.NewAutoIDSignerRFC6979(prm.Key.PrivateKey)
 
 	return &RestAPI{
-		log:              prm.Logger,
-		pool:             prm.Pool,
-		signer:           signer,
-		defaultTimestamp: prm.DefaultTimestamp,
-		maxObjectSize:    prm.MaxObjectSize,
+		log:               prm.Logger,
+		pool:              prm.Pool,
+		signer:            signer,
+		defaultTimestamp:  prm.DefaultTimestamp,
+		payloadBufferSize: prm.MaxPayloadBufferSize,
 
 		prometheusService:      prm.PrometheusService,
 		pprofService:           prm.PprofService,
 		gateMetric:             prm.GateMetric,
 		serviceShutdownTimeout: prm.ServiceShutdownTimeout,
-	}
+	}, nil
 }
 
 func getPrincipalFromHeader(ctx echo.Context) (string, error) {
@@ -125,11 +129,11 @@ func (a *RestAPI) logAndGetErrorResponse(msg string, err error, fields ...zap.Fi
 
 // RestAPI is a REST v1 request handler.
 type RestAPI struct {
-	log              *zap.Logger
-	pool             *pool.Pool
-	signer           user.Signer
-	defaultTimestamp bool
-	maxObjectSize    int64
+	log               *zap.Logger
+	pool              *pool.Pool
+	signer            user.Signer
+	defaultTimestamp  bool
+	payloadBufferSize uint64
 
 	gateMetric             *metrics.GateMetrics
 	prometheusService      *metrics.Service

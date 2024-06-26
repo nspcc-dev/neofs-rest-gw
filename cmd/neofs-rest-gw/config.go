@@ -38,6 +38,9 @@ const (
 	defaultPoolErrorThreshold   uint32 = 100
 	defaultPoolDefaultTimestamp bool   = false
 
+	// default [handlers.PrmAPI.MaxPayloadBufferSize] value.
+	defaultMaxObjectPayloadBufferSize = 4 << 20
+
 	// Pool config.
 	cmdNodeDialTimeout      = "node-dial-timeout"
 	cfgNodeDialTimeout      = "pool." + cmdNodeDialTimeout
@@ -585,11 +588,16 @@ func newNeofsAPI(ctx context.Context, logger *zap.Logger, v *viper.Viper) (*hand
 	}
 
 	apiPrm.ServiceShutdownTimeout = defaultShutdownTimeout
-	apiPrm.MaxObjectSize = int64(ni.MaxObjectSize())
+	if apiPrm.MaxPayloadBufferSize = ni.MaxObjectSize(); apiPrm.MaxPayloadBufferSize == 0 {
+		// default to some heuristic value that in practice should not be needed at all
+		apiPrm.MaxPayloadBufferSize = defaultMaxObjectPayloadBufferSize
+		logger.Debug("NeoFS max object size setting is zero, using default limit for payload buffer size",
+			zap.Uint64("value", apiPrm.MaxPayloadBufferSize))
+	}
 
 	apiPrm.DefaultTimestamp = v.GetBool(cfgPoolDefaultTimestamp)
 
-	return handlers.NewAPI(&apiPrm), nil
+	return handlers.NewAPI(&apiPrm)
 }
 
 func fetchPeers(l *zap.Logger, v *viper.Viper) []pool.NodeParam {
