@@ -127,6 +127,7 @@ func main() {
 	go neofsAPI.StartCallback()
 
 	<-ctx.Done()
+	neofsAPI.StopServices()
 	if err = e.Shutdown(ctx); err != nil {
 		logger.Fatal("shutdown http and https", zap.Error(err))
 	}
