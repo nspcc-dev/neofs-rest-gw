@@ -1,9 +1,11 @@
 package handlers
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/labstack/echo/v4"
@@ -152,4 +154,21 @@ func (a *RestAPI) StartCallback() {
 func (a *RestAPI) RunServices() {
 	go a.pprofService.Start()
 	go a.prometheusService.Start()
+}
+
+// StopServices stops all running services with configured timeout.
+func (a *RestAPI) StopServices() {
+	ctx, cancel := context.WithTimeout(context.Background(), a.serviceShutdownTimeout)
+	defer cancel()
+	var wg sync.WaitGroup
+	wg.Add(2)
+	go func() {
+		defer wg.Done()
+		a.pprofService.ShutDown(ctx)
+	}()
+	go func() {
+		defer wg.Done()
+		a.prometheusService.ShutDown(ctx)
+	}()
+	wg.Wait()
 }
