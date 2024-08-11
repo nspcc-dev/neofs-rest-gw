@@ -377,7 +377,7 @@ func filterAttributes(logger *zap.Logger, attributes map[string]string) map[stri
 			delete(attributes, key)
 			continue
 		}
-		logger.Debug("Added attribute to result object", zap.String("key", key), zap.String("value", value))
+		logger.Debug("Filtered attribute", zap.String("key", key), zap.String("value", value))
 	}
 	return attributes
 }

@@ -68,6 +68,7 @@ func (a *RestAPI) NewUploadContainerObject(ctx echo.Context, containerID apiserv
 	// prepares attributes from filtered headers
 	for key, val := range filtered {
 		attribute := object.NewAttribute(key, val)
+		a.log.Debug("Added attribute", zap.String("key", key), zap.String("value", val))
 		attributes = append(attributes, *attribute)
 	}
 
@@ -76,6 +77,7 @@ func (a *RestAPI) NewUploadContainerObject(ctx echo.Context, containerID apiserv
 	if _, ok := filtered[object.AttributeContentType]; !ok {
 		if ct := ctx.Request().Header.Get("Content-Type"); len(ct) > 0 {
 			attrContentType := object.NewAttribute(object.AttributeContentType, ct)
+			a.log.Debug("Added attribute", zap.String("key", object.AttributeContentType), zap.String("value", ct))
 			attributes = append(attributes, *attrContentType)
 		}
 	}
@@ -91,7 +93,9 @@ func (a *RestAPI) NewUploadContainerObject(ctx echo.Context, containerID apiserv
 				return ctx.JSON(http.StatusBadRequest, resp)
 			}
 
-			timestamp := object.NewAttribute(object.AttributeTimestamp, strconv.FormatInt(parsedTime.Unix(), 10))
+			tsStr := strconv.FormatInt(parsedTime.Unix(), 10)
+			timestamp := object.NewAttribute(object.AttributeTimestamp, tsStr)
+			a.log.Debug("Added attribute", zap.String("key", object.AttributeTimestamp), zap.String("value", tsStr))
 			attributes = append(attributes, *timestamp)
 		}
 	}
