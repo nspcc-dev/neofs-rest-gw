@@ -4,6 +4,15 @@ This document outlines major changes between releases.
 
 ## [Unreleased]
 
+## [0.10.1] - 2024-08-12
+
+### Fixed
+- Missing proper shutdown for Pprof and Prometheus services (#227)
+- Missing Content-Type header in responses for HEAD requests (#232)
+
+### Changed
+- More efficient buffering for PUT requests (#225)
+
 ## [0.10.0] - 2024-06-10
 
 ### Fixed
@@ -259,4 +268,5 @@ Please refer to [GitHub releases](https://github.com/nspcc-dev/neofs-rest-gw/rel
 [0.8.3]: https://github.com/nspcc-dev/neofs-rest-gw/compare/v0.8.2...v0.8.3
 [0.9.0]: https://github.com/nspcc-dev/neofs-rest-gw/compare/v0.8.3...v0.9.0
 [0.10.0]: https://github.com/nspcc-dev/neofs-rest-gw/compare/v0.9.0...v0.10.0
-[Unreleased]: https://github.com/nspcc-dev/neofs-rest-gw/compare/v0.10.0...master
+[0.10.1]: https://github.com/nspcc-dev/neofs-rest-gw/compare/v0.10.0...v0.10.1
+[Unreleased]: https://github.com/nspcc-dev/neofs-rest-gw/compare/v0.10.1...master
