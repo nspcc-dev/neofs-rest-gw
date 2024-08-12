@@ -460,9 +460,8 @@ func (a *RestAPI) getByAddress(ctx echo.Context, addr oid.Address, downloadParam
 		} else {
 			contentType = http.DetectContentType(nil)
 		}
-
-		ctx.Response().Header().Set("Content-Type", contentType)
 	}
+	ctx.Response().Header().Set("Content-Type", contentType)
 
 	ctx.Response().Header().Set(accessControlAllowOriginHeader, "*")
 	return ctx.Stream(http.StatusOK, contentType, payload)
@@ -541,9 +540,8 @@ func (a *RestAPI) headByAddress(ctx echo.Context, addr oid.Address, downloadPara
 		} else {
 			contentType = http.DetectContentType(nil)
 		}
-
-		ctx.Response().Header().Set("Content-Type", contentType)
 	}
+	ctx.Response().Header().Set("Content-Type", contentType)
 
 	return nil
 }
