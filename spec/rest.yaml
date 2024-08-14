@@ -1011,6 +1011,10 @@ paths:
       operationId: newOptionsUploadContainerObject
       parameters:
         - $ref: '#/components/parameters/containerId'
+        - $ref: '#/components/parameters/signatureParam'
+        - $ref: '#/components/parameters/signatureKeyParam'
+        - $ref: '#/components/parameters/signatureScheme'
+        - $ref: '#/components/parameters/fullBearerToken'
       responses:
         "200":
           description: CORS

@@ -138,7 +138,7 @@ func (a *RestAPI) OptionsNetworkInfo(ctx echo.Context) error {
 }
 
 // NewOptionsUploadContainerObject handler for the upload object options request.
-func (a *RestAPI) NewOptionsUploadContainerObject(ctx echo.Context, _ apiserver.ContainerId) error {
+func (a *RestAPI) NewOptionsUploadContainerObject(ctx echo.Context, _ apiserver.ContainerId, _ apiserver.NewOptionsUploadContainerObjectParams) error {
 	ctx.Response().Header().Set(accessControlAllowOriginHeader, allOrigins)
 	ctx.Response().Header().Set(accessControlAllowHeadersHeader, allowUploadHeader)
 	ctx.Response().Header().Set(accessControlAllowMethodsHeader, allowMethods(methodPost))
