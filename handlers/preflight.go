@@ -9,8 +9,11 @@ import (
 )
 
 const (
-	allOrigins        = "*"
-	allowHeaders      = "X-Bearer-For-All-Users, X-Bearer-Lifetime, X-Bearer-Owner-Id, X-Bearer-Signature, X-Bearer-Signature-Key, Content-Type, Authorization"
+	allOrigins   = "*"
+	allowHeaders = "X-Bearer-For-All-Users, X-Bearer-Lifetime, X-Bearer-Owner-Id, " +
+		"X-Bearer-Signature, X-Bearer-Signature-Key, Content-Type, Authorization, " +
+		"X-Attribute-Filename, X-Attribute-Filepath, X-Attributes, " +
+		"X-Neofs-Expiration-RFC3339, X-Neofs-Expiration-Timestamp, X-Neofs-Expiration-Duration"
 	allowUploadHeader = "*"
 
 	methodGet    = "GET"
