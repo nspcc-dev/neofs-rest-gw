@@ -2006,6 +2006,9 @@ func restNewObjectHead(ctx context.Context, t *testing.T, p *pool.Pool, ownerID 
 		}
 	)
 
+	queryNew := make(url.Values)
+	queryNew.Add(fullBearerQuery, "true")
+
 	t.Run("head", func(t *testing.T) {
 		objID := createObject(ctx, t, p, ownerID, cnrID, attributes, content, signer)
 
@@ -2013,7 +2016,7 @@ func restNewObjectHead(ctx context.Context, t *testing.T, p *pool.Pool, ownerID 
 		createTS, err := strconv.ParseInt(attrTS, 10, 64)
 		require.NoError(t, err)
 
-		request, err = http.NewRequest(http.MethodHead, testHost+"/v1/objects/"+cnrID.EncodeToString()+"/by_id/"+objID.EncodeToString()+"?"+query.Encode(), nil)
+		request, err = http.NewRequest(http.MethodHead, testHost+"/v1/objects/"+cnrID.EncodeToString()+"/by_id/"+objID.EncodeToString()+"?"+queryNew.Encode(), nil)
 		require.NoError(t, err)
 		prepareCommonHeaders(request.Header, bearerToken)
 		request.Header.Set("Authorization", "Bearer "+resp.Token)
@@ -2066,7 +2069,7 @@ func restNewObjectHead(ctx context.Context, t *testing.T, p *pool.Pool, ownerID 
 		createTS, err := strconv.ParseInt(attrTS, 10, 64)
 		require.NoError(t, err)
 
-		request, err = http.NewRequest(http.MethodHead, testHost+"/v1/objects/"+cnrID.EncodeToString()+"/by_id/"+objID.EncodeToString()+"?"+query.Encode(), nil)
+		request, err = http.NewRequest(http.MethodHead, testHost+"/v1/objects/"+cnrID.EncodeToString()+"/by_id/"+objID.EncodeToString()+"?"+queryNew.Encode(), nil)
 		require.NoError(t, err)
 		prepareCommonHeaders(request.Header, bearerToken)
 		request.Header.Set("Authorization", "Bearer "+resp.Token)
@@ -2169,6 +2172,9 @@ func restNewObjectHeadByAttribute(ctx context.Context, t *testing.T, p *pool.Poo
 		}
 	)
 
+	queryNew := make(url.Values)
+	queryNew.Add(fullBearerQuery, "true")
+
 	t.Run("head", func(t *testing.T) {
 		objID := createObject(ctx, t, p, ownerID, cnrID, attributes, content, signer)
 
@@ -2176,7 +2182,7 @@ func restNewObjectHeadByAttribute(ctx context.Context, t *testing.T, p *pool.Poo
 		createTS, err := strconv.ParseInt(attrTS, 10, 64)
 		require.NoError(t, err)
 
-		request, err = http.NewRequest(http.MethodHead, testHost+"/v1/objects/"+cnrID.EncodeToString()+"/by_attribute/"+object.AttributeFileName+"/"+fileNameAttr+"?"+query.Encode(), nil)
+		request, err = http.NewRequest(http.MethodHead, testHost+"/v1/objects/"+cnrID.EncodeToString()+"/by_attribute/"+object.AttributeFileName+"/"+fileNameAttr+"?"+queryNew.Encode(), nil)
 		require.NoError(t, err)
 		prepareCommonHeaders(request.Header, bearerToken)
 		request.Header.Set("Authorization", "Bearer "+resp.Token)
@@ -2229,7 +2235,7 @@ func restNewObjectHeadByAttribute(ctx context.Context, t *testing.T, p *pool.Poo
 		createTS, err := strconv.ParseInt(attrTS, 10, 64)
 		require.NoError(t, err)
 
-		request, err = http.NewRequest(http.MethodHead, testHost+"/v1/objects/"+cnrID.EncodeToString()+"/by_attribute/"+object.AttributeFileName+"/"+multiSegmentName+"?"+query.Encode(), nil)
+		request, err = http.NewRequest(http.MethodHead, testHost+"/v1/objects/"+cnrID.EncodeToString()+"/by_attribute/"+object.AttributeFileName+"/"+multiSegmentName+"?"+queryNew.Encode(), nil)
 		require.NoError(t, err)
 		prepareCommonHeaders(request.Header, bearerToken)
 		request.Header.Set("Authorization", "Bearer "+resp.Token)
@@ -2327,7 +2333,10 @@ func restNewObjectGetByAttribute(ctx context.Context, t *testing.T, p *pool.Pool
 	t.Run("get", func(t *testing.T) {
 		objID := createObject(ctx, t, p, ownerID, cnrID, attributes, content, signer)
 
-		request, err = http.NewRequest(http.MethodGet, testHost+"/v1/objects/"+cnrID.EncodeToString()+"/by_attribute/"+object.AttributeFileName+"/"+fileNameAttr+"?"+query.Encode(), nil)
+		queryNew := make(url.Values)
+		queryNew.Add(fullBearerQuery, "true")
+
+		request, err = http.NewRequest(http.MethodGet, testHost+"/v1/objects/"+cnrID.EncodeToString()+"/by_attribute/"+object.AttributeFileName+"/"+fileNameAttr+"?"+queryNew.Encode(), nil)
 		require.NoError(t, err)
 		prepareCommonHeaders(request.Header, bearerToken)
 		request.Header.Set("Authorization", "Bearer "+resp.Token)

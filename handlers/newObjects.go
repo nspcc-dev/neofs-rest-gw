@@ -144,7 +144,24 @@ func (a *RestAPI) NewGetContainerObject(ctx echo.Context, containerID apiserver.
 		return ctx.JSON(http.StatusBadRequest, resp)
 	}
 
-	return a.getByAddress(ctx, addr, params.Download, principal, true)
+	var (
+		fullBearer    apiserver.FullBearerToken
+		walletConnect apiserver.SignatureScheme
+	)
+	if params.FullBearer != nil {
+		fullBearer = *params.FullBearer
+	}
+	if params.WalletConnect != nil {
+		walletConnect = *params.WalletConnect
+	}
+
+	btoken, err := getBearerToken(principal, params.XBearerSignature, params.XBearerSignatureKey, walletConnect, fullBearer)
+	if err != nil {
+		resp := a.logAndGetErrorResponse("get bearer token", err)
+		return ctx.JSON(http.StatusBadRequest, resp)
+	}
+
+	return a.getByAddress(ctx, addr, params.Download, btoken, true)
 }
 
 // NewHeadContainerObject handler that returns object info (using container ID and object ID).
@@ -161,7 +178,25 @@ func (a *RestAPI) NewHeadContainerObject(ctx echo.Context, containerID apiserver
 	}
 
 	ctx.Response().Header().Set(accessControlAllowOriginHeader, "*")
-	return a.headByAddress(ctx, addr, params.Download, principal, true)
+
+	var (
+		fullBearer    apiserver.FullBearerToken
+		walletConnect apiserver.SignatureScheme
+	)
+	if params.FullBearer != nil {
+		fullBearer = *params.FullBearer
+	}
+	if params.WalletConnect != nil {
+		walletConnect = *params.WalletConnect
+	}
+
+	btoken, err := getBearerToken(principal, params.XBearerSignature, params.XBearerSignatureKey, walletConnect, fullBearer)
+	if err != nil {
+		resp := a.logAndGetErrorResponse("get bearer token", err)
+		return ctx.JSON(http.StatusBadRequest, resp)
+	}
+
+	return a.headByAddress(ctx, addr, params.Download, btoken, true)
 }
 
 // NewGetByAttribute handler that returns object (payload and attributes) by a specific attribute.
@@ -177,7 +212,24 @@ func (a *RestAPI) NewGetByAttribute(ctx echo.Context, containerID apiserver.Cont
 		return ctx.JSON(http.StatusBadRequest, resp)
 	}
 
-	res, err := a.search(ctx.Request().Context(), principal, cnrID, attrKey, attrVal, object.MatchStringEqual)
+	var (
+		fullBearer    apiserver.FullBearerToken
+		walletConnect apiserver.SignatureScheme
+	)
+	if params.FullBearer != nil {
+		fullBearer = *params.FullBearer
+	}
+	if params.WalletConnect != nil {
+		walletConnect = *params.WalletConnect
+	}
+
+	btoken, err := getBearerToken(principal, params.XBearerSignature, params.XBearerSignatureKey, walletConnect, fullBearer)
+	if err != nil {
+		resp := a.logAndGetErrorResponse("get bearer token", err)
+		return ctx.JSON(http.StatusBadRequest, resp)
+	}
+
+	res, err := a.search(ctx.Request().Context(), btoken, cnrID, attrKey, attrVal, object.MatchStringEqual)
 	if err != nil {
 		resp := a.logAndGetErrorResponse("could not search for objects", err)
 		return ctx.JSON(http.StatusNotFound, resp)
@@ -207,7 +259,7 @@ func (a *RestAPI) NewGetByAttribute(ctx echo.Context, containerID apiserver.Cont
 	addrObj.SetContainer(cnrID)
 	addrObj.SetObject(buf[0])
 
-	return a.getByAddress(ctx, addrObj, params.Download, principal, true)
+	return a.getByAddress(ctx, addrObj, params.Download, btoken, true)
 }
 
 // NewHeadByAttribute handler that returns object info (payload and attributes) by a specific attribute.
@@ -223,7 +275,24 @@ func (a *RestAPI) NewHeadByAttribute(ctx echo.Context, containerID apiserver.Con
 		return ctx.JSON(http.StatusBadRequest, resp)
 	}
 
-	res, err := a.search(ctx.Request().Context(), principal, cnrID, attrKey, attrVal, object.MatchStringEqual)
+	var (
+		fullBearer    apiserver.FullBearerToken
+		walletConnect apiserver.SignatureScheme
+	)
+	if params.FullBearer != nil {
+		fullBearer = *params.FullBearer
+	}
+	if params.WalletConnect != nil {
+		walletConnect = *params.WalletConnect
+	}
+
+	btoken, err := getBearerToken(principal, params.XBearerSignature, params.XBearerSignatureKey, walletConnect, fullBearer)
+	if err != nil {
+		resp := a.logAndGetErrorResponse("get bearer token", err)
+		return ctx.JSON(http.StatusBadRequest, resp)
+	}
+
+	res, err := a.search(ctx.Request().Context(), btoken, cnrID, attrKey, attrVal, object.MatchStringEqual)
 	if err != nil {
 		resp := a.logAndGetErrorResponse("could not search for objects", err)
 		return ctx.JSON(http.StatusNotFound, resp)
@@ -254,5 +323,6 @@ func (a *RestAPI) NewHeadByAttribute(ctx echo.Context, containerID apiserver.Con
 	addrObj.SetObject(buf[0])
 
 	ctx.Response().Header().Set(accessControlAllowOriginHeader, "*")
-	return a.headByAddress(ctx, addrObj, params.Download, principal, true)
+
+	return a.headByAddress(ctx, addrObj, params.Download, btoken, true)
 }
