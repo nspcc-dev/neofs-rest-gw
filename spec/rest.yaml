@@ -797,6 +797,10 @@ paths:
       parameters:
         - $ref: '#/components/parameters/containerId'
         - $ref: '#/components/parameters/objectId'
+        - $ref: '#/components/parameters/signatureParam'
+        - $ref: '#/components/parameters/signatureKeyParam'
+        - $ref: '#/components/parameters/signatureScheme'
+        - $ref: '#/components/parameters/fullBearerToken'
       responses:
         "200":
           description: CORS
@@ -1166,6 +1170,10 @@ paths:
         - $ref: '#/components/parameters/containerId'
         - $ref: '#/components/parameters/attrKey'
         - $ref: '#/components/parameters/attrVal'
+        - $ref: '#/components/parameters/signatureParam'
+        - $ref: '#/components/parameters/signatureKeyParam'
+        - $ref: '#/components/parameters/signatureScheme'
+        - $ref: '#/components/parameters/fullBearerToken'
       responses:
         "200":
           description: CORS
