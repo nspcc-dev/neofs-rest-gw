@@ -936,6 +936,10 @@ paths:
       operationId: newUploadContainerObject
       parameters:
         - $ref: '#/components/parameters/containerId'
+        - $ref: '#/components/parameters/signatureParam'
+        - $ref: '#/components/parameters/signatureKeyParam'
+        - $ref: '#/components/parameters/signatureScheme'
+        - $ref: '#/components/parameters/fullBearerToken'
         - name: X-Attributes
           in: header
           description: |

@@ -1917,8 +1917,11 @@ func restNewObjectUploadInt(ctx context.Context, t *testing.T, clientPool *pool.
 	attributesJSON, err := json.Marshal(attributes)
 	require.NoError(t, err)
 
+	queryNew := make(url.Values)
+	queryNew.Add(fullBearerQuery, "true")
+
 	body := bytes.NewBufferString(content)
-	request, err = http.NewRequest(http.MethodPost, testHost+"/v1/objects/"+cnrID.String(), body)
+	request, err = http.NewRequest(http.MethodPost, testHost+"/v1/objects/"+cnrID.String()+"?"+queryNew.Encode(), body)
 	require.NoError(t, err)
 
 	request.Header.Set("Content-Type", "text/plain")

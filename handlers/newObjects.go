@@ -20,10 +20,19 @@ import (
 // NewUploadContainerObject handler that upload file as object with attributes to NeoFS.
 func (a *RestAPI) NewUploadContainerObject(ctx echo.Context, containerID apiserver.ContainerId, params apiserver.NewUploadContainerObjectParams) error {
 	var (
-		err    error
-		addr   oid.Address
-		btoken *bearer.Token
+		err           error
+		addr          oid.Address
+		btoken        *bearer.Token
+		fullBearer    apiserver.FullBearerToken
+		walletConnect apiserver.SignatureScheme
 	)
+
+	if params.FullBearer != nil {
+		fullBearer = *params.FullBearer
+	}
+	if params.WalletConnect != nil {
+		walletConnect = *params.WalletConnect
+	}
 
 	var idCnr cid.ID
 	if err = idCnr.DecodeString(containerID); err != nil {
@@ -36,12 +45,10 @@ func (a *RestAPI) NewUploadContainerObject(ctx echo.Context, containerID apiserv
 		return ctx.JSON(http.StatusBadRequest, util.NewErrorResponse(err))
 	}
 
-	if principal != "" {
-		btoken, err = getBearerTokenFromString(principal)
-		if err != nil {
-			resp := a.logAndGetErrorResponse("get bearer token", err)
-			return ctx.JSON(http.StatusBadRequest, resp)
-		}
+	btoken, err = getBearerToken(principal, params.XBearerSignature, params.XBearerSignatureKey, walletConnect, fullBearer)
+	if err != nil {
+		resp := a.logAndGetErrorResponse("invalid bearer token", err)
+		return ctx.JSON(http.StatusBadRequest, resp)
 	}
 
 	filtered, err := parseAndFilterAttributes(a.log, params.XAttributes)
