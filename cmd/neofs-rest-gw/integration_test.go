@@ -150,9 +150,13 @@ func runTests(ctx context.Context, t *testing.T, key *keys.PrivateKey, node stri
 
 	t.Run("rest new upload object", func(t *testing.T) { restNewObjectUpload(ctx, t, clientPool, cnrID, signer) })
 	t.Run("rest new upload object with bearer in cookie", func(t *testing.T) { restNewObjectUploadCookie(ctx, t, clientPool, cnrID, signer) })
-	t.Run("rest new head object", func(t *testing.T) { restNewObjectHead(ctx, t, clientPool, &owner, cnrID, signer) })
-	t.Run("rest new head by attribute", func(t *testing.T) { restNewObjectHeadByAttribute(ctx, t, clientPool, &owner, cnrID, signer) })
-	t.Run("rest new get by attribute", func(t *testing.T) { restNewObjectGetByAttribute(ctx, t, clientPool, &owner, cnrID, signer) })
+	t.Run("rest new upload object with wallet connect", func(t *testing.T) { restNewObjectUploadWC(ctx, t, clientPool, cnrID, signer) })
+	t.Run("rest new head object", func(t *testing.T) { restNewObjectHead(ctx, t, clientPool, &owner, cnrID, signer, false) })
+	t.Run("rest new head object with wallet connect", func(t *testing.T) { restNewObjectHead(ctx, t, clientPool, &owner, cnrID, signer, true) })
+	t.Run("rest new head by attribute", func(t *testing.T) { restNewObjectHeadByAttribute(ctx, t, clientPool, &owner, cnrID, signer, false) })
+	t.Run("rest new head by attribute with wallet connect", func(t *testing.T) { restNewObjectHeadByAttribute(ctx, t, clientPool, &owner, cnrID, signer, true) })
+	t.Run("rest new get by attribute", func(t *testing.T) { restNewObjectGetByAttribute(ctx, t, clientPool, &owner, cnrID, signer, false) })
+	t.Run("rest new get by attribute with wallet connect", func(t *testing.T) { restNewObjectGetByAttribute(ctx, t, clientPool, &owner, cnrID, signer, true) })
 }
 
 func createDockerContainer(ctx context.Context, t *testing.T, image, version string) testcontainers.Container {
@@ -1871,12 +1875,15 @@ func restObjectUploadInt(ctx context.Context, t *testing.T, clientPool *pool.Poo
 }
 
 func restNewObjectUpload(ctx context.Context, t *testing.T, clientPool *pool.Pool, cnrID cid.ID, signer user.Signer) {
-	restNewObjectUploadInt(ctx, t, clientPool, cnrID, signer, false)
+	restNewObjectUploadInt(ctx, t, clientPool, cnrID, signer, false, false)
 }
 func restNewObjectUploadCookie(ctx context.Context, t *testing.T, clientPool *pool.Pool, cnrID cid.ID, signer user.Signer) {
-	restNewObjectUploadInt(ctx, t, clientPool, cnrID, signer, true)
+	restNewObjectUploadInt(ctx, t, clientPool, cnrID, signer, true, false)
 }
-func restNewObjectUploadInt(ctx context.Context, t *testing.T, clientPool *pool.Pool, cnrID cid.ID, signer user.Signer, cookie bool) {
+func restNewObjectUploadWC(ctx context.Context, t *testing.T, clientPool *pool.Pool, cnrID cid.ID, signer user.Signer) {
+	restNewObjectUploadInt(ctx, t, clientPool, cnrID, signer, false, true)
+}
+func restNewObjectUploadInt(ctx context.Context, t *testing.T, clientPool *pool.Pool, cnrID cid.ID, signer user.Signer, cookie bool, walletConnect bool) {
 	bt := apiserver.Bearer{
 		Object: []apiserver.Record{{
 			Operation: apiserver.OperationPUT,
@@ -1897,15 +1904,15 @@ func restNewObjectUploadInt(ctx context.Context, t *testing.T, clientPool *pool.
 	query := make(url.Values)
 	query.Add(walletConnectQuery, strconv.FormatBool(useWalletConnect))
 
-	// check that object bearer token is valid
-	request, err := http.NewRequest(http.MethodGet, testHost+"/v1/auth/bearer?"+query.Encode(), nil)
-	require.NoError(t, err)
-	prepareCommonHeaders(request.Header, bearerToken)
 	resp := &apiserver.BinaryBearer{}
-	doRequest(t, httpClient, request, http.StatusOK, resp)
-
-	actualTokenRaw, err := base64.StdEncoding.DecodeString(resp.Token)
-	require.NoError(t, err)
+	if !walletConnect {
+		request, err := http.NewRequest(http.MethodGet, testHost+"/v1/auth/bearer?"+query.Encode(), nil)
+		require.NoError(t, err)
+		prepareCommonHeaders(request.Header, bearerToken)
+		doRequest(t, httpClient, request, http.StatusOK, resp)
+		_, err = base64.StdEncoding.DecodeString(resp.Token)
+		require.NoError(t, err)
+	}
 
 	content := "content of file"
 	attributes := map[string]string{
@@ -1917,24 +1924,29 @@ func restNewObjectUploadInt(ctx context.Context, t *testing.T, clientPool *pool.
 	attributesJSON, err := json.Marshal(attributes)
 	require.NoError(t, err)
 
-	queryNew := make(url.Values)
-	queryNew.Add(fullBearerQuery, "true")
-
+	if !walletConnect {
+		// Change the query, we only need the `fullBearer` parameter here.
+		query = make(url.Values)
+		query.Add(fullBearerQuery, "true")
+	}
 	body := bytes.NewBufferString(content)
-	request, err = http.NewRequest(http.MethodPost, testHost+"/v1/objects/"+cnrID.String()+"?"+queryNew.Encode(), body)
+	request, err := http.NewRequest(http.MethodPost, testHost+"/v1/objects/"+cnrID.String()+"?"+query.Encode(), body)
 	require.NoError(t, err)
 
-	request.Header.Set("Content-Type", "text/plain")
-	request.Header.Set("X-Attributes", string(attributesJSON))
-	if cookie {
-		request.Header.Add("Cookie", "Bearer="+base64.StdEncoding.EncodeToString(actualTokenRaw)+";")
+	if !walletConnect {
+		request.Header.Set("Content-Type", "text/plain")
+		if cookie {
+			request.Header.Add("Cookie", "Bearer="+resp.Token+";")
+		} else {
+			request.Header.Add("Authorization", "Bearer "+resp.Token)
+		}
 	} else {
-		request.Header.Add("Authorization", "Bearer "+base64.StdEncoding.EncodeToString(actualTokenRaw))
+		prepareCommonHeaders(request.Header, bearerToken)
 	}
+
+	request.Header.Set("X-Attributes", string(attributesJSON))
 	addr := &apiserver.AddressForUpload{}
 	doRequest(t, httpClient, request, http.StatusOK, addr)
-
-	request.Header.Set("Content-Type", "text/plain")
 
 	var CID cid.ID
 	err = CID.DecodeString(addr.ContainerId)
@@ -1958,7 +1970,7 @@ func restNewObjectUploadInt(ctx context.Context, t *testing.T, clientPool *pool.
 	}
 }
 
-func restNewObjectHead(ctx context.Context, t *testing.T, p *pool.Pool, ownerID *user.ID, cnrID cid.ID, signer user.Signer) {
+func restNewObjectHead(ctx context.Context, t *testing.T, p *pool.Pool, ownerID *user.ID, cnrID cid.ID, signer user.Signer, walletConnect bool) {
 	bearer := apiserver.Bearer{
 		Object: []apiserver.Record{
 			{
@@ -1990,11 +2002,13 @@ func restNewObjectHead(ctx context.Context, t *testing.T, p *pool.Pool, ownerID 
 	query := make(url.Values)
 	query.Add(walletConnectQuery, strconv.FormatBool(useWalletConnect))
 
-	request, err := http.NewRequest(http.MethodGet, testHost+"/v1/auth/bearer?"+query.Encode(), nil)
-	require.NoError(t, err)
-	prepareCommonHeaders(request.Header, bearerToken)
 	resp := &apiserver.BinaryBearer{}
-	doRequest(t, httpClient, request, http.StatusOK, resp)
+	if !walletConnect {
+		request, err := http.NewRequest(http.MethodGet, testHost+"/v1/auth/bearer?"+query.Encode(), nil)
+		require.NoError(t, err)
+		prepareCommonHeaders(request.Header, bearerToken)
+		doRequest(t, httpClient, request, http.StatusOK, resp)
+	}
 
 	var (
 		content      = []byte("some content")
@@ -2009,8 +2023,11 @@ func restNewObjectHead(ctx context.Context, t *testing.T, p *pool.Pool, ownerID 
 		}
 	)
 
-	queryNew := make(url.Values)
-	queryNew.Add(fullBearerQuery, "true")
+	if !walletConnect {
+		// Change the query, we only need the `fullBearer` parameter here.
+		query = make(url.Values)
+		query.Add(fullBearerQuery, "true")
+	}
 
 	t.Run("head", func(t *testing.T) {
 		objID := createObject(ctx, t, p, ownerID, cnrID, attributes, content, signer)
@@ -2019,10 +2036,14 @@ func restNewObjectHead(ctx context.Context, t *testing.T, p *pool.Pool, ownerID 
 		createTS, err := strconv.ParseInt(attrTS, 10, 64)
 		require.NoError(t, err)
 
-		request, err = http.NewRequest(http.MethodHead, testHost+"/v1/objects/"+cnrID.EncodeToString()+"/by_id/"+objID.EncodeToString()+"?"+queryNew.Encode(), nil)
+		request, err := http.NewRequest(http.MethodHead, testHost+"/v1/objects/"+cnrID.EncodeToString()+"/by_id/"+objID.EncodeToString()+"?"+query.Encode(), nil)
 		require.NoError(t, err)
-		prepareCommonHeaders(request.Header, bearerToken)
-		request.Header.Set("Authorization", "Bearer "+resp.Token)
+
+		if !walletConnect {
+			request.Header.Set("Authorization", "Bearer "+resp.Token)
+		} else {
+			prepareCommonHeaders(request.Header, bearerToken)
+		}
 
 		headers, _ := doRequest(t, httpClient, request, http.StatusOK, nil)
 		require.NotEmpty(t, headers)
@@ -2072,10 +2093,14 @@ func restNewObjectHead(ctx context.Context, t *testing.T, p *pool.Pool, ownerID 
 		createTS, err := strconv.ParseInt(attrTS, 10, 64)
 		require.NoError(t, err)
 
-		request, err = http.NewRequest(http.MethodHead, testHost+"/v1/objects/"+cnrID.EncodeToString()+"/by_id/"+objID.EncodeToString()+"?"+queryNew.Encode(), nil)
+		request, err := http.NewRequest(http.MethodHead, testHost+"/v1/objects/"+cnrID.EncodeToString()+"/by_id/"+objID.EncodeToString()+"?"+query.Encode(), nil)
 		require.NoError(t, err)
-		prepareCommonHeaders(request.Header, bearerToken)
-		request.Header.Set("Authorization", "Bearer "+resp.Token)
+
+		if !walletConnect {
+			request.Header.Set("Authorization", "Bearer "+resp.Token)
+		} else {
+			prepareCommonHeaders(request.Header, bearerToken)
+		}
 
 		headers, _ := doRequest(t, httpClient, request, http.StatusOK, nil)
 		require.NotEmpty(t, headers)
@@ -2116,7 +2141,7 @@ func restNewObjectHead(ctx context.Context, t *testing.T, p *pool.Pool, ownerID 
 	})
 }
 
-func restNewObjectHeadByAttribute(ctx context.Context, t *testing.T, p *pool.Pool, ownerID *user.ID, cnrID cid.ID, signer user.Signer) {
+func restNewObjectHeadByAttribute(ctx context.Context, t *testing.T, p *pool.Pool, ownerID *user.ID, cnrID cid.ID, signer user.Signer, walletConnect bool) {
 	bearer := apiserver.Bearer{
 		Object: []apiserver.Record{
 			{
@@ -2157,15 +2182,17 @@ func restNewObjectHeadByAttribute(ctx context.Context, t *testing.T, p *pool.Poo
 	query := make(url.Values)
 	query.Add(walletConnectQuery, strconv.FormatBool(useWalletConnect))
 
-	request, err := http.NewRequest(http.MethodGet, testHost+"/v1/auth/bearer?"+query.Encode(), nil)
-	require.NoError(t, err)
-	prepareCommonHeaders(request.Header, bearerToken)
 	resp := &apiserver.BinaryBearer{}
-	doRequest(t, httpClient, request, http.StatusOK, resp)
+	if !walletConnect {
+		request, err := http.NewRequest(http.MethodGet, testHost+"/v1/auth/bearer?"+query.Encode(), nil)
+		require.NoError(t, err)
+		prepareCommonHeaders(request.Header, bearerToken)
+		doRequest(t, httpClient, request, http.StatusOK, resp)
+	}
 
 	var (
 		content      = []byte("some content")
-		fileNameAttr = "new-head-obj-by-attr-name-echo"
+		fileNameAttr = "new-head-obj-by-attr-name-" + strconv.FormatBool(walletConnect)
 		attrKey      = "soME-attribute"
 		attrValue    = "user value"
 		attributes   = map[string]string{
@@ -2175,8 +2202,10 @@ func restNewObjectHeadByAttribute(ctx context.Context, t *testing.T, p *pool.Poo
 		}
 	)
 
-	queryNew := make(url.Values)
-	queryNew.Add(fullBearerQuery, "true")
+	if !walletConnect {
+		query = make(url.Values)
+		query.Add(fullBearerQuery, "true")
+	}
 
 	t.Run("head", func(t *testing.T) {
 		objID := createObject(ctx, t, p, ownerID, cnrID, attributes, content, signer)
@@ -2185,10 +2214,14 @@ func restNewObjectHeadByAttribute(ctx context.Context, t *testing.T, p *pool.Poo
 		createTS, err := strconv.ParseInt(attrTS, 10, 64)
 		require.NoError(t, err)
 
-		request, err = http.NewRequest(http.MethodHead, testHost+"/v1/objects/"+cnrID.EncodeToString()+"/by_attribute/"+object.AttributeFileName+"/"+fileNameAttr+"?"+queryNew.Encode(), nil)
+		request, err := http.NewRequest(http.MethodHead, testHost+"/v1/objects/"+cnrID.EncodeToString()+"/by_attribute/"+object.AttributeFileName+"/"+fileNameAttr+"?"+query.Encode(), nil)
 		require.NoError(t, err)
-		prepareCommonHeaders(request.Header, bearerToken)
-		request.Header.Set("Authorization", "Bearer "+resp.Token)
+
+		if !walletConnect {
+			request.Header.Set("Authorization", "Bearer "+resp.Token)
+		} else {
+			prepareCommonHeaders(request.Header, bearerToken)
+		}
 
 		headers, _ := doRequest(t, httpClient, request, http.StatusOK, nil)
 		require.NotEmpty(t, headers)
@@ -2238,10 +2271,14 @@ func restNewObjectHeadByAttribute(ctx context.Context, t *testing.T, p *pool.Poo
 		createTS, err := strconv.ParseInt(attrTS, 10, 64)
 		require.NoError(t, err)
 
-		request, err = http.NewRequest(http.MethodHead, testHost+"/v1/objects/"+cnrID.EncodeToString()+"/by_attribute/"+object.AttributeFileName+"/"+multiSegmentName+"?"+queryNew.Encode(), nil)
+		request, err := http.NewRequest(http.MethodHead, testHost+"/v1/objects/"+cnrID.EncodeToString()+"/by_attribute/"+object.AttributeFileName+"/"+multiSegmentName+"?"+query.Encode(), nil)
 		require.NoError(t, err)
-		prepareCommonHeaders(request.Header, bearerToken)
-		request.Header.Set("Authorization", "Bearer "+resp.Token)
+
+		if !walletConnect {
+			request.Header.Set("Authorization", "Bearer "+resp.Token)
+		} else {
+			prepareCommonHeaders(request.Header, bearerToken)
+		}
 
 		headers, _ := doRequest(t, httpClient, request, http.StatusOK, nil)
 		require.NotEmpty(t, headers)
@@ -2282,7 +2319,7 @@ func restNewObjectHeadByAttribute(ctx context.Context, t *testing.T, p *pool.Poo
 	})
 }
 
-func restNewObjectGetByAttribute(ctx context.Context, t *testing.T, p *pool.Pool, ownerID *user.ID, cnrID cid.ID, signer user.Signer) {
+func restNewObjectGetByAttribute(ctx context.Context, t *testing.T, p *pool.Pool, ownerID *user.ID, cnrID cid.ID, signer user.Signer, walletConnect bool) {
 	bearer := apiserver.Bearer{
 		Object: []apiserver.Record{
 			{
@@ -2314,15 +2351,17 @@ func restNewObjectGetByAttribute(ctx context.Context, t *testing.T, p *pool.Pool
 	query := make(url.Values)
 	query.Add(walletConnectQuery, strconv.FormatBool(useWalletConnect))
 
-	request, err := http.NewRequest(http.MethodGet, testHost+"/v1/auth/bearer?"+query.Encode(), nil)
-	require.NoError(t, err)
-	prepareCommonHeaders(request.Header, bearerToken)
 	resp := &apiserver.BinaryBearer{}
-	doRequest(t, httpClient, request, http.StatusOK, resp)
+	if !walletConnect {
+		request, err := http.NewRequest(http.MethodGet, testHost+"/v1/auth/bearer?"+query.Encode(), nil)
+		require.NoError(t, err)
+		prepareCommonHeaders(request.Header, bearerToken)
+		doRequest(t, httpClient, request, http.StatusOK, resp)
+	}
 
 	var (
 		content      = []byte("some content")
-		fileNameAttr = "new-get-obj-by-attr-name-echo"
+		fileNameAttr = "new-get-obj-by-attr-name-" + strconv.FormatBool(walletConnect)
 		createTS     = time.Now().Unix()
 		attrKey      = "user-attribute"
 		attrValue    = "user value"
@@ -2336,13 +2375,20 @@ func restNewObjectGetByAttribute(ctx context.Context, t *testing.T, p *pool.Pool
 	t.Run("get", func(t *testing.T) {
 		objID := createObject(ctx, t, p, ownerID, cnrID, attributes, content, signer)
 
-		queryNew := make(url.Values)
-		queryNew.Add(fullBearerQuery, "true")
+		if !walletConnect {
+			// Change the query, we only need the `fullBearer` parameter here.
+			query = make(url.Values)
+			query.Add(fullBearerQuery, "true")
+		}
 
-		request, err = http.NewRequest(http.MethodGet, testHost+"/v1/objects/"+cnrID.EncodeToString()+"/by_attribute/"+object.AttributeFileName+"/"+fileNameAttr+"?"+queryNew.Encode(), nil)
+		request, err := http.NewRequest(http.MethodGet, testHost+"/v1/objects/"+cnrID.EncodeToString()+"/by_attribute/"+object.AttributeFileName+"/"+fileNameAttr+"?"+query.Encode(), nil)
 		require.NoError(t, err)
-		prepareCommonHeaders(request.Header, bearerToken)
-		request.Header.Set("Authorization", "Bearer "+resp.Token)
+
+		if !walletConnect {
+			request.Header.Set("Authorization", "Bearer "+resp.Token)
+		} else {
+			prepareCommonHeaders(request.Header, bearerToken)
+		}
 
 		headers, rawPayload := doRequest(t, httpClient, request, http.StatusOK, nil)
 		require.NotEmpty(t, headers)
