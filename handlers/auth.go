@@ -118,7 +118,7 @@ func (a *RestAPI) FormBinaryBearer(ctx echo.Context, params apiserver.FormBinary
 		walletConnect = *params.WalletConnect
 	}
 
-	btoken, err := getBearerToken(principal, params.XBearerSignature, params.XBearerSignatureKey, walletConnect, false)
+	btoken, err := getBearerToken(principal, params.XBearerSignature, params.XBearerSignatureKey, walletConnect)
 	if err != nil {
 		resp := a.logAndGetErrorResponse("invalid bearer token", err)
 		return ctx.JSON(http.StatusBadRequest, resp)

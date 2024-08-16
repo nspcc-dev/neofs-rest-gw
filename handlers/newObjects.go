@@ -23,13 +23,9 @@ func (a *RestAPI) NewUploadContainerObject(ctx echo.Context, containerID apiserv
 		err           error
 		addr          oid.Address
 		btoken        *bearer.Token
-		fullBearer    apiserver.FullBearerToken
 		walletConnect apiserver.SignatureScheme
 	)
 
-	if params.FullBearer != nil {
-		fullBearer = *params.FullBearer
-	}
 	if params.WalletConnect != nil {
 		walletConnect = *params.WalletConnect
 	}
@@ -45,7 +41,7 @@ func (a *RestAPI) NewUploadContainerObject(ctx echo.Context, containerID apiserv
 		return ctx.JSON(http.StatusBadRequest, util.NewErrorResponse(err))
 	}
 
-	btoken, err = getBearerToken(principal, params.XBearerSignature, params.XBearerSignatureKey, walletConnect, fullBearer)
+	btoken, err = getBearerToken(principal, params.XBearerSignature, params.XBearerSignatureKey, walletConnect)
 	if err != nil {
 		resp := a.logAndGetErrorResponse("invalid bearer token", err)
 		return ctx.JSON(http.StatusBadRequest, resp)
@@ -151,18 +147,12 @@ func (a *RestAPI) NewGetContainerObject(ctx echo.Context, containerID apiserver.
 		return ctx.JSON(http.StatusBadRequest, resp)
 	}
 
-	var (
-		fullBearer    apiserver.FullBearerToken
-		walletConnect apiserver.SignatureScheme
-	)
-	if params.FullBearer != nil {
-		fullBearer = *params.FullBearer
-	}
+	var walletConnect apiserver.SignatureScheme
 	if params.WalletConnect != nil {
 		walletConnect = *params.WalletConnect
 	}
 
-	btoken, err := getBearerToken(principal, params.XBearerSignature, params.XBearerSignatureKey, walletConnect, fullBearer)
+	btoken, err := getBearerToken(principal, params.XBearerSignature, params.XBearerSignatureKey, walletConnect)
 	if err != nil {
 		resp := a.logAndGetErrorResponse("get bearer token", err)
 		return ctx.JSON(http.StatusBadRequest, resp)
@@ -186,18 +176,12 @@ func (a *RestAPI) NewHeadContainerObject(ctx echo.Context, containerID apiserver
 
 	ctx.Response().Header().Set(accessControlAllowOriginHeader, "*")
 
-	var (
-		fullBearer    apiserver.FullBearerToken
-		walletConnect apiserver.SignatureScheme
-	)
-	if params.FullBearer != nil {
-		fullBearer = *params.FullBearer
-	}
+	var walletConnect apiserver.SignatureScheme
 	if params.WalletConnect != nil {
 		walletConnect = *params.WalletConnect
 	}
 
-	btoken, err := getBearerToken(principal, params.XBearerSignature, params.XBearerSignatureKey, walletConnect, fullBearer)
+	btoken, err := getBearerToken(principal, params.XBearerSignature, params.XBearerSignatureKey, walletConnect)
 	if err != nil {
 		resp := a.logAndGetErrorResponse("get bearer token", err)
 		return ctx.JSON(http.StatusBadRequest, resp)
@@ -219,18 +203,12 @@ func (a *RestAPI) NewGetByAttribute(ctx echo.Context, containerID apiserver.Cont
 		return ctx.JSON(http.StatusBadRequest, resp)
 	}
 
-	var (
-		fullBearer    apiserver.FullBearerToken
-		walletConnect apiserver.SignatureScheme
-	)
-	if params.FullBearer != nil {
-		fullBearer = *params.FullBearer
-	}
+	var walletConnect apiserver.SignatureScheme
 	if params.WalletConnect != nil {
 		walletConnect = *params.WalletConnect
 	}
 
-	btoken, err := getBearerToken(principal, params.XBearerSignature, params.XBearerSignatureKey, walletConnect, fullBearer)
+	btoken, err := getBearerToken(principal, params.XBearerSignature, params.XBearerSignatureKey, walletConnect)
 	if err != nil {
 		resp := a.logAndGetErrorResponse("get bearer token", err)
 		return ctx.JSON(http.StatusBadRequest, resp)
@@ -282,18 +260,12 @@ func (a *RestAPI) NewHeadByAttribute(ctx echo.Context, containerID apiserver.Con
 		return ctx.JSON(http.StatusBadRequest, resp)
 	}
 
-	var (
-		fullBearer    apiserver.FullBearerToken
-		walletConnect apiserver.SignatureScheme
-	)
-	if params.FullBearer != nil {
-		fullBearer = *params.FullBearer
-	}
+	var walletConnect apiserver.SignatureScheme
 	if params.WalletConnect != nil {
 		walletConnect = *params.WalletConnect
 	}
 
-	btoken, err := getBearerToken(principal, params.XBearerSignature, params.XBearerSignatureKey, walletConnect, fullBearer)
+	btoken, err := getBearerToken(principal, params.XBearerSignature, params.XBearerSignatureKey, walletConnect)
 	if err != nil {
 		resp := a.logAndGetErrorResponse("get bearer token", err)
 		return ctx.JSON(http.StatusBadRequest, resp)
