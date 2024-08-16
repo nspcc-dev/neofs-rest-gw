@@ -9,6 +9,7 @@ This document outlines major changes between releases.
 
 ### Updated
 - github.com/nspcc-dev/neo-go dependency from v0.106.0 to v0.106.3 (#98)
+- github.com/testcontainers/testcontainers-go dependency from v0.25.0 to v0.32.0 (#98)
 
 ## [0.10.1] - 2024-08-12
 
