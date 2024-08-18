@@ -399,18 +399,21 @@ func (a *RestAPI) GetContainerObject(ctx echo.Context, containerID apiserver.Con
 		return ctx.JSON(http.StatusBadRequest, resp)
 	}
 
-	return a.getByAddress(ctx, addr, params.Download, principal, false)
-}
-
-// getByAddress returns object (using container ID and object ID).
-func (a *RestAPI) getByAddress(ctx echo.Context, addr oid.Address, downloadParam *string, principal string, useJSON bool) error {
-	var prm client.PrmObjectGet
+	var btoken *bearer.Token
 	if principal != "" {
-		btoken, err := getBearerTokenFromString(principal)
+		btoken, err = getBearerTokenFromString(principal)
 		if err != nil {
 			resp := a.logAndGetErrorResponse("get bearer token", err)
 			return ctx.JSON(http.StatusBadRequest, resp)
 		}
+	}
+	return a.getByAddress(ctx, addr, params.Download, btoken, false)
+}
+
+// getByAddress returns object (using container ID and object ID).
+func (a *RestAPI) getByAddress(ctx echo.Context, addr oid.Address, downloadParam *string, btoken *bearer.Token, useJSON bool) error {
+	var prm client.PrmObjectGet
+	if btoken != nil {
 		attachBearer(&prm, btoken)
 	}
 
@@ -481,23 +484,23 @@ func (a *RestAPI) HeadContainerObject(ctx echo.Context, containerID apiserver.Co
 	}
 
 	ctx.Response().Header().Set(accessControlAllowOriginHeader, "*")
-	return a.headByAddress(ctx, addr, params.Download, principal, false)
-}
 
-// headByAddress returns object info (using container ID and object ID).
-func (a *RestAPI) headByAddress(ctx echo.Context, addr oid.Address, downloadParam *string, principal string, useJSON bool) error {
-	var (
-		prm    client.PrmObjectHead
-		btoken *bearer.Token
-		err    error
-	)
-
+	var btoken *bearer.Token
 	if principal != "" {
 		btoken, err = getBearerTokenFromString(principal)
 		if err != nil {
 			resp := a.logAndGetErrorResponse("get bearer token", err)
 			return ctx.JSON(http.StatusBadRequest, resp)
 		}
+	}
+
+	return a.headByAddress(ctx, addr, params.Download, btoken, false)
+}
+
+// headByAddress returns object info (using container ID and object ID).
+func (a *RestAPI) headByAddress(ctx echo.Context, addr oid.Address, downloadParam *string, btoken *bearer.Token, useJSON bool) error {
+	var prm client.PrmObjectHead
+	if btoken != nil {
 		attachBearer(&prm, btoken)
 	}
 
@@ -1050,7 +1053,16 @@ func (a *RestAPI) GetByAttribute(ctx echo.Context, containerID apiserver.Contain
 		return ctx.JSON(http.StatusBadRequest, resp)
 	}
 
-	res, err := a.search(ctx.Request().Context(), principal, cnrID, attrKey, attrVal, object.MatchStringEqual)
+	var btoken *bearer.Token
+	if principal != "" {
+		btoken, err = getBearerTokenFromString(principal)
+		if err != nil {
+			resp := a.logAndGetErrorResponse("get bearer token", err)
+			return ctx.JSON(http.StatusBadRequest, resp)
+		}
+	}
+
+	res, err := a.search(ctx.Request().Context(), btoken, cnrID, attrKey, attrVal, object.MatchStringEqual)
 	if err != nil {
 		resp := a.logAndGetErrorResponse("could not search for objects", err)
 		return ctx.JSON(http.StatusNotFound, resp)
@@ -1080,7 +1092,7 @@ func (a *RestAPI) GetByAttribute(ctx echo.Context, containerID apiserver.Contain
 	addrObj.SetContainer(cnrID)
 	addrObj.SetObject(buf[0])
 
-	return a.getByAddress(ctx, addrObj, params.Download, principal, false)
+	return a.getByAddress(ctx, addrObj, params.Download, btoken, false)
 }
 
 // HeadByAttribute handler that returns object info (payload and attributes) by a specific attribute.
@@ -1096,7 +1108,16 @@ func (a *RestAPI) HeadByAttribute(ctx echo.Context, containerID apiserver.Contai
 		return ctx.JSON(http.StatusBadRequest, resp)
 	}
 
-	res, err := a.search(ctx.Request().Context(), principal, cnrID, attrKey, attrVal, object.MatchStringEqual)
+	var btoken *bearer.Token
+	if principal != "" {
+		btoken, err = getBearerTokenFromString(principal)
+		if err != nil {
+			resp := a.logAndGetErrorResponse("get bearer token", err)
+			return ctx.JSON(http.StatusBadRequest, resp)
+		}
+	}
+
+	res, err := a.search(ctx.Request().Context(), btoken, cnrID, attrKey, attrVal, object.MatchStringEqual)
 	if err != nil {
 		resp := a.logAndGetErrorResponse("could not search for objects", err)
 		return ctx.JSON(http.StatusNotFound, resp)
@@ -1127,10 +1148,11 @@ func (a *RestAPI) HeadByAttribute(ctx echo.Context, containerID apiserver.Contai
 	addrObj.SetObject(buf[0])
 
 	ctx.Response().Header().Set(accessControlAllowOriginHeader, "*")
-	return a.headByAddress(ctx, addrObj, params.Download, principal, false)
+
+	return a.headByAddress(ctx, addrObj, params.Download, btoken, false)
 }
 
-func (a *RestAPI) search(ctx context.Context, principal string, cid cid.ID, key, val string, op object.SearchMatchType) (*client.ObjectListReader, error) {
+func (a *RestAPI) search(ctx context.Context, btoken *bearer.Token, cid cid.ID, key, val string, op object.SearchMatchType) (*client.ObjectListReader, error) {
 	filters := object.NewSearchFilters()
 	filters.AddRootFilter()
 	filters.AddFilter(key, val, op)
@@ -1138,11 +1160,7 @@ func (a *RestAPI) search(ctx context.Context, principal string, cid cid.ID, key,
 	var prm client.PrmObjectSearch
 	prm.SetFilters(filters)
 
-	if principal != "" {
-		btoken, err := getBearerTokenFromString(principal)
-		if err != nil {
-			return nil, err
-		}
+	if btoken != nil {
 		attachBearer(&prm, btoken)
 	}
 

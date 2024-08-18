@@ -9,8 +9,11 @@ import (
 )
 
 const (
-	allOrigins        = "*"
-	allowHeaders      = "X-Bearer-For-All-Users, X-Bearer-Lifetime, X-Bearer-Owner-Id, X-Bearer-Signature, X-Bearer-Signature-Key, Content-Type, Authorization"
+	allOrigins   = "*"
+	allowHeaders = "X-Bearer-For-All-Users, X-Bearer-Lifetime, X-Bearer-Owner-Id, " +
+		"X-Bearer-Signature, X-Bearer-Signature-Key, Content-Type, Authorization, " +
+		"X-Attribute-Filename, X-Attribute-Filepath, X-Attributes, " +
+		"X-Neofs-Expiration-RFC3339, X-Neofs-Expiration-Timestamp, X-Neofs-Expiration-Duration"
 	allowUploadHeader = "*"
 
 	methodGet    = "GET"
@@ -135,7 +138,7 @@ func (a *RestAPI) OptionsNetworkInfo(ctx echo.Context) error {
 }
 
 // NewOptionsUploadContainerObject handler for the upload object options request.
-func (a *RestAPI) NewOptionsUploadContainerObject(ctx echo.Context, _ apiserver.ContainerId) error {
+func (a *RestAPI) NewOptionsUploadContainerObject(ctx echo.Context, _ apiserver.ContainerId, _ apiserver.NewOptionsUploadContainerObjectParams) error {
 	ctx.Response().Header().Set(accessControlAllowOriginHeader, allOrigins)
 	ctx.Response().Header().Set(accessControlAllowHeadersHeader, allowUploadHeader)
 	ctx.Response().Header().Set(accessControlAllowMethodsHeader, allowMethods(methodPost))
@@ -143,7 +146,7 @@ func (a *RestAPI) NewOptionsUploadContainerObject(ctx echo.Context, _ apiserver.
 }
 
 // NewOptionsContainerObject handler for the create object options request.
-func (a *RestAPI) NewOptionsContainerObject(ctx echo.Context, _ apiserver.ContainerId, _ apiserver.ObjectId) error {
+func (a *RestAPI) NewOptionsContainerObject(ctx echo.Context, _ apiserver.ContainerId, _ apiserver.ObjectId, _ apiserver.NewOptionsContainerObjectParams) error {
 	ctx.Response().Header().Set(accessControlAllowOriginHeader, allOrigins)
 	ctx.Response().Header().Set(accessControlAllowHeadersHeader, allowHeaders)
 	ctx.Response().Header().Set(accessControlAllowMethodsHeader, allowMethods(methodGet, methodHead))
@@ -151,7 +154,7 @@ func (a *RestAPI) NewOptionsContainerObject(ctx echo.Context, _ apiserver.Contai
 }
 
 // NewOptionsByAttribute handler for the find by attribute options request.
-func (a *RestAPI) NewOptionsByAttribute(ctx echo.Context, _ apiserver.ContainerId, _ apiserver.AttrKey, _ apiserver.AttrVal) error {
+func (a *RestAPI) NewOptionsByAttribute(ctx echo.Context, _ apiserver.ContainerId, _ apiserver.AttrKey, _ apiserver.AttrVal, _ apiserver.NewOptionsByAttributeParams) error {
 	ctx.Response().Header().Set(accessControlAllowOriginHeader, allOrigins)
 	ctx.Response().Header().Set(accessControlAllowHeadersHeader, allowHeaders)
 	ctx.Response().Header().Set(accessControlAllowMethodsHeader, allowMethods(methodGet, methodHead))

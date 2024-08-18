@@ -761,6 +761,10 @@ paths:
       parameters:
         - $ref: '#/components/parameters/containerId'
         - $ref: '#/components/parameters/objectId'
+        - $ref: '#/components/parameters/signatureParam'
+        - $ref: '#/components/parameters/signatureKeyParam'
+        - $ref: '#/components/parameters/signatureScheme'
+        - $ref: '#/components/parameters/fullBearerToken'
         - name: download
           in: query
           description: Set the Content-Disposition header as attachment in response.
@@ -793,6 +797,10 @@ paths:
       parameters:
         - $ref: '#/components/parameters/containerId'
         - $ref: '#/components/parameters/objectId'
+        - $ref: '#/components/parameters/signatureParam'
+        - $ref: '#/components/parameters/signatureKeyParam'
+        - $ref: '#/components/parameters/signatureScheme'
+        - $ref: '#/components/parameters/fullBearerToken'
       responses:
         "200":
           description: CORS
@@ -815,6 +823,10 @@ paths:
       parameters:
         - $ref: '#/components/parameters/containerId'
         - $ref: '#/components/parameters/objectId'
+        - $ref: '#/components/parameters/signatureParam'
+        - $ref: '#/components/parameters/signatureKeyParam'
+        - $ref: '#/components/parameters/signatureScheme'
+        - $ref: '#/components/parameters/fullBearerToken'
         - name: download
           in: query
           description: Set the Content-Disposition header as attachment in response.
@@ -924,6 +936,10 @@ paths:
       operationId: newUploadContainerObject
       parameters:
         - $ref: '#/components/parameters/containerId'
+        - $ref: '#/components/parameters/signatureParam'
+        - $ref: '#/components/parameters/signatureKeyParam'
+        - $ref: '#/components/parameters/signatureScheme'
+        - $ref: '#/components/parameters/fullBearerToken'
         - name: X-Attributes
           in: header
           description: |
@@ -995,6 +1011,10 @@ paths:
       operationId: newOptionsUploadContainerObject
       parameters:
         - $ref: '#/components/parameters/containerId'
+        - $ref: '#/components/parameters/signatureParam'
+        - $ref: '#/components/parameters/signatureKeyParam'
+        - $ref: '#/components/parameters/signatureScheme'
+        - $ref: '#/components/parameters/fullBearerToken'
       responses:
         "200":
           description: CORS
@@ -1121,6 +1141,10 @@ paths:
         - $ref: '#/components/parameters/containerId'
         - $ref: '#/components/parameters/attrKey'
         - $ref: '#/components/parameters/attrVal'
+        - $ref: '#/components/parameters/signatureParam'
+        - $ref: '#/components/parameters/signatureKeyParam'
+        - $ref: '#/components/parameters/signatureScheme'
+        - $ref: '#/components/parameters/fullBearerToken'
         - name: download
           in: query
           description: Set the Content-Disposition header as attachment in response.
@@ -1154,6 +1178,10 @@ paths:
         - $ref: '#/components/parameters/containerId'
         - $ref: '#/components/parameters/attrKey'
         - $ref: '#/components/parameters/attrVal'
+        - $ref: '#/components/parameters/signatureParam'
+        - $ref: '#/components/parameters/signatureKeyParam'
+        - $ref: '#/components/parameters/signatureScheme'
+        - $ref: '#/components/parameters/fullBearerToken'
       responses:
         "200":
           description: CORS
@@ -1179,6 +1207,10 @@ paths:
         - $ref: '#/components/parameters/containerId'
         - $ref: '#/components/parameters/attrKey'
         - $ref: '#/components/parameters/attrVal'
+        - $ref: '#/components/parameters/signatureParam'
+        - $ref: '#/components/parameters/signatureKeyParam'
+        - $ref: '#/components/parameters/signatureScheme'
+        - $ref: '#/components/parameters/fullBearerToken'
         - name: download
           in: query
           description: Set the Content-Disposition header as attachment in response.
