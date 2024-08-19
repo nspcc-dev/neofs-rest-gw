@@ -4,6 +4,16 @@ This document outlines major changes between releases.
 
 ## [Unreleased]
 
+### Changed
+- Go 1.21+ is required to build now (#98)
+
+### Updated
+- github.com/nspcc-dev/neo-go dependency from v0.106.0 to v0.106.3 (#98)
+- github.com/testcontainers/testcontainers-go dependency from v0.25.0 to v0.32.0 (#98)
+- github.com/oapi-codegen/echo-middleware dependency from v1.0.1 to v1.0.2 (#98)
+- github.com/labstack/echo/v4 dependency from v4.11.4 to v4.12.0 (#98)
+- github.com/getkin/kin-openapi from v0.118.0 to v0.127.0 (#98)
+
 ## [0.10.1] - 2024-08-12
 
 ### Fixed

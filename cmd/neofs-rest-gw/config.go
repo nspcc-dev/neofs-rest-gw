@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"os"
 	"runtime"
-	"sort"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -188,7 +188,7 @@ func config() *viper.Viper {
 		fmt.Println("Default environments:")
 		fmt.Println()
 		cmdKeys := v.AllKeys()
-		sort.Strings(cmdKeys)
+		slices.Sort(cmdKeys)
 
 		for i := range cmdKeys {
 			if _, ok := ignore[cmdKeys[i]]; ok {
@@ -319,7 +319,7 @@ func validateConfig(cfg *viper.Viper, logger *zap.Logger) {
 	for num := range peerNumsMap {
 		peerNums = append(peerNums, num)
 	}
-	sort.Ints(peerNums)
+	slices.Sort(peerNums)
 
 	for i, num := range peerNums {
 		if i != num {
