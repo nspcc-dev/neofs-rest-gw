@@ -188,7 +188,6 @@ paths:
         - $ref: '#/components/parameters/signatureParam'
         - $ref: '#/components/parameters/signatureKeyParam'
         - $ref: '#/components/parameters/signatureScheme'
-        - $ref: '#/components/parameters/fullBearerToken'
       requestBody:
         description: Object info to upload
         content:
@@ -240,7 +239,6 @@ paths:
         - $ref: '#/components/parameters/signatureParam'
         - $ref: '#/components/parameters/signatureKeyParam'
         - $ref: '#/components/parameters/signatureScheme'
-        - $ref: '#/components/parameters/fullBearerToken'
         - $ref: '#/components/parameters/containerId'
         - name: offset
           in: query
@@ -321,7 +319,6 @@ paths:
         - $ref: '#/components/parameters/signatureParam'
         - $ref: '#/components/parameters/signatureKeyParam'
         - $ref: '#/components/parameters/signatureScheme'
-        - $ref: '#/components/parameters/fullBearerToken'
         - name: range-offset
           in: query
           description: Range offset to start reading data.
@@ -375,7 +372,6 @@ paths:
         - $ref: '#/components/parameters/signatureParam'
         - $ref: '#/components/parameters/signatureKeyParam'
         - $ref: '#/components/parameters/signatureScheme'
-        - $ref: '#/components/parameters/fullBearerToken'
       responses:
         "200":
           description: Successful deletion.
@@ -764,7 +760,6 @@ paths:
         - $ref: '#/components/parameters/signatureParam'
         - $ref: '#/components/parameters/signatureKeyParam'
         - $ref: '#/components/parameters/signatureScheme'
-        - $ref: '#/components/parameters/fullBearerToken'
         - name: download
           in: query
           description: Set the Content-Disposition header as attachment in response.
@@ -800,7 +795,6 @@ paths:
         - $ref: '#/components/parameters/signatureParam'
         - $ref: '#/components/parameters/signatureKeyParam'
         - $ref: '#/components/parameters/signatureScheme'
-        - $ref: '#/components/parameters/fullBearerToken'
       responses:
         "200":
           description: CORS
@@ -826,7 +820,6 @@ paths:
         - $ref: '#/components/parameters/signatureParam'
         - $ref: '#/components/parameters/signatureKeyParam'
         - $ref: '#/components/parameters/signatureScheme'
-        - $ref: '#/components/parameters/fullBearerToken'
         - name: download
           in: query
           description: Set the Content-Disposition header as attachment in response.
@@ -939,7 +932,6 @@ paths:
         - $ref: '#/components/parameters/signatureParam'
         - $ref: '#/components/parameters/signatureKeyParam'
         - $ref: '#/components/parameters/signatureScheme'
-        - $ref: '#/components/parameters/fullBearerToken'
         - name: X-Attributes
           in: header
           description: |
@@ -1014,7 +1006,6 @@ paths:
         - $ref: '#/components/parameters/signatureParam'
         - $ref: '#/components/parameters/signatureKeyParam'
         - $ref: '#/components/parameters/signatureScheme'
-        - $ref: '#/components/parameters/fullBearerToken'
       responses:
         "200":
           description: CORS
@@ -1144,7 +1135,6 @@ paths:
         - $ref: '#/components/parameters/signatureParam'
         - $ref: '#/components/parameters/signatureKeyParam'
         - $ref: '#/components/parameters/signatureScheme'
-        - $ref: '#/components/parameters/fullBearerToken'
         - name: download
           in: query
           description: Set the Content-Disposition header as attachment in response.
@@ -1181,7 +1171,6 @@ paths:
         - $ref: '#/components/parameters/signatureParam'
         - $ref: '#/components/parameters/signatureKeyParam'
         - $ref: '#/components/parameters/signatureScheme'
-        - $ref: '#/components/parameters/fullBearerToken'
       responses:
         "200":
           description: CORS
@@ -1210,7 +1199,6 @@ paths:
         - $ref: '#/components/parameters/signatureParam'
         - $ref: '#/components/parameters/signatureKeyParam'
         - $ref: '#/components/parameters/signatureScheme'
-        - $ref: '#/components/parameters/fullBearerToken'
         - name: download
           in: query
           description: Set the Content-Disposition header as attachment in response.
@@ -2159,14 +2147,6 @@ components:
       name: walletConnect
       in: query
       description: Use wallet connect signature scheme or native NeoFS signature.
-      schema:
-        type: boolean
-        default: false
-    fullBearerToken:
-      name: fullBearer
-      in: query
-      description: Provided bearer token is final or gate should assemble it using
-        signature.
       schema:
         type: boolean
         default: false

@@ -74,18 +74,12 @@ func (a *RestAPI) PutObject(ctx echo.Context, params apiserver.PutObjectParams) 
 		return ctx.JSON(http.StatusBadRequest, a.logAndGetErrorResponse("bind", err))
 	}
 
-	var (
-		fullBearer    apiserver.FullBearerToken
-		walletConnect apiserver.SignatureScheme
-	)
-	if params.FullBearer != nil {
-		fullBearer = *params.FullBearer
-	}
+	var walletConnect apiserver.SignatureScheme
 	if params.WalletConnect != nil {
 		walletConnect = *params.WalletConnect
 	}
 
-	btoken, err := getBearerToken(principal, params.XBearerSignature, params.XBearerSignatureKey, walletConnect, fullBearer)
+	btoken, err := getBearerToken(principal, params.XBearerSignature, params.XBearerSignatureKey, walletConnect)
 	if err != nil {
 		resp := a.logAndGetErrorResponse("invalid bearer token", err)
 		return ctx.JSON(http.StatusBadRequest, resp)
@@ -151,18 +145,12 @@ func (a *RestAPI) GetObjectInfo(ctx echo.Context, containerID apiserver.Containe
 		return ctx.JSON(http.StatusBadRequest, util.NewErrorResponse(err))
 	}
 
-	var (
-		fullBearer    apiserver.FullBearerToken
-		walletConnect apiserver.SignatureScheme
-	)
-	if params.FullBearer != nil {
-		fullBearer = *params.FullBearer
-	}
+	var walletConnect apiserver.SignatureScheme
 	if params.WalletConnect != nil {
 		walletConnect = *params.WalletConnect
 	}
 
-	btoken, err := getBearerToken(principal, params.XBearerSignature, params.XBearerSignatureKey, walletConnect, fullBearer)
+	btoken, err := getBearerToken(principal, params.XBearerSignature, params.XBearerSignatureKey, walletConnect)
 	if err != nil {
 		resp := a.logAndGetErrorResponse("get bearer token", err)
 		return ctx.JSON(http.StatusBadRequest, resp)
@@ -254,18 +242,12 @@ func (a *RestAPI) DeleteObject(ctx echo.Context, containerID apiserver.Container
 		return ctx.JSON(http.StatusBadRequest, util.NewErrorResponse(err))
 	}
 
-	var (
-		fullBearer    apiserver.FullBearerToken
-		walletConnect apiserver.SignatureScheme
-	)
-	if params.FullBearer != nil {
-		fullBearer = *params.FullBearer
-	}
+	var walletConnect apiserver.SignatureScheme
 	if params.WalletConnect != nil {
 		walletConnect = *params.WalletConnect
 	}
 
-	btoken, err := getBearerToken(principal, params.XBearerSignature, params.XBearerSignatureKey, walletConnect, fullBearer)
+	btoken, err := getBearerToken(principal, params.XBearerSignature, params.XBearerSignatureKey, walletConnect)
 	if err != nil {
 		resp := a.logAndGetErrorResponse("get bearer token", err)
 		return ctx.JSON(http.StatusBadRequest, resp)
@@ -304,18 +286,12 @@ func (a *RestAPI) SearchObjects(ctx echo.Context, containerID apiserver.Containe
 		return ctx.JSON(http.StatusBadRequest, util.NewErrorResponse(err))
 	}
 
-	var (
-		fullBearer    apiserver.FullBearerToken
-		walletConnect apiserver.SignatureScheme
-	)
-	if params.FullBearer != nil {
-		fullBearer = *params.FullBearer
-	}
+	var walletConnect apiserver.SignatureScheme
 	if params.WalletConnect != nil {
 		walletConnect = *params.WalletConnect
 	}
 
-	btoken, err := getBearerToken(principal, params.XBearerSignature, params.XBearerSignatureKey, walletConnect, fullBearer)
+	btoken, err := getBearerToken(principal, params.XBearerSignature, params.XBearerSignatureKey, walletConnect)
 	if err != nil {
 		resp := a.logAndGetErrorResponse("get bearer token", err)
 		return ctx.JSON(http.StatusBadRequest, resp)
@@ -759,20 +735,21 @@ func parseAddress(containerID, objectID string) (oid.Address, error) {
 	return addr, nil
 }
 
-func getBearerToken(token string, signature, key *string, isWalletConnect, isFullToken bool) (*bearer.Token, error) {
+func getBearerToken(token string, signature, key *string, isWalletConnect bool) (*bearer.Token, error) {
 	if token == "" {
 		return nil, nil
 	}
 
+	isFullToken := false
 	bt := &BearerToken{Token: token}
 
-	if !isFullToken {
-		if signature == nil || key == nil {
-			return nil, errors.New("missed signature or key header")
-		}
-
+	if signature != nil && key != nil {
 		bt.Signature = *signature
 		bt.Key = *key
+	} else if signature == nil && key == nil {
+		isFullToken = true
+	} else {
+		return nil, errors.New("missed signature or key header")
 	}
 
 	return prepareBearerToken(bt, isWalletConnect, isFullToken)
