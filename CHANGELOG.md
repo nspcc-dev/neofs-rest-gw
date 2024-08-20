@@ -5,7 +5,7 @@ This document outlines major changes between releases.
 ## [Unreleased]
 
 ### Changed
-- Go 1.21+ is required to build now (#98)
+- Go 1.22+ is required to build now (#98, #136)
 
 ### Updated
 - github.com/nspcc-dev/neo-go dependency from v0.106.0 to v0.106.3 (#98)

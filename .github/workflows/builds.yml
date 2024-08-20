@@ -33,7 +33,7 @@ on:
 jobs:
   build_bin:
     name: Build binary
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     strategy:
       matrix:
         go_os: [ linux, darwin ]
@@ -49,7 +49,7 @@ jobs:
         uses: actions/setup-go@v5
         with:
           cache: true
-          go-version: '1.22'
+          go-version: '1.23'
 
       - name: Check version
         run: if [[ $(make version) == *"dirty"* ]]; then exit 1; fi
@@ -76,7 +76,7 @@ jobs:
   build_image:
     needs: build_bin
     name: Build Docker image
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v4
