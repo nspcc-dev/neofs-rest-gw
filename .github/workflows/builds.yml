@@ -33,7 +33,7 @@ on:
 jobs:
   build_bin:
     name: Build binary
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     strategy:
       matrix:
         go_os: [ linux, darwin ]
@@ -76,7 +76,7 @@ jobs:
   build_image:
     needs: build_bin
     name: Build Docker image
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v4
