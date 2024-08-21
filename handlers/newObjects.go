@@ -191,7 +191,7 @@ func (a *RestAPI) NewHeadContainerObject(ctx echo.Context, containerID apiserver
 }
 
 // NewGetByAttribute handler that returns object (payload and attributes) by a specific attribute.
-func (a *RestAPI) NewGetByAttribute(ctx echo.Context, containerID apiserver.ContainerId, attrKey apiserver.AttrKey, attrVal apiserver.AttrVal, params apiserver.NewGetByAttributeParams) error {
+func (a *RestAPI) NewGetByAttribute(ctx echo.Context, containerID apiserver.ContainerId, attrKey string, attrVal string, params apiserver.NewGetByAttributeParams) error {
 	principal, err := getPrincipal(ctx)
 	if err != nil {
 		return ctx.JSON(http.StatusBadRequest, util.NewErrorResponse(err))
@@ -248,7 +248,7 @@ func (a *RestAPI) NewGetByAttribute(ctx echo.Context, containerID apiserver.Cont
 }
 
 // NewHeadByAttribute handler that returns object info (payload and attributes) by a specific attribute.
-func (a *RestAPI) NewHeadByAttribute(ctx echo.Context, containerID apiserver.ContainerId, attrKey apiserver.AttrKey, attrVal apiserver.AttrVal, params apiserver.NewHeadByAttributeParams) error {
+func (a *RestAPI) NewHeadByAttribute(ctx echo.Context, containerID apiserver.ContainerId, attrKey string, attrVal string, params apiserver.NewHeadByAttributeParams) error {
 	principal, err := getPrincipal(ctx)
 	if err != nil {
 		return ctx.JSON(http.StatusBadRequest, util.NewErrorResponse(err))

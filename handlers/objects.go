@@ -1018,7 +1018,7 @@ func (a *RestAPI) setOwner(obj *object.Object, btoken *bearer.Token) {
 }
 
 // GetByAttribute handler that returns object (payload and attributes) by a specific attribute.
-func (a *RestAPI) GetByAttribute(ctx echo.Context, containerID apiserver.ContainerId, attrKey apiserver.AttrKey, attrVal apiserver.AttrVal, params apiserver.GetByAttributeParams) error {
+func (a *RestAPI) GetByAttribute(ctx echo.Context, containerID apiserver.ContainerId, attrKey string, attrVal string, params apiserver.GetByAttributeParams) error {
 	principal, err := getPrincipal(ctx)
 	if err != nil {
 		return ctx.JSON(http.StatusBadRequest, util.NewErrorResponse(err))
@@ -1073,7 +1073,7 @@ func (a *RestAPI) GetByAttribute(ctx echo.Context, containerID apiserver.Contain
 }
 
 // HeadByAttribute handler that returns object info (payload and attributes) by a specific attribute.
-func (a *RestAPI) HeadByAttribute(ctx echo.Context, containerID apiserver.ContainerId, attrKey apiserver.AttrKey, attrVal apiserver.AttrVal, params apiserver.HeadByAttributeParams) error {
+func (a *RestAPI) HeadByAttribute(ctx echo.Context, containerID apiserver.ContainerId, attrKey string, attrVal string, params apiserver.HeadByAttributeParams) error {
 	principal, err := getPrincipal(ctx)
 	if err != nil {
 		return ctx.JSON(http.StatusBadRequest, util.NewErrorResponse(err))

@@ -1032,8 +1032,23 @@ paths:
       operationId: getByAttribute
       parameters:
         - $ref: '#/components/parameters/containerId'
-        - $ref: '#/components/parameters/attrKey'
-        - $ref: '#/components/parameters/attrVal'
+        - name: attrKey
+          in: path
+          description: Object attribute key to search.
+          required: true
+          content:
+            plain/text:
+              schema:
+                type: string
+                example: attributename
+        - name: attrVal
+          in: path
+          description: Object attribute value to match.
+          required: true
+          content:
+            plain/text:
+              schema:
+                type: string
         - name: download
           in: query
           description: Set the Content-Disposition header as attachment in response.
@@ -1066,8 +1081,23 @@ paths:
       operationId: optionsByAttribute
       parameters:
         - $ref: '#/components/parameters/containerId'
-        - $ref: '#/components/parameters/attrKey'
-        - $ref: '#/components/parameters/attrVal'
+        - name: attrKey
+          in: path
+          description: Object attribute key to search.
+          required: true
+          content:
+            plain/text:
+              schema:
+                type: string
+                example: attributename
+        - name: attrVal
+          in: path
+          description: Object attribute value to match.
+          required: true
+          content:
+            plain/text:
+              schema:
+                type: string
       responses:
         "200":
           description: CORS
@@ -1090,8 +1120,23 @@ paths:
       operationId: headByAttribute
       parameters:
         - $ref: '#/components/parameters/containerId'
-        - $ref: '#/components/parameters/attrKey'
-        - $ref: '#/components/parameters/attrVal'
+        - name: attrKey
+          in: path
+          description: Object attribute key to search.
+          required: true
+          content:
+            plain/text:
+              schema:
+                type: string
+                example: attributename
+        - name: attrVal
+          in: path
+          description: Object attribute value to match.
+          required: true
+          content:
+            plain/text:
+              schema:
+                type: string
         - name: download
           in: query
           description: Set the Content-Disposition header as attachment in response.
@@ -1130,8 +1175,6 @@ paths:
       operationId: newGetByAttribute
       parameters:
         - $ref: '#/components/parameters/containerId'
-        - $ref: '#/components/parameters/attrKey'
-        - $ref: '#/components/parameters/attrVal'
         - $ref: '#/components/parameters/signatureParam'
         - $ref: '#/components/parameters/signatureKeyParam'
         - $ref: '#/components/parameters/signatureScheme'
@@ -1143,6 +1186,23 @@ paths:
           schema:
             type: string
             example: 1, t, T, true, TRUE, True, y, yes, Y, YES, Yes
+        - name: attrKey
+          in: path
+          description: Object attribute key to search.
+          required: true
+          content:
+            plain/text:
+              schema:
+                type: string
+                example: attributename
+        - name: attrVal
+          in: path
+          description: Object attribute value to match.
+          required: true
+          content:
+            plain/text:
+              schema:
+                type: string
       responses:
         "200":
           $ref: '#/components/responses/NewObjectContentOK'
@@ -1166,8 +1226,23 @@ paths:
       operationId: newOptionsByAttribute
       parameters:
         - $ref: '#/components/parameters/containerId'
-        - $ref: '#/components/parameters/attrKey'
-        - $ref: '#/components/parameters/attrVal'
+        - name: attrKey
+          in: path
+          description: Object attribute key to search.
+          required: true
+          content:
+            plain/text:
+              schema:
+                type: string
+                example: attributename
+        - name: attrVal
+          in: path
+          description: Object attribute value to match.
+          required: true
+          content:
+            plain/text:
+              schema:
+                type: string
         - $ref: '#/components/parameters/signatureParam'
         - $ref: '#/components/parameters/signatureKeyParam'
         - $ref: '#/components/parameters/signatureScheme'
@@ -1194,8 +1269,23 @@ paths:
       operationId: newHeadByAttribute
       parameters:
         - $ref: '#/components/parameters/containerId'
-        - $ref: '#/components/parameters/attrKey'
-        - $ref: '#/components/parameters/attrVal'
+        - name: attrKey
+          in: path
+          description: Object attribute key to search.
+          required: true
+          content:
+            plain/text:
+              schema:
+                type: string
+                example: attributename
+        - name: attrVal
+          in: path
+          description: Object attribute value to match.
+          required: true
+          content:
+            plain/text:
+              schema:
+                type: string
         - $ref: '#/components/parameters/signatureParam'
         - $ref: '#/components/parameters/signatureKeyParam'
         - $ref: '#/components/parameters/signatureScheme'
@@ -2164,21 +2254,6 @@ components:
       required: true
       schema:
         type: string
-    attrKey:
-      name: attrKey
-      in: path
-      description: Object attribute key to search.
-      required: true
-      schema:
-        type: string
-    attrVal:
-      name: attrVal
-      in: path
-      description: Object attribute value to match.
-      required: true
-      schema:
-        type: string
-
   securitySchemes:
     BearerAuth:
       type: apiKey

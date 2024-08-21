@@ -122,7 +122,7 @@ func (a *RestAPI) OptionsUploadContainerObject(ctx echo.Context, _ apiserver.Con
 }
 
 // OptionsByAttribute handler for the byAttribute options request.
-func (a *RestAPI) OptionsByAttribute(ctx echo.Context, _ apiserver.ContainerId, _ apiserver.AttrKey, _ apiserver.AttrVal) error {
+func (a *RestAPI) OptionsByAttribute(ctx echo.Context, _ apiserver.ContainerId, _ string, _ string) error {
 	ctx.Response().Header().Set(accessControlAllowOriginHeader, allOrigins)
 	ctx.Response().Header().Set(accessControlAllowHeadersHeader, allowHeaders)
 	ctx.Response().Header().Set(accessControlAllowMethodsHeader, allowMethods(methodGet, methodHead))
@@ -154,7 +154,7 @@ func (a *RestAPI) NewOptionsContainerObject(ctx echo.Context, _ apiserver.Contai
 }
 
 // NewOptionsByAttribute handler for the find by attribute options request.
-func (a *RestAPI) NewOptionsByAttribute(ctx echo.Context, _ apiserver.ContainerId, _ apiserver.AttrKey, _ apiserver.AttrVal, _ apiserver.NewOptionsByAttributeParams) error {
+func (a *RestAPI) NewOptionsByAttribute(ctx echo.Context, _ apiserver.ContainerId, _ string, _ string, _ apiserver.NewOptionsByAttributeParams) error {
 	ctx.Response().Header().Set(accessControlAllowOriginHeader, allOrigins)
 	ctx.Response().Header().Set(accessControlAllowHeadersHeader, allowHeaders)
 	ctx.Response().Header().Set(accessControlAllowMethodsHeader, allowMethods(methodGet, methodHead))
