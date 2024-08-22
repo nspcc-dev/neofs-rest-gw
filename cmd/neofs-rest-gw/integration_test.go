@@ -261,6 +261,17 @@ func formRestrictRecord(op apiserver.Operation) apiserver.Record {
 		}}}
 }
 
+func formAllowRecord(op apiserver.Operation) apiserver.Record {
+	return apiserver.Record{
+		Operation: op,
+		Action:    apiserver.ALLOW,
+		Filters:   []apiserver.Filter{},
+		Targets: []apiserver.Target{{
+			Role: apiserver.OTHERS,
+			Keys: []string{},
+		}}}
+}
+
 func authTokens(ctx context.Context, t *testing.T) {
 	bearers := []apiserver.Bearer{
 		{
@@ -1795,15 +1806,9 @@ func restObjectUploadCookie(ctx context.Context, t *testing.T, clientPool *pool.
 }
 func restObjectUploadInt(ctx context.Context, t *testing.T, clientPool *pool.Pool, cnrID cid.ID, signer user.Signer, cookie bool) {
 	bt := apiserver.Bearer{
-		Object: []apiserver.Record{{
-			Operation: apiserver.OperationPUT,
-			Action:    apiserver.ALLOW,
-			Filters:   []apiserver.Filter{},
-			Targets: []apiserver.Target{{
-				Role: apiserver.OTHERS,
-				Keys: []string{},
-			}},
-		}},
+		Object: []apiserver.Record{
+			formAllowRecord(apiserver.OperationPUT),
+		},
 	}
 	bt.Object = append(bt.Object, getRestrictBearerRecords()...)
 
@@ -1885,15 +1890,9 @@ func restNewObjectUploadWC(ctx context.Context, t *testing.T, clientPool *pool.P
 }
 func restNewObjectUploadInt(ctx context.Context, t *testing.T, clientPool *pool.Pool, cnrID cid.ID, signer user.Signer, cookie bool, walletConnect bool) {
 	bt := apiserver.Bearer{
-		Object: []apiserver.Record{{
-			Operation: apiserver.OperationPUT,
-			Action:    apiserver.ALLOW,
-			Filters:   []apiserver.Filter{},
-			Targets: []apiserver.Target{{
-				Role: apiserver.OTHERS,
-				Keys: []string{},
-			}},
-		}},
+		Object: []apiserver.Record{
+			formAllowRecord(apiserver.OperationPUT),
+		},
 	}
 	bt.Object = append(bt.Object, getRestrictBearerRecords()...)
 
@@ -1973,24 +1972,8 @@ func restNewObjectUploadInt(ctx context.Context, t *testing.T, clientPool *pool.
 func restNewObjectHead(ctx context.Context, t *testing.T, p *pool.Pool, ownerID *user.ID, cnrID cid.ID, signer user.Signer, walletConnect bool) {
 	bearer := apiserver.Bearer{
 		Object: []apiserver.Record{
-			{
-				Operation: apiserver.OperationHEAD,
-				Action:    apiserver.ALLOW,
-				Filters:   []apiserver.Filter{},
-				Targets: []apiserver.Target{{
-					Role: apiserver.OTHERS,
-					Keys: []string{},
-				}},
-			},
-			{
-				Operation: apiserver.OperationRANGE,
-				Action:    apiserver.ALLOW,
-				Filters:   []apiserver.Filter{},
-				Targets: []apiserver.Target{{
-					Role: apiserver.OTHERS,
-					Keys: []string{},
-				}},
-			},
+			formAllowRecord(apiserver.OperationHEAD),
+			formAllowRecord(apiserver.OperationRANGE),
 		},
 	}
 	bearer.Object = append(bearer.Object, getRestrictBearerRecords()...)
@@ -2144,33 +2127,9 @@ func restNewObjectHead(ctx context.Context, t *testing.T, p *pool.Pool, ownerID 
 func restNewObjectHeadByAttribute(ctx context.Context, t *testing.T, p *pool.Pool, ownerID *user.ID, cnrID cid.ID, signer user.Signer, walletConnect bool) {
 	bearer := apiserver.Bearer{
 		Object: []apiserver.Record{
-			{
-				Operation: apiserver.OperationHEAD,
-				Action:    apiserver.ALLOW,
-				Filters:   []apiserver.Filter{},
-				Targets: []apiserver.Target{{
-					Role: apiserver.OTHERS,
-					Keys: []string{},
-				}},
-			},
-			{
-				Operation: apiserver.OperationRANGE,
-				Action:    apiserver.ALLOW,
-				Filters:   []apiserver.Filter{},
-				Targets: []apiserver.Target{{
-					Role: apiserver.OTHERS,
-					Keys: []string{},
-				}},
-			},
-			{
-				Operation: apiserver.OperationSEARCH,
-				Action:    apiserver.ALLOW,
-				Filters:   []apiserver.Filter{},
-				Targets: []apiserver.Target{{
-					Role: apiserver.OTHERS,
-					Keys: []string{},
-				}},
-			},
+			formAllowRecord(apiserver.OperationHEAD),
+			formAllowRecord(apiserver.OperationRANGE),
+			formAllowRecord(apiserver.OperationSEARCH),
 		},
 	}
 	bearer.Object = append(bearer.Object, getRestrictBearerRecords()...)
@@ -2322,24 +2281,8 @@ func restNewObjectHeadByAttribute(ctx context.Context, t *testing.T, p *pool.Poo
 func restNewObjectGetByAttribute(ctx context.Context, t *testing.T, p *pool.Pool, ownerID *user.ID, cnrID cid.ID, signer user.Signer, walletConnect bool) {
 	bearer := apiserver.Bearer{
 		Object: []apiserver.Record{
-			{
-				Operation: apiserver.OperationGET,
-				Action:    apiserver.ALLOW,
-				Filters:   []apiserver.Filter{},
-				Targets: []apiserver.Target{{
-					Role: apiserver.OTHERS,
-					Keys: []string{},
-				}},
-			},
-			{
-				Operation: apiserver.OperationSEARCH,
-				Action:    apiserver.ALLOW,
-				Filters:   []apiserver.Filter{},
-				Targets: []apiserver.Target{{
-					Role: apiserver.OTHERS,
-					Keys: []string{},
-				}},
-			},
+			formAllowRecord(apiserver.OperationGET),
+			formAllowRecord(apiserver.OperationSEARCH),
 		},
 	}
 	bearer.Object = append(bearer.Object, getRestrictBearerRecords()...)
