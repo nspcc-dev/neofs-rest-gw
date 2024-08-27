@@ -441,8 +441,9 @@ func (a *RestAPI) getByAddress(ctx echo.Context, addr oid.Address, downloadParam
 		}
 	}
 	ctx.Response().Header().Set("Content-Type", contentType)
-
 	ctx.Response().Header().Set(accessControlAllowOriginHeader, "*")
+	ctx.Response().Header().Set("Accept-Ranges", "bytes")
+
 	return ctx.Stream(http.StatusOK, contentType, payload)
 }
 
@@ -521,6 +522,7 @@ func (a *RestAPI) headByAddress(ctx echo.Context, addr oid.Address, downloadPara
 		}
 	}
 	ctx.Response().Header().Set("Content-Type", contentType)
+	ctx.Response().Header().Set("Accept-Ranges", "bytes")
 
 	return nil
 }

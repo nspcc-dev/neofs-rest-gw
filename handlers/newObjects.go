@@ -434,9 +434,9 @@ func (a *RestAPI) getRange(ctx echo.Context, addr oid.Address, rangeParam string
 
 	ctx.Response().Header().Set("Content-Type", contentType)
 	ctx.Response().Header().Set(accessControlAllowOriginHeader, "*")
-
 	ctx.Response().Header().Set("Content-Range", fmt.Sprintf("bytes %d-%d/%d", start, end, payloadSize))
 	ctx.Response().Header().Set("Content-Length", strconv.FormatUint(end-start+1, 10))
+	ctx.Response().Header().Set("Accept-Ranges", "bytes")
 
 	return ctx.Stream(http.StatusPartialContent, contentType, payload)
 }

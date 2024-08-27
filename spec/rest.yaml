@@ -2056,6 +2056,9 @@ components:
         Content-Type:
           schema:
             type: string
+        Accept-Ranges:
+          schema:
+            type: string
       content:
         '*/*':
           schema:
@@ -2097,6 +2100,9 @@ components:
             schema:
               type: string
             description: Indicates the range of bytes being returned in the response.
+        Accept-Ranges:
+          schema:
+            type: string
       content:
         '*/*':
           schema:
@@ -2170,6 +2176,9 @@ components:
           schema:
             type: string
         Content-Type:
+          schema:
+            type: string
+        Accept-Ranges:
           schema:
             type: string
       content:
