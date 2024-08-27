@@ -36,3 +36,4 @@ you have any problem with that it just means you should fix your application.
 
 There is a limitation for `$ATTRIBUTE_NAME` and `$ATTRIBUTE_VALUE`. These parameters
 should not contain `%` symbol. Using percent symbol [leads to error](https://github.com/nspcc-dev/neofs-rest-gw/issues/195).
+In some way, it may be handled with [double parameter escaping](https://github.com/nspcc-dev/neofs-rest-gw/issues/195#issuecomment-2049422164).
