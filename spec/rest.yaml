@@ -760,6 +760,7 @@ paths:
         - $ref: '#/components/parameters/signatureParam'
         - $ref: '#/components/parameters/signatureKeyParam'
         - $ref: '#/components/parameters/signatureScheme'
+        - $ref: '#/components/parameters/range'
         - name: download
           in: query
           description: Set the Content-Disposition header as attachment in response.
@@ -771,6 +772,8 @@ paths:
       responses:
         "200":
           $ref: '#/components/responses/NewObjectContentOK'
+        "206":
+          $ref: '#/components/responses/ObjectRangeOK'
         "400":
           description: Bad request.
           content:
@@ -779,6 +782,12 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
         "404":
           description: Not found.
+          content:
+            application/octet-stream:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        "416":
+          description: Range not satisfiable.
           content:
             application/octet-stream:
               schema:
@@ -1135,6 +1144,7 @@ paths:
         - $ref: '#/components/parameters/signatureParam'
         - $ref: '#/components/parameters/signatureKeyParam'
         - $ref: '#/components/parameters/signatureScheme'
+        - $ref: '#/components/parameters/range'
         - name: download
           in: query
           description: Set the Content-Disposition header as attachment in response.
@@ -1146,6 +1156,8 @@ paths:
       responses:
         "200":
           $ref: '#/components/responses/NewObjectContentOK'
+        "206":
+          $ref: '#/components/responses/ObjectRangeOK'
         "400":
           description: Bad request.
           content:
@@ -1154,6 +1166,12 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
         "404":
           description: Not found.
+          content:
+            application/octet-stream:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        "416":
+          description: Range not satisfiable.
           content:
             application/octet-stream:
               schema:
@@ -2038,6 +2056,53 @@ components:
         Content-Type:
           schema:
             type: string
+        Accept-Ranges:
+          schema:
+            type: string
+      content:
+        '*/*':
+          schema:
+            type: string
+            format: binary
+    ObjectRangeOK:
+      description: Partial Content - Successfully retrieved a partial object based on the Range header.
+      headers:
+        X-Attributes:
+          schema:
+            type: string
+          description: All object attributes are included here in JSON formatted key-value map,
+            except for `X-Object-Id`, `X-Container-Id`, `X-Owner-Id`.
+        Access-Control-Allow-Origin:
+          schema:
+            type: string
+        Content-Disposition:
+          schema:
+            type: string
+        X-Object-Id:
+          schema:
+            type: string
+        Last-Modified:
+          schema:
+            type: string
+        X-Owner-Id:
+          schema:
+            type: string
+        X-Container-Id:
+          schema:
+            type: string
+        Content-Length:
+          schema:
+            type: string
+        Content-Type:
+          schema:
+            type: string
+        Content-Range:
+            schema:
+              type: string
+            description: Indicates the range of bytes being returned in the response.
+        Accept-Ranges:
+          schema:
+            type: string
       content:
         '*/*':
           schema:
@@ -2113,6 +2178,9 @@ components:
         Content-Type:
           schema:
             type: string
+        Accept-Ranges:
+          schema:
+            type: string
       content:
         '*/*':
           schema:
@@ -2150,6 +2218,13 @@ components:
       schema:
         type: boolean
         default: false
+    range:
+      name: Range
+      in: header
+      description: Request a specific range of bytes from the object.
+      schema:
+        type: string
+        example: "bytes=500-999"
     containerId:
       name: containerId
       in: path

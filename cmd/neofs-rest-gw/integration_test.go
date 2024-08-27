@@ -155,8 +155,15 @@ func runTests(ctx context.Context, t *testing.T, key *keys.PrivateKey, node stri
 	t.Run("rest new head object with wallet connect", func(t *testing.T) { restNewObjectHead(ctx, t, clientPool, &owner, cnrID, signer, true) })
 	t.Run("rest new head by attribute", func(t *testing.T) { restNewObjectHeadByAttribute(ctx, t, clientPool, &owner, cnrID, signer, false) })
 	t.Run("rest new head by attribute with wallet connect", func(t *testing.T) { restNewObjectHeadByAttribute(ctx, t, clientPool, &owner, cnrID, signer, true) })
-	t.Run("rest new get by attribute", func(t *testing.T) { restNewObjectGetByAttribute(ctx, t, clientPool, &owner, cnrID, signer, false) })
-	t.Run("rest new get by attribute with wallet connect", func(t *testing.T) { restNewObjectGetByAttribute(ctx, t, clientPool, &owner, cnrID, signer, true) })
+	t.Run("rest new get by attribute", func(t *testing.T) {
+		restNewObjectGetByAttribute(ctx, t, clientPool, &owner, cnrID, signer, false, false)
+	})
+	t.Run("rest new get by attribute with wallet connect", func(t *testing.T) {
+		restNewObjectGetByAttribute(ctx, t, clientPool, &owner, cnrID, signer, true, false)
+	})
+	t.Run("rest new get by attribute with range", func(t *testing.T) {
+		restNewObjectGetByAttribute(ctx, t, clientPool, &owner, cnrID, signer, false, true)
+	})
 }
 
 func createDockerContainer(ctx context.Context, t *testing.T, image, version string) testcontainers.Container {
@@ -254,6 +261,17 @@ func formRestrictRecord(op apiserver.Operation) apiserver.Record {
 	return apiserver.Record{
 		Operation: op,
 		Action:    apiserver.DENY,
+		Filters:   []apiserver.Filter{},
+		Targets: []apiserver.Target{{
+			Role: apiserver.OTHERS,
+			Keys: []string{},
+		}}}
+}
+
+func formAllowRecord(op apiserver.Operation) apiserver.Record {
+	return apiserver.Record{
+		Operation: op,
+		Action:    apiserver.ALLOW,
 		Filters:   []apiserver.Filter{},
 		Targets: []apiserver.Target{{
 			Role: apiserver.OTHERS,
@@ -1795,15 +1813,9 @@ func restObjectUploadCookie(ctx context.Context, t *testing.T, clientPool *pool.
 }
 func restObjectUploadInt(ctx context.Context, t *testing.T, clientPool *pool.Pool, cnrID cid.ID, signer user.Signer, cookie bool) {
 	bt := apiserver.Bearer{
-		Object: []apiserver.Record{{
-			Operation: apiserver.OperationPUT,
-			Action:    apiserver.ALLOW,
-			Filters:   []apiserver.Filter{},
-			Targets: []apiserver.Target{{
-				Role: apiserver.OTHERS,
-				Keys: []string{},
-			}},
-		}},
+		Object: []apiserver.Record{
+			formAllowRecord(apiserver.OperationPUT),
+		},
 	}
 	bt.Object = append(bt.Object, getRestrictBearerRecords()...)
 
@@ -1885,15 +1897,9 @@ func restNewObjectUploadWC(ctx context.Context, t *testing.T, clientPool *pool.P
 }
 func restNewObjectUploadInt(ctx context.Context, t *testing.T, clientPool *pool.Pool, cnrID cid.ID, signer user.Signer, cookie bool, walletConnect bool) {
 	bt := apiserver.Bearer{
-		Object: []apiserver.Record{{
-			Operation: apiserver.OperationPUT,
-			Action:    apiserver.ALLOW,
-			Filters:   []apiserver.Filter{},
-			Targets: []apiserver.Target{{
-				Role: apiserver.OTHERS,
-				Keys: []string{},
-			}},
-		}},
+		Object: []apiserver.Record{
+			formAllowRecord(apiserver.OperationPUT),
+		},
 	}
 	bt.Object = append(bt.Object, getRestrictBearerRecords()...)
 
@@ -1973,24 +1979,8 @@ func restNewObjectUploadInt(ctx context.Context, t *testing.T, clientPool *pool.
 func restNewObjectHead(ctx context.Context, t *testing.T, p *pool.Pool, ownerID *user.ID, cnrID cid.ID, signer user.Signer, walletConnect bool) {
 	bearer := apiserver.Bearer{
 		Object: []apiserver.Record{
-			{
-				Operation: apiserver.OperationHEAD,
-				Action:    apiserver.ALLOW,
-				Filters:   []apiserver.Filter{},
-				Targets: []apiserver.Target{{
-					Role: apiserver.OTHERS,
-					Keys: []string{},
-				}},
-			},
-			{
-				Operation: apiserver.OperationRANGE,
-				Action:    apiserver.ALLOW,
-				Filters:   []apiserver.Filter{},
-				Targets: []apiserver.Target{{
-					Role: apiserver.OTHERS,
-					Keys: []string{},
-				}},
-			},
+			formAllowRecord(apiserver.OperationHEAD),
+			formAllowRecord(apiserver.OperationRANGE),
 		},
 	}
 	bearer.Object = append(bearer.Object, getRestrictBearerRecords()...)
@@ -2144,33 +2134,9 @@ func restNewObjectHead(ctx context.Context, t *testing.T, p *pool.Pool, ownerID 
 func restNewObjectHeadByAttribute(ctx context.Context, t *testing.T, p *pool.Pool, ownerID *user.ID, cnrID cid.ID, signer user.Signer, walletConnect bool) {
 	bearer := apiserver.Bearer{
 		Object: []apiserver.Record{
-			{
-				Operation: apiserver.OperationHEAD,
-				Action:    apiserver.ALLOW,
-				Filters:   []apiserver.Filter{},
-				Targets: []apiserver.Target{{
-					Role: apiserver.OTHERS,
-					Keys: []string{},
-				}},
-			},
-			{
-				Operation: apiserver.OperationRANGE,
-				Action:    apiserver.ALLOW,
-				Filters:   []apiserver.Filter{},
-				Targets: []apiserver.Target{{
-					Role: apiserver.OTHERS,
-					Keys: []string{},
-				}},
-			},
-			{
-				Operation: apiserver.OperationSEARCH,
-				Action:    apiserver.ALLOW,
-				Filters:   []apiserver.Filter{},
-				Targets: []apiserver.Target{{
-					Role: apiserver.OTHERS,
-					Keys: []string{},
-				}},
-			},
+			formAllowRecord(apiserver.OperationHEAD),
+			formAllowRecord(apiserver.OperationRANGE),
+			formAllowRecord(apiserver.OperationSEARCH),
 		},
 	}
 	bearer.Object = append(bearer.Object, getRestrictBearerRecords()...)
@@ -2319,27 +2285,13 @@ func restNewObjectHeadByAttribute(ctx context.Context, t *testing.T, p *pool.Poo
 	})
 }
 
-func restNewObjectGetByAttribute(ctx context.Context, t *testing.T, p *pool.Pool, ownerID *user.ID, cnrID cid.ID, signer user.Signer, walletConnect bool) {
+func restNewObjectGetByAttribute(ctx context.Context, t *testing.T, p *pool.Pool, ownerID *user.ID, cnrID cid.ID, signer user.Signer, walletConnect, addRange bool) {
 	bearer := apiserver.Bearer{
 		Object: []apiserver.Record{
-			{
-				Operation: apiserver.OperationGET,
-				Action:    apiserver.ALLOW,
-				Filters:   []apiserver.Filter{},
-				Targets: []apiserver.Target{{
-					Role: apiserver.OTHERS,
-					Keys: []string{},
-				}},
-			},
-			{
-				Operation: apiserver.OperationSEARCH,
-				Action:    apiserver.ALLOW,
-				Filters:   []apiserver.Filter{},
-				Targets: []apiserver.Target{{
-					Role: apiserver.OTHERS,
-					Keys: []string{},
-				}},
-			},
+			formAllowRecord(apiserver.OperationGET),
+			formAllowRecord(apiserver.OperationSEARCH),
+			formAllowRecord(apiserver.OperationHEAD),
+			formAllowRecord(apiserver.OperationRANGE),
 		},
 	}
 	bearer.Object = append(bearer.Object, getRestrictBearerRecords()...)
@@ -2361,7 +2313,7 @@ func restNewObjectGetByAttribute(ctx context.Context, t *testing.T, p *pool.Pool
 
 	var (
 		content      = []byte("some content")
-		fileNameAttr = "new-get-obj-by-attr-name-" + strconv.FormatBool(walletConnect)
+		fileNameAttr = "new-get-obj-by-attr-name-" + strconv.FormatBool(walletConnect) + strconv.FormatBool(addRange)
 		createTS     = time.Now().Unix()
 		attrKey      = "user-attribute"
 		attrValue    = "user value"
@@ -2390,7 +2342,15 @@ func restNewObjectGetByAttribute(ctx context.Context, t *testing.T, p *pool.Pool
 			prepareCommonHeaders(request.Header, bearerToken)
 		}
 
-		headers, rawPayload := doRequest(t, httpClient, request, http.StatusOK, nil)
+		start, end := 5, 10
+		status := http.StatusOK
+		if addRange {
+			request.Header.Set("Range", fmt.Sprintf("bytes=%d-%d", start, end))
+			status = http.StatusPartialContent
+		}
+
+		headers, rawPayload := doRequest(t, httpClient, request, status, nil)
+
 		require.NotEmpty(t, headers)
 
 		for key, vals := range headers {
@@ -2415,7 +2375,11 @@ func restNewObjectGetByAttribute(ctx context.Context, t *testing.T, p *pool.Pool
 			case "X-Container-Id":
 				require.Equal(t, cnrID.String(), vals[0])
 			case "Content-Length":
-				require.Equal(t, strconv.FormatInt(int64(len(content)), 10), vals[0])
+				if addRange {
+					require.Equal(t, strconv.Itoa(end-start+1), vals[0])
+				} else {
+					require.Equal(t, strconv.Itoa(len(content)), vals[0])
+				}
 			case "Content-Type":
 				require.Equal(t, "text/plain; charset=utf-8", vals[0])
 			case "Date":
@@ -2424,10 +2388,16 @@ func restNewObjectGetByAttribute(ctx context.Context, t *testing.T, p *pool.Pool
 				require.GreaterOrEqual(t, tm.Unix(), createTS)
 			case "Access-Control-Allow-Origin":
 				require.Equal(t, "*", vals[0])
+			case "Content-Range":
+				require.Equal(t, fmt.Sprintf("bytes %d-%d/%d", start, end, len(content)), vals[0])
 			}
 		}
 
-		require.Equal(t, content, rawPayload)
+		if addRange {
+			require.Equal(t, content[start:end+1], rawPayload)
+		} else {
+			require.Equal(t, content, rawPayload)
+		}
 	})
 }
 
