@@ -19,7 +19,7 @@ logger:
 
 pool:
   # Timeout to dial node.
-  node-dial-timeout: 5s
+  node-dial-timeout: 10s
   # Timeout to check node health during rebalance.
   healthcheck-timeout: 5s
   # Interval to check nodes' health.
