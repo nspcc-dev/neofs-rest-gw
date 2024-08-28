@@ -4,12 +4,31 @@ This document outlines major changes between releases.
 
 ## [Unreleased]
 
+### Added
+
+### Fixed
+
+### Changed
+
+### Removed
+
+### Updated
+
+## [0.11.0] - 2024-08-28
+
+### Added
+- WalletConnect auth scheme to `/objects/${cid}/by...` APIs (#236)
+- Support for 'Range' headers (#241)
+
 ### Changed
 - Go 1.22+ is required to build now (#98, #136)
+- Default read/write timeouts to 60s (#244)
+
+### Removed
+- `fullBearer` parameter from all requests (it's autodetected now, #238)
 
 ### Updated
 - github.com/nspcc-dev/neo-go dependency from v0.106.0 to v0.106.3 (#98)
-- github.com/testcontainers/testcontainers-go dependency from v0.25.0 to v0.32.0 (#98)
 - github.com/oapi-codegen/echo-middleware dependency from v1.0.1 to v1.0.2 (#98)
 - github.com/labstack/echo/v4 dependency from v4.11.4 to v4.12.0 (#98)
 - github.com/getkin/kin-openapi from v0.118.0 to v0.127.0 (#98)
@@ -279,4 +298,5 @@ Please refer to [GitHub releases](https://github.com/nspcc-dev/neofs-rest-gw/rel
 [0.9.0]: https://github.com/nspcc-dev/neofs-rest-gw/compare/v0.8.3...v0.9.0
 [0.10.0]: https://github.com/nspcc-dev/neofs-rest-gw/compare/v0.9.0...v0.10.0
 [0.10.1]: https://github.com/nspcc-dev/neofs-rest-gw/compare/v0.10.0...v0.10.1
-[Unreleased]: https://github.com/nspcc-dev/neofs-rest-gw/compare/v0.10.1...master
+[0.11.0]: https://github.com/nspcc-dev/neofs-rest-gw/compare/v0.10.1...v0.11.0
+[Unreleased]: https://github.com/nspcc-dev/neofs-rest-gw/compare/v0.11.0...master
