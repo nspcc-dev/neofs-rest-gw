@@ -449,7 +449,7 @@ func newLogger(v *viper.Viper) *zap.Logger {
 	}
 
 	l, err := c.Build(
-		zap.AddStacktrace(zap.NewAtomicLevelAt(zap.FatalLevel)),
+		zap.AddStacktrace(zap.NewAtomicLevelAt(zapcore.FatalLevel)),
 	)
 	if err != nil {
 		panic(fmt.Sprintf("build zap logger instance: %v", err))
