@@ -73,9 +73,9 @@ server:
       # It prunes dead TCP connections ( e.g. closing laptop mid-download).
       keep-alive: 3m
       # Maximum duration before timing out read of the request.
-      read-timeout: 30s
+      read-timeout: 60s
       # Maximum duration before timing out write of the response.
-      write-timeout: 30s
+      write-timeout: 60s
 
     - address: localhost:8080
       external-address: http://localhost:8090

@@ -146,8 +146,8 @@ func config() *viper.Viper {
 	flagSet.String(cfgTLSCertFile, "", "TLS certificate file to use; note that if you want to start HTTPS server, you should also set up --"+cmdListenAddress+" and --"+cfgTLSKeyFile)
 	flagSet.String(cfgTLSKeyFile, "", "TLS key file to use; note that if you want to start HTTPS server, you should also set up --"+cmdListenAddress+" and --"+cfgTLSCertFile)
 	flagSet.Duration(cfgEndpointKeepAlive, 3*time.Minute, "sets the TCP keep-alive timeouts on accepted connections. It prunes dead TCP connections ( e.g. closing laptop mid-download)")
-	flagSet.Duration(cfgEndpointReadTimeout, 30*time.Second, "maximum duration before timing out read of the request")
-	flagSet.Duration(cfgEndpointWriteTimeout, 30*time.Second, "maximum duration before timing out write of the response")
+	flagSet.Duration(cfgEndpointReadTimeout, 60*time.Second, "maximum duration before timing out read of the request")
+	flagSet.Duration(cfgEndpointWriteTimeout, 60*time.Second, "maximum duration before timing out write of the response")
 	flagSet.String(cfgEndpointExternalAddress, "", "the full URL address needs to be shown in the API documentation")
 
 	// init server flags
