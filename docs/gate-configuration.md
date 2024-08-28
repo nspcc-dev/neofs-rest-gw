@@ -32,8 +32,8 @@ server:
         key: /path/to/tls/key
         ca-certificate: /path/to/tls/ca
       keep-alive: 3m
-      read-timeout: 30s
-      write-timeout: 30s
+      read-timeout: 60s
+      write-timeout: 60s
   cleanup-timeout: 10s
   graceful-timeout: 15s
   max-header-size: 1000000
@@ -48,8 +48,8 @@ server:
 | `listen-limit`                  | `int`      | `0`              | Limit the number of outstanding requests. `0` means no limit                                                                                                                        |                                                                                                                         |
 | `endpoint.[0].address`          | `string`   | `localhost:8080` | The IP and port to listen on.                                                                                                                                                       |
 | `endpoint.[0].keep-alive`       | `duration` | `3m`             | Sets the TCP keep-alive timeouts on accepted connections.                                                                                                                           |
-| `endpoint.[0].read-timeout`     | `duration` | `30s`            | Maximum duration before timing out read of the request. It prunes dead TCP connections (e.g. closing laptop mid-download).                                                          |
-| `endpoint.[0].write-timeout`    | `duration` | `30s`            | Maximum duration before timing out write of the response.                                                                                                                           |
+| `endpoint.[0].read-timeout`     | `duration` | `60s`            | Maximum duration before timing out read of the request. It prunes dead TCP connections (e.g. closing laptop mid-download).                                                          |
+| `endpoint.[0].write-timeout`    | `duration` | `60s`            | Maximum duration before timing out write of the response.                                                                                                                           |
 | `endpoint.[0].tls.enabled`      | `bool`     | `false`          | Use TLS for a gRPC connection (min version is TLS 1.2).                                                                                                                             |
 | `endpoint.[0].tls.certificate`  | `string`   |                  | The certificate file to use for secure connections.                                                                                                                                 |
 | `endpoint.[0].tls.key`          | `string`   |                  | The private key file to use for secure connections (without passphrase).                                                                                                            |
