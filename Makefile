@@ -25,12 +25,12 @@ BINDIR = bin
 DIRS = "$(BINDIR)"
 BINS = "$(BINDIR)/neofs-rest-gw"
 
-.PHONY: help all dep clean format test cover lint docker/lint
+.PHONY: help all clean format test cover lint docker/lint
 
 # Make all binaries
 all: generate-server $(BINS)
 
-$(BINS): $(DIRS) dep
+$(BINS): $(DIRS)
 	@echo "⇒ Build $@"
 	CGO_ENABLED=0 \
 	GOOS=$(BUILD_OS) \
@@ -42,15 +42,6 @@ $(BINS): $(DIRS) dep
 $(DIRS):
 	@echo "⇒ Ensure dir: $@"
 	@mkdir -p $@
-
-# Pull go dependencies
-dep:
-	@printf "⇒ Download requirements: "
-	@CGO_ENABLED=0 \
-	go mod download && echo OK
-	@printf "⇒ Tidy requirements: "
-	@CGO_ENABLED=0 \
-	go mod tidy -v && echo OK
 
 # Install generator
 install-generator:
