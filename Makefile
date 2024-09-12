@@ -6,7 +6,6 @@ VERSION ?= "$(shell git describe --tags --match "v*" --dirty --always --abbrev=8
 BUILD_OS ?= linux
 BUILD_ARCH ?= amd64
 GO_VERSION ?= 1.22
-LINT_VERSION ?= v1.59.0
 
 HUB_IMAGE ?= nspccdev/neofs-rest-gw
 HUB_TAG ?= "$(shell echo ${VERSION} | sed 's/^v//')"
@@ -102,8 +101,12 @@ image-dirty:
 		-f Dockerfile.dirty \
 		-t $(HUB_IMAGE)-dirty:$(HUB_TAG) .
 
+# Fetch linter configuration.
+.golangci.yml:
+	wget -O $@ https://github.com/nspcc-dev/.github/raw/master/.golangci.yml
+
 # Run linters
-lint:
+lint: .golangci.yml
 	@golangci-lint --timeout=5m run
 
 # Make all binaries in clean docker environment
@@ -117,14 +120,6 @@ docker/all:
 		--env BUILD_OS=$(BUILD_OS) \
 		--env BUILD_ARCH=$(BUILD_ARCH) \
 		golang:$(GO_VERSION) make all
-
-# Run linters in Docker
-docker/lint:
-	docker run --rm -it \
-	-v `pwd`:/src \
-	-u `stat -c "%u:%g" .` \
-	--env HOME=/src \
-	golangci/golangci-lint:$(LINT_VERSION) bash -c 'cd /src/ && make lint'
 
 # Print version
 version:
