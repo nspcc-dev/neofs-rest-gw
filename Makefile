@@ -6,7 +6,6 @@ VERSION ?= "$(shell git describe --tags --match "v*" --dirty --always --abbrev=8
 BUILD_OS ?= linux
 BUILD_ARCH ?= amd64
 GO_VERSION ?= 1.22
-LINT_VERSION ?= v1.59.0
 
 HUB_IMAGE ?= nspccdev/neofs-rest-gw
 HUB_TAG ?= "$(shell echo ${VERSION} | sed 's/^v//')"
@@ -26,12 +25,12 @@ BINDIR = bin
 DIRS = "$(BINDIR)"
 BINS = "$(BINDIR)/neofs-rest-gw"
 
-.PHONY: help all dep clean format test cover lint docker/lint
+.PHONY: help all clean format test cover lint docker/lint
 
 # Make all binaries
 all: generate-server $(BINS)
 
-$(BINS): $(DIRS) dep
+$(BINS): $(DIRS)
 	@echo "⇒ Build $@"
 	CGO_ENABLED=0 \
 	GOOS=$(BUILD_OS) \
@@ -43,15 +42,6 @@ $(BINS): $(DIRS) dep
 $(DIRS):
 	@echo "⇒ Ensure dir: $@"
 	@mkdir -p $@
-
-# Pull go dependencies
-dep:
-	@printf "⇒ Download requirements: "
-	@CGO_ENABLED=0 \
-	go mod download && echo OK
-	@printf "⇒ Tidy requirements: "
-	@CGO_ENABLED=0 \
-	go mod tidy -v && echo OK
 
 # Install generator
 install-generator:
@@ -102,8 +92,12 @@ image-dirty:
 		-f Dockerfile.dirty \
 		-t $(HUB_IMAGE)-dirty:$(HUB_TAG) .
 
+# Fetch linter configuration.
+.golangci.yml:
+	wget -O $@ https://github.com/nspcc-dev/.github/raw/master/.golangci.yml
+
 # Run linters
-lint:
+lint: .golangci.yml
 	@golangci-lint --timeout=5m run
 
 # Make all binaries in clean docker environment
@@ -117,14 +111,6 @@ docker/all:
 		--env BUILD_OS=$(BUILD_OS) \
 		--env BUILD_ARCH=$(BUILD_ARCH) \
 		golang:$(GO_VERSION) make all
-
-# Run linters in Docker
-docker/lint:
-	docker run --rm -it \
-	-v `pwd`:/src \
-	-u `stat -c "%u:%g" .` \
-	--env HOME=/src \
-	golangci/golangci-lint:$(LINT_VERSION) bash -c 'cd /src/ && make lint'
 
 # Print version
 version:

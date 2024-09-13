@@ -10,3 +10,5 @@ temp
 
 coverage.txt
 coverage.html
+
+.golangci.yml
