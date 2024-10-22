@@ -19,7 +19,6 @@ import (
 	"github.com/nspcc-dev/neofs-sdk-go/container/acl"
 	"github.com/nspcc-dev/neofs-sdk-go/object"
 	oid "github.com/nspcc-dev/neofs-sdk-go/object/id"
-	"github.com/nspcc-dev/neofs-sdk-go/pool"
 	"github.com/nspcc-dev/neofs-sdk-go/session"
 	"go.uber.org/zap"
 )
@@ -55,7 +54,7 @@ const (
 	limitDefault = 100
 )
 
-func getObjectAttributes(ctx context.Context, pool *pool.Pool, attrs []apiserver.Attribute, prm PrmAttributes) ([]object.Attribute, error) {
+func getObjectAttributes(ctx context.Context, networkInfoGetter networkInfoGetter, attrs []apiserver.Attribute, prm PrmAttributes) ([]object.Attribute, error) {
 	headers := make(map[string]string, len(attrs))
 
 	for _, attr := range attrs {
@@ -64,7 +63,7 @@ func getObjectAttributes(ctx context.Context, pool *pool.Pool, attrs []apiserver
 	delete(headers, object.AttributeFileName)
 
 	if needParseExpiration(headers) {
-		epochDuration, err := getEpochDurations(ctx, pool)
+		epochDuration, err := getEpochDurations(ctx, networkInfoGetter)
 		if err != nil {
 			return nil, fmt.Errorf("could not get epoch durations from network info: %w", err)
 		}
@@ -91,8 +90,8 @@ func getObjectAttributes(ctx context.Context, pool *pool.Pool, attrs []apiserver
 	return attributes, nil
 }
 
-func getEpochDurations(ctx context.Context, p *pool.Pool) (*epochDurations, error) {
-	networkInfo, err := p.NetworkInfo(ctx, client.PrmNetworkInfo{})
+func getEpochDurations(ctx context.Context, networkInfoGetter networkInfoGetter) (*epochDurations, error) {
+	networkInfo, err := networkInfoGetter.NetworkInfo(ctx)
 	if err != nil {
 		return nil, err
 	}

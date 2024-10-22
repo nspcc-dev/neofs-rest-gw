@@ -105,7 +105,7 @@ func (a *RestAPI) PutObject(ctx echo.Context, params apiserver.PutObjectParams) 
 		DefaultTimestamp: a.defaultTimestamp,
 		DefaultFileName:  body.FileName,
 	}
-	attributes, err := getObjectAttributes(ctx.Request().Context(), a.pool, body.Attributes, prm)
+	attributes, err := getObjectAttributes(ctx.Request().Context(), a.networkInfoGetter, body.Attributes, prm)
 	if err != nil {
 		resp := a.logAndGetErrorResponse("failed to get object attributes", err)
 		return ctx.JSON(http.StatusBadRequest, resp)
@@ -940,7 +940,7 @@ func (a *RestAPI) UploadContainerObject(ctx echo.Context, containerID apiserver.
 	}
 
 	if needParseExpiration(filtered) {
-		epochDuration, err := getEpochDurations(ctx.Request().Context(), a.pool)
+		epochDuration, err := getEpochDurations(ctx.Request().Context(), a.networkInfoGetter)
 		if err != nil {
 			resp := a.logAndGetErrorResponse("could not get epoch durations from network info", err)
 			return ctx.JSON(http.StatusBadRequest, resp)
