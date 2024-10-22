@@ -11,9 +11,7 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/nspcc-dev/neofs-rest-gw/handlers/apiserver"
 	"github.com/nspcc-dev/neofs-rest-gw/internal/util"
-	"github.com/nspcc-dev/neofs-sdk-go/client"
 	neofscrypto "github.com/nspcc-dev/neofs-sdk-go/crypto"
-	"github.com/nspcc-dev/neofs-sdk-go/pool"
 	"github.com/nspcc-dev/neofs-sdk-go/user"
 )
 
@@ -91,10 +89,10 @@ func (a *RestAPI) Auth(ctx echo.Context, params apiserver.AuthParams) error {
 
 		if isObject {
 			prm := newObjectParams(commonPrm, token)
-			response[i], err = prepareObjectToken(ctx.Request().Context(), prm, a.pool, a.signer.UserID())
+			response[i], err = prepareObjectToken(ctx.Request().Context(), prm, a.networkInfoGetter, a.signer.UserID())
 		} else {
 			prm := newContainerParams(commonPrm, token)
-			response[i], err = prepareContainerTokens(ctx.Request().Context(), prm, a.pool, a.signer.Public())
+			response[i], err = prepareContainerTokens(ctx.Request().Context(), prm, a.networkInfoGetter, a.signer.Public())
 		}
 
 		if err != nil {
@@ -136,7 +134,7 @@ func (a *RestAPI) FormBinaryBearer(ctx echo.Context, params apiserver.FormBinary
 	return ctx.JSON(http.StatusOK, resp)
 }
 
-func prepareObjectToken(ctx context.Context, params objectTokenParams, pool *pool.Pool, owner user.ID) (*apiserver.TokenResponse, error) {
+func prepareObjectToken(ctx context.Context, params objectTokenParams, networkInfoGetter networkInfoGetter, owner user.ID) (*apiserver.TokenResponse, error) {
 	btoken, err := util.ToNativeObjectToken(params.Records)
 	if err != nil {
 		return nil, fmt.Errorf("couldn't transform token to native: %w", err)
@@ -152,7 +150,7 @@ func prepareObjectToken(ctx context.Context, params objectTokenParams, pool *poo
 		btoken.ForUser(owner)
 	}
 
-	iat, exp, err := getTokenLifetime(ctx, pool, params.XBearerLifetime)
+	iat, exp, err := getTokenLifetime(ctx, networkInfoGetter, params.XBearerLifetime)
 	if err != nil {
 		return nil, fmt.Errorf("couldn't get lifetime: %w", err)
 	}
@@ -168,8 +166,8 @@ func prepareObjectToken(ctx context.Context, params objectTokenParams, pool *poo
 	}, nil
 }
 
-func prepareContainerTokens(ctx context.Context, params containerTokenParams, pool *pool.Pool, pubKey neofscrypto.PublicKey) (*apiserver.TokenResponse, error) {
-	iat, exp, err := getTokenLifetime(ctx, pool, params.XBearerLifetime)
+func prepareContainerTokens(ctx context.Context, params containerTokenParams, networkInfoGetter networkInfoGetter, pubKey neofscrypto.PublicKey) (*apiserver.TokenResponse, error) {
+	iat, exp, err := getTokenLifetime(ctx, networkInfoGetter, params.XBearerLifetime)
 	if err != nil {
 		return nil, fmt.Errorf("couldn't get lifetime: %w", err)
 	}
@@ -204,8 +202,8 @@ func prepareContainerTokens(ctx context.Context, params containerTokenParams, po
 	}, nil
 }
 
-func getCurrentEpoch(ctx context.Context, p *pool.Pool) (uint64, error) {
-	netInfo, err := p.NetworkInfo(ctx, client.PrmNetworkInfo{})
+func getCurrentEpoch(ctx context.Context, networkInfoGetter networkInfoGetter) (uint64, error) {
+	netInfo, err := networkInfoGetter.NetworkInfo(ctx)
 	if err != nil {
 		return 0, fmt.Errorf("couldn't get netwokr info: %w", err)
 	}
@@ -213,8 +211,8 @@ func getCurrentEpoch(ctx context.Context, p *pool.Pool) (uint64, error) {
 	return netInfo.CurrentEpoch(), nil
 }
 
-func getTokenLifetime(ctx context.Context, p *pool.Pool, expDuration uint64) (uint64, uint64, error) {
-	currEpoch, err := getCurrentEpoch(ctx, p)
+func getTokenLifetime(ctx context.Context, networkInfoGetter networkInfoGetter, expDuration uint64) (uint64, uint64, error) {
+	currEpoch, err := getCurrentEpoch(ctx, networkInfoGetter)
 	if err != nil {
 		return 0, 0, err
 	}
