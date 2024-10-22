@@ -1044,7 +1044,11 @@ func (a *RestAPI) GetByAttribute(ctx echo.Context, containerID apiserver.Contain
 	res, err := a.search(ctx.Request().Context(), btoken, cnrID, attrKey, attrVal, object.MatchStringEqual)
 	if err != nil {
 		resp := a.logAndGetErrorResponse("could not search for objects", err)
-		return ctx.JSON(http.StatusNotFound, resp)
+		if strings.Contains(err.Error(), "code = 1024") {
+			return ctx.JSON(http.StatusBadGateway, resp)
+		}
+
+		return ctx.JSON(http.StatusInternalServerError, resp)
 	}
 
 	defer func() {
@@ -1064,7 +1068,11 @@ func (a *RestAPI) GetByAttribute(ctx echo.Context, containerID apiserver.Contain
 		}
 
 		resp := a.logAndGetErrorResponse("read object list failed", err)
-		return ctx.JSON(http.StatusNotFound, resp)
+		if strings.Contains(err.Error(), "code = 1024") {
+			return ctx.JSON(http.StatusBadGateway, resp)
+		}
+
+		return ctx.JSON(http.StatusInternalServerError, resp)
 	}
 
 	var addrObj oid.Address
@@ -1099,7 +1107,11 @@ func (a *RestAPI) HeadByAttribute(ctx echo.Context, containerID apiserver.Contai
 	res, err := a.search(ctx.Request().Context(), btoken, cnrID, attrKey, attrVal, object.MatchStringEqual)
 	if err != nil {
 		resp := a.logAndGetErrorResponse("could not search for objects", err)
-		return ctx.JSON(http.StatusNotFound, resp)
+		if strings.Contains(err.Error(), "code = 1024") {
+			return ctx.JSON(http.StatusBadGateway, resp)
+		}
+
+		return ctx.JSON(http.StatusInternalServerError, resp)
 	}
 
 	defer func() {
@@ -1119,7 +1131,11 @@ func (a *RestAPI) HeadByAttribute(ctx echo.Context, containerID apiserver.Contai
 		}
 
 		resp := a.logAndGetErrorResponse("read object list failed", err)
-		return ctx.JSON(http.StatusNotFound, resp)
+		if strings.Contains(err.Error(), "code = 1024") {
+			return ctx.JSON(http.StatusBadGateway, resp)
+		}
+
+		return ctx.JSON(http.StatusInternalServerError, resp)
 	}
 
 	var addrObj oid.Address
