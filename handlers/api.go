@@ -11,8 +11,10 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/nspcc-dev/neo-go/pkg/crypto/keys"
 	"github.com/nspcc-dev/neofs-rest-gw/handlers/apiserver"
+	"github.com/nspcc-dev/neofs-rest-gw/internal/cache"
 	"github.com/nspcc-dev/neofs-rest-gw/internal/util"
 	"github.com/nspcc-dev/neofs-rest-gw/metrics"
+	"github.com/nspcc-dev/neofs-sdk-go/netmap"
 	"github.com/nspcc-dev/neofs-sdk-go/pool"
 	"github.com/nspcc-dev/neofs-sdk-go/session"
 	"github.com/nspcc-dev/neofs-sdk-go/user"
@@ -45,6 +47,11 @@ type SessionToken struct {
 	Verb session.ContainerVerb
 }
 
+type networkInfoGetter interface {
+	NetworkInfo(ctx context.Context) (netmap.NetworkInfo, error)
+	StoreNetworkInfo(ni netmap.NetworkInfo)
+}
+
 const (
 	// bearerCookieName is the name of the bearer cookie.
 	bearerCookieName = "Bearer"
@@ -75,6 +82,7 @@ func NewAPI(prm *PrmAPI) (*RestAPI, error) {
 		pprofService:           prm.PprofService,
 		gateMetric:             prm.GateMetric,
 		serviceShutdownTimeout: prm.ServiceShutdownTimeout,
+		networkInfoGetter:      cache.NewNetworkInfoCache(prm.Pool),
 	}, nil
 }
 
@@ -141,6 +149,7 @@ type RestAPI struct {
 	prometheusService      *metrics.Service
 	pprofService           *metrics.Service
 	serviceShutdownTimeout time.Duration
+	networkInfoGetter      networkInfoGetter
 }
 
 func (a *RestAPI) StartCallback() {

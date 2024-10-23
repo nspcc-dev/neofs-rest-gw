@@ -64,7 +64,7 @@ func (a *RestAPI) PutContainer(ctx echo.Context, params apiserver.PutContainerPa
 		return ctx.JSON(http.StatusBadRequest, resp)
 	}
 
-	cnrID, err := createContainer(ctx.Request().Context(), a.pool, stoken, body, params, a.signer)
+	cnrID, err := createContainer(ctx.Request().Context(), a.pool, stoken, body, params, a.signer, a.networkInfoGetter)
 	if err != nil {
 		resp := a.logAndGetErrorResponse("create container", err)
 		return ctx.JSON(http.StatusBadRequest, resp)
@@ -381,7 +381,7 @@ func getContainerEACL(ctx context.Context, p *pool.Pool, cnrID cid.ID) (*apiserv
 	return tableResp, nil
 }
 
-func createContainer(ctx context.Context, p *pool.Pool, stoken session.Container, request apiserver.ContainerPutInfo, params apiserver.PutContainerParams, signer user.Signer) (cid.ID, error) {
+func createContainer(ctx context.Context, p *pool.Pool, stoken session.Container, request apiserver.ContainerPutInfo, params apiserver.PutContainerParams, signer user.Signer, networkInfoGetter networkInfoGetter) (cid.ID, error) {
 	if request.PlacementPolicy == "" {
 		request.PlacementPolicy = defaultPlacementPolicy
 	}
@@ -405,6 +405,15 @@ func createContainer(ctx context.Context, p *pool.Pool, stoken session.Container
 	cnr.SetPlacementPolicy(policy)
 	cnr.SetBasicACL(basicACL)
 	cnr.SetOwner(stoken.Issuer())
+
+	ni, err := networkInfoGetter.NetworkInfo(ctx)
+	if err != nil {
+		return cid.ID{}, fmt.Errorf("couldn't get network info: %w", err)
+	}
+
+	if ni.HomomorphicHashingDisabled() {
+		cnr.DisableHomomorphicHashing()
+	}
 
 	cnr.SetCreationTime(time.Now())
 

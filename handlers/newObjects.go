@@ -62,7 +62,7 @@ func (a *RestAPI) NewUploadContainerObject(ctx echo.Context, containerID apiserv
 
 	addExpirationHeaders(filtered, params)
 	if needParseExpiration(filtered) {
-		epochDuration, err := getEpochDurations(ctx.Request().Context(), a.pool)
+		epochDuration, err := getEpochDurations(ctx.Request().Context(), a.networkInfoGetter)
 		if err != nil {
 			resp := a.logAndGetErrorResponse("could not get epoch durations from network info", err)
 			return ctx.JSON(http.StatusBadRequest, resp)
