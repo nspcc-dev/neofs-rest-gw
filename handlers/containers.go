@@ -70,7 +70,7 @@ func (a *RestAPI) PutContainer(ctx echo.Context, params apiserver.PutContainerPa
 	cnrID, err := createContainer(wCtx, a.pool, stoken, body, params, a.signer, a.networkInfoGetter)
 	if err != nil {
 		resp := a.logAndGetErrorResponse("create container", err)
-		return ctx.JSON(http.StatusBadRequest, resp)
+		return ctx.JSON(getResponseCodeFromStatus(err), resp)
 	}
 
 	resp := apiserver.PutContainerOK{
@@ -144,7 +144,7 @@ func (a *RestAPI) PutContainerEACL(ctx echo.Context, containerID apiserver.Conta
 
 	if err = setContainerEACL(wCtx, a.pool, cnrID, stoken, body, a.signer); err != nil {
 		resp := a.logAndGetErrorResponse("failed set container eacl", err)
-		return ctx.JSON(http.StatusBadRequest, resp)
+		return ctx.JSON(getResponseCodeFromStatus(err), resp)
 	}
 
 	ctx.Response().Header().Set(accessControlAllowOriginHeader, "*")
@@ -266,7 +266,7 @@ func (a *RestAPI) DeleteContainer(ctx echo.Context, containerID apiserver.Contai
 
 	if err = wait.ContainerDelete(wCtx, cnrID, a.signer, prm); err != nil {
 		resp := a.logAndGetErrorResponse("delete container", err, zap.String("container", containerID))
-		return ctx.JSON(http.StatusBadRequest, resp)
+		return ctx.JSON(getResponseCodeFromStatus(err), resp)
 	}
 
 	ctx.Response().Header().Set(accessControlAllowOriginHeader, "*")
