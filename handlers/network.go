@@ -17,6 +17,8 @@ func (a *RestAPI) GetNetworkInfo(ctx echo.Context) error {
 		return ctx.JSON(http.StatusBadRequest, resp)
 	}
 
+	a.networkInfoGetter.StoreNetworkInfo(networkInfo)
+
 	var resp apiserver.NetworkInfoOK
 	resp.AuditFee = networkInfo.AuditFee()
 	resp.StoragePrice = networkInfo.StoragePrice()

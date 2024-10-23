@@ -43,9 +43,19 @@ func (n *NetworkInfo) NetworkInfo(ctx context.Context) (netmap.NetworkInfo, erro
 		return netmap.NetworkInfo{}, fmt.Errorf("get network info: %w", err)
 	}
 
+	n.update(ni)
+
+	return ni, nil
+}
+
+func (n *NetworkInfo) update(ni netmap.NetworkInfo) {
 	n.ttl = time.Duration(int64(ni.EpochDuration())/2*ni.MsPerBlock()) * time.Millisecond
 	n.validUntil = time.Now().Add(n.ttl)
 	n.ni = ni
+}
 
-	return ni, nil
+func (n *NetworkInfo) StoreNetworkInfo(ni netmap.NetworkInfo) {
+	n.mu.Lock()
+	n.update(ni)
+	n.mu.Unlock()
 }

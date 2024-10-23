@@ -49,6 +49,7 @@ type SessionToken struct {
 
 type networkInfoGetter interface {
 	NetworkInfo(ctx context.Context) (netmap.NetworkInfo, error)
+	StoreNetworkInfo(ni netmap.NetworkInfo)
 }
 
 const (
