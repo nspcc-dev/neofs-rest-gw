@@ -596,6 +596,7 @@ func newNeofsAPI(ctx context.Context, logger *zap.Logger, v *viper.Viper) (*hand
 	}
 
 	apiPrm.DefaultTimestamp = v.GetBool(cfgPoolDefaultTimestamp)
+	apiPrm.WaiterOperationTimeout = time.Duration(uint64(ni.MsPerBlock())*4) * time.Millisecond
 
 	return handlers.NewAPI(&apiPrm)
 }

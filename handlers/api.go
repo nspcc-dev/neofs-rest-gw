@@ -34,6 +34,7 @@ type PrmAPI struct {
 	PrometheusService      *metrics.Service
 	PprofService           *metrics.Service
 	ServiceShutdownTimeout time.Duration
+	WaiterOperationTimeout time.Duration
 }
 
 type BearerToken struct {
@@ -83,6 +84,7 @@ func NewAPI(prm *PrmAPI) (*RestAPI, error) {
 		gateMetric:             prm.GateMetric,
 		serviceShutdownTimeout: prm.ServiceShutdownTimeout,
 		networkInfoGetter:      cache.NewNetworkInfoCache(prm.Pool),
+		waiterOperationTimeout: prm.WaiterOperationTimeout,
 	}, nil
 }
 
@@ -150,6 +152,7 @@ type RestAPI struct {
 	pprofService           *metrics.Service
 	serviceShutdownTimeout time.Duration
 	networkInfoGetter      networkInfoGetter
+	waiterOperationTimeout time.Duration
 }
 
 func (a *RestAPI) StartCallback() {
