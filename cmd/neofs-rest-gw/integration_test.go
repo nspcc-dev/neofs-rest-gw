@@ -1411,7 +1411,7 @@ func restContainerEACLPut(ctx context.Context, t *testing.T, clientPool *pool.Po
 	query := make(url.Values)
 	query.Add(walletConnectQuery, strconv.FormatBool(useWalletConnect))
 
-	doSetEACLRequest(ctx, t, httpClient, cnrID, query, bearerToken, invalidBody, http.StatusBadRequest, nil)
+	doSetEACLRequest(ctx, t, httpClient, cnrID, query, bearerToken, invalidBody, http.StatusInternalServerError, nil)
 
 	resp := &apiserver.SuccessResponse{}
 	doSetEACLRequest(ctx, t, httpClient, cnrID, query, bearerToken, body, http.StatusOK, resp)
@@ -1614,7 +1614,7 @@ func restContainerPutInvalid(ctx context.Context, t *testing.T) {
 	prepareCommonHeaders(request.Header, bearerToken)
 
 	resp := &apiserver.ErrorResponse{}
-	doRequest(t, httpClient, request, http.StatusBadRequest, resp)
+	doRequest(t, httpClient, request, http.StatusInternalServerError, resp)
 	require.Equal(t, uint32(0), resp.Code)
 	require.Equal(t, apiserver.GW, resp.Type)
 }
@@ -1650,7 +1650,7 @@ func restContainerPut(ctx context.Context, t *testing.T, clientPool *pool.Pool) 
 	require.NoError(t, err)
 	prepareCommonHeaders(request.Header, bearerToken)
 
-	doRequest(t, httpClient, request, http.StatusBadRequest, nil)
+	doRequest(t, httpClient, request, http.StatusInternalServerError, nil)
 
 	// create container with name in local scope
 	containerPutInfo := &apiserver.ContainerPutInfo{

@@ -64,10 +64,13 @@ func (a *RestAPI) PutContainer(ctx echo.Context, params apiserver.PutContainerPa
 		return ctx.JSON(http.StatusBadRequest, resp)
 	}
 
-	cnrID, err := createContainer(ctx.Request().Context(), a.pool, stoken, body, params, a.signer, a.networkInfoGetter)
+	wCtx, cancel := context.WithTimeout(ctx.Request().Context(), a.waiterOperationTimeout)
+	defer cancel()
+
+	cnrID, err := createContainer(wCtx, a.pool, stoken, body, params, a.signer, a.networkInfoGetter)
 	if err != nil {
 		resp := a.logAndGetErrorResponse("create container", err)
-		return ctx.JSON(http.StatusBadRequest, resp)
+		return ctx.JSON(getResponseCodeFromStatus(err), resp)
 	}
 
 	resp := apiserver.PutContainerOK{
@@ -136,9 +139,12 @@ func (a *RestAPI) PutContainerEACL(ctx echo.Context, containerID apiserver.Conta
 		return ctx.JSON(http.StatusBadRequest, resp)
 	}
 
-	if err = setContainerEACL(ctx.Request().Context(), a.pool, cnrID, stoken, body, a.signer); err != nil {
+	wCtx, cancel := context.WithTimeout(ctx.Request().Context(), a.waiterOperationTimeout)
+	defer cancel()
+
+	if err = setContainerEACL(wCtx, a.pool, cnrID, stoken, body, a.signer); err != nil {
 		resp := a.logAndGetErrorResponse("failed set container eacl", err)
-		return ctx.JSON(http.StatusBadRequest, resp)
+		return ctx.JSON(getResponseCodeFromStatus(err), resp)
 	}
 
 	ctx.Response().Header().Set(accessControlAllowOriginHeader, "*")
@@ -255,9 +261,12 @@ func (a *RestAPI) DeleteContainer(ctx echo.Context, containerID apiserver.Contai
 	prm.WithinSession(stoken)
 
 	wait := waiter.NewContainerDeleteWaiter(a.pool, waiter.DefaultPollInterval)
-	if err = wait.ContainerDelete(ctx.Request().Context(), cnrID, a.signer, prm); err != nil {
+	wCtx, cancel := context.WithTimeout(ctx.Request().Context(), a.waiterOperationTimeout)
+	defer cancel()
+
+	if err = wait.ContainerDelete(wCtx, cnrID, a.signer, prm); err != nil {
 		resp := a.logAndGetErrorResponse("delete container", err, zap.String("container", containerID))
-		return ctx.JSON(http.StatusBadRequest, resp)
+		return ctx.JSON(getResponseCodeFromStatus(err), resp)
 	}
 
 	ctx.Response().Header().Set(accessControlAllowOriginHeader, "*")
