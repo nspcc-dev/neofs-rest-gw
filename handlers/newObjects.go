@@ -227,7 +227,7 @@ func (a *RestAPI) NewGetByAttribute(ctx echo.Context, containerID apiserver.Cont
 	res, err := a.search(ctx.Request().Context(), btoken, cnrID, attrKey, attrVal, object.MatchStringEqual)
 	if err != nil {
 		resp := a.logAndGetErrorResponse("could not search for objects", err)
-		return ctx.JSON(http.StatusNotFound, resp)
+		return ctx.JSON(getResponseCodeFromStatus(err), resp)
 	}
 
 	defer func() {
@@ -247,7 +247,7 @@ func (a *RestAPI) NewGetByAttribute(ctx echo.Context, containerID apiserver.Cont
 		}
 
 		resp := a.logAndGetErrorResponse("read object list failed", err)
-		return ctx.JSON(http.StatusNotFound, resp)
+		return ctx.JSON(getResponseCodeFromStatus(err), resp)
 	}
 
 	var addrObj oid.Address
@@ -287,7 +287,7 @@ func (a *RestAPI) NewHeadByAttribute(ctx echo.Context, containerID apiserver.Con
 	res, err := a.search(ctx.Request().Context(), btoken, cnrID, attrKey, attrVal, object.MatchStringEqual)
 	if err != nil {
 		resp := a.logAndGetErrorResponse("could not search for objects", err)
-		return ctx.JSON(http.StatusNotFound, resp)
+		return ctx.JSON(getResponseCodeFromStatus(err), resp)
 	}
 
 	defer func() {
@@ -307,7 +307,7 @@ func (a *RestAPI) NewHeadByAttribute(ctx echo.Context, containerID apiserver.Con
 		}
 
 		resp := a.logAndGetErrorResponse("read object list failed", err)
-		return ctx.JSON(http.StatusNotFound, resp)
+		return ctx.JSON(getResponseCodeFromStatus(err), resp)
 	}
 
 	var addrObj oid.Address
