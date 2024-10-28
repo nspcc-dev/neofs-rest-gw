@@ -14,6 +14,16 @@ This document outlines major changes between releases.
 
 ### Updated
 
+## [0.11.1] - 2024-10-28
+
+### Changed
+- Network settings are cached now for faster processing (#251)
+
+### Fixed
+- Gateway not reacting to network settings changes (#251)
+- Incorrect request for container creation hangs indefinitely (#253)
+- Incorrect HTTP codes returned in many cases (#252, #253)
+
 ## [0.11.0] - 2024-08-28
 
 ### Added
@@ -299,4 +309,5 @@ Please refer to [GitHub releases](https://github.com/nspcc-dev/neofs-rest-gw/rel
 [0.10.0]: https://github.com/nspcc-dev/neofs-rest-gw/compare/v0.9.0...v0.10.0
 [0.10.1]: https://github.com/nspcc-dev/neofs-rest-gw/compare/v0.10.0...v0.10.1
 [0.11.0]: https://github.com/nspcc-dev/neofs-rest-gw/compare/v0.10.1...v0.11.0
-[Unreleased]: https://github.com/nspcc-dev/neofs-rest-gw/compare/v0.11.0...master
+[0.11.1]: https://github.com/nspcc-dev/neofs-rest-gw/compare/v0.11.0...v0.11.1
+[Unreleased]: https://github.com/nspcc-dev/neofs-rest-gw/compare/v0.11.1...master
