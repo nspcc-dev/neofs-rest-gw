@@ -34,7 +34,6 @@ jobs:
       neofs_manual_expiration_period: ${{ vars.MANUAL_RUN_EXPIRATION_PERIOD }}
       neofs_other_expiration_period: ${{ vars.OTHER_EXPIRATION_PERIOD }}
       neofs_testcases_commit: 'master'
-      neofs_node_commit: 'c6a3201722521b99338548e388fa043889c714ad'
       neofs_rest_gw_commit: ${{ github.event.inputs.neofs_rest_gw_ref }}
       tests_path: 'pytest_tests/tests/services/rest_gate'
       tests_parallel_level: 1
