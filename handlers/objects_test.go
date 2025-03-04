@@ -13,8 +13,8 @@ import (
 	bearertest "github.com/nspcc-dev/neofs-sdk-go/bearer/test"
 	neofscrypto "github.com/nspcc-dev/neofs-sdk-go/crypto"
 	neofsecdsa "github.com/nspcc-dev/neofs-sdk-go/crypto/ecdsa"
-	"github.com/nspcc-dev/neofs-sdk-go/crypto/test"
 	"github.com/nspcc-dev/neofs-sdk-go/user"
+	usertest "github.com/nspcc-dev/neofs-sdk-go/user/test"
 	"github.com/stretchr/testify/require"
 )
 
@@ -87,13 +87,11 @@ func TestPrepareOffset(t *testing.T) {
 }
 
 func TestPrepareBearerToken(t *testing.T) {
-	signer := test.RandomSigner(t)
-	token := bearertest.Token(t)
+	signer := usertest.User()
+	token := bearertest.Token()
 
-	keyHex := hex.EncodeToString(neofscrypto.PublicKeyBytes(signer.Public()))
-	pKey, err := keys.NewPublicKeyFromString(keyHex)
-	require.NoError(t, err)
-	usrID := user.ResolveFromECDSAPublicKey(ecdsa.PublicKey(*pKey))
+	keyHex := hex.EncodeToString(signer.PublicKeyBytes)
+	usrID := signer.ID
 
 	token.SetIssuer(usrID)
 

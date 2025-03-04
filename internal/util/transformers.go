@@ -417,12 +417,13 @@ func NewSuccessResponse() *apiserver.SuccessResponse {
 // NewErrorResponse forms [apiserver.ErrorResponse].
 func NewErrorResponse(err error) *apiserver.ErrorResponse {
 	var code uint32
-	var statusErr apistatus.StatusV2
 	t := apiserver.GW
 
-	if errors.As(err, &statusErr) {
-		code = uint32(statusErr.ErrorToV2().Code())
-		t = apiserver.API
+	if errors.Is(err, apistatus.Error) {
+		if st := apistatus.FromError(err); st != nil {
+			code = st.GetCode()
+			t = apiserver.API
+		}
 	}
 
 	return &apiserver.ErrorResponse{

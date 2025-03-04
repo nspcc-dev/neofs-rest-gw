@@ -9,7 +9,6 @@ import (
 	"github.com/nspcc-dev/neo-go/pkg/crypto/keys"
 	neofscrypto "github.com/nspcc-dev/neofs-sdk-go/crypto"
 	neofsecdsa "github.com/nspcc-dev/neofs-sdk-go/crypto/ecdsa"
-	"github.com/nspcc-dev/neofs-sdk-go/crypto/test"
 	"github.com/nspcc-dev/neofs-sdk-go/session"
 	sessiontest "github.com/nspcc-dev/neofs-sdk-go/session/test"
 	"github.com/nspcc-dev/neofs-sdk-go/user"
@@ -60,8 +59,8 @@ func TestPrepareSessionToken(t *testing.T) {
 	_, err := prepareSessionToken(st, true)
 	require.NoError(t, err)
 
-	issuer := usertest.ID(t)
-	signer := user.NewSigner(test.RandomSigner(t), issuer)
+	signer := usertest.User()
+	issuer := signer.ID
 	token := sessiontest.Container()
 	token.SetIssuer(issuer)
 	const verb = session.VerbContainerPut
