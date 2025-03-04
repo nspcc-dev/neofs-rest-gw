@@ -14,6 +14,10 @@ This document outlines major changes between releases.
 ### Removed
 
 ### Updated
+- `github.com/nspcc-dev/neofs-sdk-go` dependency to `v1.0.0-rc.13` (#1092)
+- `github.com/nspcc-dev/neo-go` dependency to `v0.108.1` (#1092)
+- `github.com/stretchr/testify` dependency to `v1.10.0` (#1092)
+- `github.com/testcontainers/testcontainers-go` dependency to `v0.35.0` (#1092)
 
 ## [0.11.1] - 2024-10-28
 
