@@ -426,7 +426,7 @@ func formFullBinaryBearer(ctx context.Context, t *testing.T) {
 	require.Empty(t, actualRecord.Filters())
 	require.Len(t, actualRecord.Targets(), 1)
 	actualTarget := actualRecord.Targets()[0]
-	require.Empty(t, actualTarget.BinaryKeys())
+	require.Empty(t, actualTarget.Accounts())
 	require.Equal(t, eacl.RoleOthers, actualTarget.Role())
 }
 
@@ -1422,7 +1422,7 @@ func restContainerEACLPut(ctx context.Context, t *testing.T, clientPool *pool.Po
 	require.NoError(t, err)
 	expectedTable.SetCID(cnrID)
 
-	require.True(t, eacl.EqualTables(*expectedTable, table))
+	require.Equal(t, expectedTable.Marshal(), table.Marshal())
 }
 
 func doSetEACLRequest(ctx context.Context, t *testing.T, httpClient *http.Client, cnrID cid.ID, query url.Values, bearerToken *handlers.BearerToken, body []byte, status int, model any) {
@@ -1453,7 +1453,7 @@ func restContainerEACLGet(ctx context.Context, t *testing.T, p *pool.Pool, cnrID
 	require.NoError(t, err)
 	actualTable.SetCID(cnrID)
 
-	require.True(t, eacl.EqualTables(expectedTable, *actualTable))
+	require.Equal(t, expectedTable.Marshal(), actualTable.Marshal())
 }
 
 func restContainerList(ctx context.Context, t *testing.T, p *pool.Pool, owner user.ID, cnrID cid.ID) {
@@ -1717,7 +1717,7 @@ func createObject(ctx context.Context, t *testing.T, p *pool.Pool, ownerID *user
 	}
 
 	var obj object.Object
-	obj.SetOwnerID(ownerID)
+	obj.SetOwner(*ownerID)
 	obj.SetContainerID(cnrID)
 	obj.SetAttributes(attributes...)
 	obj.SetPayload(payload)
@@ -1737,40 +1737,33 @@ func createObject(ctx context.Context, t *testing.T, p *pool.Pool, ownerID *user
 }
 
 func restrictByEACL(ctx context.Context, t *testing.T, clientPool *pool.Pool, cnrID cid.ID, signer user.Signer) *eacl.Table {
-	table := eacl.NewTable()
-	table.SetCID(cnrID)
-
+	var records []eacl.Record
 	for op := eacl.OperationGet; op <= eacl.OperationRangeHash; op++ {
-		record := new(eacl.Record)
-		record.SetOperation(op)
-		record.SetAction(eacl.ActionDeny)
-		target := new(eacl.Target)
-		target.SetRole(eacl.RoleOthers)
-		record.SetTargets(*target)
-		table.AddRecord(record)
+		record := eacl.ConstructRecord(eacl.ActionDeny, op, []eacl.Target{eacl.NewTargetByRole(eacl.RoleOthers)})
+		records = append(records, record)
 	}
 
 	var prm client.PrmContainerSetEACL
 	w := waiter.NewContainerSetEACLWaiter(clientPool, waiter.DefaultPollInterval)
 
-	err := w.ContainerSetEACL(ctx, *table, signer, prm)
+	table := eacl.NewTableForContainer(cnrID, records)
+	err := w.ContainerSetEACL(ctx, table, signer, prm)
 	require.NoError(t, err)
 
-	return table
+	return &table
 }
 
 func allowByEACL(ctx context.Context, t *testing.T, clientPool *pool.Pool, cnrID cid.ID, signer user.Signer) *eacl.Table {
-	table := eacl.NewTable()
-	table.SetCID(cnrID)
+	table := eacl.NewTableForContainer(cnrID, []eacl.Record{})
 
 	var prm client.PrmContainerSetEACL
 	w := waiter.NewContainerSetEACLWaiter(clientPool, waiter.DefaultPollInterval)
 
-	err := w.ContainerSetEACL(ctx, *table, signer, prm)
+	err := w.ContainerSetEACL(ctx, table, signer, prm)
 
 	require.NoError(t, err)
 
-	return table
+	return &table
 }
 
 func restBalance(_ context.Context, t *testing.T) {

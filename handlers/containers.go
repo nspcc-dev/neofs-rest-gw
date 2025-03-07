@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"context"
+	"crypto/elliptic"
 	"encoding/base64"
 	"encoding/hex"
 	"errors"
@@ -19,7 +20,6 @@ import (
 	"github.com/nspcc-dev/neofs-sdk-go/container/acl"
 	cid "github.com/nspcc-dev/neofs-sdk-go/container/id"
 	neofscrypto "github.com/nspcc-dev/neofs-sdk-go/crypto"
-	neofsecdsa "github.com/nspcc-dev/neofs-sdk-go/crypto/ecdsa"
 	"github.com/nspcc-dev/neofs-sdk-go/netmap"
 	"github.com/nspcc-dev/neofs-sdk-go/pool"
 	"github.com/nspcc-dev/neofs-sdk-go/session"
@@ -504,8 +504,11 @@ func prepareSessionToken(st *SessionToken, isWalletConnect bool) (session.Contai
 		return session.Container{}, fmt.Errorf("couldn't decode signature: %w", err)
 	}
 
-	ownerKey, err := keys.NewPublicKeyFromString(st.Key)
+	pub, err := hex.DecodeString(st.Key)
 	if err != nil {
+		return session.Container{}, fmt.Errorf("couldn't fetch session token owner key: %w", err)
+	}
+	if _, err = keys.NewPublicKeyFromBytes(pub, elliptic.P256()); err != nil {
 		return session.Container{}, fmt.Errorf("couldn't fetch session token owner key: %w", err)
 	}
 
@@ -519,20 +522,13 @@ func prepareSessionToken(st *SessionToken, isWalletConnect bool) (session.Contai
 	}
 
 	var scheme neofscrypto.Scheme
-	var pubKey neofscrypto.PublicKey
 	if isWalletConnect {
 		scheme = neofscrypto.ECDSA_WALLETCONNECT
-		pubKey = (*neofsecdsa.PublicKeyWalletConnect)(ownerKey)
 	} else {
 		scheme = neofscrypto.ECDSA_SHA512
-		pubKey = (*neofsecdsa.PublicKey)(ownerKey)
 	}
 
-	err = stoken.Sign(user.NewSigner(neofscrypto.NewStaticSigner(scheme, signature, pubKey), stoken.Issuer()))
-	if err != nil {
-		// should never happen
-		return session.Container{}, fmt.Errorf("set pre-calculated signature of the token: %w", err)
-	}
+	stoken.AttachSignature(neofscrypto.NewSignatureFromRawKey(scheme, pub, signature))
 
 	if !stoken.VerifySignature() {
 		return session.Container{}, errors.New("invalid signature")

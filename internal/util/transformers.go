@@ -22,7 +22,7 @@ func ToNativeAction(a apiserver.Action) (eacl.Action, error) {
 	case apiserver.DENY:
 		return eacl.ActionDeny, nil
 	default:
-		return eacl.ActionUnknown, fmt.Errorf("unsupported action type: '%s'", a)
+		return 0, fmt.Errorf("unsupported action type: '%s'", a)
 	}
 }
 
@@ -56,7 +56,7 @@ func ToNativeOperation(o apiserver.Operation) (eacl.Operation, error) {
 	case apiserver.OperationRANGEHASH:
 		return eacl.OperationRangeHash, nil
 	default:
-		return eacl.OperationUnknown, fmt.Errorf("unsupported operation type: '%s'", o)
+		return 0, fmt.Errorf("unsupported operation type: '%s'", o)
 	}
 }
 
@@ -92,7 +92,7 @@ func ToNativeHeaderType(h apiserver.HeaderType) (eacl.FilterHeaderType, error) {
 	case apiserver.SERVICE:
 		return eacl.HeaderFromService, nil
 	default:
-		return eacl.HeaderTypeUnknown, fmt.Errorf("unsupported header type: '%s'", h)
+		return 0, fmt.Errorf("unsupported header type: '%s'", h)
 	}
 }
 
@@ -118,7 +118,7 @@ func ToNativeMatchType(t apiserver.MatchType) (eacl.Match, error) {
 	case apiserver.STRINGNOTEQUAL:
 		return eacl.MatchStringNotEqual, nil
 	default:
-		return eacl.MatchUnknown, fmt.Errorf("unsupported match type: '%s'", t)
+		return 0, fmt.Errorf("unsupported match type: '%s'", t)
 	}
 }
 
@@ -144,7 +144,7 @@ func ToNativeRole(r apiserver.Role) (eacl.Role, error) {
 	case apiserver.OTHERS:
 		return eacl.RoleOthers, nil
 	case apiserver.KEYS:
-		return eacl.RoleUnknown, nil
+		return eacl.RoleUnspecified, nil
 	default:
 		return 0, fmt.Errorf("unsupported role type: '%s'", r)
 	}
@@ -159,7 +159,7 @@ func FromNativeRole(r eacl.Role) (apiserver.Role, error) {
 		return apiserver.SYSTEM, nil
 	case eacl.RoleOthers:
 		return apiserver.OTHERS, nil
-	case eacl.RoleUnknown:
+	case eacl.RoleUnspecified:
 		return apiserver.KEYS, nil
 	default:
 		return "", fmt.Errorf("unsupported role type: '%s'", r)
@@ -203,20 +203,17 @@ func ToNativeContainerToken(tokenRule apiserver.Rule) (session.Container, error)
 
 // ToNativeRecord converts [apiserver.Record] to appropriate [eacl.Record].
 func ToNativeRecord(r apiserver.Record) (*eacl.Record, error) {
-	var record eacl.Record
-
 	action, err := ToNativeAction(r.Action)
 	if err != nil {
 		return nil, err
 	}
-	record.SetAction(action)
 
 	operation, err := ToNativeOperation(r.Operation)
 	if err != nil {
 		return nil, err
 	}
-	record.SetOperation(operation)
 
+	filters := make([]eacl.Filter, 0, len(r.Filters))
 	for _, filter := range r.Filters {
 		headerType, err := ToNativeHeaderType(filter.HeaderType)
 		if err != nil {
@@ -229,7 +226,7 @@ func ToNativeRecord(r apiserver.Record) (*eacl.Record, error) {
 		if filter.Key == "" || filter.Value == "" {
 			return nil, errors.New("invalid filter")
 		}
-		record.AddFilter(headerType, matchType, filter.Key, filter.Value)
+		filters = append(filters, eacl.ConstructFilter(headerType, filter.Key, matchType, filter.Value))
 	}
 
 	targets := make([]eacl.Target, len(r.Targets))
@@ -240,7 +237,7 @@ func ToNativeRecord(r apiserver.Record) (*eacl.Record, error) {
 		}
 		targets[i] = *trgt
 	}
-	record.SetTargets(targets...)
+	record := eacl.ConstructRecord(action, operation, targets, filters...)
 
 	return &record, nil
 }
@@ -313,7 +310,7 @@ func ToNativeTarget(t apiserver.Target) (*eacl.Target, error) {
 		}
 		keys[i] = binaryKey
 	}
-	target.SetBinaryKeys(keys)
+	target.SetRawSubjects(keys)
 
 	return &target, nil
 }
@@ -328,9 +325,10 @@ func FromNativeTarget(t eacl.Target) (apiserver.Target, error) {
 		return target, err
 	}
 
-	target.Keys = make([]string, len(t.BinaryKeys()))
-	for i, key := range t.BinaryKeys() {
-		target.Keys[i] = hex.EncodeToString(key)
+	subjs := t.RawSubjects()
+	target.Keys = make([]string, len(subjs))
+	for i := range subjs {
+		target.Keys[i] = hex.EncodeToString(subjs[i])
 	}
 
 	return target, nil
@@ -351,17 +349,17 @@ func ToNativeObjectToken(tokenRecords []apiserver.Record) (*bearer.Token, error)
 
 // ToNativeTable converts records to [eacl.Table].
 func ToNativeTable(records []apiserver.Record) (*eacl.Table, error) {
-	table := eacl.NewTable()
+	rs := make([]eacl.Record, 0, len(records))
 
 	for _, rec := range records {
 		record, err := ToNativeRecord(rec)
 		if err != nil {
 			return nil, fmt.Errorf("couldn't transform record to native: %w", err)
 		}
-		table.AddRecord(record)
+		rs = append(rs, *record)
 	}
-
-	return table, nil
+	table := eacl.ConstructTable(rs)
+	return &table, nil
 }
 
 // ToNativeMatchFilter converts [apiserver.SearchMatch] to [object.SearchMatchType].
@@ -376,7 +374,7 @@ func ToNativeMatchFilter(s apiserver.SearchMatch) (object.SearchMatchType, error
 	case apiserver.MatchCommonPrefix:
 		return object.MatchCommonPrefix, nil
 	default:
-		return object.MatchUnknown, fmt.Errorf("unsupported search match: '%s'", s)
+		return 0, fmt.Errorf("unsupported search match: '%s'", s)
 	}
 }
 
@@ -417,12 +415,13 @@ func NewSuccessResponse() *apiserver.SuccessResponse {
 // NewErrorResponse forms [apiserver.ErrorResponse].
 func NewErrorResponse(err error) *apiserver.ErrorResponse {
 	var code uint32
-	var statusErr apistatus.StatusV2
 	t := apiserver.GW
 
-	if errors.As(err, &statusErr) {
-		code = uint32(statusErr.ErrorToV2().Code())
-		t = apiserver.API
+	if errors.Is(err, apistatus.Error) {
+		if st := apistatus.FromError(err); st != nil {
+			code = st.GetCode()
+			t = apiserver.API
+		}
 	}
 
 	return &apiserver.ErrorResponse{

@@ -9,10 +9,8 @@ import (
 	"github.com/nspcc-dev/neo-go/pkg/crypto/keys"
 	neofscrypto "github.com/nspcc-dev/neofs-sdk-go/crypto"
 	neofsecdsa "github.com/nspcc-dev/neofs-sdk-go/crypto/ecdsa"
-	"github.com/nspcc-dev/neofs-sdk-go/crypto/test"
 	"github.com/nspcc-dev/neofs-sdk-go/session"
 	sessiontest "github.com/nspcc-dev/neofs-sdk-go/session/test"
-	"github.com/nspcc-dev/neofs-sdk-go/user"
 	usertest "github.com/nspcc-dev/neofs-sdk-go/user/test"
 	"github.com/stretchr/testify/require"
 )
@@ -60,8 +58,8 @@ func TestPrepareSessionToken(t *testing.T) {
 	_, err := prepareSessionToken(st, true)
 	require.NoError(t, err)
 
-	issuer := usertest.ID(t)
-	signer := user.NewSigner(test.RandomSigner(t), issuer)
+	signer := usertest.User()
+	issuer := signer.ID
 	token := sessiontest.Container()
 	token.SetIssuer(issuer)
 	const verb = session.VerbContainerPut
@@ -70,8 +68,7 @@ func TestPrepareSessionToken(t *testing.T) {
 	sig, err := signer.Sign(token.SignedData())
 	require.NoError(t, err)
 
-	err = token.Sign(user.NewSigner(neofscrypto.NewStaticSigner(signer.Scheme(), sig, signer.Public()), issuer))
-	require.NoError(t, err)
+	token.AttachSignature(neofscrypto.NewSignature(signer.Scheme(), signer.Public(), sig))
 	require.True(t, token.VerifySignature())
 
 	unsignedTokenB64 := base64.StdEncoding.EncodeToString(token.SignedData())
@@ -136,16 +133,14 @@ func TestPrepareSessionToken(t *testing.T) {
 	t.Run("invalid signature", func(t *testing.T) {
 		tokenCp := token
 
-		err = tokenCp.Sign(user.NewSigner(neofscrypto.NewStaticSigner(signer.Scheme(), sig, signer.Public()), issuer))
-		require.NoError(t, err)
+		tokenCp.AttachSignature(neofscrypto.NewSignature(signer.Scheme(), signer.Public(), sig))
 		require.True(t, tokenCp.VerifySignature())
 
 		// corrupt signature
 		sig := bytes.Clone(sig)
 		sig[0]++
 
-		err = tokenCp.Sign(user.NewSigner(neofscrypto.NewStaticSigner(signer.Scheme(), sig, signer.Public()), issuer))
-		require.NoError(t, err)
+		tokenCp.AttachSignature(neofscrypto.NewSignature(signer.Scheme(), signer.Public(), sig))
 
 		_, err = prepareSessionToken(&SessionToken{
 			BearerToken: BearerToken{
@@ -172,8 +167,7 @@ func TestPrepareSessionToken(t *testing.T) {
 
 		sigHex := hex.EncodeToString(sig)
 
-		err = tokenCp.Sign(user.NewSigner(neofscrypto.NewStaticSigner(signer.Scheme(), sig, signer.Public()), issuer))
-		require.NoError(t, err)
+		tokenCp.AttachSignature(neofscrypto.NewSignature(signer.Scheme(), signer.Public(), sig))
 		require.True(t, tokenCp.VerifySignature())
 
 		res, err := prepareSessionToken(&SessionToken{
@@ -190,8 +184,7 @@ func TestPrepareSessionToken(t *testing.T) {
 		// corrupt signature
 		sig[0]++
 
-		err = tokenCp.Sign(user.NewSigner(neofscrypto.NewStaticSigner(signer.Scheme(), sig, signer.Public()), issuer))
-		require.NoError(t, err)
+		tokenCp.AttachSignature(neofscrypto.NewSignature(signer.Scheme(), signer.Public(), sig))
 
 		_, err = prepareSessionToken(&SessionToken{
 			BearerToken: BearerToken{

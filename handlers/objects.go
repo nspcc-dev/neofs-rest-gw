@@ -3,7 +3,7 @@ package handlers
 import (
 	"bytes"
 	"context"
-	"crypto/ecdsa"
+	"crypto/elliptic"
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
@@ -28,7 +28,6 @@ import (
 	apistatus "github.com/nspcc-dev/neofs-sdk-go/client/status"
 	cid "github.com/nspcc-dev/neofs-sdk-go/container/id"
 	neofscrypto "github.com/nspcc-dev/neofs-sdk-go/crypto"
-	neofsecdsa "github.com/nspcc-dev/neofs-sdk-go/crypto/ecdsa"
 	"github.com/nspcc-dev/neofs-sdk-go/object"
 	oid "github.com/nspcc-dev/neofs-sdk-go/object/id"
 	"github.com/nspcc-dev/neofs-sdk-go/pool"
@@ -168,7 +167,7 @@ func (a *RestAPI) GetObjectInfo(ctx echo.Context, containerID apiserver.Containe
 	var resp apiserver.ObjectInfo
 	resp.ContainerId = containerID
 	resp.ObjectId = objectID
-	resp.OwnerId = header.OwnerID().String()
+	resp.OwnerId = header.Owner().String()
 	resp.Attributes = make([]apiserver.Attribute, len(header.Attributes()))
 	resp.ObjectSize = header.PayloadSize()
 
@@ -539,7 +538,7 @@ func (a *RestAPI) setAttributes(ctx echo.Context, params setAttributeParams) str
 	attrJSON := make(map[string]string)
 	ctx.Response().Header().Set("X-Container-Id", params.cid)
 	ctx.Response().Header().Set("X-Object-Id", params.oid)
-	ctx.Response().Header().Set("X-Owner-Id", params.header.OwnerID().EncodeToString())
+	ctx.Response().Header().Set("X-Owner-Id", params.header.Owner().EncodeToString())
 
 	var (
 		contentType string
@@ -780,8 +779,11 @@ func prepareBearerToken(bt *BearerToken, isWalletConnect, isFullToken bool) (*be
 		return nil, fmt.Errorf("couldn't decode bearer signature: %w", err)
 	}
 
-	ownerKey, err := keys.NewPublicKeyFromString(bt.Key)
+	pub, err := hex.DecodeString(bt.Key)
 	if err != nil {
+		return nil, fmt.Errorf("couldn't fetch bearer token owner key: %w", err)
+	}
+	if _, err = keys.NewPublicKeyFromBytes(pub, elliptic.P256()); err != nil {
 		return nil, fmt.Errorf("couldn't fetch bearer token owner key: %w", err)
 	}
 
@@ -790,21 +792,13 @@ func prepareBearerToken(bt *BearerToken, isWalletConnect, isFullToken bool) (*be
 	}
 
 	var scheme neofscrypto.Scheme
-	var pubKey neofscrypto.PublicKey
 	if isWalletConnect {
 		scheme = neofscrypto.ECDSA_WALLETCONNECT
-		pubKey = (*neofsecdsa.PublicKeyWalletConnect)(ownerKey)
 	} else {
 		scheme = neofscrypto.ECDSA_SHA512
-		pubKey = (*neofsecdsa.PublicKey)(ownerKey)
 	}
 
-	err = btoken.Sign(user.NewSigner(neofscrypto.NewStaticSigner(scheme, signature, pubKey),
-		user.ResolveFromECDSAPublicKey(ecdsa.PublicKey(*ownerKey))))
-	if err != nil {
-		// should never happen
-		return nil, fmt.Errorf("set pre-calculated signature of the token: %w", err)
-	}
+	btoken.AttachSignature(neofscrypto.NewSignatureFromRawKey(scheme, pub, signature))
 
 	if !btoken.VerifySignature() {
 		return nil, errors.New("invalid signature")
@@ -864,8 +858,7 @@ func attachBearer(prm prmWithBearer, btoken *bearer.Token) {
 }
 func attachOwner(obj *object.Object, btoken *bearer.Token) {
 	if btoken != nil {
-		owner := btoken.ResolveIssuer()
-		obj.SetOwnerID(&owner)
+		obj.SetOwner(btoken.ResolveIssuer())
 	}
 }
 
@@ -1011,11 +1004,9 @@ func (a *RestAPI) UploadContainerObject(ctx echo.Context, containerID apiserver.
 
 func (a *RestAPI) setOwner(obj *object.Object, btoken *bearer.Token) {
 	if btoken != nil {
-		owner := btoken.ResolveIssuer()
-		obj.SetOwnerID(&owner)
+		obj.SetOwner(btoken.ResolveIssuer())
 	} else {
-		ownerID := a.signer.UserID()
-		obj.SetOwnerID(&ownerID)
+		obj.SetOwner(a.signer.UserID())
 	}
 }
 
