@@ -1320,10 +1320,7 @@ func doRequest(t *testing.T, httpClient *http.Client, request *http.Request, exp
 	respBody, err := io.ReadAll(resp.Body)
 	require.NoError(t, err)
 
-	if expectedCode != resp.StatusCode {
-		fmt.Println("resp", string(respBody))
-	}
-	require.Equal(t, expectedCode, resp.StatusCode)
+	require.Equal(t, expectedCode, resp.StatusCode, "resp: %s", respBody)
 
 	if model == nil {
 		return resp.Header, respBody
