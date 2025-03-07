@@ -1515,24 +1515,8 @@ func makeAuthTokenRequest(ctx context.Context, t *testing.T, bearers []apiserver
 	request.Header.Add(XBearerOwnerID, ownerID.String())
 	request.Header.Add(XBearerForAllUsers, strconv.FormatBool(forAllUsers))
 
-	resp, err := httpClient.Do(request)
-	require.NoError(t, err)
-	defer func() {
-		err := resp.Body.Close()
-		require.NoError(t, err)
-	}()
-
-	rr, err := io.ReadAll(resp.Body)
-	require.NoError(t, err)
-
-	if resp.StatusCode != http.StatusOK {
-		fmt.Println("auth response", string(rr))
-	}
-	require.Equal(t, http.StatusOK, resp.StatusCode)
-
 	var stokenResp []*apiserver.TokenResponse
-	err = json.Unmarshal(rr, &stokenResp)
-	require.NoError(t, err)
+	doRequest(t, httpClient, request, http.StatusOK, &stokenResp)
 
 	fmt.Println("resp tokens:")
 
