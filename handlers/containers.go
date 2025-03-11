@@ -297,12 +297,12 @@ func getContainerInfo(ctx context.Context, p *pool.Pool, cnrID cid.ID) (*apiserv
 	}
 
 	var attrs []apiserver.Attribute
-	cnr.IterateAttributes(func(key, val string) {
+	for key, val := range cnr.Attributes() {
 		attrs = append(attrs, apiserver.Attribute{
 			Key:   key,
 			Value: val,
 		})
-	})
+	}
 
 	var sb strings.Builder
 	if err = cnr.PlacementPolicy().WriteStringTo(&sb); err != nil {

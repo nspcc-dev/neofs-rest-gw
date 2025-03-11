@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"maps"
 	"mime/multipart"
 	"net/http"
 	"net/url"
@@ -1665,10 +1666,7 @@ func restContainerPut(ctx context.Context, t *testing.T, clientPool *pool.Pool) 
 	cnr, err := clientPool.ContainerGet(ctx, CID, client.PrmContainerGet{})
 	require.NoError(t, err)
 
-	cnrAttr := make(map[string]string)
-	cnr.IterateAttributes(func(key, val string) {
-		cnrAttr[key] = val
-	})
+	cnrAttr := maps.Collect(cnr.Attributes())
 
 	for key, val := range userAttributes {
 		require.Equal(t, val, cnrAttr[key])
