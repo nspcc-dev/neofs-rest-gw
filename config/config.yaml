@@ -17,6 +17,7 @@ logger:
   # Log level.
   level: debug
   encoding: console
+  timestamp: true
 
 pool:
   # Timeout to dial node.

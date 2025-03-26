@@ -63,8 +63,9 @@ const (
 	cfgPprofAddress      = "pprof.address"
 
 	// Logger.
-	cfgLoggerLevel    = "logger.level"
-	cfgLoggerEncoding = "logger.encoding"
+	cfgLoggerLevel     = "logger.level"
+	cfgLoggerEncoding  = "logger.encoding"
+	cfgLoggerTimestamp = "logger.timestamp"
 
 	// Wallet.
 	cfgWalletPath       = "wallet.path"
@@ -288,6 +289,7 @@ var knownConfigParams = map[string]struct{}{
 	cfgPoolDefaultTimestamp: {},
 	cfgLoggerLevel:          {},
 	cfgLoggerEncoding:       {},
+	cfgLoggerTimestamp:      {},
 	cfgPrometheusEnabled:    {},
 	cfgPrometheusAddress:    {},
 	cfgPprofEnabled:         {},
@@ -451,7 +453,7 @@ func newLogger(v *viper.Viper) *zap.Logger {
 	c.Encoding = encoding
 	c.Sampling = nil
 	// If the program is run in TTY, the logger adds a timestamp to its entries.
-	if term.IsTerminal(int(os.Stdout.Fd())) {
+	if (term.IsTerminal(int(os.Stdout.Fd())) && !v.GetBool(cfgLoggerTimestamp)) || v.GetBool(cfgLoggerTimestamp) {
 		c.EncoderConfig.EncodeTime = zapcore.ISO8601TimeEncoder
 	} else {
 		c.EncoderConfig.EncodeTime = func(_ time.Time, _ zapcore.PrimitiveArrayEncoder) {}

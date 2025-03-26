@@ -6,6 +6,7 @@ This document outlines major changes between releases.
 
 ### Added
 - `logger.encoding` config option (#273)
+- `logger.timestamp` config option (#273)
 
 ### Fixed
 
