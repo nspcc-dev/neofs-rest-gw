@@ -123,11 +123,13 @@ pool:
 ```yaml
 logger:
   level: debug
+  encoding: console
 ```
 
-| Parameter | Type     | Default value | Description                                                                                        |
-|-----------|----------|---------------|----------------------------------------------------------------------------------------------------|
-| `level`   | `string` | `debug`       | Logging level.<br/>Possible values:  `debug`, `info`, `warn`, `error`, `dpanic`, `panic`, `fatal`. |
+| Parameter  | Type     | Default value | Description                                                                                        |
+|------------|----------|---------------|----------------------------------------------------------------------------------------------------|
+| `level`    | `string` | `debug`       | Logging level.<br/>Possible values:  `debug`, `info`, `warn`, `error`, `dpanic`, `panic`, `fatal`. |
+| `encoding` | `string` | `console`     | Encoding type.<br/>Possible values:  `console`, `json`.                                            |
 
 # `pprof` section
 

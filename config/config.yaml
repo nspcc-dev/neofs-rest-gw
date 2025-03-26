@@ -16,6 +16,7 @@ prometheus:
 logger:
   # Log level.
   level: debug
+  encoding: console
 
 pool:
   # Timeout to dial node.

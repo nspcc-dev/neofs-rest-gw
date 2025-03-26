@@ -5,6 +5,7 @@ This document outlines major changes between releases.
 ## [Unreleased]
 
 ### Added
+- `logger.encoding` config option (#273)
 
 ### Fixed
 

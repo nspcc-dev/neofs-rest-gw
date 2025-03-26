@@ -63,7 +63,8 @@ const (
 	cfgPprofAddress      = "pprof.address"
 
 	// Logger.
-	cfgLoggerLevel = "logger.level"
+	cfgLoggerLevel    = "logger.level"
+	cfgLoggerEncoding = "logger.encoding"
 
 	// Wallet.
 	cfgWalletPath       = "wallet.path"
@@ -167,6 +168,7 @@ func config() *viper.Viper {
 
 	// logger:
 	v.SetDefault(cfgLoggerLevel, "debug")
+	v.SetDefault(cfgLoggerEncoding, "console")
 
 	// Bind flags
 	for cfg, cmd := range bindings {
@@ -285,6 +287,7 @@ var knownConfigParams = map[string]struct{}{
 	cfgPoolErrorThreshold:   {},
 	cfgPoolDefaultTimestamp: {},
 	cfgLoggerLevel:          {},
+	cfgLoggerEncoding:       {},
 	cfgPrometheusEnabled:    {},
 	cfgPrometheusAddress:    {},
 	cfgPprofEnabled:         {},
@@ -438,9 +441,14 @@ func newLogger(v *viper.Viper) *zap.Logger {
 		}))
 	}
 
+	encoding := v.GetString(cfgLoggerEncoding)
+	if encoding != "console" && encoding != "json" {
+		panic(fmt.Errorf("invalid logger encoding: %s", encoding))
+	}
+
 	c := zap.NewProductionConfig()
 	c.Level = zap.NewAtomicLevelAt(lvl)
-	c.Encoding = "console"
+	c.Encoding = encoding
 	c.Sampling = nil
 	// If the program is run in TTY, the logger adds a timestamp to its entries.
 	if term.IsTerminal(int(os.Stdout.Fd())) {
