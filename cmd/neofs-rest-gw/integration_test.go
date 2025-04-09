@@ -1243,7 +1243,7 @@ func restObjectsSearch(ctx context.Context, t *testing.T, p *pool.Pool, owner *u
 	filePath := "path/to/object/object-name"
 	headers := map[string]string{
 		object.AttributeFileName: objectName,
-		"FilePath":               filePath,
+		object.AttributeFilePath: filePath,
 		userKey:                  userValue,
 	}
 	objID := createObject(ctx, t, p, owner, cnrID, headers, []byte("some content"), signer)
