@@ -412,19 +412,16 @@ func (a *RestAPI) putObject(ctx echo.Context, hdr object.Object, bt *bearer.Toke
 	}
 	writer, err := a.pool.ObjectPutInit(ctx.Request().Context(), hdr, a.signer, opts)
 	if err != nil {
-		resp := a.logAndGetErrorResponse("put object init", err)
-		return oid.ID{}, ctx.JSON(http.StatusBadRequest, resp)
+		return oid.ID{}, fmt.Errorf("init: %w", err)
 	}
 
 	err = wp(writer)
 	if err != nil {
-		resp := a.logAndGetErrorResponse("write", err)
-		return oid.ID{}, ctx.JSON(http.StatusBadRequest, resp)
+		return oid.ID{}, fmt.Errorf("write: %w", err)
 	}
 
 	if err = writer.Close(); err != nil {
-		resp := a.logAndGetErrorResponse("writer close", err)
-		return oid.ID{}, ctx.JSON(http.StatusBadRequest, resp)
+		return oid.ID{}, fmt.Errorf("writer close: %w", err)
 	}
 
 	return writer.GetResult().StoredObjectID(), nil
