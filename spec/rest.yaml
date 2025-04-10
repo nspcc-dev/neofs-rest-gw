@@ -235,6 +235,7 @@ paths:
     post:
       summary: Search objects by filters
       operationId: searchObjects
+      deprecated: true
       parameters:
         - $ref: '#/components/parameters/signatureParam'
         - $ref: '#/components/parameters/signatureKeyParam'
@@ -308,6 +309,58 @@ paths:
                 type: string
           content: { }
       security: [ ]
+  /v2/objects/{containerId}/search:
+    post:
+      summary: Search objects by filters
+      operationId: v2SearchObjects
+      parameters:
+        - $ref: '#/components/parameters/signatureParam'
+        - $ref: '#/components/parameters/signatureKeyParam'
+        - $ref: '#/components/parameters/signatureScheme'
+        - $ref: '#/components/parameters/containerId'
+        - name: cursor
+          in: query
+          description: Value to start the next batch from. It returns the first elements batch if empty value passed.
+            You should take `cursor` value from previous response to be able to list items.
+          schema:
+            type: string
+            default: ""
+        - name: limit
+          in: query
+          description: The numbers of objects to return.
+          schema:
+            maximum: 1000
+            minimum: 1
+            type: integer
+            default: 100
+      requestBody:
+        description: Filters to search objects.
+        content:
+          '*/*':
+            schema:
+              $ref: '#/components/schemas/SearchFilters'
+        required: true
+      responses:
+        "200":
+          description: List of objects
+          headers:
+            Access-Control-Allow-Origin:
+              schema:
+                type: string
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ObjectListV2'
+        "400":
+          description: Bad request
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      security:
+        - { }
+        - BearerAuth: [ ]
+      x-codegen-request-body-name: searchFilters
   /v1/objects/{containerId}/{objectId}:
     get:
       deprecated: true
@@ -1728,6 +1781,7 @@ components:
       properties:
         filters:
           type: array
+          description: It must contain 7 filters as maximum.
           items:
             $ref: '#/components/schemas/SearchFilter'
       description: List of SearchFilter elements.
@@ -1777,6 +1831,34 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/ObjectBaseInfo'
+      description: List of objects.
+      example:
+        size: 2
+        objects:
+          - name: /my/object/name
+            address:
+              objectId: 8N3o7Dtr6T1xteCt6eRwhpmJ7JhME58Hyu1dvaswuTDd
+              containerId: 5HZTn5qkRnmgSz9gSrw22CEdPPk6nQhkwf2Mgzyvkikv
+          - name: /my/object/some/other/name
+            address:
+              objectId: 3GbmMWusaWgMHokWui2zDunxMTzButuQMVLbtL3cDn8s
+              containerId: 5HZTn5qkRnmgSz9gSrw22CEdPPk6nQhkwf2Mgzyvkikv
+    ObjectListV2:
+      required:
+        - objects
+        - size
+        - cursor
+      type: object
+      properties:
+        size:
+          type: integer
+        objects:
+          type: array
+          items:
+            $ref: '#/components/schemas/ObjectBaseInfo'
+        cursor:
+          description: Value to start the next batch from.
+          type: string
       description: List of objects.
       example:
         size: 2

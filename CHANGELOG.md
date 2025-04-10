@@ -7,12 +7,14 @@ This document outlines major changes between releases.
 ### Added
 - `logger.encoding` config option (#273)
 - `logger.timestamp` config option (#273)
+- `/v2/objects/{containerId}/search` entrypoint with `cursor` support (instead of `offset`) for objects search (#276)
 
 ### Fixed
 - Double JSON response output for failed PUT operation (#265)
 
 ### Changed
 - Go 1.23+ is required to build now (#235)
+- Maximum search limit shrunk from 10000 to 1000 (#276)
 
 ### Removed
 

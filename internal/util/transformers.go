@@ -381,7 +381,6 @@ func ToNativeMatchFilter(s apiserver.SearchMatch) (object.SearchMatchType, error
 // ToNativeFilters converts [apiserver.SearchFilters] to [object.SearchFilters].
 func ToNativeFilters(fs apiserver.SearchFilters) (object.SearchFilters, error) {
 	filters := object.NewSearchFilters()
-	filters.AddRootFilter()
 
 	for _, f := range fs.Filters {
 		matchFilter, err := ToNativeMatchFilter(f.Match)
@@ -391,6 +390,7 @@ func ToNativeFilters(fs apiserver.SearchFilters) (object.SearchFilters, error) {
 
 		filters.AddFilter(f.Key, f.Value, matchFilter)
 	}
+	filters.AddRootFilter()
 
 	return filters, nil
 }
