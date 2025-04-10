@@ -3,7 +3,7 @@ openapi: 3.0.1
 info:
   title: REST API NeoFS
   description: REST API for native integration with NeoFS. Using this API you can interact with NeoFS nodes and manage containers and objects.
-  version: v1
+  version: v0.11.1
 
 servers:
   - url: http://localhost:8090
