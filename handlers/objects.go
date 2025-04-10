@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"bytes"
+	"cmp"
 	"context"
 	"crypto/elliptic"
 	"encoding/base64"
@@ -13,6 +14,7 @@ import (
 	"mime/multipart"
 	"net/http"
 	"path"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -59,6 +61,12 @@ type setAttributeParams struct {
 	download    *string
 	useJSON     bool
 	header      object.Object
+}
+
+type attributeIndexes struct {
+	FileName  int
+	FilePath  int
+	Timestamp int
 }
 
 // PutObject handler that uploads object to NeoFS.
@@ -356,6 +364,95 @@ func (a *RestAPI) SearchObjects(ctx echo.Context, containerID apiserver.Containe
 	list := &apiserver.ObjectList{
 		Size:    len(objects),
 		Objects: objects,
+	}
+
+	ctx.Response().Header().Set(accessControlAllowOriginHeader, "*")
+	return ctx.JSON(http.StatusOK, list)
+}
+
+// V2SearchObjects handler that searches object in NeoFS.
+func (a *RestAPI) V2SearchObjects(ctx echo.Context, containerID apiserver.ContainerId, params apiserver.V2SearchObjectsParams) error {
+	var cnrID cid.ID
+	if err := cnrID.DecodeString(containerID); err != nil {
+		resp := a.logAndGetErrorResponse("invalid container id", err)
+		return ctx.JSON(http.StatusBadRequest, resp)
+	}
+
+	principal, err := getPrincipal(ctx)
+	if err != nil {
+		return ctx.JSON(http.StatusBadRequest, util.NewErrorResponse(err))
+	}
+
+	var walletConnect apiserver.SignatureScheme
+	if params.WalletConnect != nil {
+		walletConnect = *params.WalletConnect
+	}
+
+	btoken, err := getBearerToken(principal, params.XBearerSignature, params.XBearerSignatureKey, walletConnect)
+	if err != nil {
+		resp := a.logAndGetErrorResponse("get bearer token", err)
+		return ctx.JSON(http.StatusBadRequest, resp)
+	}
+
+	var searchFilters apiserver.SearchFilters
+	if err = ctx.Bind(&searchFilters); err != nil {
+		return ctx.JSON(http.StatusBadRequest, a.logAndGetErrorResponse("bind", err))
+	}
+
+	filters, err := util.ToNativeFilters(searchFilters)
+	if err != nil {
+		resp := a.logAndGetErrorResponse("failed to transform to native", err)
+		return ctx.JSON(http.StatusBadRequest, resp)
+	}
+
+	var (
+		cursor string
+		opts   client.SearchObjectsOptions
+
+		commonAttributes = []string{
+			object.AttributeFileName,
+			object.AttributeFilePath,
+			object.AttributeTimestamp,
+		}
+	)
+
+	returningAttributes, indexes := getReturningAttributes(commonAttributes, filters[0].Header())
+
+	if params.Cursor != nil {
+		cursor = *params.Cursor
+	}
+
+	if btoken != nil {
+		opts.WithBearerToken(*btoken)
+	}
+
+	limit, err := getLimit(params.Limit)
+	if err != nil {
+		resp := a.logAndGetErrorResponse("invalid parameter", err)
+		return ctx.JSON(http.StatusBadRequest, resp)
+	}
+
+	// limit already checked in getLimit.
+	opts.SetCount(uint32(limit))
+	resSearch, nextCursor, err := a.pool.SearchObjects(ctx.Request().Context(), cnrID, filters, returningAttributes, cursor, a.signer, opts)
+	if err != nil {
+		resp := a.logAndGetErrorResponse("failed to search objects", err)
+		return ctx.JSON(http.StatusBadRequest, resp)
+	}
+
+	var objects = make([]apiserver.ObjectBaseInfoV2, len(resSearch))
+
+	for i, item := range resSearch {
+		objects[i] = apiserver.ObjectBaseInfoV2{
+			ObjectId: item.ID.String(),
+			Name:     &item.Attributes[indexes.FileName],
+			FilePath: &item.Attributes[indexes.FilePath],
+		}
+	}
+
+	list := &apiserver.ObjectListV2{
+		Objects: objects,
+		Cursor:  nextCursor,
 	}
 
 	ctx.Response().Header().Set(accessControlAllowOriginHeader, "*")
@@ -1137,4 +1234,39 @@ func (a *RestAPI) search(ctx context.Context, btoken *bearer.Token, cid cid.ID, 
 	}
 
 	return a.pool.ObjectSearchInit(ctx, cid, a.signer, prm)
+}
+
+func getReturningAttributes(wellKnownAttributes []string, attribute string) ([]string, attributeIndexes) {
+	var returningAttributes []string
+
+	for i, attr := range wellKnownAttributes {
+		if attr == attribute {
+			returningAttributes = append([]string{attr}, wellKnownAttributes[0:i]...)
+
+			if i < len(wellKnownAttributes)-1 {
+				returningAttributes = append(returningAttributes, wellKnownAttributes[i+1:]...)
+			}
+			break
+		}
+	}
+
+	// attribute not in wellKnownAttributes.
+	if len(returningAttributes) == 0 {
+		returningAttributes = append([]string{attribute}, wellKnownAttributes...)
+	}
+
+	var indexes attributeIndexes
+
+	for i, attr := range returningAttributes {
+		switch attr {
+		case object.AttributeTimestamp:
+			indexes.Timestamp = i
+		case object.AttributeFilePath:
+			indexes.FilePath = i
+		case object.AttributeFileName:
+			indexes.FileName = i
+		}
+	}
+
+	return returningAttributes, indexes
 }

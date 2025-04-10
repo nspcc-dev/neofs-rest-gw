@@ -4,12 +4,14 @@ import (
 	"bytes"
 	"encoding/base64"
 	"encoding/hex"
+	"reflect"
 	"testing"
 
 	"github.com/nspcc-dev/neofs-rest-gw/handlers/apiserver"
 	"github.com/nspcc-dev/neofs-rest-gw/internal/util"
 	bearertest "github.com/nspcc-dev/neofs-sdk-go/bearer/test"
 	neofscrypto "github.com/nspcc-dev/neofs-sdk-go/crypto"
+	"github.com/nspcc-dev/neofs-sdk-go/object"
 	usertest "github.com/nspcc-dev/neofs-sdk-go/user/test"
 	"github.com/stretchr/testify/require"
 )
@@ -236,4 +238,88 @@ func TestPrepareBearerToken(t *testing.T) {
 		}, true, false)
 		require.ErrorContains(t, err, "invalid signature")
 	})
+}
+
+func Test_getReturningAttributes(t *testing.T) {
+	commonAttributes := []string{
+		object.AttributeFileName,
+		object.AttributeFilePath,
+		object.AttributeTimestamp,
+	}
+
+	type args struct {
+		commonAttributes []string
+		attribute        string
+	}
+	tests := []struct {
+		name                string
+		args                args
+		returningAttributes []string
+		actualIndexes       attributeIndexes
+	}{
+		{
+			name:                "by FileName",
+			args:                args{commonAttributes: commonAttributes, attribute: object.AttributeFileName},
+			returningAttributes: commonAttributes,
+			actualIndexes: attributeIndexes{
+				FileName:  0,
+				FilePath:  1,
+				Timestamp: 2,
+			},
+		},
+		{
+			name: "by FilePath",
+			args: args{commonAttributes: commonAttributes, attribute: object.AttributeFilePath},
+			returningAttributes: []string{
+				object.AttributeFilePath,
+				object.AttributeFileName,
+				object.AttributeTimestamp,
+			},
+			actualIndexes: attributeIndexes{
+				FileName:  1,
+				FilePath:  0,
+				Timestamp: 2,
+			},
+		},
+		{
+			name: "by Timestamp",
+			args: args{commonAttributes: commonAttributes, attribute: object.AttributeTimestamp},
+			returningAttributes: []string{
+				object.AttributeTimestamp,
+				object.AttributeFileName,
+				object.AttributeFilePath,
+			},
+			actualIndexes: attributeIndexes{
+				FileName:  1,
+				FilePath:  2,
+				Timestamp: 0,
+			},
+		},
+		{
+			name: "not well known attribute",
+			args: args{commonAttributes: commonAttributes, attribute: "attr1"},
+			returningAttributes: []string{
+				"attr1",
+				object.AttributeFileName,
+				object.AttributeFilePath,
+				object.AttributeTimestamp,
+			},
+			actualIndexes: attributeIndexes{
+				FileName:  1,
+				FilePath:  2,
+				Timestamp: 3,
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, got1 := getReturningAttributes(tt.args.commonAttributes, tt.args.attribute)
+			if !reflect.DeepEqual(got, tt.returningAttributes) {
+				t.Errorf("getReturningAttributes() got = %v, returningAttributes %v", got, tt.returningAttributes)
+			}
+			if got1 != tt.actualIndexes {
+				t.Errorf("getReturningAttributes() got1 = %v, returningAttributes %v", got1, tt.actualIndexes)
+			}
+		})
+	}
 }

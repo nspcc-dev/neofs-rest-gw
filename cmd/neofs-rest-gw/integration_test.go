@@ -61,6 +61,7 @@ const (
 	XBearerOwnerID = "X-Bearer-Owner-Id"
 	// XBearerForAllUsers header specifies if we want all users can use token or only specific gate.
 	XBearerForAllUsers = "X-Bearer-For-All-Users"
+	xNonce             = "nonce"
 
 	// tests configuration.
 	useWalletConnect    = true
@@ -140,6 +141,7 @@ func runTests(ctx context.Context, t *testing.T, key *keys.PrivateKey, node stri
 	t.Run("rest get object with bearer in cookie", func(t *testing.T) { restObjectGetBearerCookie(ctx, t, clientPool, &owner, cnrID, signer) })
 	t.Run("rest delete object", func(t *testing.T) { restObjectDelete(ctx, t, clientPool, &owner, cnrID, signer) })
 	t.Run("rest search objects", func(t *testing.T) { restObjectsSearch(ctx, t, clientPool, &owner, cnrID, signer) })
+	t.Run("rest search objects v2", func(t *testing.T) { restObjectsSearchV2(ctx, t, clientPool, &owner, cnrID, signer) })
 	t.Run("rest upload object", func(t *testing.T) { restObjectUpload(ctx, t, clientPool, cnrID, signer) })
 	t.Run("rest upload object with bearer in cookie", func(t *testing.T) { restObjectUploadCookie(ctx, t, clientPool, cnrID, signer) })
 	t.Run("rest head object", func(t *testing.T) { restObjectHead(ctx, t, clientPool, &owner, cnrID, signer) })
@@ -1309,6 +1311,115 @@ func restObjectsSearch(ctx context.Context, t *testing.T, p *pool.Pool, owner *u
 	require.Equal(t, objID.EncodeToString(), objBaseInfo.Address.ObjectId)
 	require.Equal(t, objectName, *objBaseInfo.Name)
 	require.Equal(t, filePath, *objBaseInfo.FilePath)
+}
+
+func restObjectsSearchV2(ctx context.Context, t *testing.T, p *pool.Pool, owner *user.ID, cnrID cid.ID, signer user.Signer) {
+	var (
+		userKey, userValue = strconv.FormatInt(time.Now().UnixNano(), 16), strconv.FormatInt(time.Now().UnixNano(), 16)
+		objectName         = strconv.FormatInt(time.Now().UnixNano(), 16)
+		filePath           = "path/to/object/" + objectName
+
+		headers = map[string]string{
+			object.AttributeFileName: objectName,
+			object.AttributeFilePath: filePath,
+			userKey:                  userValue,
+			xNonce:                   strconv.FormatInt(time.Now().UnixNano(), 10),
+		}
+	)
+
+	objID := createObject(ctx, t, p, owner, cnrID, headers, []byte("some content"), signer)
+	// Objects created in the same timestamp, with identical attributes have the same ID. Make each object unique.
+	headers[xNonce] = strconv.FormatInt(time.Now().UnixNano(), 10)
+	objID2 := createObject(ctx, t, p, owner, cnrID, headers, []byte("some content"), signer)
+
+	idsGroup := []string{objID.EncodeToString(), objID2.EncodeToString()}
+
+	headers[userKey] = "dummy"
+	_ = createObject(ctx, t, p, owner, cnrID, headers, []byte("some content"), signer)
+
+	bearer := apiserver.Bearer{
+		Object: []apiserver.Record{
+			{
+				Operation: apiserver.OperationSEARCH,
+				Action:    apiserver.ALLOW,
+				Filters:   []apiserver.Filter{},
+				Targets:   []apiserver.Target{{Role: apiserver.OTHERS, Keys: []string{}}},
+			},
+			{
+				Operation: apiserver.OperationHEAD,
+				Action:    apiserver.ALLOW,
+				Filters:   []apiserver.Filter{},
+				Targets:   []apiserver.Target{{Role: apiserver.OTHERS, Keys: []string{}}},
+			},
+			{
+				Operation: apiserver.OperationGET,
+				Action:    apiserver.ALLOW,
+				Filters:   []apiserver.Filter{},
+				Targets:   []apiserver.Target{{Role: apiserver.OTHERS, Keys: []string{}}},
+			},
+		},
+	}
+	bearer.Object = append(bearer.Object, getRestrictBearerRecords()...)
+
+	httpClient := defaultHTTPClient()
+	bearerTokens := makeAuthTokenRequest(ctx, t, []apiserver.Bearer{bearer}, httpClient, false)
+	bearerToken := bearerTokens[0]
+
+	search := &apiserver.SearchFilters{
+		Filters: []apiserver.SearchFilter{
+			{
+				Key:   userKey,
+				Match: apiserver.MatchStringEqual,
+				Value: userValue,
+			},
+		},
+	}
+
+	body, err := json.Marshal(search)
+	require.NoError(t, err)
+
+	var nextCursor string
+
+	query := make(url.Values)
+	query.Add(walletConnectQuery, strconv.FormatBool(useWalletConnect))
+	query.Add("limit", "1")
+
+	t.Run("check first object", func(t *testing.T) {
+		request, err := http.NewRequest(http.MethodPost, testHost+"/v2/objects/"+cnrID.EncodeToString()+"/search?"+query.Encode(), bytes.NewReader(body))
+		require.NoError(t, err)
+		prepareCommonHeaders(request.Header, bearerToken)
+
+		resp := &apiserver.ObjectListV2{}
+		doRequest(t, httpClient, request, http.StatusOK, resp)
+		nextCursor = resp.Cursor
+
+		require.NotEmpty(t, nextCursor)
+		require.Len(t, resp.Objects, 1)
+
+		objBaseInfo := resp.Objects[0]
+		require.Contains(t, idsGroup, objBaseInfo.ObjectId)
+		require.Equal(t, objectName, *objBaseInfo.Name)
+		require.Equal(t, filePath, *objBaseInfo.FilePath)
+	})
+
+	t.Run("check second object", func(t *testing.T) {
+		query.Add("cursor", nextCursor)
+
+		request, err := http.NewRequest(http.MethodPost, testHost+"/v2/objects/"+cnrID.EncodeToString()+"/search?"+query.Encode(), bytes.NewReader(body))
+		require.NoError(t, err)
+		prepareCommonHeaders(request.Header, bearerToken)
+
+		resp := &apiserver.ObjectListV2{}
+		doRequest(t, httpClient, request, http.StatusOK, resp)
+
+		require.Empty(t, resp.Cursor)
+		require.Len(t, resp.Objects, 1)
+
+		objBaseInfo := resp.Objects[0]
+		require.Contains(t, idsGroup, objBaseInfo.ObjectId)
+		require.Equal(t, objectName, *objBaseInfo.Name)
+		require.Equal(t, filePath, *objBaseInfo.FilePath)
+	})
 }
 
 func doRequest(t *testing.T, httpClient *http.Client, request *http.Request, expectedCode int, model any) (http.Header, []byte) {

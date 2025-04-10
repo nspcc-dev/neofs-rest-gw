@@ -50,7 +50,7 @@ const (
 	offsetDefault = 0
 
 	limitMin     = 1
-	limitMax     = 10000
+	limitMax     = 1000
 	limitDefault = 100
 )
 
@@ -341,6 +341,23 @@ func getOffsetAndLimit(offset, limit *int) (int, int, error) {
 	}
 
 	return off, lim, nil
+}
+
+func getLimit(limit *int) (int, error) {
+	var lim = limitDefault
+
+	if limit != nil {
+		if *limit < limitMin {
+			return 0, fmt.Errorf("limit %d < %d", *limit, limitMin)
+		}
+		if *limit > limitMax {
+			return 0, fmt.Errorf("limit %d > %d", *limit, limitMax)
+		}
+
+		lim = *limit
+	}
+
+	return lim, nil
 }
 
 func isValidKeyValue(key, value string) bool {
