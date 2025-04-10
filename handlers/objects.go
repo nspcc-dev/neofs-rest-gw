@@ -1131,35 +1131,19 @@ func (a *RestAPI) GetByAttribute(ctx echo.Context, containerID apiserver.Contain
 		}
 	}
 
-	res, err := a.search(ctx.Request().Context(), btoken, cnrID, attrKey, attrVal, object.MatchStringEqual)
+	objectID, err := a.search(ctx.Request().Context(), btoken, cnrID, attrKey, attrVal, object.MatchStringEqual)
 	if err != nil {
 		resp := a.logAndGetErrorResponse("could not search for objects", err)
 		return ctx.JSON(getResponseCodeFromStatus(err), resp)
 	}
 
-	defer func() {
-		if err = res.Close(); err != nil {
-			zap.L().Error("failed to close resource", zap.Error(err))
-		}
-	}()
-
-	buf := make([]oid.ID, 1)
-
-	n, _ := res.Read(buf)
-	if n == 0 {
-		err = res.Close()
-
-		if err == nil || errors.Is(err, io.EOF) {
-			return ctx.JSON(http.StatusNotFound, util.NewErrorResponse(errors.New("object not found")))
-		}
-
-		resp := a.logAndGetErrorResponse("read object list failed", err)
-		return ctx.JSON(getResponseCodeFromStatus(err), resp)
+	if objectID.IsZero() {
+		return ctx.JSON(http.StatusNotFound, util.NewErrorResponse(errors.New("object not found")))
 	}
 
 	var addrObj oid.Address
 	addrObj.SetContainer(cnrID)
-	addrObj.SetObject(buf[0])
+	addrObj.SetObject(objectID)
 
 	return a.getByAddress(ctx, addrObj, params.Download, btoken, false)
 }
@@ -1186,54 +1170,63 @@ func (a *RestAPI) HeadByAttribute(ctx echo.Context, containerID apiserver.Contai
 		}
 	}
 
-	res, err := a.search(ctx.Request().Context(), btoken, cnrID, attrKey, attrVal, object.MatchStringEqual)
+	objectID, err := a.search(ctx.Request().Context(), btoken, cnrID, attrKey, attrVal, object.MatchStringEqual)
 	if err != nil {
 		resp := a.logAndGetErrorResponse("could not search for objects", err)
 		return ctx.JSON(getResponseCodeFromStatus(err), resp)
 	}
 
-	defer func() {
-		if err = res.Close(); err != nil {
-			zap.L().Error("failed to close resource", zap.Error(err))
-		}
-	}()
-
-	buf := make([]oid.ID, 1)
-
-	n, _ := res.Read(buf)
-	if n == 0 {
-		err = res.Close()
-
-		if err == nil || errors.Is(err, io.EOF) {
-			return ctx.JSON(http.StatusNotFound, util.NewErrorResponse(errors.New("object not found")))
-		}
-
-		resp := a.logAndGetErrorResponse("read object list failed", err)
-		return ctx.JSON(getResponseCodeFromStatus(err), resp)
+	if objectID.IsZero() {
+		return ctx.JSON(http.StatusNotFound, util.NewErrorResponse(errors.New("object not found")))
 	}
 
 	var addrObj oid.Address
 	addrObj.SetContainer(cnrID)
-	addrObj.SetObject(buf[0])
+	addrObj.SetObject(objectID)
 
 	ctx.Response().Header().Set(accessControlAllowOriginHeader, "*")
 
 	return a.headByAddress(ctx, addrObj, params.Download, btoken, false)
 }
 
-func (a *RestAPI) search(ctx context.Context, btoken *bearer.Token, cid cid.ID, key, val string, op object.SearchMatchType) (*client.ObjectListReader, error) {
-	filters := object.NewSearchFilters()
-	filters.AddRootFilter()
+func (a *RestAPI) search(ctx context.Context, btoken *bearer.Token, cid cid.ID, key, val string, op object.SearchMatchType) (oid.ID, error) {
+	var (
+		opts                    client.SearchObjectsOptions
+		filters                 object.SearchFilters
+		timestampAttributeIndex int
+
+		returningAttributes = []string{
+			key,
+		}
+	)
+
 	filters.AddFilter(key, val, op)
 
-	var prm client.PrmObjectSearch
-	prm.SetFilters(filters)
-
-	if btoken != nil {
-		attachBearer(&prm, btoken)
+	if key != object.AttributeTimestamp {
+		returningAttributes = append(returningAttributes, object.AttributeTimestamp)
+		timestampAttributeIndex = 1
 	}
 
-	return a.pool.ObjectSearchInit(ctx, cid, a.signer, prm)
+	if btoken != nil {
+		opts.WithBearerToken(*btoken)
+	}
+
+	searchResult, _, err := a.pool.SearchObjects(ctx, cid, filters, returningAttributes, "", a.signer, opts)
+	if err != nil {
+		return oid.ID{}, fmt.Errorf("search: %w", err)
+	}
+
+	slices.SortFunc(searchResult, func(a, b client.SearchResultItem) int {
+		timestampA, _ := strconv.ParseInt(a.Attributes[timestampAttributeIndex], 10, 64)
+		timestampB, _ := strconv.ParseInt(b.Attributes[timestampAttributeIndex], 10, 64)
+		return cmp.Compare(timestampA, timestampB)
+	})
+
+	if len(searchResult) > 0 {
+		return searchResult[len(searchResult)-1].ID, nil
+	}
+
+	return oid.ID{}, nil
 }
 
 func getReturningAttributes(wellKnownAttributes []string, attribute string) ([]string, attributeIndexes) {

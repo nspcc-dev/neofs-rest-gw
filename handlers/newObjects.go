@@ -225,35 +225,19 @@ func (a *RestAPI) NewGetByAttribute(ctx echo.Context, containerID apiserver.Cont
 		return ctx.JSON(http.StatusBadRequest, resp)
 	}
 
-	res, err := a.search(ctx.Request().Context(), btoken, cnrID, attrKey, attrVal, object.MatchStringEqual)
+	objectID, err := a.search(ctx.Request().Context(), btoken, cnrID, attrKey, attrVal, object.MatchStringEqual)
 	if err != nil {
 		resp := a.logAndGetErrorResponse("could not search for objects", err)
 		return ctx.JSON(getResponseCodeFromStatus(err), resp)
 	}
 
-	defer func() {
-		if err = res.Close(); err != nil {
-			zap.L().Error("failed to close resource", zap.Error(err))
-		}
-	}()
-
-	buf := make([]oid.ID, 1)
-
-	n, _ := res.Read(buf)
-	if n == 0 {
-		err = res.Close()
-
-		if err == nil || errors.Is(err, io.EOF) {
-			return ctx.JSON(http.StatusNotFound, util.NewErrorResponse(errors.New("object not found")))
-		}
-
-		resp := a.logAndGetErrorResponse("read object list failed", err)
-		return ctx.JSON(getResponseCodeFromStatus(err), resp)
+	if objectID.IsZero() {
+		return ctx.JSON(http.StatusNotFound, util.NewErrorResponse(errors.New("object not found")))
 	}
 
 	var addrObj oid.Address
 	addrObj.SetContainer(cnrID)
-	addrObj.SetObject(buf[0])
+	addrObj.SetObject(objectID)
 
 	if params.Range != nil {
 		return a.getRange(ctx, addrObj, *params.Range, params.Download, btoken)
@@ -285,35 +269,19 @@ func (a *RestAPI) NewHeadByAttribute(ctx echo.Context, containerID apiserver.Con
 		return ctx.JSON(http.StatusBadRequest, resp)
 	}
 
-	res, err := a.search(ctx.Request().Context(), btoken, cnrID, attrKey, attrVal, object.MatchStringEqual)
+	objectID, err := a.search(ctx.Request().Context(), btoken, cnrID, attrKey, attrVal, object.MatchStringEqual)
 	if err != nil {
 		resp := a.logAndGetErrorResponse("could not search for objects", err)
 		return ctx.JSON(getResponseCodeFromStatus(err), resp)
 	}
 
-	defer func() {
-		if err = res.Close(); err != nil {
-			zap.L().Error("failed to close resource", zap.Error(err))
-		}
-	}()
-
-	buf := make([]oid.ID, 1)
-
-	n, _ := res.Read(buf)
-	if n == 0 {
-		err = res.Close()
-
-		if err == nil || errors.Is(err, io.EOF) {
-			return ctx.JSON(http.StatusNotFound, util.NewErrorResponse(errors.New("object not found")))
-		}
-
-		resp := a.logAndGetErrorResponse("read object list failed", err)
-		return ctx.JSON(getResponseCodeFromStatus(err), resp)
+	if objectID.IsZero() {
+		return ctx.JSON(http.StatusNotFound, util.NewErrorResponse(errors.New("object not found")))
 	}
 
 	var addrObj oid.Address
 	addrObj.SetContainer(cnrID)
-	addrObj.SetObject(buf[0])
+	addrObj.SetObject(objectID)
 
 	ctx.Response().Header().Set(accessControlAllowOriginHeader, "*")
 
