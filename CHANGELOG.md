@@ -9,6 +9,7 @@ This document outlines major changes between releases.
 - `logger.timestamp` config option (#273)
 
 ### Fixed
+- Double JSON response output for failed PUT operation (#265)
 
 ### Changed
 - Go 1.23+ is required to build now (#235)

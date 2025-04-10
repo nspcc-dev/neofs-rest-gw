@@ -127,7 +127,8 @@ func (a *RestAPI) NewUploadContainerObject(ctx echo.Context, containerID apiserv
 		return err
 	})
 	if err != nil {
-		return err
+		resp := a.logAndGetErrorResponse("put object", err)
+		return ctx.JSON(http.StatusBadRequest, resp)
 	}
 
 	addr.SetObject(idObj)

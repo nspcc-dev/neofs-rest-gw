@@ -120,7 +120,8 @@ func (a *RestAPI) PutObject(ctx echo.Context, params apiserver.PutObjectParams) 
 		return err
 	})
 	if err != nil {
-		return err
+		resp := a.logAndGetErrorResponse("put object", err)
+		return ctx.JSON(http.StatusBadRequest, resp)
 	}
 
 	var resp apiserver.Address
@@ -988,7 +989,8 @@ func (a *RestAPI) UploadContainerObject(ctx echo.Context, containerID apiserver.
 		return err
 	})
 	if err != nil {
-		return err
+		resp := a.logAndGetErrorResponse("put object", err)
+		return ctx.JSON(http.StatusBadRequest, resp)
 	}
 
 	addr.SetObject(idObj)
