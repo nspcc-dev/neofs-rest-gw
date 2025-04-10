@@ -766,124 +766,124 @@ type UploadContainerObjectMultipartRequestBody UploadContainerObjectMultipartBod
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
 	// Get balance in NeoFS
-	// (GET /accounting/balance/{address})
+	// (GET /v1/accounting/balance/{address})
 	GetBalance(ctx echo.Context, address string) error
 
-	// (OPTIONS /accounting/balance/{address})
+	// (OPTIONS /v1/accounting/balance/{address})
 	OptionsBalance(ctx echo.Context, address string) error
 
-	// (OPTIONS /auth)
+	// (OPTIONS /v1/auth)
 	OptionsAuth(ctx echo.Context) error
 	// Form bearer token to further requests
-	// (POST /auth)
+	// (POST /v1/auth)
 	Auth(ctx echo.Context, params AuthParams) error
 	// Form binary bearer token
-	// (GET /auth/bearer)
+	// (GET /v1/auth/bearer)
 	FormBinaryBearer(ctx echo.Context, params FormBinaryBearerParams) error
 
-	// (OPTIONS /auth/bearer)
+	// (OPTIONS /v1/auth/bearer)
 	OptionsAuthBearer(ctx echo.Context) error
 	// Get list of containers
-	// (GET /containers)
+	// (GET /v1/containers)
 	ListContainers(ctx echo.Context, params ListContainersParams) error
 
-	// (OPTIONS /containers)
+	// (OPTIONS /v1/containers)
 	OptionsContainersPutList(ctx echo.Context) error
 	// Create new container in NeoFS
-	// (PUT /containers)
+	// (PUT /v1/containers)
 	PutContainer(ctx echo.Context, params PutContainerParams) error
 	// Delete container by id
-	// (DELETE /containers/{containerId})
+	// (DELETE /v1/containers/{containerId})
 	DeleteContainer(ctx echo.Context, containerId ContainerId, params DeleteContainerParams) error
 	// Get container by id
-	// (GET /containers/{containerId})
+	// (GET /v1/containers/{containerId})
 	GetContainer(ctx echo.Context, containerId ContainerId) error
 
-	// (OPTIONS /containers/{containerId})
+	// (OPTIONS /v1/containers/{containerId})
 	OptionsContainersGetDelete(ctx echo.Context, containerId ContainerId) error
 	// Get container EACL by id
-	// (GET /containers/{containerId}/eacl)
+	// (GET /v1/containers/{containerId}/eacl)
 	GetContainerEACL(ctx echo.Context, containerId ContainerId) error
 
-	// (OPTIONS /containers/{containerId}/eacl)
+	// (OPTIONS /v1/containers/{containerId}/eacl)
 	OptionsContainersEACL(ctx echo.Context, containerId ContainerId) error
 	// Set container EACL by id
-	// (PUT /containers/{containerId}/eacl)
+	// (PUT /v1/containers/{containerId}/eacl)
 	PutContainerEACL(ctx echo.Context, containerId ContainerId, params PutContainerEACLParams) error
 	// Get object by container ID and object ID. Also returns custom users' header attributes `X-Attribute-*`. It returns the MIME type based on headers or object contents, so the actual Content-Type can differ from the list in the "Response content type" section. Please use `/objects/{containerId}/by_id/{objectId}` API.
-	// (GET /get/{containerId}/{objectId})
+	// (GET /v1/get/{containerId}/{objectId})
 	GetContainerObject(ctx echo.Context, containerId ContainerId, objectId ObjectId, params GetContainerObjectParams) error
 	// Get object info (head) by container ID and object ID. Also returns custom users' header attributes `X-Attribute-*`.
-	// (HEAD /get/{containerId}/{objectId})
+	// (HEAD /v1/get/{containerId}/{objectId})
 	HeadContainerObject(ctx echo.Context, containerId ContainerId, objectId ObjectId, params HeadContainerObjectParams) error
 
-	// (OPTIONS /get/{containerId}/{objectId})
+	// (OPTIONS /v1/get/{containerId}/{objectId})
 	OptionsContainerObject(ctx echo.Context, containerId ContainerId, objectId ObjectId) error
 	// Find and get an object (payload and attributes) by a specific attribute. If more than one object is found, an arbitrary one will be returned. It returns the MIME type based on headers or object contents, so the actual Content-Type can differ from the list in the "Response content type" section. Please use `/objects/{containerId}/by_attribute/{attrKey}/{attrVal}` API.
-	// (GET /get_by_attribute/{containerId}/{attrKey}/{attrVal})
+	// (GET /v1/get_by_attribute/{containerId}/{attrKey}/{attrVal})
 	GetByAttribute(ctx echo.Context, containerId ContainerId, attrKey AttrKey, attrVal AttrVal, params GetByAttributeParams) error
 	// Get object attributes by a specific attribute. If more than one object is found, an arbitrary one will be used to get attributes.
-	// (HEAD /get_by_attribute/{containerId}/{attrKey}/{attrVal})
+	// (HEAD /v1/get_by_attribute/{containerId}/{attrKey}/{attrVal})
 	HeadByAttribute(ctx echo.Context, containerId ContainerId, attrKey AttrKey, attrVal AttrVal, params HeadByAttributeParams) error
 
-	// (OPTIONS /get_by_attribute/{containerId}/{attrKey}/{attrVal})
+	// (OPTIONS /v1/get_by_attribute/{containerId}/{attrKey}/{attrVal})
 	OptionsByAttribute(ctx echo.Context, containerId ContainerId, attrKey AttrKey, attrVal AttrVal) error
 	// Get network settings
-	// (GET /network-info)
+	// (GET /v1/network-info)
 	GetNetworkInfo(ctx echo.Context) error
 
-	// (OPTIONS /network-info)
+	// (OPTIONS /v1/network-info)
 	OptionsNetworkInfo(ctx echo.Context) error
 
-	// (OPTIONS /objects)
+	// (OPTIONS /v1/objects)
 	OptionsObjectsPut(ctx echo.Context) error
 	// Upload object to NeoFS
-	// (PUT /objects)
+	// (PUT /v1/objects)
 	PutObject(ctx echo.Context, params PutObjectParams) error
 
-	// (OPTIONS /objects/{containerId})
+	// (OPTIONS /v1/objects/{containerId})
 	NewOptionsUploadContainerObject(ctx echo.Context, containerId ContainerId, params NewOptionsUploadContainerObjectParams) error
 	// Upload object to NeoFS
-	// (POST /objects/{containerId})
+	// (POST /v1/objects/{containerId})
 	NewUploadContainerObject(ctx echo.Context, containerId ContainerId, params NewUploadContainerObjectParams) error
 	// Find and get an object (payload and attributes) by a specific attribute. If more than one object is found, an arbitrary one will be returned (use `/objects/{containerId}/search` API if this is not desired). It returns the MIME type based on headers or object contents, so the actual Content-Type can differ from the list in the "Response content type" section. Also, returns custom users' object attributes in header `X-Attributes`.
-	// (GET /objects/{containerId}/by_attribute/{attrKey}/{attrVal})
+	// (GET /v1/objects/{containerId}/by_attribute/{attrKey}/{attrVal})
 	NewGetByAttribute(ctx echo.Context, containerId ContainerId, attrKey AttrKey, attrVal AttrVal, params NewGetByAttributeParams) error
 	// Get object attributes by a specific attribute. If more than one object is found, an arbitrary one will be used to get attributes (use `/objects/{containerId}/search` API if this is not desired). Also, returns custom users' object attributes in header `X-Attributes`.
-	// (HEAD /objects/{containerId}/by_attribute/{attrKey}/{attrVal})
+	// (HEAD /v1/objects/{containerId}/by_attribute/{attrKey}/{attrVal})
 	NewHeadByAttribute(ctx echo.Context, containerId ContainerId, attrKey AttrKey, attrVal AttrVal, params NewHeadByAttributeParams) error
 
-	// (OPTIONS /objects/{containerId}/by_attribute/{attrKey}/{attrVal})
+	// (OPTIONS /v1/objects/{containerId}/by_attribute/{attrKey}/{attrVal})
 	NewOptionsByAttribute(ctx echo.Context, containerId ContainerId, attrKey AttrKey, attrVal AttrVal, params NewOptionsByAttributeParams) error
 	// Get object by container ID and object ID. Also, returns custom users' object attributes in header `X-Attributes`. It returns the MIME type based on headers or object contents, so the actual Content-Type can differ from the list in the "Response content type" section.
-	// (GET /objects/{containerId}/by_id/{objectId})
+	// (GET /v1/objects/{containerId}/by_id/{objectId})
 	NewGetContainerObject(ctx echo.Context, containerId ContainerId, objectId ObjectId, params NewGetContainerObjectParams) error
 	// Get object info (head) by container ID and object ID. Also, returns custom users' object attributes in header `X-Attributes`.
-	// (HEAD /objects/{containerId}/by_id/{objectId})
+	// (HEAD /v1/objects/{containerId}/by_id/{objectId})
 	NewHeadContainerObject(ctx echo.Context, containerId ContainerId, objectId ObjectId, params NewHeadContainerObjectParams) error
 
-	// (OPTIONS /objects/{containerId}/by_id/{objectId})
+	// (OPTIONS /v1/objects/{containerId}/by_id/{objectId})
 	NewOptionsContainerObject(ctx echo.Context, containerId ContainerId, objectId ObjectId, params NewOptionsContainerObjectParams) error
 
-	// (OPTIONS /objects/{containerId}/search)
+	// (OPTIONS /v1/objects/{containerId}/search)
 	OptionsObjectsSearch(ctx echo.Context, containerId string) error
 	// Search objects by filters
-	// (POST /objects/{containerId}/search)
+	// (POST /v1/objects/{containerId}/search)
 	SearchObjects(ctx echo.Context, containerId ContainerId, params SearchObjectsParams) error
 	// Remove object from NeoFS
-	// (DELETE /objects/{containerId}/{objectId})
+	// (DELETE /v1/objects/{containerId}/{objectId})
 	DeleteObject(ctx echo.Context, containerId ContainerId, objectId ObjectId, params DeleteObjectParams) error
 	// Get object info by address. Please use `/objects/{containerId}/by_id/{objectId}` API.
-	// (GET /objects/{containerId}/{objectId})
+	// (GET /v1/objects/{containerId}/{objectId})
 	GetObjectInfo(ctx echo.Context, containerId ContainerId, objectId ObjectId, params GetObjectInfoParams) error
 
-	// (OPTIONS /objects/{containerId}/{objectId})
+	// (OPTIONS /v1/objects/{containerId}/{objectId})
 	OptionsObjectsGetDelete(ctx echo.Context, containerId ContainerId, objectId ObjectId) error
 
-	// (OPTIONS /upload/{containerId})
+	// (OPTIONS /v1/upload/{containerId})
 	OptionsUploadContainerObject(ctx echo.Context, containerId ContainerId) error
 	// Upload object to NeoFS. Please use `/objects/{containerId}` API.
-	// (POST /upload/{containerId})
+	// (POST /v1/upload/{containerId})
 	UploadContainerObject(ctx echo.Context, containerId ContainerId, params UploadContainerObjectParams) error
 }
 
@@ -2681,46 +2681,46 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 		Handler: si,
 	}
 
-	router.GET(baseURL+"/accounting/balance/:address", wrapper.GetBalance)
-	router.OPTIONS(baseURL+"/accounting/balance/:address", wrapper.OptionsBalance)
-	router.OPTIONS(baseURL+"/auth", wrapper.OptionsAuth)
-	router.POST(baseURL+"/auth", wrapper.Auth)
-	router.GET(baseURL+"/auth/bearer", wrapper.FormBinaryBearer)
-	router.OPTIONS(baseURL+"/auth/bearer", wrapper.OptionsAuthBearer)
-	router.GET(baseURL+"/containers", wrapper.ListContainers)
-	router.OPTIONS(baseURL+"/containers", wrapper.OptionsContainersPutList)
-	router.PUT(baseURL+"/containers", wrapper.PutContainer)
-	router.DELETE(baseURL+"/containers/:containerId", wrapper.DeleteContainer)
-	router.GET(baseURL+"/containers/:containerId", wrapper.GetContainer)
-	router.OPTIONS(baseURL+"/containers/:containerId", wrapper.OptionsContainersGetDelete)
-	router.GET(baseURL+"/containers/:containerId/eacl", wrapper.GetContainerEACL)
-	router.OPTIONS(baseURL+"/containers/:containerId/eacl", wrapper.OptionsContainersEACL)
-	router.PUT(baseURL+"/containers/:containerId/eacl", wrapper.PutContainerEACL)
-	router.GET(baseURL+"/get/:containerId/:objectId", wrapper.GetContainerObject)
-	router.HEAD(baseURL+"/get/:containerId/:objectId", wrapper.HeadContainerObject)
-	router.OPTIONS(baseURL+"/get/:containerId/:objectId", wrapper.OptionsContainerObject)
-	router.GET(baseURL+"/get_by_attribute/:containerId/:attrKey/:attrVal", wrapper.GetByAttribute)
-	router.HEAD(baseURL+"/get_by_attribute/:containerId/:attrKey/:attrVal", wrapper.HeadByAttribute)
-	router.OPTIONS(baseURL+"/get_by_attribute/:containerId/:attrKey/:attrVal", wrapper.OptionsByAttribute)
-	router.GET(baseURL+"/network-info", wrapper.GetNetworkInfo)
-	router.OPTIONS(baseURL+"/network-info", wrapper.OptionsNetworkInfo)
-	router.OPTIONS(baseURL+"/objects", wrapper.OptionsObjectsPut)
-	router.PUT(baseURL+"/objects", wrapper.PutObject)
-	router.OPTIONS(baseURL+"/objects/:containerId", wrapper.NewOptionsUploadContainerObject)
-	router.POST(baseURL+"/objects/:containerId", wrapper.NewUploadContainerObject)
-	router.GET(baseURL+"/objects/:containerId/by_attribute/:attrKey/:attrVal", wrapper.NewGetByAttribute)
-	router.HEAD(baseURL+"/objects/:containerId/by_attribute/:attrKey/:attrVal", wrapper.NewHeadByAttribute)
-	router.OPTIONS(baseURL+"/objects/:containerId/by_attribute/:attrKey/:attrVal", wrapper.NewOptionsByAttribute)
-	router.GET(baseURL+"/objects/:containerId/by_id/:objectId", wrapper.NewGetContainerObject)
-	router.HEAD(baseURL+"/objects/:containerId/by_id/:objectId", wrapper.NewHeadContainerObject)
-	router.OPTIONS(baseURL+"/objects/:containerId/by_id/:objectId", wrapper.NewOptionsContainerObject)
-	router.OPTIONS(baseURL+"/objects/:containerId/search", wrapper.OptionsObjectsSearch)
-	router.POST(baseURL+"/objects/:containerId/search", wrapper.SearchObjects)
-	router.DELETE(baseURL+"/objects/:containerId/:objectId", wrapper.DeleteObject)
-	router.GET(baseURL+"/objects/:containerId/:objectId", wrapper.GetObjectInfo)
-	router.OPTIONS(baseURL+"/objects/:containerId/:objectId", wrapper.OptionsObjectsGetDelete)
-	router.OPTIONS(baseURL+"/upload/:containerId", wrapper.OptionsUploadContainerObject)
-	router.POST(baseURL+"/upload/:containerId", wrapper.UploadContainerObject)
+	router.GET(baseURL+"/v1/accounting/balance/:address", wrapper.GetBalance)
+	router.OPTIONS(baseURL+"/v1/accounting/balance/:address", wrapper.OptionsBalance)
+	router.OPTIONS(baseURL+"/v1/auth", wrapper.OptionsAuth)
+	router.POST(baseURL+"/v1/auth", wrapper.Auth)
+	router.GET(baseURL+"/v1/auth/bearer", wrapper.FormBinaryBearer)
+	router.OPTIONS(baseURL+"/v1/auth/bearer", wrapper.OptionsAuthBearer)
+	router.GET(baseURL+"/v1/containers", wrapper.ListContainers)
+	router.OPTIONS(baseURL+"/v1/containers", wrapper.OptionsContainersPutList)
+	router.PUT(baseURL+"/v1/containers", wrapper.PutContainer)
+	router.DELETE(baseURL+"/v1/containers/:containerId", wrapper.DeleteContainer)
+	router.GET(baseURL+"/v1/containers/:containerId", wrapper.GetContainer)
+	router.OPTIONS(baseURL+"/v1/containers/:containerId", wrapper.OptionsContainersGetDelete)
+	router.GET(baseURL+"/v1/containers/:containerId/eacl", wrapper.GetContainerEACL)
+	router.OPTIONS(baseURL+"/v1/containers/:containerId/eacl", wrapper.OptionsContainersEACL)
+	router.PUT(baseURL+"/v1/containers/:containerId/eacl", wrapper.PutContainerEACL)
+	router.GET(baseURL+"/v1/get/:containerId/:objectId", wrapper.GetContainerObject)
+	router.HEAD(baseURL+"/v1/get/:containerId/:objectId", wrapper.HeadContainerObject)
+	router.OPTIONS(baseURL+"/v1/get/:containerId/:objectId", wrapper.OptionsContainerObject)
+	router.GET(baseURL+"/v1/get_by_attribute/:containerId/:attrKey/:attrVal", wrapper.GetByAttribute)
+	router.HEAD(baseURL+"/v1/get_by_attribute/:containerId/:attrKey/:attrVal", wrapper.HeadByAttribute)
+	router.OPTIONS(baseURL+"/v1/get_by_attribute/:containerId/:attrKey/:attrVal", wrapper.OptionsByAttribute)
+	router.GET(baseURL+"/v1/network-info", wrapper.GetNetworkInfo)
+	router.OPTIONS(baseURL+"/v1/network-info", wrapper.OptionsNetworkInfo)
+	router.OPTIONS(baseURL+"/v1/objects", wrapper.OptionsObjectsPut)
+	router.PUT(baseURL+"/v1/objects", wrapper.PutObject)
+	router.OPTIONS(baseURL+"/v1/objects/:containerId", wrapper.NewOptionsUploadContainerObject)
+	router.POST(baseURL+"/v1/objects/:containerId", wrapper.NewUploadContainerObject)
+	router.GET(baseURL+"/v1/objects/:containerId/by_attribute/:attrKey/:attrVal", wrapper.NewGetByAttribute)
+	router.HEAD(baseURL+"/v1/objects/:containerId/by_attribute/:attrKey/:attrVal", wrapper.NewHeadByAttribute)
+	router.OPTIONS(baseURL+"/v1/objects/:containerId/by_attribute/:attrKey/:attrVal", wrapper.NewOptionsByAttribute)
+	router.GET(baseURL+"/v1/objects/:containerId/by_id/:objectId", wrapper.NewGetContainerObject)
+	router.HEAD(baseURL+"/v1/objects/:containerId/by_id/:objectId", wrapper.NewHeadContainerObject)
+	router.OPTIONS(baseURL+"/v1/objects/:containerId/by_id/:objectId", wrapper.NewOptionsContainerObject)
+	router.OPTIONS(baseURL+"/v1/objects/:containerId/search", wrapper.OptionsObjectsSearch)
+	router.POST(baseURL+"/v1/objects/:containerId/search", wrapper.SearchObjects)
+	router.DELETE(baseURL+"/v1/objects/:containerId/:objectId", wrapper.DeleteObject)
+	router.GET(baseURL+"/v1/objects/:containerId/:objectId", wrapper.GetObjectInfo)
+	router.OPTIONS(baseURL+"/v1/objects/:containerId/:objectId", wrapper.OptionsObjectsGetDelete)
+	router.OPTIONS(baseURL+"/v1/upload/:containerId", wrapper.OptionsUploadContainerObject)
+	router.POST(baseURL+"/v1/upload/:containerId", wrapper.UploadContainerObject)
 
 }
 
@@ -2819,59 +2819,59 @@ var swaggerSpec = []string{
 	"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",
-	"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",
+	"SvNtU9s+LvSwsW9s1Rq1pnR38Kkkfv22WYemSXyXY3dSH6lKOfVv2nF+L9rknonHiIseQPeQp1uQ86tr",
+	"UOsxEqWaQlaWJsEx4kFtnkqiyP2HJXXUkzMUFZUPK+2Ur6X+MVWyutVopMoFar+EgKv+L0tXx1sknIKl",
+	"5tQPPIiwmMbaIxWrFHNuP+JiktGAuUuyArGQkDzKU8B8x4F0rnggZKJwzZJp5UEtL0ESTHOufvg1GCdl",
+	"O59flqHnSfT7ylUeTxGfEmt9FSLv07QUf0spogX0MrpJQf7HIqtieERduCaRo7GykJVlvhHoWeBpkouf",
+	"KS1C1lZgeKLyH0u+PRAWaFzpwYmMgiQPWRuPEceO3MYyZmf59K91l/x3BZqNRt4VeSaik1AnVvwK2jbw",
+	"mUwOoyo5UmVCYgYmkKPlQB0RKmhcvWK63Eb5Fw8+KjQixg+INV9J2JbyFOgKYFkfQVb8xjQ3aWwGNb6S",
+	"ZL7/zvOunFc0YdGVAT71uIbMFQiKlUUW3yilnWLEar/7cSmZPbHw2DWcHoDJGyWBuwlyq/pjVajvVc3r",
+	"ii2MuOyuj8LqclrhS0ooMXGiDF1GWuWtP2pST72oIvZx2R7huzGrdNKvpKxXpYsj5HEY+ffh4BTPqkXH",
+	"l1pGzRMHY8hwf7aGlSw/lbtJX2MWXV6yFXVjVV8i9jZV6iWgKLTse1SFKQKu74xUJYuYccsJYDfYAyNZ",
+	"z0ZsFSoNTE6ASWxblrNRxb59W6ZNF4I5HjNU8FJRo2I42MWO78h/L9ctInBZFl5ViLwIDhs7mC9QbBx4",
+	"pwBpNhqNOGDNHMCWC7FMGftSZclk+F/OZu4k6+mtVyitBPoqcqi21PK0M/UDywilCDt9X0VQ/skGjZ8j",
+	"iOJBFL+MppDZ/X3t6ZTGQ9hTbf0JZhzRdFk87IKzswFgiN5is/BNNfG/KjOJh6oTm4zkxdpjWRkPkwNB",
+	"wcBFoiCorLmqBbESRKnomxx4ekEdg6gWki6Yliip+2uKKzHf1lrnU8hQzyFYasLttU54RjgYE9+15PJ2",
+	"Gq21o1OY+TM41/Otd3XHai7AsYOIn9Z8Oypy2UWzeMGuyLO72EqLXaBlVMD6t1gEzL0SGzZSZf+TovhQ",
+	"fn+4NI5H2qwiVX86M28lwqfjFXJIHz3xAyTudQbSRvBsBM9/LnjUpo8JndEcYIn1XLvxGPFHEhDrMlTK",
+	"aSe/rZ2SQ8jyRsox4oof1kLaP9EBkzx960gXu1m6t2Rgxs+0v2SZnoXbSsXmJ5Nsf/MtJpf8gH22Nupu",
+	"/AiPs3l+cu31UUz6oh2tqo/EgyNr67blV9OhJYC+Z0GO3clGkd4o0j+FIj0oOhmWGe9I7UOlOUwQT6kM",
+	"34KU8mSInUeRCXl0s1KsSpwHsadrlYdh4nvWOSoww6cI5LwYq5+wBZDplwTlixexWgg1MJxiBhx4o56b",
+	"GFEyY8qzapGZG6sXKsYYYxsB7DKOxOcxYFP1KgHmwcO5HpwUOluDARM+1jD022hWAK+AYQVIhIPh5VW3",
+	"Aoby3/MKmCNWAe8r4H13UAHvZR2GkpFfeYgN29XTD6kvvawlJke8yjhF0Fmr7Nr+8UDE5UtSL/gm2C4e",
+	"oPxBviAYDwn+8PE+o8oFbyvHX63pHcbiZ0HvsAbaNgvu8BgwZRaQChx6EvJv9HLN5/jr1399lm9pBH0F",
+	"B572TrsqvTV80VmfXyDKPwjCkOWTKzLW2+R+9Gy0fJlYRgarOtdBRWakrql0ZftrI8BlMJ6c99oADMm8",
+	"whro2wgy9UbPZ72F0ybLaP4JWzEp9Bm0+z3JAgLsMsJI6JcbafQbSSP99v5/ojH9OAXmMQWMMIvBU8Fe",
+	"z9YqbFJm6LKdmTZMf/Tm/OMdRRPEP43mn0KKpnU/8cMrNNf/egPtFZXAg3k8XXWtVNWglm36BtrrE85s",
+	"oytudMXHFOVH2LWkoJ4gHisv9TQoPCd+isSylPFQP4iIzegX+ZiHQ6jQHuSDPNEr9UwBWxGjQzrCnEI6",
+	"ly2CpxDVmYCs30GjjAm8rIh7mIa5EXUbRXSjiC5TRGO64zpklM/UG3JSTIZTPVAt/cl39B+vvOpn8qpB",
+	"2nPRpWasBrmxxhSLZKnzvD21tNj5r55OsfzuMnjakKms7FJBzMvp9+fwfKzM6uoCTR1arO9vwsCX46zv",
+	"8we6I37Kq9mHC4BE9dyc/R8rby6OXvWI2qPnb5Yq855zBamLFJCxBiwsm81+v/S1q/j7dYIW5aJ3g9Iy",
+	"SRGTjdstlNNnaKYljILgB/vzfrJA3j+4OMAZmv1RHJAxqtu2HTdxIJWJNhC8HJyfVZXWx2UtME9IpKi4",
+	"tQcxZRUwmyKqbnZu0FzYO9Lp4UaVjGXqTvB2rOqqW0Vt5OfatfteF++BNiO6KjJS9ha044We3Sr4/OnT",
+	"Wff8aPDpU/ddv3fZHvbOzz51++edk8+gGtho2tRHdx7WlYNk7QRlc43mQQmha3eYrL7MpsS3rdA6w2NZ",
+	"VkigZgwdbGNIozreqrSQGpfJJ7fFgPLhtbjWrN+ZldYgEDjbBx9U14G2J1XxtI9Pv+uRyWbVRdyBXs2x",
+	"ntWu3V7kwUgVmI7XnpYG6xh8flc9k8N3Q3xV//ocOsZGyCazmiw3XVDjoR1/UmGFvNVBEbWCiheXR52t",
+	"ra0Xuhh6DXSVK4VJTrg2Wo3WdrXZqm41h62t/Z0X+zsv/rk2ABXqEtNPWyNgQ8aBQ6RjiIyB6KTKrHdq",
+	"mWGaO2qYamNvv9FIjiVmAP1TQFxwiEwk0223mhU5YAX0oXIODLGDatfX126PR+5IQfzoxXgX3XHNOGJ/",
+	"BI4Apr1cCzg8vr9SeVpB2f8FZMoQWaP3+4gGxfkdvAATvW8RI6f0wpbDhS6Wr32oi/b6MkSsgIb4+zUP",
+	"RoSl31ICvsuxnUWCWNMxecKihgVMvdVosCTj7QAHu9I5pPl1ur3jJJu0wJT4uprZdtQerIsRwaPyYewd",
+	"qiXFoMqYDMWXJNk0dOnuDS2BGlAviGsvMAMav4of5XPwyJY+vTmQb42oD+qoC3AMTRN5HFkV/Qy4qp/j",
+	"qpcbhMitxR+tURUccly99z/ACjkitNhWWmCO/Jb+nwc4iwuMmIXWydIrnUL34Bma/RLX1D+vArykC4Xu",
+	"BG2unx75+klY3NnL9lZjt+zN1aUgy+aKPh4uvt3c/fEgSDrId4gY5JiNsXps/PeKGABPF13Hq7d45KW7",
+	"eloFMzG4wImFGKbIevZzhxyo94fyQ+ay1544lG/x4Dn2ORFwkDmkfo0Ig1/FTbM5fB7l8NmEP/wS4Q+P",
+	"IH4fUcSVuEXYCLrNjcR3XY8vSSFZYg3+l7kiGztvk+6yMfM2Zt56kggf4Qj/mS2xpRbURrL/MNtoYxpt",
+	"TKN1pij+OGtkIzQ2dkY5O0OZ0mXeltGRuOqlyxWrn8fqc1oF7wIl38V+5LeB1vRUwO8RAacoeh5GmP4y",
+	"9aRXFGKbWvmPVSv/UWppJR8vzjm19U8qEkU+rxsLO1hrbS21F4rK9wfPKv+ImOy16V1lFKGPyVpNcRII",
+	"dSd6X31xrDZLEXrRcZR0eC2uurzRbTblmR8t/ifk80vkkNvwAiPKdYuV9y1RRELxpk7/2hjs33J9S+qA",
+	"lPJdHLKAImiJk9aCHBYdZtJnW805WsNIOuzy3W1j1fP1NXInfCrEupgdyGkWw2DLHiVhaJaB4RTegSDW",
+	"geGvCDzFLhjNZayDfIVQx5Bj17R9KwqPDV0Z125vHPdVyUEwAxMZk0nV9Vz03gbTDgs144y4T/iS4QsQ",
+	"4sC7qh6mKubMVza2my+2txrbMYVjp7Xd2ttLKh2N9T/QE9uci3PD/pCjPe3RGM3DN1y/r9pZSZPykUpo",
+	"b6ooreANUKG8CxPmSmboriF7apOlthz760laSxud8ZShiswLc+fAJM4Iuyp5QUaFe4jWbTJDFJiQoUoU",
+	"Am/FkgwiJ7rMKTjCNjqDDvqciCPRKQoy/ysejbegl0yo6A7rJ932oYwIMaFtM/0ubTjt04VlYp+FCWqf",
+	"XTk6dkH/fDCUYwXWp8yKizxZTxd61J7VSqRJVcVy5OcVn/lbL1n6kE9XJ0uq1+OQRbf+PA4n+IGU0Q7K",
+	"B6aiOL7NsQcprwu1sCrUyqQ08KjY0RwrGaf1p18tPSX8EmZkbxJWftWElTLaXqDcpWEoBwCit8HB5FNb",
+	"bEHOvf163SYmtKeE8f29xouGcf/x/v8CAAD//xs+lV2m4QAA",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file
