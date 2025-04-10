@@ -15,6 +15,7 @@ This document outlines major changes between releases.
 ### Changed
 - Go 1.23+ is required to build now (#235)
 - Maximum search limit shrunk from 10000 to 1000 (#276)
+- Get and Head by attributes, now sorts result by `Timestamp` attribute.
 
 ### Removed
 
