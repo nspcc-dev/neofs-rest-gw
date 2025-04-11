@@ -60,7 +60,7 @@ func main() {
 	e.HEAD("/", redirectHandler)
 
 	e.Group(baseURL, middleware.OapiRequestValidator(swagger))
-	apiserver.RegisterHandlersWithBaseURL(e, neofsAPI, baseURL)
+	apiserver.RegisterHandlers(e, neofsAPI)
 
 	var serverURL string
 	servers := make(openapi3.Servers, len(serverCfg.Endpoints))

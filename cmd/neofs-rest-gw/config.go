@@ -97,7 +97,7 @@ const (
 	cmdConfig        = "config"
 	cmdListenAddress = "listen-address"
 
-	baseURL = "/v1"
+	baseURL = ""
 )
 
 var ignore = map[string]struct{}{

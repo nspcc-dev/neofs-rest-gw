@@ -141,6 +141,10 @@ You will find an auto-redirect to the specification page via this link.
 
 See [docs/migration-from-http.md](./docs/migration-from-http.md).
 
+### Migrating  Object search from V1 to V2
+
+See [docs/migration-to-search-v2](./docs/migration-to-search-v2.md).
+
 ## Contributing
 
 Feel free to contribute to this project after reading the [contributing guidelines](CONTRIBUTING.md).
