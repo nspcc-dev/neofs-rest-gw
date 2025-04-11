@@ -32,8 +32,6 @@ import (
 	neofscrypto "github.com/nspcc-dev/neofs-sdk-go/crypto"
 	"github.com/nspcc-dev/neofs-sdk-go/object"
 	oid "github.com/nspcc-dev/neofs-sdk-go/object/id"
-	"github.com/nspcc-dev/neofs-sdk-go/pool"
-	"github.com/nspcc-dev/neofs-sdk-go/user"
 	"go.uber.org/zap"
 )
 
@@ -316,14 +314,23 @@ func (a *RestAPI) SearchObjects(ctx echo.Context, containerID apiserver.Containe
 		return ctx.JSON(http.StatusBadRequest, resp)
 	}
 
-	var prm client.PrmObjectSearch
-	attachBearer(&prm, btoken)
-	prm.SetFilters(filters)
+	var (
+		cursor string
+		opts   client.SearchObjectsOptions
 
-	resSearch, err := a.pool.ObjectSearchInit(ctx.Request().Context(), cnrID, a.signer, prm)
-	if err != nil {
-		resp := a.logAndGetErrorResponse("failed to search objects", err)
-		return ctx.JSON(http.StatusBadRequest, resp)
+		commonAttributes = []string{
+			object.AttributeFileName,
+			object.AttributeFilePath,
+			object.AttributeTimestamp,
+		}
+
+		allObjects []client.SearchResultItem
+	)
+
+	returningAttributes, indexes := getReturningAttributes(commonAttributes, filters[0].Header())
+
+	if btoken != nil {
+		opts.WithBearerToken(*btoken)
 	}
 
 	offset, limit, err := getOffsetAndLimit(params.Offset, params.Limit)
@@ -332,33 +339,41 @@ func (a *RestAPI) SearchObjects(ctx echo.Context, containerID apiserver.Containe
 		return ctx.JSON(http.StatusBadRequest, resp)
 	}
 
-	var iterateErr error
-	var obj *apiserver.ObjectBaseInfo
-	var objects []apiserver.ObjectBaseInfo
-
-	i := 0
-	err = resSearch.Iterate(func(id oid.ID) bool {
-		if i < offset {
-			i++
-			return false
+	for {
+		resSearch, nextCursor, err := a.pool.SearchObjects(ctx.Request().Context(), cnrID, filters, returningAttributes, cursor, a.signer, opts)
+		if err != nil {
+			resp := a.logAndGetErrorResponse("failed to search objects", err)
+			return ctx.JSON(http.StatusBadRequest, resp)
 		}
 
-		if obj, iterateErr = headObjectBaseInfo(ctx.Request().Context(), a.pool, cnrID, id, btoken, a.signer); iterateErr != nil {
-			return true
+		allObjects = append(allObjects, resSearch...)
+
+		if nextCursor == "" {
+			break
 		}
 
-		if obj != nil {
-			objects = append(objects, *obj)
-		}
-
-		return len(objects) == limit
-	})
-	if err == nil {
-		err = iterateErr
+		cursor = nextCursor
 	}
-	if err != nil {
-		resp := a.logAndGetErrorResponse("failed to search objects", err)
-		return ctx.JSON(http.StatusBadRequest, resp)
+
+	if offset < len(allObjects) {
+		lastIndex := min(len(allObjects), offset+limit)
+		allObjects = allObjects[offset:lastIndex]
+	} else {
+		// offset is out of range
+		allObjects = []client.SearchResultItem{}
+	}
+
+	var objects = make([]apiserver.ObjectBaseInfo, len(allObjects))
+
+	for i, item := range allObjects {
+		objects[i] = apiserver.ObjectBaseInfo{
+			Address: apiserver.Address{
+				ContainerId: cnrID.String(),
+				ObjectId:    item.ID.String(),
+			},
+			Name:     &item.Attributes[indexes.FileName],
+			FilePath: &item.Attributes[indexes.FilePath],
+		}
 	}
 
 	list := &apiserver.ObjectList{
@@ -785,36 +800,6 @@ func title(str string) string {
 	r, size := utf8.DecodeRuneInString(str)
 	r0 := unicode.ToTitle(r)
 	return string(r0) + str[size:]
-}
-
-func headObjectBaseInfo(ctx context.Context, p *pool.Pool, cnrID cid.ID, objID oid.ID, btoken *bearer.Token, signer user.Signer) (*apiserver.ObjectBaseInfo, error) {
-	var prm client.PrmObjectHead
-	attachBearer(&prm, btoken)
-
-	header, err := p.ObjectHead(ctx, cnrID, objID, signer, prm)
-	if err != nil {
-		return nil, fmt.Errorf("head: %w", err)
-	}
-
-	resp := &apiserver.ObjectBaseInfo{
-		Address: apiserver.Address{
-			ContainerId: cnrID.String(),
-			ObjectId:    objID.String(),
-		},
-	}
-
-	for _, attr := range header.Attributes() {
-		switch attr.Key() {
-		case object.AttributeFileName:
-			v := attr.Value()
-			resp.Name = &v
-		case object.AttributeFilePath:
-			v := attr.Value()
-			resp.FilePath = &v
-		}
-	}
-
-	return resp, nil
 }
 
 func parseAddress(containerID, objectID string) (oid.Address, error) {
