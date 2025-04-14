@@ -879,10 +879,10 @@ type ServerInterface interface {
 	// Upload object to NeoFS
 	// (POST /v1/objects/{containerId})
 	NewUploadContainerObject(ctx echo.Context, containerId ContainerId, params NewUploadContainerObjectParams) error
-	// Find and get an object (payload and attributes) by a specific attribute. If more than one object is found, an arbitrary one will be returned (use `/objects/{containerId}/search` API if this is not desired). It returns the MIME type based on headers or object contents, so the actual Content-Type can differ from the list in the "Response content type" section. Also, returns custom users' object attributes in header `X-Attributes`.
+	// Find and get an object (payload and attributes) by a specific attribute. If more than one object is found, the latest one (wrt `Timestamp` attribute) from the first 1000 of search results will be returned (use `/objects/{containerId}/search` API if this is not desired). It returns the MIME type based on headers or object contents, so the actual Content-Type can differ from the list in the "Response content type" section. Also, returns custom users' object attributes in header `X-Attributes`.
 	// (GET /v1/objects/{containerId}/by_attribute/{attrKey}/{attrVal})
 	NewGetByAttribute(ctx echo.Context, containerId ContainerId, attrKey AttrKey, attrVal AttrVal, params NewGetByAttributeParams) error
-	// Get object attributes by a specific attribute. If more than one object is found, an arbitrary one will be used to get attributes (use `/objects/{containerId}/search` API if this is not desired). Also, returns custom users' object attributes in header `X-Attributes`.
+	// Get object attributes by a specific attribute. If more than one object is found, the latest one (wrt `Timestamp` attribute) from the first 1000 of  search results will be returned (use `/objects/{containerId}/search` API if this is not desired). Also, returns custom users' object attributes in header `X-Attributes`.
 	// (HEAD /v1/objects/{containerId}/by_attribute/{attrKey}/{attrVal})
 	NewHeadByAttribute(ctx echo.Context, containerId ContainerId, attrKey AttrKey, attrVal AttrVal, params NewHeadByAttributeParams) error
 
@@ -2970,22 +2970,23 @@ var swaggerSpec = []string{
 	"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",
-	"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",
+	"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",
+	"Hx7/LwAA//8UIFz+J+sAAA==",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file
