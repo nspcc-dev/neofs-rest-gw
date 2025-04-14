@@ -3,17 +3,17 @@ openapi: 3.0.1
 info:
   title: REST API NeoFS
   description: REST API for native integration with NeoFS. Using this API you can interact with NeoFS nodes and manage containers and objects.
-  version: v1
+  version: v0.11.1
 
 servers:
-  - url: http://localhost:8090/v1
+  - url: http://localhost:8090
 
 security:
   - BearerAuth: [ ]
   - CookieAuth: [ ]
 
 paths:
-  /auth:
+  /v1/auth:
     post:
       summary: Form bearer token to further requests
       operationId: auth
@@ -83,7 +83,7 @@ paths:
                 type: string
           content: { }
       security: [ ]
-  /auth/bearer:
+  /v1/auth/bearer:
     get:
       summary: Form binary bearer token
       operationId: formBinaryBearer
@@ -125,7 +125,7 @@ paths:
                 type: string
           content: { }
       security: [ ]
-  /accounting/balance/{address}:
+  /v1/accounting/balance/{address}:
     get:
       summary: Get balance in NeoFS
       description: Getting balance of provided wallet address in NeoFS.
@@ -179,7 +179,7 @@ paths:
                 type: string
           content: { }
       security: [ ]
-  /objects:
+  /v1/objects:
     put:
       deprecated: true
       summary: Upload object to NeoFS
@@ -231,10 +231,11 @@ paths:
                 type: string
           content: { }
       security: [ ]
-  /objects/{containerId}/search:
+  /v1/objects/{containerId}/search:
     post:
       summary: Search objects by filters
       operationId: searchObjects
+      deprecated: true
       parameters:
         - $ref: '#/components/parameters/signatureParam'
         - $ref: '#/components/parameters/signatureKeyParam'
@@ -308,7 +309,59 @@ paths:
                 type: string
           content: { }
       security: [ ]
-  /objects/{containerId}/{objectId}:
+  /v2/objects/{containerId}/search:
+    post:
+      summary: Search objects by filters
+      operationId: v2SearchObjects
+      parameters:
+        - $ref: '#/components/parameters/signatureParam'
+        - $ref: '#/components/parameters/signatureKeyParam'
+        - $ref: '#/components/parameters/signatureScheme'
+        - $ref: '#/components/parameters/containerId'
+        - name: cursor
+          in: query
+          description: Value to start the next batch from. It returns the first elements batch if empty value passed.
+            You should take `cursor` value from previous response to be able to list items.
+          schema:
+            type: string
+            default: ""
+        - name: limit
+          in: query
+          description: The numbers of objects to return.
+          schema:
+            maximum: 1000
+            minimum: 1
+            type: integer
+            default: 100
+      requestBody:
+        description: Filters to search objects.
+        content:
+          '*/*':
+            schema:
+              $ref: '#/components/schemas/SearchFilters'
+        required: true
+      responses:
+        "200":
+          description: List of objects
+          headers:
+            Access-Control-Allow-Origin:
+              schema:
+                type: string
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ObjectListV2'
+        "400":
+          description: Bad request
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      security:
+        - { }
+        - BearerAuth: [ ]
+      x-codegen-request-body-name: searchFilters
+  /v1/objects/{containerId}/{objectId}:
     get:
       deprecated: true
       summary: Get object info by address. Please use `/objects/{containerId}/by_id/{objectId}` API.
@@ -409,7 +462,7 @@ paths:
                 type: string
           content: { }
       security: [ ]
-  /containers:
+  /v1/containers:
     get:
       summary: Get list of containers
       operationId: listContainers
@@ -533,7 +586,7 @@ paths:
                 type: string
           content: { }
       security: [ ]
-  /containers/{containerId}:
+  /v1/containers/{containerId}:
     get:
       summary: Get container by id
       operationId: getContainer
@@ -625,7 +678,7 @@ paths:
                 type: string
           content: { }
       security: [ ]
-  /containers/{containerId}/eacl:
+  /v1/containers/{containerId}/eacl:
     get:
       summary: Get container EACL by id
       operationId: getContainerEACL
@@ -725,7 +778,7 @@ paths:
                 type: string
           content: { }
       security: [ ]
-  /get/{containerId}/{objectId}:
+  /v1/get/{containerId}/{objectId}:
     get:
       deprecated: true
       summary: "Get object by container ID and object ID. Also returns custom users'\
@@ -819,7 +872,7 @@ paths:
         - { }
         - BearerAuth: [ ]
         - CookieAuth: [ ]
-  /objects/{containerId}/by_id/{objectId}:
+  /v1/objects/{containerId}/by_id/{objectId}:
     get:
       summary: "Get object by container ID and object ID. Also, returns custom users'\
         \ object attributes in header `X-Attributes`. It returns the MIME type based on headers\
@@ -928,7 +981,7 @@ paths:
         - { }
         - BearerAuth: [ ]
         - CookieAuth: [ ]
-  /upload/{containerId}:
+  /v1/upload/{containerId}:
     post:
       deprecated: true
       summary: Upload object to NeoFS. Please use `/objects/{containerId}` API.
@@ -1004,7 +1057,7 @@ paths:
                 type: string
           content: { }
       security: [ ]
-  /objects/{containerId}:
+  /v1/objects/{containerId}:
     post:
       summary: Upload object to NeoFS
       operationId: newUploadContainerObject
@@ -1102,7 +1155,7 @@ paths:
                 type: string
           content: { }
       security: [ ]
-  /get_by_attribute/{containerId}/{attrKey}/{attrVal}:
+  /v1/get_by_attribute/{containerId}/{attrKey}/{attrVal}:
     get:
       deprecated: true
       summary: "Find and get an object (payload and attributes) by a specific attribute.\
@@ -1200,7 +1253,7 @@ paths:
         - { }
         - BearerAuth: [ ]
         - CookieAuth: [ ]
-  /objects/{containerId}/by_attribute/{attrKey}/{attrVal}:
+  /v1/objects/{containerId}/by_attribute/{attrKey}/{attrVal}:
     get:
       summary: "Find and get an object (payload and attributes) by a specific attribute.\
         \ If more than one object is found, an arbitrary one will be returned (use\
@@ -1316,7 +1369,7 @@ paths:
         - { }
         - BearerAuth: [ ]
         - CookieAuth: [ ]
-  /network-info:
+  /v1/network-info:
     get:
       summary: "Get network settings"
       operationId: getNetworkInfo
@@ -1728,6 +1781,7 @@ components:
       properties:
         filters:
           type: array
+          description: It must contain 7 filters as maximum.
           items:
             $ref: '#/components/schemas/SearchFilter'
       description: List of SearchFilter elements.
@@ -1789,6 +1843,31 @@ components:
             address:
               objectId: 3GbmMWusaWgMHokWui2zDunxMTzButuQMVLbtL3cDn8s
               containerId: 5HZTn5qkRnmgSz9gSrw22CEdPPk6nQhkwf2Mgzyvkikv
+    ObjectListV2:
+      required:
+        - objects
+        - cursor
+      type: object
+      properties:
+        objects:
+          type: array
+          items:
+            $ref: '#/components/schemas/ObjectBaseInfoV2'
+        cursor:
+          description: Value to start the next batch from.
+          type: string
+      description: List of objects.
+      example:
+        size: 2
+        objects:
+          - name: /my/object/name
+            address:
+              objectId: 8N3o7Dtr6T1xteCt6eRwhpmJ7JhME58Hyu1dvaswuTDd
+              containerId: 5HZTn5qkRnmgSz9gSrw22CEdPPk6nQhkwf2Mgzyvkikv
+          - name: /my/object/some/other/name
+            address:
+              objectId: 3GbmMWusaWgMHokWui2zDunxMTzButuQMVLbtL3cDn8s
+              containerId: 5HZTn5qkRnmgSz9gSrw22CEdPPk6nQhkwf2Mgzyvkikv
     ObjectBaseInfo:
       required:
         - address
@@ -1807,6 +1886,23 @@ components:
         address:
           objectId: 8N3o7Dtr6T1xteCt6eRwhpmJ7JhME58Hyu1dvaswuTDd
           containerId: 5HZTn5qkRnmgSz9gSrw22CEdPPk6nQhkwf2Mgzyvkikv
+    ObjectBaseInfoV2:
+      required:
+        - objectId
+      type: object
+      properties:
+        objectId:
+          type: string
+          example: 
+        name:
+          type: string
+        filePath:
+          type: string
+      description: Basic object information.
+      example:
+        name: name.txt
+        filePath: /my/object/name.txt
+        objectId: 8N3o7Dtr6T1xteCt6eRwhpmJ7JhME58Hyu1dvaswuTDd
     ObjectUpload:
       required:
         - containerId

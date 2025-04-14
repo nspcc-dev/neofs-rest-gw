@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"bytes"
+	"cmp"
 	"context"
 	"crypto/elliptic"
 	"encoding/base64"
@@ -13,6 +14,7 @@ import (
 	"mime/multipart"
 	"net/http"
 	"path"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -30,8 +32,6 @@ import (
 	neofscrypto "github.com/nspcc-dev/neofs-sdk-go/crypto"
 	"github.com/nspcc-dev/neofs-sdk-go/object"
 	oid "github.com/nspcc-dev/neofs-sdk-go/object/id"
-	"github.com/nspcc-dev/neofs-sdk-go/pool"
-	"github.com/nspcc-dev/neofs-sdk-go/user"
 	"go.uber.org/zap"
 )
 
@@ -59,6 +59,12 @@ type setAttributeParams struct {
 	download    *string
 	useJSON     bool
 	header      object.Object
+}
+
+type attributeIndexes struct {
+	FileName  int
+	FilePath  int
+	Timestamp int
 }
 
 // PutObject handler that uploads object to NeoFS.
@@ -308,14 +314,23 @@ func (a *RestAPI) SearchObjects(ctx echo.Context, containerID apiserver.Containe
 		return ctx.JSON(http.StatusBadRequest, resp)
 	}
 
-	var prm client.PrmObjectSearch
-	attachBearer(&prm, btoken)
-	prm.SetFilters(filters)
+	var (
+		cursor string
+		opts   client.SearchObjectsOptions
 
-	resSearch, err := a.pool.ObjectSearchInit(ctx.Request().Context(), cnrID, a.signer, prm)
-	if err != nil {
-		resp := a.logAndGetErrorResponse("failed to search objects", err)
-		return ctx.JSON(http.StatusBadRequest, resp)
+		commonAttributes = []string{
+			object.AttributeFileName,
+			object.AttributeFilePath,
+			object.AttributeTimestamp,
+		}
+
+		allObjects []client.SearchResultItem
+	)
+
+	returningAttributes, indexes := getReturningAttributes(commonAttributes, filters[0].Header())
+
+	if btoken != nil {
+		opts.WithBearerToken(*btoken)
 	}
 
 	offset, limit, err := getOffsetAndLimit(params.Offset, params.Limit)
@@ -324,38 +339,135 @@ func (a *RestAPI) SearchObjects(ctx echo.Context, containerID apiserver.Containe
 		return ctx.JSON(http.StatusBadRequest, resp)
 	}
 
-	var iterateErr error
-	var obj *apiserver.ObjectBaseInfo
-	var objects []apiserver.ObjectBaseInfo
-
-	i := 0
-	err = resSearch.Iterate(func(id oid.ID) bool {
-		if i < offset {
-			i++
-			return false
+	for {
+		resSearch, nextCursor, err := a.pool.SearchObjects(ctx.Request().Context(), cnrID, filters, returningAttributes, cursor, a.signer, opts)
+		if err != nil {
+			resp := a.logAndGetErrorResponse("failed to search objects", err)
+			return ctx.JSON(http.StatusBadRequest, resp)
 		}
 
-		if obj, iterateErr = headObjectBaseInfo(ctx.Request().Context(), a.pool, cnrID, id, btoken, a.signer); iterateErr != nil {
-			return true
+		allObjects = append(allObjects, resSearch...)
+
+		if nextCursor == "" {
+			break
 		}
 
-		if obj != nil {
-			objects = append(objects, *obj)
-		}
-
-		return len(objects) == limit
-	})
-	if err == nil {
-		err = iterateErr
+		cursor = nextCursor
 	}
-	if err != nil {
-		resp := a.logAndGetErrorResponse("failed to search objects", err)
-		return ctx.JSON(http.StatusBadRequest, resp)
+
+	if offset < len(allObjects) {
+		lastIndex := min(len(allObjects), offset+limit)
+		allObjects = allObjects[offset:lastIndex]
+	} else {
+		// offset is out of range
+		allObjects = []client.SearchResultItem{}
+	}
+
+	var objects = make([]apiserver.ObjectBaseInfo, len(allObjects))
+
+	for i, item := range allObjects {
+		objects[i] = apiserver.ObjectBaseInfo{
+			Address: apiserver.Address{
+				ContainerId: cnrID.String(),
+				ObjectId:    item.ID.String(),
+			},
+			Name:     &item.Attributes[indexes.FileName],
+			FilePath: &item.Attributes[indexes.FilePath],
+		}
 	}
 
 	list := &apiserver.ObjectList{
 		Size:    len(objects),
 		Objects: objects,
+	}
+
+	ctx.Response().Header().Set(accessControlAllowOriginHeader, "*")
+	return ctx.JSON(http.StatusOK, list)
+}
+
+// V2SearchObjects handler that searches object in NeoFS.
+func (a *RestAPI) V2SearchObjects(ctx echo.Context, containerID apiserver.ContainerId, params apiserver.V2SearchObjectsParams) error {
+	var cnrID cid.ID
+	if err := cnrID.DecodeString(containerID); err != nil {
+		resp := a.logAndGetErrorResponse("invalid container id", err)
+		return ctx.JSON(http.StatusBadRequest, resp)
+	}
+
+	principal, err := getPrincipal(ctx)
+	if err != nil {
+		return ctx.JSON(http.StatusBadRequest, util.NewErrorResponse(err))
+	}
+
+	var walletConnect apiserver.SignatureScheme
+	if params.WalletConnect != nil {
+		walletConnect = *params.WalletConnect
+	}
+
+	btoken, err := getBearerToken(principal, params.XBearerSignature, params.XBearerSignatureKey, walletConnect)
+	if err != nil {
+		resp := a.logAndGetErrorResponse("get bearer token", err)
+		return ctx.JSON(http.StatusBadRequest, resp)
+	}
+
+	var searchFilters apiserver.SearchFilters
+	if err = ctx.Bind(&searchFilters); err != nil {
+		return ctx.JSON(http.StatusBadRequest, a.logAndGetErrorResponse("bind", err))
+	}
+
+	filters, err := util.ToNativeFilters(searchFilters)
+	if err != nil {
+		resp := a.logAndGetErrorResponse("failed to transform to native", err)
+		return ctx.JSON(http.StatusBadRequest, resp)
+	}
+
+	var (
+		cursor string
+		opts   client.SearchObjectsOptions
+
+		commonAttributes = []string{
+			object.AttributeFileName,
+			object.AttributeFilePath,
+			object.AttributeTimestamp,
+		}
+	)
+
+	returningAttributes, indexes := getReturningAttributes(commonAttributes, filters[0].Header())
+
+	if params.Cursor != nil {
+		cursor = *params.Cursor
+	}
+
+	if btoken != nil {
+		opts.WithBearerToken(*btoken)
+	}
+
+	limit, err := getLimit(params.Limit)
+	if err != nil {
+		resp := a.logAndGetErrorResponse("invalid parameter", err)
+		return ctx.JSON(http.StatusBadRequest, resp)
+	}
+
+	// limit already checked in getLimit.
+	opts.SetCount(uint32(limit))
+	resSearch, nextCursor, err := a.pool.SearchObjects(ctx.Request().Context(), cnrID, filters, returningAttributes, cursor, a.signer, opts)
+	if err != nil {
+		resp := a.logAndGetErrorResponse("failed to search objects", err)
+		return ctx.JSON(http.StatusBadRequest, resp)
+	}
+
+	var objects = make([]apiserver.ObjectBaseInfoV2, len(resSearch))
+
+	for i, item := range resSearch {
+		objects[i] = apiserver.ObjectBaseInfoV2{
+			ObjectId: item.ID.String(),
+			Name:     &item.Attributes[indexes.FileName],
+			FilePath: &item.Attributes[indexes.FilePath],
+		}
+	}
+
+	list := &apiserver.ObjectListV2{
+		Objects: objects,
+		Cursor:  nextCursor,
 	}
 
 	ctx.Response().Header().Set(accessControlAllowOriginHeader, "*")
@@ -690,36 +802,6 @@ func title(str string) string {
 	return string(r0) + str[size:]
 }
 
-func headObjectBaseInfo(ctx context.Context, p *pool.Pool, cnrID cid.ID, objID oid.ID, btoken *bearer.Token, signer user.Signer) (*apiserver.ObjectBaseInfo, error) {
-	var prm client.PrmObjectHead
-	attachBearer(&prm, btoken)
-
-	header, err := p.ObjectHead(ctx, cnrID, objID, signer, prm)
-	if err != nil {
-		return nil, fmt.Errorf("head: %w", err)
-	}
-
-	resp := &apiserver.ObjectBaseInfo{
-		Address: apiserver.Address{
-			ContainerId: cnrID.String(),
-			ObjectId:    objID.String(),
-		},
-	}
-
-	for _, attr := range header.Attributes() {
-		switch attr.Key() {
-		case object.AttributeFileName:
-			v := attr.Value()
-			resp.Name = &v
-		case object.AttributeFilePath:
-			v := attr.Value()
-			resp.FilePath = &v
-		}
-	}
-
-	return resp, nil
-}
-
 func parseAddress(containerID, objectID string) (oid.Address, error) {
 	var cnrID cid.ID
 	if err := cnrID.DecodeString(containerID); err != nil {
@@ -1034,35 +1116,19 @@ func (a *RestAPI) GetByAttribute(ctx echo.Context, containerID apiserver.Contain
 		}
 	}
 
-	res, err := a.search(ctx.Request().Context(), btoken, cnrID, attrKey, attrVal, object.MatchStringEqual)
+	objectID, err := a.search(ctx.Request().Context(), btoken, cnrID, attrKey, attrVal, object.MatchStringEqual)
 	if err != nil {
 		resp := a.logAndGetErrorResponse("could not search for objects", err)
 		return ctx.JSON(getResponseCodeFromStatus(err), resp)
 	}
 
-	defer func() {
-		if err = res.Close(); err != nil {
-			zap.L().Error("failed to close resource", zap.Error(err))
-		}
-	}()
-
-	buf := make([]oid.ID, 1)
-
-	n, _ := res.Read(buf)
-	if n == 0 {
-		err = res.Close()
-
-		if err == nil || errors.Is(err, io.EOF) {
-			return ctx.JSON(http.StatusNotFound, util.NewErrorResponse(errors.New("object not found")))
-		}
-
-		resp := a.logAndGetErrorResponse("read object list failed", err)
-		return ctx.JSON(getResponseCodeFromStatus(err), resp)
+	if objectID.IsZero() {
+		return ctx.JSON(http.StatusNotFound, util.NewErrorResponse(errors.New("object not found")))
 	}
 
 	var addrObj oid.Address
 	addrObj.SetContainer(cnrID)
-	addrObj.SetObject(buf[0])
+	addrObj.SetObject(objectID)
 
 	return a.getByAddress(ctx, addrObj, params.Download, btoken, false)
 }
@@ -1089,52 +1155,96 @@ func (a *RestAPI) HeadByAttribute(ctx echo.Context, containerID apiserver.Contai
 		}
 	}
 
-	res, err := a.search(ctx.Request().Context(), btoken, cnrID, attrKey, attrVal, object.MatchStringEqual)
+	objectID, err := a.search(ctx.Request().Context(), btoken, cnrID, attrKey, attrVal, object.MatchStringEqual)
 	if err != nil {
 		resp := a.logAndGetErrorResponse("could not search for objects", err)
 		return ctx.JSON(getResponseCodeFromStatus(err), resp)
 	}
 
-	defer func() {
-		if err = res.Close(); err != nil {
-			zap.L().Error("failed to close resource", zap.Error(err))
-		}
-	}()
-
-	buf := make([]oid.ID, 1)
-
-	n, _ := res.Read(buf)
-	if n == 0 {
-		err = res.Close()
-
-		if err == nil || errors.Is(err, io.EOF) {
-			return ctx.JSON(http.StatusNotFound, util.NewErrorResponse(errors.New("object not found")))
-		}
-
-		resp := a.logAndGetErrorResponse("read object list failed", err)
-		return ctx.JSON(getResponseCodeFromStatus(err), resp)
+	if objectID.IsZero() {
+		return ctx.JSON(http.StatusNotFound, util.NewErrorResponse(errors.New("object not found")))
 	}
 
 	var addrObj oid.Address
 	addrObj.SetContainer(cnrID)
-	addrObj.SetObject(buf[0])
+	addrObj.SetObject(objectID)
 
 	ctx.Response().Header().Set(accessControlAllowOriginHeader, "*")
 
 	return a.headByAddress(ctx, addrObj, params.Download, btoken, false)
 }
 
-func (a *RestAPI) search(ctx context.Context, btoken *bearer.Token, cid cid.ID, key, val string, op object.SearchMatchType) (*client.ObjectListReader, error) {
-	filters := object.NewSearchFilters()
-	filters.AddRootFilter()
+func (a *RestAPI) search(ctx context.Context, btoken *bearer.Token, cid cid.ID, key, val string, op object.SearchMatchType) (oid.ID, error) {
+	var (
+		opts                    client.SearchObjectsOptions
+		filters                 object.SearchFilters
+		timestampAttributeIndex int
+
+		returningAttributes = []string{
+			key,
+		}
+	)
+
 	filters.AddFilter(key, val, op)
 
-	var prm client.PrmObjectSearch
-	prm.SetFilters(filters)
-
-	if btoken != nil {
-		attachBearer(&prm, btoken)
+	if key != object.AttributeTimestamp {
+		returningAttributes = append(returningAttributes, object.AttributeTimestamp)
+		timestampAttributeIndex = 1
 	}
 
-	return a.pool.ObjectSearchInit(ctx, cid, a.signer, prm)
+	if btoken != nil {
+		opts.WithBearerToken(*btoken)
+	}
+
+	searchResult, _, err := a.pool.SearchObjects(ctx, cid, filters, returningAttributes, "", a.signer, opts)
+	if err != nil {
+		return oid.ID{}, fmt.Errorf("search: %w", err)
+	}
+
+	slices.SortFunc(searchResult, func(a, b client.SearchResultItem) int {
+		timestampA, _ := strconv.ParseInt(a.Attributes[timestampAttributeIndex], 10, 64)
+		timestampB, _ := strconv.ParseInt(b.Attributes[timestampAttributeIndex], 10, 64)
+		return cmp.Compare(timestampA, timestampB)
+	})
+
+	if len(searchResult) > 0 {
+		return searchResult[len(searchResult)-1].ID, nil
+	}
+
+	return oid.ID{}, nil
+}
+
+func getReturningAttributes(wellKnownAttributes []string, attribute string) ([]string, attributeIndexes) {
+	var returningAttributes []string
+
+	for i, attr := range wellKnownAttributes {
+		if attr == attribute {
+			returningAttributes = append([]string{attr}, wellKnownAttributes[0:i]...)
+
+			if i < len(wellKnownAttributes)-1 {
+				returningAttributes = append(returningAttributes, wellKnownAttributes[i+1:]...)
+			}
+			break
+		}
+	}
+
+	// attribute not in wellKnownAttributes.
+	if len(returningAttributes) == 0 {
+		returningAttributes = append([]string{attribute}, wellKnownAttributes...)
+	}
+
+	var indexes attributeIndexes
+
+	for i, attr := range returningAttributes {
+		switch attr {
+		case object.AttributeTimestamp:
+			indexes.Timestamp = i
+		case object.AttributeFilePath:
+			indexes.FilePath = i
+		case object.AttributeFileName:
+			indexes.FileName = i
+		}
+	}
+
+	return returningAttributes, indexes
 }
