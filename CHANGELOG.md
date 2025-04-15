@@ -26,6 +26,7 @@ This document outlines major changes between releases.
 - `github.com/stretchr/testify` dependency to `v1.10.0` (#1092)
 - `github.com/testcontainers/testcontainers-go` dependency to `v0.35.0` (#1092)
 - `github.com/getkin/kin-openapi` dependency to `v0.131.0` (#277)
+- `github.com/labstack/echo/v4` dependency to `v4.13.3` (#277)
 
 ## [0.11.1] - 2024-10-28
 
