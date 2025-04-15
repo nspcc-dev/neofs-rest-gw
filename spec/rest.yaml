@@ -338,7 +338,7 @@ paths:
         content:
           '*/*':
             schema:
-              $ref: '#/components/schemas/SearchFilters'
+              $ref: '#/components/schemas/SearchRequest'
         required: true
       responses:
         "200":
@@ -1821,6 +1821,35 @@ components:
         - MatchStringNotEqual
         - MatchNotPresent
         - MatchCommonPrefix
+    SearchRequest:
+      required:
+        - filters
+        - attributes
+      type: object
+      properties:
+        filters:
+          type: array
+          description: It must contain 7 filters as maximum.
+          items:
+            $ref: '#/components/schemas/SearchFilter'
+        attributes:
+          type: array
+          description: Attribute list to be returned for each object. It must contain 7 attributes as maximum.
+          items:
+            type: string
+          example: Timestamp, FileName, FilePath, UserDefined.
+      description: List of SearchFilter elements.
+      example:
+        filters:
+          - key: FileName
+            value: some/prefix
+            match: MatchCommonPrefix
+          - key: CustomAttribute
+            value: tag-value
+            match: MatchStringEqual
+        attributes:
+          - FileName
+          - FilePath
     ObjectList:
       required:
         - objects
@@ -1891,15 +1920,15 @@ components:
     ObjectBaseInfoV2:
       required:
         - objectId
+        - attributes
       type: object
       properties:
         objectId:
           type: string
           example: 
-        name:
-          type: string
-        filePath:
-          type: string
+        attributes:
+          type: object
+          additionalProperties: true
       description: Basic object information.
       example:
         name: name.txt
