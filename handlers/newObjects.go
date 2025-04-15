@@ -12,6 +12,7 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/nspcc-dev/neofs-rest-gw/handlers/apiserver"
 	"github.com/nspcc-dev/neofs-rest-gw/internal/util"
+	"github.com/nspcc-dev/neofs-rest-gw/metrics"
 	"github.com/nspcc-dev/neofs-sdk-go/bearer"
 	"github.com/nspcc-dev/neofs-sdk-go/client"
 	cid "github.com/nspcc-dev/neofs-sdk-go/container/id"
@@ -26,6 +27,10 @@ const maxRangeStart = 4096
 
 // NewUploadContainerObject handler that upload file as object with attributes to NeoFS.
 func (a *RestAPI) NewUploadContainerObject(ctx echo.Context, containerID apiserver.ContainerId, params apiserver.NewUploadContainerObjectParams) error {
+	if a.apiMetric != nil {
+		defer metrics.Elapsed(a.apiMetric.NewUploadContainerObjectDuration)()
+	}
+
 	var (
 		err           error
 		addr          oid.Address
@@ -144,6 +149,10 @@ func (a *RestAPI) NewUploadContainerObject(ctx echo.Context, containerID apiserv
 
 // NewGetContainerObject handler that returns object (using container ID and object ID).
 func (a *RestAPI) NewGetContainerObject(ctx echo.Context, containerID apiserver.ContainerId, objectID apiserver.ObjectId, params apiserver.NewGetContainerObjectParams) error {
+	if a.apiMetric != nil {
+		defer metrics.Elapsed(a.apiMetric.NewGetContainerObjectDuration)()
+	}
+
 	principal, err := getPrincipal(ctx)
 	if err != nil {
 		return ctx.JSON(http.StatusBadRequest, util.NewErrorResponse(err))
@@ -174,6 +183,10 @@ func (a *RestAPI) NewGetContainerObject(ctx echo.Context, containerID apiserver.
 
 // NewHeadContainerObject handler that returns object info (using container ID and object ID).
 func (a *RestAPI) NewHeadContainerObject(ctx echo.Context, containerID apiserver.ContainerId, objectID apiserver.ObjectId, params apiserver.NewHeadContainerObjectParams) error {
+	if a.apiMetric != nil {
+		defer metrics.Elapsed(a.apiMetric.NewHeadContainerObjectDuration)()
+	}
+
 	principal, err := getPrincipal(ctx)
 	if err != nil {
 		return ctx.JSON(http.StatusBadRequest, util.NewErrorResponse(err))
@@ -203,6 +216,10 @@ func (a *RestAPI) NewHeadContainerObject(ctx echo.Context, containerID apiserver
 
 // NewGetByAttribute handler that returns object (payload and attributes) by a specific attribute.
 func (a *RestAPI) NewGetByAttribute(ctx echo.Context, containerID apiserver.ContainerId, attrKey apiserver.AttrKey, attrVal apiserver.AttrVal, params apiserver.NewGetByAttributeParams) error {
+	if a.apiMetric != nil {
+		defer metrics.Elapsed(a.apiMetric.NewGetByAttributeDuration)()
+	}
+
 	principal, err := getPrincipal(ctx)
 	if err != nil {
 		return ctx.JSON(http.StatusBadRequest, util.NewErrorResponse(err))
@@ -247,6 +264,10 @@ func (a *RestAPI) NewGetByAttribute(ctx echo.Context, containerID apiserver.Cont
 
 // NewHeadByAttribute handler that returns object info (payload and attributes) by a specific attribute.
 func (a *RestAPI) NewHeadByAttribute(ctx echo.Context, containerID apiserver.ContainerId, attrKey apiserver.AttrKey, attrVal apiserver.AttrVal, params apiserver.NewHeadByAttributeParams) error {
+	if a.apiMetric != nil {
+		defer metrics.Elapsed(a.apiMetric.NewHeadByAttributeDuration)()
+	}
+
 	principal, err := getPrincipal(ctx)
 	if err != nil {
 		return ctx.JSON(http.StatusBadRequest, util.NewErrorResponse(err))

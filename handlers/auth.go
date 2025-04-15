@@ -11,6 +11,7 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/nspcc-dev/neofs-rest-gw/handlers/apiserver"
 	"github.com/nspcc-dev/neofs-rest-gw/internal/util"
+	"github.com/nspcc-dev/neofs-rest-gw/metrics"
 	neofscrypto "github.com/nspcc-dev/neofs-sdk-go/crypto"
 	"github.com/nspcc-dev/neofs-sdk-go/user"
 )
@@ -66,6 +67,10 @@ func newContainerParams(common headersParams, token apiserver.Bearer) containerT
 
 // Auth handler that forms bearer token to sign.
 func (a *RestAPI) Auth(ctx echo.Context, params apiserver.AuthParams) error {
+	if a.apiMetric != nil {
+		defer metrics.Elapsed(a.apiMetric.AuthDuration)()
+	}
+
 	var tokens []apiserver.Bearer
 	if err := ctx.Bind(&tokens); err != nil {
 		return ctx.JSON(http.StatusBadRequest, a.logAndGetErrorResponse("bind", err))
@@ -106,6 +111,10 @@ func (a *RestAPI) Auth(ctx echo.Context, params apiserver.AuthParams) error {
 
 // FormBinaryBearer handler that forms binary bearer token using headers with body and signature.
 func (a *RestAPI) FormBinaryBearer(ctx echo.Context, params apiserver.FormBinaryBearerParams) error {
+	if a.apiMetric != nil {
+		defer metrics.Elapsed(a.apiMetric.FormBinaryBearerDuration)()
+	}
+
 	principal, err := getPrincipal(ctx)
 	if err != nil {
 		return ctx.JSON(http.StatusBadRequest, util.NewErrorResponse(err))

@@ -25,6 +25,7 @@ import (
 	"github.com/nspcc-dev/neo-go/pkg/crypto/keys"
 	"github.com/nspcc-dev/neofs-rest-gw/handlers/apiserver"
 	"github.com/nspcc-dev/neofs-rest-gw/internal/util"
+	"github.com/nspcc-dev/neofs-rest-gw/metrics"
 	"github.com/nspcc-dev/neofs-sdk-go/bearer"
 	"github.com/nspcc-dev/neofs-sdk-go/client"
 	apistatus "github.com/nspcc-dev/neofs-sdk-go/client/status"
@@ -71,6 +72,10 @@ type attributeIndexes struct {
 
 // PutObject handler that uploads object to NeoFS.
 func (a *RestAPI) PutObject(ctx echo.Context, params apiserver.PutObjectParams) error {
+	if a.apiMetric != nil {
+		defer metrics.Elapsed(a.apiMetric.PutObjectDuration)()
+	}
+
 	principal, err := getPrincipal(ctx)
 	if err != nil {
 		return ctx.JSON(http.StatusBadRequest, util.NewErrorResponse(err))
@@ -142,6 +147,10 @@ func (a *RestAPI) PutObject(ctx echo.Context, params apiserver.PutObjectParams) 
 
 // GetObjectInfo handler that get object info.
 func (a *RestAPI) GetObjectInfo(ctx echo.Context, containerID apiserver.ContainerId, objectID apiserver.ObjectId, params apiserver.GetObjectInfoParams) error {
+	if a.apiMetric != nil {
+		defer metrics.Elapsed(a.apiMetric.GetObjectInfoDuration)()
+	}
+
 	addr, err := parseAddress(containerID, objectID)
 	if err != nil {
 		resp := a.logAndGetErrorResponse("invalid address", err)
@@ -239,6 +248,10 @@ func (a *RestAPI) GetObjectInfo(ctx echo.Context, containerID apiserver.Containe
 
 // DeleteObject handler that removes object from NeoFS.
 func (a *RestAPI) DeleteObject(ctx echo.Context, containerID apiserver.ContainerId, objectID apiserver.ObjectId, params apiserver.DeleteObjectParams) error {
+	if a.apiMetric != nil {
+		defer metrics.Elapsed(a.apiMetric.DeleteObjectDuration)()
+	}
+
 	addr, err := parseAddress(containerID, objectID)
 	if err != nil {
 		resp := a.logAndGetErrorResponse("invalid address", err)
@@ -283,6 +296,10 @@ func (a *RestAPI) DeleteObject(ctx echo.Context, containerID apiserver.Container
 
 // SearchObjects handler that searches object in NeoFS.
 func (a *RestAPI) SearchObjects(ctx echo.Context, containerID apiserver.ContainerId, params apiserver.SearchObjectsParams) error {
+	if a.apiMetric != nil {
+		defer metrics.Elapsed(a.apiMetric.SearchObjectsDuration)()
+	}
+
 	var cnrID cid.ID
 	if err := cnrID.DecodeString(containerID); err != nil {
 		resp := a.logAndGetErrorResponse("invalid container id", err)
@@ -389,6 +406,10 @@ func (a *RestAPI) SearchObjects(ctx echo.Context, containerID apiserver.Containe
 
 // V2SearchObjects handler that searches object in NeoFS.
 func (a *RestAPI) V2SearchObjects(ctx echo.Context, containerID apiserver.ContainerId, params apiserver.V2SearchObjectsParams) error {
+	if a.apiMetric != nil {
+		defer metrics.Elapsed(a.apiMetric.V2SearchObjectsDuration)()
+	}
+
 	var cnrID cid.ID
 	if err := cnrID.DecodeString(containerID); err != nil {
 		resp := a.logAndGetErrorResponse("invalid container id", err)
@@ -481,6 +502,10 @@ func (a *RestAPI) V2SearchObjects(ctx echo.Context, containerID apiserver.Contai
 
 // GetContainerObject handler that returns object (using container ID and object ID).
 func (a *RestAPI) GetContainerObject(ctx echo.Context, containerID apiserver.ContainerId, objectID apiserver.ObjectId, params apiserver.GetContainerObjectParams) error {
+	if a.apiMetric != nil {
+		defer metrics.Elapsed(a.apiMetric.GetContainerObjectDuration)()
+	}
+
 	principal, err := getPrincipal(ctx)
 	if err != nil {
 		return ctx.JSON(http.StatusBadRequest, util.NewErrorResponse(err))
@@ -566,6 +591,10 @@ func (a *RestAPI) getByAddress(ctx echo.Context, addr oid.Address, downloadParam
 
 // HeadContainerObject handler that returns object info (using container ID and object ID).
 func (a *RestAPI) HeadContainerObject(ctx echo.Context, containerID apiserver.ContainerId, objectID apiserver.ObjectId, params apiserver.HeadContainerObjectParams) error {
+	if a.apiMetric != nil {
+		defer metrics.Elapsed(a.apiMetric.HeadContainerObjectDuration)()
+	}
+
 	principal, err := getPrincipal(ctx)
 	if err != nil {
 		return ctx.JSON(http.StatusBadRequest, util.NewErrorResponse(err))
@@ -952,6 +981,10 @@ func attachOwner(obj *object.Object, btoken *bearer.Token) {
 
 // UploadContainerObject handler that upload file as object with attributes to NeoFS.
 func (a *RestAPI) UploadContainerObject(ctx echo.Context, containerID apiserver.ContainerId, _ apiserver.UploadContainerObjectParams) error {
+	if a.apiMetric != nil {
+		defer metrics.Elapsed(a.apiMetric.UploadContainerObjectDuration)()
+	}
+
 	var (
 		header *multipart.FileHeader
 		file   multipart.File
@@ -1101,6 +1134,10 @@ func (a *RestAPI) setOwner(obj *object.Object, btoken *bearer.Token) {
 
 // GetByAttribute handler that returns object (payload and attributes) by a specific attribute.
 func (a *RestAPI) GetByAttribute(ctx echo.Context, containerID apiserver.ContainerId, attrKey apiserver.AttrKey, attrVal apiserver.AttrVal, params apiserver.GetByAttributeParams) error {
+	if a.apiMetric != nil {
+		defer metrics.Elapsed(a.apiMetric.GetByAttributeDuration)()
+	}
+
 	principal, err := getPrincipal(ctx)
 	if err != nil {
 		return ctx.JSON(http.StatusBadRequest, util.NewErrorResponse(err))
@@ -1140,6 +1177,10 @@ func (a *RestAPI) GetByAttribute(ctx echo.Context, containerID apiserver.Contain
 
 // HeadByAttribute handler that returns object info (payload and attributes) by a specific attribute.
 func (a *RestAPI) HeadByAttribute(ctx echo.Context, containerID apiserver.ContainerId, attrKey apiserver.AttrKey, attrVal apiserver.AttrVal, params apiserver.HeadByAttributeParams) error {
+	if a.apiMetric != nil {
+		defer metrics.Elapsed(a.apiMetric.HeadByAttributeDuration)()
+	}
+
 	principal, err := getPrincipal(ctx)
 	if err != nil {
 		return ctx.JSON(http.StatusBadRequest, util.NewErrorResponse(err))

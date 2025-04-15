@@ -6,12 +6,17 @@ import (
 
 	"github.com/labstack/echo/v4"
 	"github.com/nspcc-dev/neofs-rest-gw/handlers/apiserver"
+	"github.com/nspcc-dev/neofs-rest-gw/metrics"
 	"github.com/nspcc-dev/neofs-sdk-go/client"
 	"github.com/nspcc-dev/neofs-sdk-go/user"
 )
 
 // GetBalance handler that get balance from NeoFS.
 func (a *RestAPI) GetBalance(ctx echo.Context, address string) error {
+	if a.apiMetric != nil {
+		defer metrics.Elapsed(a.apiMetric.GetBalanceDuration)()
+	}
+
 	var ownerID user.ID
 	if err := ownerID.DecodeString(address); err != nil {
 		resp := a.logAndGetErrorResponse("parse address", err)
