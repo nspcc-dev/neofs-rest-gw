@@ -1365,7 +1365,7 @@ func restObjectsSearchV2(ctx context.Context, t *testing.T, p *pool.Pool, owner 
 	bearerTokens := makeAuthTokenRequest(ctx, t, []apiserver.Bearer{bearer}, httpClient, false)
 	bearerToken := bearerTokens[0]
 
-	search := &apiserver.SearchFilters{
+	search := &apiserver.SearchRequest{
 		Filters: []apiserver.SearchFilter{
 			{
 				Key:   userKey,
@@ -1373,6 +1373,7 @@ func restObjectsSearchV2(ctx context.Context, t *testing.T, p *pool.Pool, owner 
 				Value: userValue,
 			},
 		},
+		Attributes: []string{object.AttributeFileName, object.AttributeFilePath},
 	}
 
 	body, err := json.Marshal(search)
@@ -1398,8 +1399,9 @@ func restObjectsSearchV2(ctx context.Context, t *testing.T, p *pool.Pool, owner 
 
 		objBaseInfo := resp.Objects[0]
 		require.Contains(t, idsGroup, objBaseInfo.ObjectId)
-		require.Equal(t, objectName, *objBaseInfo.Name)
-		require.Equal(t, filePath, *objBaseInfo.FilePath)
+		require.Equal(t, userValue, objBaseInfo.Attributes[userKey])
+		require.Equal(t, objectName, objBaseInfo.Attributes[object.AttributeFileName])
+		require.Equal(t, filePath, objBaseInfo.Attributes[object.AttributeFilePath])
 	})
 
 	t.Run("check second object", func(t *testing.T) {
@@ -1417,8 +1419,31 @@ func restObjectsSearchV2(ctx context.Context, t *testing.T, p *pool.Pool, owner 
 
 		objBaseInfo := resp.Objects[0]
 		require.Contains(t, idsGroup, objBaseInfo.ObjectId)
-		require.Equal(t, objectName, *objBaseInfo.Name)
-		require.Equal(t, filePath, *objBaseInfo.FilePath)
+		require.Equal(t, userValue, objBaseInfo.Attributes[userKey])
+		require.Equal(t, objectName, objBaseInfo.Attributes[object.AttributeFileName])
+		require.Equal(t, filePath, objBaseInfo.Attributes[object.AttributeFilePath])
+	})
+
+	t.Run("returning attribute limit", func(t *testing.T) {
+		limitedSearch := &apiserver.SearchRequest{
+			Filters: []apiserver.SearchFilter{
+				{
+					Key:   userKey,
+					Match: apiserver.MatchStringEqual,
+					Value: userValue,
+				},
+			},
+			Attributes: []string{"a", "a", "a", "a", "a", "a", "a", "a"},
+		}
+		limitedBody, err := json.Marshal(limitedSearch)
+		require.NoError(t, err)
+
+		request, err := http.NewRequest(http.MethodPost, testHost+"/v2/objects/"+cnrID.EncodeToString()+"/search", bytes.NewReader(limitedBody))
+		require.NoError(t, err)
+		prepareCommonHeaders(request.Header, bearerToken)
+
+		resp := &apiserver.ObjectListV2{}
+		doRequest(t, httpClient, request, http.StatusBadRequest, resp)
 	})
 }
 

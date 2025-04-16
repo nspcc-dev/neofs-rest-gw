@@ -8,6 +8,7 @@ This document outlines major changes between releases.
 - `logger.encoding` config option (#273)
 - `logger.timestamp` config option (#273)
 - `/v2/objects/{containerId}/search` entrypoint with `cursor` support (instead of `offset`) for objects search (#276)
+- Ability to request and return attributes for `search v2` (#277)
 
 ### Fixed
 - Double JSON response output for failed PUT operation (#265)
@@ -24,6 +25,8 @@ This document outlines major changes between releases.
 - `github.com/nspcc-dev/neo-go` dependency to `v0.108.1` (#1092)
 - `github.com/stretchr/testify` dependency to `v1.10.0` (#1092)
 - `github.com/testcontainers/testcontainers-go` dependency to `v0.35.0` (#1092)
+- `github.com/getkin/kin-openapi` dependency to `v0.131.0` (#277)
+- `github.com/labstack/echo/v4` dependency to `v4.13.3` (#277)
 
 ## [0.11.1] - 2024-10-28
 

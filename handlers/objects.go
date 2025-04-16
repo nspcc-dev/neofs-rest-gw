@@ -45,6 +45,8 @@ const (
 
 	// according to the [http] package.
 	defaultMaxMemory = 32 << 20 // 32 MB
+
+	searchRequestMaxAttributes = 7
 )
 
 type readCloser struct {
@@ -308,7 +310,7 @@ func (a *RestAPI) SearchObjects(ctx echo.Context, containerID apiserver.Containe
 		return ctx.JSON(http.StatusBadRequest, a.logAndGetErrorResponse("bind", err))
 	}
 
-	filters, err := util.ToNativeFilters(searchFilters)
+	filters, err := util.ToNativeFilters(searchFilters.Filters)
 	if err != nil {
 		resp := a.logAndGetErrorResponse("failed to transform to native", err)
 		return ctx.JSON(http.StatusBadRequest, resp)
@@ -409,12 +411,16 @@ func (a *RestAPI) V2SearchObjects(ctx echo.Context, containerID apiserver.Contai
 		return ctx.JSON(http.StatusBadRequest, resp)
 	}
 
-	var searchFilters apiserver.SearchFilters
+	var searchFilters apiserver.SearchRequest
 	if err = ctx.Bind(&searchFilters); err != nil {
 		return ctx.JSON(http.StatusBadRequest, a.logAndGetErrorResponse("bind", err))
 	}
 
-	filters, err := util.ToNativeFilters(searchFilters)
+	if len(searchFilters.Attributes) > searchRequestMaxAttributes {
+		return ctx.JSON(http.StatusBadRequest, a.logAndGetErrorResponse("attribute amount limit reached", err))
+	}
+
+	filters, err := util.ToNativeFilters(searchFilters.Filters)
 	if err != nil {
 		resp := a.logAndGetErrorResponse("failed to transform to native", err)
 		return ctx.JSON(http.StatusBadRequest, resp)
@@ -424,14 +430,8 @@ func (a *RestAPI) V2SearchObjects(ctx echo.Context, containerID apiserver.Contai
 		cursor string
 		opts   client.SearchObjectsOptions
 
-		commonAttributes = []string{
-			object.AttributeFileName,
-			object.AttributeFilePath,
-			object.AttributeTimestamp,
-		}
+		returningAttributes = append([]string{filters[0].Header()}, searchFilters.Attributes...)
 	)
-
-	returningAttributes, indexes := getReturningAttributes(commonAttributes, filters[0].Header())
 
 	if params.Cursor != nil {
 		cursor = *params.Cursor
@@ -458,10 +458,15 @@ func (a *RestAPI) V2SearchObjects(ctx echo.Context, containerID apiserver.Contai
 	var objects = make([]apiserver.ObjectBaseInfoV2, len(resSearch))
 
 	for i, item := range resSearch {
+		var attrs = make(map[string]any, len(returningAttributes))
+
+		for j := range returningAttributes {
+			attrs[returningAttributes[j]] = item.Attributes[j]
+		}
+
 		objects[i] = apiserver.ObjectBaseInfoV2{
-			ObjectId: item.ID.String(),
-			Name:     &item.Attributes[indexes.FileName],
-			FilePath: &item.Attributes[indexes.FilePath],
+			ObjectId:   item.ID.String(),
+			Attributes: attrs,
 		}
 	}
 
