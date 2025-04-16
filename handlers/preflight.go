@@ -85,7 +85,7 @@ func (a *RestAPI) OptionsObjectsGetDelete(ctx echo.Context, _ apiserver.Containe
 func (a *RestAPI) OptionsContainersPutList(ctx echo.Context) error {
 	ctx.Response().Header().Set(accessControlAllowOriginHeader, allOrigins)
 	ctx.Response().Header().Set(accessControlAllowHeadersHeader, allowHeaders)
-	ctx.Response().Header().Set(accessControlAllowMethodsHeader, allowMethods(methodGet, methodPut))
+	ctx.Response().Header().Set(accessControlAllowMethodsHeader, allowMethods(methodGet, methodPut, methodPost))
 	return ctx.NoContent(http.StatusOK)
 }
 

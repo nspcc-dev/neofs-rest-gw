@@ -127,7 +127,9 @@ func runTests(ctx context.Context, t *testing.T, key *keys.PrivateKey, node stri
 	t.Run("rest form full binary bearer", func(t *testing.T) { formFullBinaryBearer(ctx, t) })
 
 	t.Run("rest put container invalid", func(t *testing.T) { restContainerPutInvalid(ctx, t) })
+	t.Run("rest post container invalid", func(t *testing.T) { restContainerPostInvalid(ctx, t) })
 	t.Run("rest put container", func(t *testing.T) { restContainerPut(ctx, t, clientPool) })
+	t.Run("rest post container", func(t *testing.T) { restContainerPost(ctx, t, clientPool) })
 	t.Run("rest get container", func(t *testing.T) { restContainerGet(ctx, t, owner, cnrID) })
 	t.Run("rest delete container", func(t *testing.T) { restContainerDelete(ctx, t, clientPool, owner, signer) })
 	t.Run("rest put container eacl", func(t *testing.T) { restContainerEACLPut(ctx, t, clientPool, owner, signer) })
@@ -356,10 +358,10 @@ func mixTokens(ctx context.Context, t *testing.T, cnrID cid.ID) {
 	containerSetEACLToken := tokens[2]
 
 	// check reject object token when container tokens is required
-	checkPutContainerWithError(t, httpClient, objectToken)
+	checkPostContainerWithError(t, httpClient, objectToken)
 
 	// check reject wrong verb container token
-	checkPutContainerWithError(t, httpClient, containerSetEACLToken)
+	checkPostContainerWithError(t, httpClient, containerSetEACLToken)
 
 	// check reject wrong verb container token
 	checkDeleteContainerWithError(t, httpClient, cnrID, containerSetEACLToken)
@@ -433,12 +435,12 @@ func formFullBinaryBearer(ctx context.Context, t *testing.T) {
 	require.Equal(t, eacl.RoleOthers, actualTarget.Role())
 }
 
-func checkPutContainerWithError(t *testing.T, httpClient *http.Client, token *handlers.BearerToken) {
+func checkPostContainerWithError(t *testing.T, httpClient *http.Client, token *handlers.BearerToken) {
 	reqURL, err := url.Parse(testHost + "/v1/containers")
 	require.NoError(t, err)
-	body, err := json.Marshal(&apiserver.ContainerPutInfo{ContainerName: "container"})
+	body, err := json.Marshal(&apiserver.ContainerPostInfo{ContainerName: "container"})
 	require.NoError(t, err)
-	request, err := http.NewRequest(http.MethodPut, reqURL.String(), bytes.NewReader(body))
+	request, err := http.NewRequest(http.MethodPost, reqURL.String(), bytes.NewReader(body))
 	require.NoError(t, err)
 	prepareCommonHeaders(request.Header, token)
 
@@ -1726,9 +1728,39 @@ func restContainerPutInvalid(ctx context.Context, t *testing.T) {
 	query.Add(walletConnectQuery, strconv.FormatBool(useWalletConnect))
 	reqURL.RawQuery = query.Encode()
 
-	body, err := json.Marshal(&apiserver.ContainerPutInfo{ContainerName: "nameWithCapitalLetters"})
+	body, err := json.Marshal(&apiserver.ContainerPostInfo{ContainerName: "nameWithCapitalLetters"})
 	require.NoError(t, err)
 	request, err := http.NewRequest(http.MethodPut, reqURL.String(), bytes.NewReader(body))
+	require.NoError(t, err)
+	prepareCommonHeaders(request.Header, bearerToken)
+
+	resp := &apiserver.ErrorResponse{}
+	doRequest(t, httpClient, request, http.StatusInternalServerError, resp)
+	require.Equal(t, uint32(0), resp.Code)
+	require.Equal(t, apiserver.GW, resp.Type)
+}
+
+func restContainerPostInvalid(ctx context.Context, t *testing.T) {
+	bearer := apiserver.Bearer{
+		Container: &apiserver.Rule{
+			Verb: apiserver.VerbPUT,
+		},
+	}
+
+	httpClient := &http.Client{Timeout: 30 * time.Second}
+	bearerTokens := makeAuthTokenRequest(ctx, t, []apiserver.Bearer{bearer}, httpClient, false)
+	bearerToken := bearerTokens[0]
+
+	reqURL, err := url.Parse(testHost + "/v1/containers")
+	require.NoError(t, err)
+	query := reqURL.Query()
+	query.Add("name-scope-global", "true")
+	query.Add(walletConnectQuery, strconv.FormatBool(useWalletConnect))
+	reqURL.RawQuery = query.Encode()
+
+	body, err := json.Marshal(&apiserver.ContainerPostInfo{ContainerName: "nameWithCapitalLetters"})
+	require.NoError(t, err)
+	request, err := http.NewRequest(http.MethodPost, reqURL.String(), bytes.NewReader(body))
 	require.NoError(t, err)
 	prepareCommonHeaders(request.Header, bearerToken)
 
@@ -1755,7 +1787,7 @@ func restContainerPut(ctx context.Context, t *testing.T, clientPool *pool.Pool) 
 	}
 
 	// try to create container without name but with name-scope-global
-	body, err := json.Marshal(&apiserver.ContainerPutInfo{})
+	body, err := json.Marshal(&apiserver.ContainerPostInfo{})
 	require.NoError(t, err)
 
 	reqURL, err := url.Parse(testHost + "/v1/containers")
@@ -1772,7 +1804,7 @@ func restContainerPut(ctx context.Context, t *testing.T, clientPool *pool.Pool) 
 	doRequest(t, httpClient, request, http.StatusInternalServerError, nil)
 
 	// create container with name in local scope
-	containerPutInfo := &apiserver.ContainerPutInfo{
+	containerPutInfo := &apiserver.ContainerPostInfo{
 		Attributes: []apiserver.Attribute{{
 			Key:   attrKey,
 			Value: attrValue,
@@ -1791,13 +1823,85 @@ func restContainerPut(ctx context.Context, t *testing.T, clientPool *pool.Pool) 
 	require.NoError(t, err)
 	prepareCommonHeaders(request.Header, bearerToken)
 
-	addr := &apiserver.PutContainerOK{}
+	addr := &apiserver.PostContainerOK{}
 	doRequest(t, httpClient, request, http.StatusOK, addr)
 
 	var CID cid.ID
 	err = CID.DecodeString(addr.ContainerId)
 	require.NoError(t, err)
 	fmt.Println(CID.String())
+
+	cnr, err := clientPool.ContainerGet(ctx, CID, client.PrmContainerGet{})
+	require.NoError(t, err)
+
+	cnrAttr := maps.Collect(cnr.Attributes())
+
+	for key, val := range userAttributes {
+		require.Equal(t, val, cnrAttr[key])
+	}
+}
+
+func restContainerPost(ctx context.Context, t *testing.T, clientPool *pool.Pool) {
+	bearer := apiserver.Bearer{
+		Container: &apiserver.Rule{
+			Verb: apiserver.VerbPUT,
+		},
+	}
+
+	httpClient := &http.Client{Timeout: 30 * time.Second}
+	bearerTokens := makeAuthTokenRequest(ctx, t, []apiserver.Bearer{bearer}, httpClient, false)
+	bearerToken := bearerTokens[0]
+
+	attrKey, attrValue := "User-Attribute", "user value"
+	userAttributes := map[string]string{
+		attrKey: attrValue,
+	}
+
+	// try to create container without name but with name-scope-global
+	body, err := json.Marshal(&apiserver.ContainerPostInfo{})
+	require.NoError(t, err)
+
+	reqURL, err := url.Parse(testHost + "/v1/containers")
+	require.NoError(t, err)
+	query := reqURL.Query()
+	query.Add("name-scope-global", "true")
+	query.Add(walletConnectQuery, strconv.FormatBool(useWalletConnect))
+	reqURL.RawQuery = query.Encode()
+
+	request, err := http.NewRequest(http.MethodPost, reqURL.String(), bytes.NewReader(body))
+	require.NoError(t, err)
+	prepareCommonHeaders(request.Header, bearerToken)
+
+	doRequest(t, httpClient, request, http.StatusInternalServerError, nil)
+
+	// create container with name in local scope
+	containerPutInfo := &apiserver.ContainerPostInfo{
+		Attributes: []apiserver.Attribute{{
+			Key:   attrKey,
+			Value: attrValue,
+		}},
+	}
+	body, err = json.Marshal(containerPutInfo)
+	require.NoError(t, err)
+
+	reqURL, err = url.Parse(testHost + "/v1/containers")
+	require.NoError(t, err)
+	query = reqURL.Query()
+	query.Add(walletConnectQuery, strconv.FormatBool(useWalletConnect))
+	reqURL.RawQuery = query.Encode()
+
+	request, err = http.NewRequest(http.MethodPost, reqURL.String(), bytes.NewReader(body))
+	require.NoError(t, err)
+	prepareCommonHeaders(request.Header, bearerToken)
+
+	addr := &apiserver.PostContainerOK{}
+	responseHeaders, _ := doRequest(t, httpClient, request, http.StatusCreated, addr)
+
+	var CID cid.ID
+	err = CID.DecodeString(addr.ContainerId)
+	require.NoError(t, err)
+	fmt.Println(CID.String())
+	require.Equal(t, handlers.LocationHeader(CID), responseHeaders.Get("Location"))
 
 	cnr, err := clientPool.ContainerGet(ctx, CID, client.PrmContainerGet{})
 	require.NoError(t, err)

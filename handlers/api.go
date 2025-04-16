@@ -14,6 +14,7 @@ import (
 	"github.com/nspcc-dev/neofs-rest-gw/internal/cache"
 	"github.com/nspcc-dev/neofs-rest-gw/internal/util"
 	"github.com/nspcc-dev/neofs-rest-gw/metrics"
+	cid "github.com/nspcc-dev/neofs-sdk-go/container/id"
 	"github.com/nspcc-dev/neofs-sdk-go/netmap"
 	"github.com/nspcc-dev/neofs-sdk-go/pool"
 	"github.com/nspcc-dev/neofs-sdk-go/session"
@@ -61,6 +62,7 @@ const (
 
 	accessControlAllowOriginHeader = "Access-Control-Allow-Origin"
 	authorizationHeader            = "Authorization"
+	locationHeader                 = "Location"
 )
 
 //go:generate go run github.com/deepmap/oapi-codegen/cmd/oapi-codegen --config=server.cfg.yaml ../spec/rest.yaml
@@ -183,4 +185,9 @@ func (a *RestAPI) StopServices() {
 		a.prometheusService.ShutDown(ctx)
 	}()
 	wg.Wait()
+}
+
+// LocationHeader generates Location header for container creation request.
+func LocationHeader(containerID cid.ID) string {
+	return fmt.Sprintf("/v1/containers/%s", containerID.EncodeToString())
 }
