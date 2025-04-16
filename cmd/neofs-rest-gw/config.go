@@ -19,7 +19,6 @@ import (
 	"github.com/nspcc-dev/neofs-rest-gw/metrics"
 	"github.com/nspcc-dev/neofs-sdk-go/client"
 	"github.com/nspcc-dev/neofs-sdk-go/pool"
-	"github.com/nspcc-dev/neofs-sdk-go/stat"
 	"github.com/nspcc-dev/neofs-sdk-go/user"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
@@ -563,11 +562,14 @@ func newNeofsAPI(ctx context.Context, logger *zap.Logger, v *viper.Viper) (*hand
 	prm.SetClientRebalanceInterval(v.GetDuration(cfgRebalance))
 	prm.SetErrorThreshold(v.GetUint32(cfgPoolErrorThreshold))
 
-	poolStat := stat.NewPoolStatistic()
-	prm.SetStatisticCallback(poolStat.OperationCallback)
-
 	for _, peer := range fetchPeers(logger, v) {
 		prm.AddNode(peer)
+	}
+
+	prometheusConfig := metrics.Config{Enabled: v.GetBool(cfgPrometheusEnabled), Address: v.GetString(cfgPrometheusAddress)}
+	if prometheusConfig.Enabled {
+		poolStat := metrics.NewPoolMetrics()
+		prm.SetStatisticCallback(poolStat.OperationCallback)
 	}
 
 	p, err := pool.NewPool(prm)
@@ -591,11 +593,9 @@ func newNeofsAPI(ctx context.Context, logger *zap.Logger, v *viper.Viper) (*hand
 
 	pprofConfig := metrics.Config{Enabled: v.GetBool(cfgPprofEnabled), Address: v.GetString(cfgPprofAddress)}
 	apiPrm.PprofService = metrics.NewPprofService(logger, pprofConfig)
-
-	prometheusConfig := metrics.Config{Enabled: v.GetBool(cfgPrometheusEnabled), Address: v.GetString(cfgPrometheusAddress)}
 	apiPrm.PrometheusService = metrics.NewPrometheusService(logger, prometheusConfig)
 	if prometheusConfig.Enabled {
-		apiPrm.GateMetric = metrics.NewGateMetrics(poolStat)
+		apiPrm.GateMetric = metrics.NewGateMetrics()
 		apiPrm.GateMetric.SetGWVersion(Version)
 
 		apiPrm.ApiMetric = metrics.NewApiMetrics()
