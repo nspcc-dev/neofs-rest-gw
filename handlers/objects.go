@@ -279,13 +279,7 @@ func (a *RestAPI) DeleteObject(ctx echo.Context, containerID apiserver.Container
 		prm.WithBearerToken(*btoken)
 	}
 
-	cl, err := a.pool.RawClient()
-	if err != nil {
-		resp := a.logAndGetErrorResponse("failed to get client", err)
-		return ctx.JSON(http.StatusBadRequest, resp)
-	}
-
-	if _, err = cl.ObjectDelete(ctx.Request().Context(), addr.Container(), addr.Object(), a.signer, prm); err != nil {
+	if _, err = a.pool.ObjectDelete(ctx.Request().Context(), addr.Container(), addr.Object(), a.signer, prm); err != nil {
 		resp := a.logAndGetErrorResponse("failed to delete object", err)
 		return ctx.JSON(http.StatusBadRequest, resp)
 	}
