@@ -42,19 +42,20 @@ const (
 	defaultMaxObjectPayloadBufferSize = 4 << 20
 
 	// Pool config.
-	cmdNodeDialTimeout      = "node-dial-timeout"
-	cfgNodeDialTimeout      = "pool." + cmdNodeDialTimeout
-	cmdHealthcheckTimeout   = "healthcheck-timeout"
-	cfgHealthcheckTimeout   = "pool." + cmdHealthcheckTimeout
-	cmdRebalance            = "rebalance-timer"
-	cfgRebalance            = "pool." + cmdRebalance
-	cfgPoolErrorThreshold   = "pool.error-threshold"
-	cfgPoolDefaultTimestamp = "pool.default-timestamp"
-	cmdPeers                = "peers"
-	cfgPeers                = "pool." + cmdPeers
-	cfgPeerAddress          = "address"
-	cfgPeerPriority         = "priority"
-	cfgPeerWeight           = "weight"
+	cmdNodeDialTimeout        = "node-dial-timeout"
+	cfgNodeDialTimeout        = "pool." + cmdNodeDialTimeout
+	cmdHealthcheckTimeout     = "healthcheck-timeout"
+	cfgHealthcheckTimeout     = "pool." + cmdHealthcheckTimeout
+	cmdRebalance              = "rebalance-timer"
+	cfgRebalance              = "pool." + cmdRebalance
+	cfgPoolErrorThreshold     = "pool.error-threshold"
+	cfgPoolDefaultTimestamp   = "pool.default-timestamp"
+	cmdPeers                  = "peers"
+	cfgPeers                  = "pool." + cmdPeers
+	cfgPeerAddress            = "address"
+	cfgPeerPriority           = "priority"
+	cfgPeerWeight             = "weight"
+	cfgWaiterOperationTimeout = "pool.container_ops_timeout"
 
 	// Metrics / Profiler.
 	cfgPrometheusEnabled = "prometheus.enabled"
@@ -607,7 +608,10 @@ func newNeofsAPI(ctx context.Context, logger *zap.Logger, v *viper.Viper) (*hand
 	}
 
 	apiPrm.DefaultTimestamp = v.GetBool(cfgPoolDefaultTimestamp)
-	apiPrm.WaiterOperationTimeout = time.Duration(uint64(ni.MsPerBlock())*4) * time.Millisecond
+	apiPrm.WaiterOperationTimeout = v.GetDuration(cfgWaiterOperationTimeout)
+	if apiPrm.WaiterOperationTimeout == 0 {
+		apiPrm.WaiterOperationTimeout = time.Duration(uint64(ni.MsPerBlock())*4) * time.Millisecond
+	}
 
 	return handlers.NewAPI(&apiPrm)
 }
