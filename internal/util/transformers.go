@@ -4,6 +4,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"strconv"
 
 	"github.com/nspcc-dev/neofs-rest-gw/handlers/apiserver"
 	"github.com/nspcc-dev/neofs-sdk-go/bearer"
@@ -373,6 +374,14 @@ func ToNativeMatchFilter(s apiserver.SearchMatch) (object.SearchMatchType, error
 		return object.MatchNotPresent, nil
 	case apiserver.MatchCommonPrefix:
 		return object.MatchCommonPrefix, nil
+	case apiserver.MatchNumGT:
+		return object.MatchNumGT, nil
+	case apiserver.MatchNumGE:
+		return object.MatchNumGE, nil
+	case apiserver.MatchNumLT:
+		return object.MatchNumLT, nil
+	case apiserver.MatchNumLE:
+		return object.MatchNumLE, nil
 	default:
 		return 0, fmt.Errorf("unsupported search match: '%s'", s)
 	}
@@ -386,6 +395,21 @@ func ToNativeFilters(searchFilters []apiserver.SearchFilter) (object.SearchFilte
 		matchFilter, err := ToNativeMatchFilter(f.Match)
 		if err != nil {
 			return nil, err
+		}
+
+		switch matchFilter {
+		case object.MatchNumGT:
+			fallthrough
+		case object.MatchNumGE:
+			fallthrough
+		case object.MatchNumLT:
+			fallthrough
+		case object.MatchNumLE:
+			// Filter value must be numeric.
+			if _, err = strconv.ParseInt(f.Value, 10, 64); err != nil {
+				return nil, fmt.Errorf("filter %s value %s is not numeric", f.Key, f.Value)
+			}
+		default:
 		}
 
 		filters.AddFilter(f.Key, f.Value, matchFilter)

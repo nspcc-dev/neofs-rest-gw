@@ -144,6 +144,7 @@ func runTests(ctx context.Context, t *testing.T, key *keys.PrivateKey, node stri
 	t.Run("rest delete object", func(t *testing.T) { restObjectDelete(ctx, t, clientPool, &owner, cnrID, signer) })
 	t.Run("rest search objects", func(t *testing.T) { restObjectsSearch(ctx, t, clientPool, &owner, cnrID, signer) })
 	t.Run("rest search objects v2", func(t *testing.T) { restObjectsSearchV2(ctx, t, clientPool, &owner, cnrID, signer) })
+	t.Run("rest search objects v2 filters", func(t *testing.T) { restObjectsSearchV2Filters(ctx, t, clientPool, &owner, signer) })
 	t.Run("rest upload object", func(t *testing.T) { restObjectUpload(ctx, t, clientPool, cnrID, signer) })
 	t.Run("rest upload object with bearer in cookie", func(t *testing.T) { restObjectUploadCookie(ctx, t, clientPool, cnrID, signer) })
 	t.Run("rest head object", func(t *testing.T) { restObjectHead(ctx, t, clientPool, &owner, cnrID, signer) })
@@ -1441,6 +1442,284 @@ func restObjectsSearchV2(ctx context.Context, t *testing.T, p *pool.Pool, owner 
 		require.NoError(t, err)
 
 		request, err := http.NewRequest(http.MethodPost, testHost+"/v2/objects/"+cnrID.EncodeToString()+"/search", bytes.NewReader(limitedBody))
+		require.NoError(t, err)
+		prepareCommonHeaders(request.Header, bearerToken)
+
+		resp := &apiserver.ObjectListV2{}
+		doRequest(t, httpClient, request, http.StatusBadRequest, resp)
+	})
+}
+
+func restObjectsSearchV2Filters(ctx context.Context, t *testing.T, p *pool.Pool, owner *user.ID, signer user.Signer) {
+	var (
+		cnrName         = strconv.FormatInt(time.Now().UnixNano(), 16)
+		customAttribute = strconv.FormatInt(time.Now().UnixNano(), 16)
+		fileName        = strconv.FormatInt(time.Now().UnixNano(), 16)
+
+		headerList = []map[string]string{
+			{
+				object.AttributeFileName: fileName,
+				customAttribute:          "0",
+				xNonce:                   strconv.FormatInt(time.Now().UnixNano(), 10),
+			},
+			{
+				object.AttributeFileName: fileName,
+				customAttribute:          "1",
+				xNonce:                   strconv.FormatInt(time.Now().UnixNano(), 10),
+			},
+			{
+				object.AttributeFileName: fileName,
+				customAttribute:          "2",
+				xNonce:                   strconv.FormatInt(time.Now().UnixNano(), 10),
+			},
+			{
+				object.AttributeFileName: fileName,
+				customAttribute:          "3",
+				xNonce:                   strconv.FormatInt(time.Now().UnixNano(), 10),
+			},
+			{
+				object.AttributeFileName: strconv.FormatInt(time.Now().UnixNano(), 16),
+				customAttribute:          "4",
+				xNonce:                   strconv.FormatInt(time.Now().UnixNano(), 10),
+			},
+		}
+
+		cnrID = createContainer(ctx, t, p, *owner, cnrName, signer)
+	)
+
+	for _, headers := range headerList {
+		createObject(ctx, t, p, owner, cnrID, headers, []byte("some content"), signer)
+	}
+
+	bearer := apiserver.Bearer{
+		Object: []apiserver.Record{
+			{
+				Operation: apiserver.OperationSEARCH,
+				Action:    apiserver.ALLOW,
+				Filters:   []apiserver.Filter{},
+				Targets:   []apiserver.Target{{Role: apiserver.OTHERS, Keys: []string{}}},
+			},
+			{
+				Operation: apiserver.OperationHEAD,
+				Action:    apiserver.ALLOW,
+				Filters:   []apiserver.Filter{},
+				Targets:   []apiserver.Target{{Role: apiserver.OTHERS, Keys: []string{}}},
+			},
+			{
+				Operation: apiserver.OperationGET,
+				Action:    apiserver.ALLOW,
+				Filters:   []apiserver.Filter{},
+				Targets:   []apiserver.Target{{Role: apiserver.OTHERS, Keys: []string{}}},
+			},
+		},
+	}
+	bearer.Object = append(bearer.Object, getRestrictBearerRecords()...)
+
+	httpClient := defaultHTTPClient()
+	bearerTokens := makeAuthTokenRequest(ctx, t, []apiserver.Bearer{bearer}, httpClient, false)
+	bearerToken := bearerTokens[0]
+
+	query := make(url.Values)
+	query.Add(walletConnectQuery, strconv.FormatBool(useWalletConnect))
+
+	t.Run("search MatchStringEqual", func(t *testing.T) {
+		search := &apiserver.SearchFilters{
+			Filters: []apiserver.SearchFilter{
+				{
+					Key:   object.AttributeFileName,
+					Match: apiserver.MatchStringEqual,
+					Value: fileName,
+				},
+			},
+		}
+
+		body, err := json.Marshal(search)
+		require.NoError(t, err)
+
+		request, err := http.NewRequest(http.MethodPost, testHost+"/v2/objects/"+cnrID.EncodeToString()+"/search?"+query.Encode(), bytes.NewReader(body))
+		require.NoError(t, err)
+		prepareCommonHeaders(request.Header, bearerToken)
+
+		resp := &apiserver.ObjectListV2{}
+		doRequest(t, httpClient, request, http.StatusOK, resp)
+		require.Len(t, resp.Objects, 4)
+	})
+
+	t.Run("search MatchNotPresent", func(t *testing.T) {
+		search := &apiserver.SearchFilters{
+			Filters: []apiserver.SearchFilter{
+				{
+					Key:   object.AttributeFileName,
+					Match: apiserver.MatchStringNotEqual,
+					Value: fileName,
+				},
+			},
+		}
+
+		body, err := json.Marshal(search)
+		require.NoError(t, err)
+
+		request, err := http.NewRequest(http.MethodPost, testHost+"/v2/objects/"+cnrID.EncodeToString()+"/search?"+query.Encode(), bytes.NewReader(body))
+		require.NoError(t, err)
+		prepareCommonHeaders(request.Header, bearerToken)
+
+		resp := &apiserver.ObjectListV2{}
+		doRequest(t, httpClient, request, http.StatusOK, resp)
+		require.Len(t, resp.Objects, 1)
+	})
+
+	t.Run("search MatchNotPresent", func(t *testing.T) {
+		search := &apiserver.SearchFilters{
+			Filters: []apiserver.SearchFilter{
+				{
+					Key:   object.AttributeFilePath,
+					Match: apiserver.MatchNotPresent,
+				},
+			},
+		}
+
+		body, err := json.Marshal(search)
+		require.NoError(t, err)
+
+		request, err := http.NewRequest(http.MethodPost, testHost+"/v2/objects/"+cnrID.EncodeToString()+"/search?"+query.Encode(), bytes.NewReader(body))
+		require.NoError(t, err)
+		prepareCommonHeaders(request.Header, bearerToken)
+
+		resp := &apiserver.ObjectListV2{}
+		doRequest(t, httpClient, request, http.StatusOK, resp)
+		require.Len(t, resp.Objects, len(headerList))
+	})
+
+	t.Run("search MatchCommonPrefix", func(t *testing.T) {
+		search := &apiserver.SearchFilters{
+			Filters: []apiserver.SearchFilter{
+				{
+					Key:   object.AttributeFileName,
+					Match: apiserver.MatchCommonPrefix,
+					Value: fileName,
+				},
+			},
+		}
+
+		body, err := json.Marshal(search)
+		require.NoError(t, err)
+
+		request, err := http.NewRequest(http.MethodPost, testHost+"/v2/objects/"+cnrID.EncodeToString()+"/search?"+query.Encode(), bytes.NewReader(body))
+		require.NoError(t, err)
+		prepareCommonHeaders(request.Header, bearerToken)
+
+		resp := &apiserver.ObjectListV2{}
+		doRequest(t, httpClient, request, http.StatusOK, resp)
+		require.Len(t, resp.Objects, 4)
+	})
+
+	t.Run("search MatchNumGT", func(t *testing.T) {
+		search := &apiserver.SearchFilters{
+			Filters: []apiserver.SearchFilter{
+				{
+					Key:   customAttribute,
+					Match: apiserver.MatchNumGT,
+					Value: "0",
+				},
+			},
+		}
+
+		body, err := json.Marshal(search)
+		require.NoError(t, err)
+
+		request, err := http.NewRequest(http.MethodPost, testHost+"/v2/objects/"+cnrID.EncodeToString()+"/search?"+query.Encode(), bytes.NewReader(body))
+		require.NoError(t, err)
+		prepareCommonHeaders(request.Header, bearerToken)
+
+		resp := &apiserver.ObjectListV2{}
+		doRequest(t, httpClient, request, http.StatusOK, resp)
+		require.Len(t, resp.Objects, len(headerList)-1)
+	})
+
+	t.Run("search MatchNumGE", func(t *testing.T) {
+		search := &apiserver.SearchFilters{
+			Filters: []apiserver.SearchFilter{
+				{
+					Key:   customAttribute,
+					Match: apiserver.MatchNumGE,
+					Value: "0",
+				},
+			},
+		}
+
+		body, err := json.Marshal(search)
+		require.NoError(t, err)
+
+		request, err := http.NewRequest(http.MethodPost, testHost+"/v2/objects/"+cnrID.EncodeToString()+"/search?"+query.Encode(), bytes.NewReader(body))
+		require.NoError(t, err)
+		prepareCommonHeaders(request.Header, bearerToken)
+
+		resp := &apiserver.ObjectListV2{}
+		doRequest(t, httpClient, request, http.StatusOK, resp)
+		require.Len(t, resp.Objects, len(headerList))
+	})
+
+	t.Run("search MatchNumLT", func(t *testing.T) {
+		search := &apiserver.SearchFilters{
+			Filters: []apiserver.SearchFilter{
+				{
+					Key:   customAttribute,
+					Match: apiserver.MatchNumLT,
+					Value: "1",
+				},
+			},
+		}
+
+		body, err := json.Marshal(search)
+		require.NoError(t, err)
+
+		request, err := http.NewRequest(http.MethodPost, testHost+"/v2/objects/"+cnrID.EncodeToString()+"/search?"+query.Encode(), bytes.NewReader(body))
+		require.NoError(t, err)
+		prepareCommonHeaders(request.Header, bearerToken)
+
+		resp := &apiserver.ObjectListV2{}
+		doRequest(t, httpClient, request, http.StatusOK, resp)
+		require.Len(t, resp.Objects, 1)
+	})
+
+	t.Run("search MatchNumLE", func(t *testing.T) {
+		search := &apiserver.SearchFilters{
+			Filters: []apiserver.SearchFilter{
+				{
+					Key:   customAttribute,
+					Match: apiserver.MatchNumLE,
+					Value: "1",
+				},
+			},
+		}
+
+		body, err := json.Marshal(search)
+		require.NoError(t, err)
+
+		request, err := http.NewRequest(http.MethodPost, testHost+"/v2/objects/"+cnrID.EncodeToString()+"/search?"+query.Encode(), bytes.NewReader(body))
+		require.NoError(t, err)
+		prepareCommonHeaders(request.Header, bearerToken)
+
+		resp := &apiserver.ObjectListV2{}
+		doRequest(t, httpClient, request, http.StatusOK, resp)
+		require.Len(t, resp.Objects, 2)
+	})
+
+	t.Run("search MatchNumLE invalid numeric filter", func(t *testing.T) {
+		search := &apiserver.SearchFilters{
+			Filters: []apiserver.SearchFilter{
+				{
+					Key:   customAttribute,
+					Match: apiserver.MatchNumLE,
+					Value: "1a",
+				},
+			},
+		}
+
+		body, err := json.Marshal(search)
+		require.NoError(t, err)
+
+		request, err := http.NewRequest(http.MethodPost, testHost+"/v2/objects/"+cnrID.EncodeToString()+"/search?"+query.Encode(), bytes.NewReader(body))
 		require.NoError(t, err)
 		prepareCommonHeaders(request.Header, bearerToken)
 

@@ -1887,6 +1887,10 @@ components:
         - MatchStringNotEqual
         - MatchNotPresent
         - MatchCommonPrefix
+        - MatchNumGT
+        - MatchNumGE
+        - MatchNumLT
+        - MatchNumLE
     SearchRequest:
       required:
         - filters
