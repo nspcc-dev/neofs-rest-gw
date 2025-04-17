@@ -10,6 +10,7 @@ This document outlines major changes between releases.
 - `/v2/objects/{containerId}/search` entrypoint with `cursor` support (instead of `offset`) for objects search (#276)
 - Ability to request and return attributes for `search v2` (#277)
 - `pool.container_ops_timeout` config option (#254)
+- `MatchNumGT`, `MatchNumGE`, `MatchNumLT`, `MatchNumLE` operators to search (#260)
 
 ### Fixed
 - Double JSON response output for failed PUT operation (#265)
