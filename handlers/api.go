@@ -32,6 +32,7 @@ type PrmAPI struct {
 	MaxPayloadBufferSize uint64
 
 	GateMetric             *metrics.GateMetrics
+	ApiMetric              *metrics.ApiMetrics
 	PrometheusService      *metrics.Service
 	PprofService           *metrics.Service
 	ServiceShutdownTimeout time.Duration
@@ -84,6 +85,7 @@ func NewAPI(prm *PrmAPI) (*RestAPI, error) {
 		prometheusService:      prm.PrometheusService,
 		pprofService:           prm.PprofService,
 		gateMetric:             prm.GateMetric,
+		apiMetric:              prm.ApiMetric,
 		serviceShutdownTimeout: prm.ServiceShutdownTimeout,
 		networkInfoGetter:      cache.NewNetworkInfoCache(prm.Pool),
 		waiterOperationTimeout: prm.WaiterOperationTimeout,
@@ -150,6 +152,7 @@ type RestAPI struct {
 	payloadBufferSize uint64
 
 	gateMetric             *metrics.GateMetrics
+	apiMetric              *metrics.ApiMetrics
 	prometheusService      *metrics.Service
 	pprofService           *metrics.Service
 	serviceShutdownTimeout time.Duration

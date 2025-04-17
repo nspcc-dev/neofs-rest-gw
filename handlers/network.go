@@ -5,10 +5,15 @@ import (
 
 	"github.com/labstack/echo/v4"
 	"github.com/nspcc-dev/neofs-rest-gw/handlers/apiserver"
+	"github.com/nspcc-dev/neofs-rest-gw/metrics"
 	"github.com/nspcc-dev/neofs-sdk-go/client"
 )
 
 func (a *RestAPI) GetNetworkInfo(ctx echo.Context) error {
+	if a.apiMetric != nil {
+		defer metrics.Elapsed(a.apiMetric.GetNetworkInfoDuration)()
+	}
+
 	var prm client.PrmNetworkInfo
 
 	networkInfo, err := a.pool.NetworkInfo(ctx.Request().Context(), prm)

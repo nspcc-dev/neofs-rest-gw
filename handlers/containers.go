@@ -15,6 +15,7 @@ import (
 	"github.com/nspcc-dev/neo-go/pkg/crypto/keys"
 	"github.com/nspcc-dev/neofs-rest-gw/handlers/apiserver"
 	"github.com/nspcc-dev/neofs-rest-gw/internal/util"
+	"github.com/nspcc-dev/neofs-rest-gw/metrics"
 	"github.com/nspcc-dev/neofs-sdk-go/client"
 	"github.com/nspcc-dev/neofs-sdk-go/container"
 	"github.com/nspcc-dev/neofs-sdk-go/container/acl"
@@ -37,6 +38,10 @@ const (
 
 // PutContainer handler that creates container in NeoFS.
 func (a *RestAPI) PutContainer(ctx echo.Context, params apiserver.PutContainerParams) error {
+	if a.apiMetric != nil {
+		defer metrics.Elapsed(a.apiMetric.PutContainerDuration)()
+	}
+
 	var body apiserver.ContainerPostInfo
 	if err := ctx.Bind(&body); err != nil {
 		return ctx.JSON(http.StatusBadRequest, a.logAndGetErrorResponse("bind", err))
@@ -84,6 +89,10 @@ func (a *RestAPI) PutContainer(ctx echo.Context, params apiserver.PutContainerPa
 
 // PostContainer handler that creates container in NeoFS.
 func (a *RestAPI) PostContainer(ctx echo.Context, params apiserver.PostContainerParams) error {
+	if a.apiMetric != nil {
+		defer metrics.Elapsed(a.apiMetric.PostContainerDuration)()
+	}
+
 	var body apiserver.ContainerPostInfo
 	if err := ctx.Bind(&body); err != nil {
 		return ctx.JSON(http.StatusBadRequest, a.logAndGetErrorResponse("bind", err))
@@ -131,6 +140,10 @@ func (a *RestAPI) PostContainer(ctx echo.Context, params apiserver.PostContainer
 
 // GetContainer handler that returns container info.
 func (a *RestAPI) GetContainer(ctx echo.Context, containerID apiserver.ContainerId) error {
+	if a.apiMetric != nil {
+		defer metrics.Elapsed(a.apiMetric.GetContainerDuration)()
+	}
+
 	cnrID, err := parseContainerID(containerID)
 	if err != nil {
 		resp := a.logAndGetErrorResponse("invalid container id", err)
@@ -149,6 +162,10 @@ func (a *RestAPI) GetContainer(ctx echo.Context, containerID apiserver.Container
 
 // PutContainerEACL handler that update container eacl.
 func (a *RestAPI) PutContainerEACL(ctx echo.Context, containerID apiserver.ContainerId, params apiserver.PutContainerEACLParams) error {
+	if a.apiMetric != nil {
+		defer metrics.Elapsed(a.apiMetric.PutContainerEACLDuration)()
+	}
+
 	var body apiserver.Eacl
 	if err := ctx.Bind(&body); err != nil {
 		return ctx.JSON(http.StatusBadRequest, a.logAndGetErrorResponse("bind", err))
@@ -201,6 +218,10 @@ func (a *RestAPI) PutContainerEACL(ctx echo.Context, containerID apiserver.Conta
 
 // GetContainerEACL handler that returns container eacl.
 func (a *RestAPI) GetContainerEACL(ctx echo.Context, containerID apiserver.ContainerId) error {
+	if a.apiMetric != nil {
+		defer metrics.Elapsed(a.apiMetric.GetContainerEACLDuration)()
+	}
+
 	cnrID, err := parseContainerID(containerID)
 	if err != nil {
 		resp := a.logAndGetErrorResponse("invalid container id", err)
@@ -219,6 +240,10 @@ func (a *RestAPI) GetContainerEACL(ctx echo.Context, containerID apiserver.Conta
 
 // ListContainers handler that returns containers.
 func (a *RestAPI) ListContainers(ctx echo.Context, params apiserver.ListContainersParams) error {
+	if a.apiMetric != nil {
+		defer metrics.Elapsed(a.apiMetric.ListContainersDuration)()
+	}
+
 	var ownerID user.ID
 	if err := ownerID.DecodeString(params.OwnerId); err != nil {
 		resp := a.logAndGetErrorResponse("invalid owner id", err)
@@ -277,6 +302,10 @@ func (a *RestAPI) ListContainers(ctx echo.Context, params apiserver.ListContaine
 
 // DeleteContainer handler that returns container info.
 func (a *RestAPI) DeleteContainer(ctx echo.Context, containerID apiserver.ContainerId, params apiserver.DeleteContainerParams) error {
+	if a.apiMetric != nil {
+		defer metrics.Elapsed(a.apiMetric.DeleteContainerDuration)()
+	}
+
 	principal, err := getPrincipal(ctx)
 	if err != nil {
 		return ctx.JSON(http.StatusBadRequest, util.NewErrorResponse(err))
