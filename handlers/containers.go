@@ -37,7 +37,54 @@ const (
 
 // PutContainer handler that creates container in NeoFS.
 func (a *RestAPI) PutContainer(ctx echo.Context, params apiserver.PutContainerParams) error {
-	var body apiserver.ContainerPutInfo
+	var body apiserver.ContainerPostInfo
+	if err := ctx.Bind(&body); err != nil {
+		return ctx.JSON(http.StatusBadRequest, a.logAndGetErrorResponse("bind", err))
+	}
+
+	principal, err := getPrincipal(ctx)
+	if err != nil {
+		return ctx.JSON(http.StatusBadRequest, util.NewErrorResponse(err))
+	}
+
+	st, err := formSessionTokenFromHeaders(principal, params.XBearerSignature, params.XBearerSignatureKey, session.VerbContainerPut)
+	if err != nil {
+		resp := a.logAndGetErrorResponse("invalid session token headers", err)
+		return ctx.JSON(http.StatusBadRequest, resp)
+	}
+
+	var isWalletConnect bool
+	if params.WalletConnect != nil {
+		isWalletConnect = *params.WalletConnect
+	}
+
+	stoken, err := prepareSessionToken(st, isWalletConnect)
+	if err != nil {
+		resp := a.logAndGetErrorResponse("invalid session token", err)
+		return ctx.JSON(http.StatusBadRequest, resp)
+	}
+
+	wCtx, cancel := context.WithTimeout(ctx.Request().Context(), a.waiterOperationTimeout)
+	defer cancel()
+
+	// PutContainer will be removed in the next release. We may update old method to use new structures.
+	cnrID, err := createContainer(wCtx, a.pool, stoken, body, apiserver.PostContainerParams(params), a.signer, a.networkInfoGetter)
+	if err != nil {
+		resp := a.logAndGetErrorResponse("create container", err)
+		return ctx.JSON(getResponseCodeFromStatus(err), resp)
+	}
+
+	resp := apiserver.PostContainerOK{
+		ContainerId: cnrID.EncodeToString(),
+	}
+
+	ctx.Response().Header().Set(accessControlAllowOriginHeader, "*")
+	return ctx.JSON(http.StatusOK, resp)
+}
+
+// PostContainer handler that creates container in NeoFS.
+func (a *RestAPI) PostContainer(ctx echo.Context, params apiserver.PostContainerParams) error {
+	var body apiserver.ContainerPostInfo
 	if err := ctx.Bind(&body); err != nil {
 		return ctx.JSON(http.StatusBadRequest, a.logAndGetErrorResponse("bind", err))
 	}
@@ -73,12 +120,13 @@ func (a *RestAPI) PutContainer(ctx echo.Context, params apiserver.PutContainerPa
 		return ctx.JSON(getResponseCodeFromStatus(err), resp)
 	}
 
-	resp := apiserver.PutContainerOK{
+	resp := apiserver.PostContainerOK{
 		ContainerId: cnrID.EncodeToString(),
 	}
 
 	ctx.Response().Header().Set(accessControlAllowOriginHeader, "*")
-	return ctx.JSON(http.StatusOK, resp)
+	ctx.Response().Header().Set(locationHeader, LocationHeader(cnrID))
+	return ctx.JSON(http.StatusCreated, resp)
 }
 
 // GetContainer handler that returns container info.
@@ -390,7 +438,7 @@ func getContainerEACL(ctx context.Context, p *pool.Pool, cnrID cid.ID) (*apiserv
 	return tableResp, nil
 }
 
-func createContainer(ctx context.Context, p *pool.Pool, stoken session.Container, request apiserver.ContainerPutInfo, params apiserver.PutContainerParams, signer user.Signer, networkInfoGetter networkInfoGetter) (cid.ID, error) {
+func createContainer(ctx context.Context, p *pool.Pool, stoken session.Container, request apiserver.ContainerPostInfo, params apiserver.PostContainerParams, signer user.Signer, networkInfoGetter networkInfoGetter) (cid.ID, error) {
 	if request.PlacementPolicy == "" {
 		request.PlacementPolicy = defaultPlacementPolicy
 	}

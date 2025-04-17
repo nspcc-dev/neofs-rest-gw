@@ -508,7 +508,8 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
       security: [ ]
     put:
-      summary: Create new container in NeoFS
+      deprecated: true
+      summary: Create new container in NeoFS. Use POST method to create a container.
       operationId: putContainer
       parameters:
         - $ref: '#/components/parameters/signatureParam'
@@ -525,7 +526,7 @@ paths:
         content:
           '*/*':
             schema:
-              $ref: '#/components/schemas/ContainerPutInfo'
+              $ref: '#/components/schemas/ContainerPostInfo'
         required: true
       responses:
         "200":
@@ -537,7 +538,72 @@ paths:
           content:
             '*/*':
               schema:
-                $ref: '#/components/schemas/PutContainerOK'
+                $ref: '#/components/schemas/PostContainerOK'
+        "400":
+          description: Bad request.
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        "403":
+          description: Access denied
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        "404":
+          description: Not found.
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        "502":
+          description: Bad gateway.
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        "504":
+          description: Gateway timeout
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      x-codegen-request-body-name: container
+    post:
+      summary: Create new container in NeoFS
+      operationId: postContainer
+      parameters:
+        - $ref: '#/components/parameters/signatureParam'
+        - $ref: '#/components/parameters/signatureKeyParam'
+        - $ref: '#/components/parameters/signatureScheme'
+        - name: name-scope-global
+          in: query
+          description: Provide this parameter to register container name in NNS service.
+          schema:
+            type: boolean
+            default: false
+      requestBody:
+        description: Container info
+        content:
+          '*/*':
+            schema:
+              $ref: '#/components/schemas/ContainerPostInfo'
+        required: true
+      responses:
+        "201":
+          description: Container created.
+          headers:
+            Access-Control-Allow-Origin:
+              schema:
+                type: string
+            Location:
+              schema:
+                type: string
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/PostContainerOK'
         "400":
           description: Bad request.
           content:
@@ -1606,7 +1672,7 @@ components:
       enum:
         - object
         - container
-    ContainerPutInfo:
+    ContainerPostInfo:
       type: object
       properties:
         containerName:
@@ -2130,7 +2196,7 @@ components:
       example:
         object_id: 8N3o7Dtr6T1xteCt6eRwhpmJ7JhME58Hyu1dvaswuTDd
         container_id: 5HZTn5qkRnmgSz9gSrw22CEdPPk6nQhkwf2Mgzyvkikv
-    PutContainerOK:
+    PostContainerOK:
       required:
         - containerId
       type: object
