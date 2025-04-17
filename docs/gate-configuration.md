@@ -79,6 +79,7 @@ pool:
   healthcheck-timeout: 15s
   rebalance-timer: 60s
   error-threshold: 100
+  container_ops_timeout: 10s
 
   # Nodes configuration
   # This configuration makes the gateway use the first node (node1.neofs:8080)
@@ -102,13 +103,14 @@ pool:
       weight: 0.9
 ```
 
-| Parameter             | Type       | Default value | Description                                                                     |
-|-----------------------|------------|---------------|---------------------------------------------------------------------------------|
-| `node-dial-timeout`   | `duration` | `10s`         | Timeout to connect to a node.                                                   |
-| `healthcheck-timeout` | `duration` | `15s`         | Timeout to check node health during rebalance.                                  |
-| `rebalance-timer`     | `duration` | `60s`         | Interval to check node health.                                                  |
-| `error-threshold`     | `uint32`   | `100`         | The number of errors on connection after which node is considered as unhealthy. |
-| `default-timestamp`   | `bool`     | `false`       | By default, add a Timestamp to the object upon creation.                        |                                                                                                                         |
+| Parameter               | Type       | Default value | Description                                                                                             |
+|-------------------------|------------|---------------|---------------------------------------------------------------------------------------------------------|
+| `node-dial-timeout`     | `duration` | `10s`         | Timeout to connect to a node.                                                                           |
+| `healthcheck-timeout`   | `duration` | `15s`         | Timeout to check node health during rebalance.                                                          |
+| `rebalance-timer`       | `duration` | `60s`         | Interval to check node health.                                                                          |
+| `error-threshold`       | `uint32`   | `100`         | The number of errors on connection after which node is considered as unhealthy.                         |
+| `default-timestamp`     | `bool`     | `false`       | By default, add a Timestamp to the object upon creation.                                                |                                                                                                                         |
+| `container_ops_timeout` | `duration` | 4 Blocks      | Timeout for operations covered by SDK waiters. (create container, delete container, set container EACL) |
 
 ## `peers` section
 
