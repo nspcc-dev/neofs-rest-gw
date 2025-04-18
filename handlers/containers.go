@@ -42,9 +42,11 @@ func (a *RestAPI) PutContainer(ctx echo.Context, params apiserver.PutContainerPa
 		defer metrics.Elapsed(a.apiMetric.PutContainerDuration)()
 	}
 
+	log := a.log.With(zap.String(handlerFieldName, "PutContainer"))
+
 	var body apiserver.ContainerPostInfo
 	if err := ctx.Bind(&body); err != nil {
-		return ctx.JSON(http.StatusBadRequest, a.logAndGetErrorResponse("bind", err))
+		return ctx.JSON(http.StatusBadRequest, a.logAndGetErrorResponse("bind", err, log))
 	}
 
 	principal, err := getPrincipal(ctx)
@@ -54,18 +56,19 @@ func (a *RestAPI) PutContainer(ctx echo.Context, params apiserver.PutContainerPa
 
 	st, err := formSessionTokenFromHeaders(principal, params.XBearerSignature, params.XBearerSignatureKey, session.VerbContainerPut)
 	if err != nil {
-		resp := a.logAndGetErrorResponse("invalid session token headers", err)
+		resp := a.logAndGetErrorResponse("invalid session token headers", err, log)
 		return ctx.JSON(http.StatusBadRequest, resp)
 	}
 
 	var isWalletConnect bool
 	if params.WalletConnect != nil {
 		isWalletConnect = *params.WalletConnect
+		log = log.With(zap.Bool("walletConnect", isWalletConnect))
 	}
 
 	stoken, err := prepareSessionToken(st, isWalletConnect)
 	if err != nil {
-		resp := a.logAndGetErrorResponse("invalid session token", err)
+		resp := a.logAndGetErrorResponse("invalid session token", err, log)
 		return ctx.JSON(http.StatusBadRequest, resp)
 	}
 
@@ -75,7 +78,7 @@ func (a *RestAPI) PutContainer(ctx echo.Context, params apiserver.PutContainerPa
 	// PutContainer will be removed in the next release. We may update old method to use new structures.
 	cnrID, err := createContainer(wCtx, a.pool, stoken, body, apiserver.PostContainerParams(params), a.signer, a.networkInfoGetter)
 	if err != nil {
-		resp := a.logAndGetErrorResponse("create container", err)
+		resp := a.logAndGetErrorResponse("create container", err, log)
 		return ctx.JSON(getResponseCodeFromStatus(err), resp)
 	}
 
@@ -93,9 +96,11 @@ func (a *RestAPI) PostContainer(ctx echo.Context, params apiserver.PostContainer
 		defer metrics.Elapsed(a.apiMetric.PostContainerDuration)()
 	}
 
+	log := a.log.With(zap.String(handlerFieldName, "PostContainer"))
+
 	var body apiserver.ContainerPostInfo
 	if err := ctx.Bind(&body); err != nil {
-		return ctx.JSON(http.StatusBadRequest, a.logAndGetErrorResponse("bind", err))
+		return ctx.JSON(http.StatusBadRequest, a.logAndGetErrorResponse("bind", err, log))
 	}
 
 	principal, err := getPrincipal(ctx)
@@ -105,7 +110,7 @@ func (a *RestAPI) PostContainer(ctx echo.Context, params apiserver.PostContainer
 
 	st, err := formSessionTokenFromHeaders(principal, params.XBearerSignature, params.XBearerSignatureKey, session.VerbContainerPut)
 	if err != nil {
-		resp := a.logAndGetErrorResponse("invalid session token headers", err)
+		resp := a.logAndGetErrorResponse("invalid session token headers", err, log)
 		return ctx.JSON(http.StatusBadRequest, resp)
 	}
 
@@ -116,7 +121,7 @@ func (a *RestAPI) PostContainer(ctx echo.Context, params apiserver.PostContainer
 
 	stoken, err := prepareSessionToken(st, isWalletConnect)
 	if err != nil {
-		resp := a.logAndGetErrorResponse("invalid session token", err)
+		resp := a.logAndGetErrorResponse("invalid session token", err, log)
 		return ctx.JSON(http.StatusBadRequest, resp)
 	}
 
@@ -125,7 +130,7 @@ func (a *RestAPI) PostContainer(ctx echo.Context, params apiserver.PostContainer
 
 	cnrID, err := createContainer(wCtx, a.pool, stoken, body, params, a.signer, a.networkInfoGetter)
 	if err != nil {
-		resp := a.logAndGetErrorResponse("create container", err)
+		resp := a.logAndGetErrorResponse("create container", err, log)
 		return ctx.JSON(getResponseCodeFromStatus(err), resp)
 	}
 
@@ -144,15 +149,17 @@ func (a *RestAPI) GetContainer(ctx echo.Context, containerID apiserver.Container
 		defer metrics.Elapsed(a.apiMetric.GetContainerDuration)()
 	}
 
+	log := a.log.With(zap.String(handlerFieldName, "GetContainer"), zap.String("containerID", containerID))
+
 	cnrID, err := parseContainerID(containerID)
 	if err != nil {
-		resp := a.logAndGetErrorResponse("invalid container id", err)
+		resp := a.logAndGetErrorResponse("invalid container id", err, log)
 		return ctx.JSON(http.StatusBadRequest, resp)
 	}
 
 	cnrInfo, err := getContainerInfo(ctx.Request().Context(), a.pool, cnrID)
 	if err != nil {
-		resp := a.logAndGetErrorResponse("get container", err)
+		resp := a.logAndGetErrorResponse("get container", err, log)
 		return ctx.JSON(http.StatusBadRequest, resp)
 	}
 
@@ -166,19 +173,21 @@ func (a *RestAPI) PutContainerEACL(ctx echo.Context, containerID apiserver.Conta
 		defer metrics.Elapsed(a.apiMetric.PutContainerEACLDuration)()
 	}
 
+	log := a.log.With(zap.String(handlerFieldName, "PutContainerEACL"), zap.String("containerID", containerID))
+
 	var body apiserver.Eacl
 	if err := ctx.Bind(&body); err != nil {
-		return ctx.JSON(http.StatusBadRequest, a.logAndGetErrorResponse("bind", err))
+		return ctx.JSON(http.StatusBadRequest, a.logAndGetErrorResponse("bind", err, log))
 	}
 
 	cnrID, err := parseContainerID(containerID)
 	if err != nil {
-		resp := a.logAndGetErrorResponse("invalid container id", err)
+		resp := a.logAndGetErrorResponse("invalid container id", err, log)
 		return ctx.JSON(http.StatusBadRequest, resp)
 	}
 
 	if err = checkContainerExtendable(ctx.Request().Context(), a.pool, cnrID); err != nil {
-		resp := a.logAndGetErrorResponse("check acl allowance", err)
+		resp := a.logAndGetErrorResponse("check acl allowance", err, log)
 		return ctx.JSON(http.StatusBadRequest, resp)
 	}
 
@@ -189,7 +198,7 @@ func (a *RestAPI) PutContainerEACL(ctx echo.Context, containerID apiserver.Conta
 
 	st, err := formSessionTokenFromHeaders(principal, params.XBearerSignature, params.XBearerSignatureKey, session.VerbContainerSetEACL)
 	if err != nil {
-		resp := a.logAndGetErrorResponse("invalid session token headers", err)
+		resp := a.logAndGetErrorResponse("invalid session token headers", err, log)
 		return ctx.JSON(http.StatusBadRequest, resp)
 	}
 
@@ -200,7 +209,7 @@ func (a *RestAPI) PutContainerEACL(ctx echo.Context, containerID apiserver.Conta
 
 	stoken, err := prepareSessionToken(st, isWalletConnect)
 	if err != nil {
-		resp := a.logAndGetErrorResponse("invalid session token", err)
+		resp := a.logAndGetErrorResponse("invalid session token", err, log)
 		return ctx.JSON(http.StatusBadRequest, resp)
 	}
 
@@ -208,7 +217,7 @@ func (a *RestAPI) PutContainerEACL(ctx echo.Context, containerID apiserver.Conta
 	defer cancel()
 
 	if err = setContainerEACL(wCtx, a.pool, cnrID, stoken, body, a.signer); err != nil {
-		resp := a.logAndGetErrorResponse("failed set container eacl", err)
+		resp := a.logAndGetErrorResponse("failed set container eacl", err, log)
 		return ctx.JSON(getResponseCodeFromStatus(err), resp)
 	}
 
@@ -222,15 +231,17 @@ func (a *RestAPI) GetContainerEACL(ctx echo.Context, containerID apiserver.Conta
 		defer metrics.Elapsed(a.apiMetric.GetContainerEACLDuration)()
 	}
 
+	log := a.log.With(zap.String(handlerFieldName, "GetContainerEACL"), zap.String("containerID", containerID))
+
 	cnrID, err := parseContainerID(containerID)
 	if err != nil {
-		resp := a.logAndGetErrorResponse("invalid container id", err)
+		resp := a.logAndGetErrorResponse("invalid container id", err, log)
 		return ctx.JSON(http.StatusBadRequest, resp)
 	}
 
 	resp, err := getContainerEACL(ctx.Request().Context(), a.pool, cnrID)
 	if err != nil {
-		errResp := a.logAndGetErrorResponse("failed to get container eacl", err)
+		errResp := a.logAndGetErrorResponse("failed to get container eacl", err, log)
 		return ctx.JSON(http.StatusBadRequest, errResp)
 	}
 
@@ -244,9 +255,11 @@ func (a *RestAPI) ListContainers(ctx echo.Context, params apiserver.ListContaine
 		defer metrics.Elapsed(a.apiMetric.ListContainersDuration)()
 	}
 
+	log := a.log.With(zap.String(handlerFieldName, "ListContainers"), zap.String("ownerID", params.OwnerId))
+
 	var ownerID user.ID
 	if err := ownerID.DecodeString(params.OwnerId); err != nil {
-		resp := a.logAndGetErrorResponse("invalid owner id", err)
+		resp := a.logAndGetErrorResponse("invalid owner id", err, log)
 		return ctx.JSON(http.StatusBadRequest, resp)
 	}
 
@@ -254,13 +267,13 @@ func (a *RestAPI) ListContainers(ctx echo.Context, params apiserver.ListContaine
 
 	ids, err := a.pool.ContainerList(ctx.Request().Context(), ownerID, prm)
 	if err != nil {
-		resp := a.logAndGetErrorResponse("list containers", err)
+		resp := a.logAndGetErrorResponse("list containers", err, log)
 		return ctx.JSON(http.StatusBadRequest, resp)
 	}
 
 	offset, limit, err := getOffsetAndLimit(params.Offset, params.Limit)
 	if err != nil {
-		resp := a.logAndGetErrorResponse("invalid parameter", err)
+		resp := a.logAndGetErrorResponse("invalid offset/limit", err, log)
 		return ctx.JSON(http.StatusBadRequest, resp)
 	}
 
@@ -285,14 +298,14 @@ func (a *RestAPI) ListContainers(ctx echo.Context, params apiserver.ListContaine
 	for _, id := range ids[offset : offset+limit] {
 		cnrInfo, err := getContainerInfo(ctx.Request().Context(), a.pool, id)
 		if err != nil {
-			resp := a.logAndGetErrorResponse("get container", err, zap.String("cid", id.String()))
+			resp := a.logAndGetErrorResponse("get container", err, log.With(zap.String("cid", id.String())))
 			return ctx.JSON(http.StatusBadRequest, resp)
 		}
 
 		if cnrInfo != nil {
 			res.Containers = append(res.Containers, *cnrInfo)
 		} else {
-			zap.L().Warn("getContainerInfo not error, but container info is empty", zap.Stringer("cid", id))
+			log.Warn("getContainerInfo not error, but container info is empty", zap.Stringer("cid", id))
 		}
 	}
 
@@ -306,6 +319,8 @@ func (a *RestAPI) DeleteContainer(ctx echo.Context, containerID apiserver.Contai
 		defer metrics.Elapsed(a.apiMetric.DeleteContainerDuration)()
 	}
 
+	log := a.log.With(zap.String(handlerFieldName, "DeleteContainer"), zap.String("containerID", containerID))
+
 	principal, err := getPrincipal(ctx)
 	if err != nil {
 		return ctx.JSON(http.StatusBadRequest, util.NewErrorResponse(err))
@@ -313,7 +328,7 @@ func (a *RestAPI) DeleteContainer(ctx echo.Context, containerID apiserver.Contai
 
 	st, err := formSessionTokenFromHeaders(principal, params.XBearerSignature, params.XBearerSignatureKey, session.VerbContainerDelete)
 	if err != nil {
-		resp := a.logAndGetErrorResponse("invalid session token headers", err)
+		resp := a.logAndGetErrorResponse("invalid session token headers", err, log)
 		return ctx.JSON(http.StatusBadRequest, resp)
 	}
 
@@ -324,13 +339,13 @@ func (a *RestAPI) DeleteContainer(ctx echo.Context, containerID apiserver.Contai
 
 	stoken, err := prepareSessionToken(st, isWalletConnect)
 	if err != nil {
-		resp := a.logAndGetErrorResponse("invalid session token", err)
+		resp := a.logAndGetErrorResponse("invalid session token", err, log)
 		return ctx.JSON(http.StatusBadRequest, resp)
 	}
 
 	cnrID, err := parseContainerID(containerID)
 	if err != nil {
-		resp := a.logAndGetErrorResponse("invalid container id", err)
+		resp := a.logAndGetErrorResponse("invalid container id", err, log)
 		return ctx.JSON(http.StatusBadRequest, resp)
 	}
 
@@ -342,7 +357,7 @@ func (a *RestAPI) DeleteContainer(ctx echo.Context, containerID apiserver.Contai
 	defer cancel()
 
 	if err = wait.ContainerDelete(wCtx, cnrID, a.signer, prm); err != nil {
-		resp := a.logAndGetErrorResponse("delete container", err, zap.String("container", containerID))
+		resp := a.logAndGetErrorResponse("delete container", err, log)
 		return ctx.JSON(getResponseCodeFromStatus(err), resp)
 	}
 

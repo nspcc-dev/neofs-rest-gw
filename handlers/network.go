@@ -7,6 +7,7 @@ import (
 	"github.com/nspcc-dev/neofs-rest-gw/handlers/apiserver"
 	"github.com/nspcc-dev/neofs-rest-gw/metrics"
 	"github.com/nspcc-dev/neofs-sdk-go/client"
+	"go.uber.org/zap"
 )
 
 func (a *RestAPI) GetNetworkInfo(ctx echo.Context) error {
@@ -14,11 +15,12 @@ func (a *RestAPI) GetNetworkInfo(ctx echo.Context) error {
 		defer metrics.Elapsed(a.apiMetric.GetNetworkInfoDuration)()
 	}
 
+	var log = a.log.With(zap.String(handlerFieldName, "GetNetworkInfo"))
 	var prm client.PrmNetworkInfo
 
 	networkInfo, err := a.pool.NetworkInfo(ctx.Request().Context(), prm)
 	if err != nil {
-		resp := a.logAndGetErrorResponse("could not get network info", err)
+		resp := a.logAndGetErrorResponse("get network info", err, log)
 		return ctx.JSON(http.StatusBadRequest, resp)
 	}
 

@@ -36,6 +36,7 @@ func (a *RestAPI) NewUploadContainerObject(ctx echo.Context, containerID apiserv
 		addr          oid.Address
 		btoken        *bearer.Token
 		walletConnect apiserver.SignatureScheme
+		log           = a.log.With(zap.String(handlerFieldName, "NewUploadContainerObject"), zap.String("containerID", containerID))
 	)
 
 	if params.WalletConnect != nil {
@@ -44,7 +45,7 @@ func (a *RestAPI) NewUploadContainerObject(ctx echo.Context, containerID apiserv
 
 	var idCnr cid.ID
 	if err = idCnr.DecodeString(containerID); err != nil {
-		resp := a.logAndGetErrorResponse("invalid container id", err)
+		resp := a.logAndGetErrorResponse("invalid container id", err, log)
 		return ctx.JSON(http.StatusBadRequest, resp)
 	}
 
@@ -55,13 +56,13 @@ func (a *RestAPI) NewUploadContainerObject(ctx echo.Context, containerID apiserv
 
 	btoken, err = getBearerToken(principal, params.XBearerSignature, params.XBearerSignatureKey, walletConnect)
 	if err != nil {
-		resp := a.logAndGetErrorResponse("invalid bearer token", err)
+		resp := a.logAndGetErrorResponse("invalid bearer token", err, log)
 		return ctx.JSON(http.StatusBadRequest, resp)
 	}
 
-	filtered, err := parseAndFilterAttributes(a.log, params.XAttributes)
+	filtered, err := parseAndFilterAttributes(log, params.XAttributes)
 	if err != nil {
-		resp := a.logAndGetErrorResponse("could not process header "+userAttributesHeader, err)
+		resp := a.logAndGetErrorResponse("could not process header "+userAttributesHeader, err, log)
 		return ctx.JSON(http.StatusBadRequest, resp)
 	}
 
@@ -69,12 +70,12 @@ func (a *RestAPI) NewUploadContainerObject(ctx echo.Context, containerID apiserv
 	if needParseExpiration(filtered) {
 		epochDuration, err := getEpochDurations(ctx.Request().Context(), a.networkInfoGetter)
 		if err != nil {
-			resp := a.logAndGetErrorResponse("could not get epoch durations from network info", err)
+			resp := a.logAndGetErrorResponse("could not get epoch durations from network info", err, log)
 			return ctx.JSON(http.StatusBadRequest, resp)
 		}
 
 		if err = prepareExpirationHeader(filtered, epochDuration, time.Now()); err != nil {
-			resp := a.logAndGetErrorResponse("could not parse expiration header", err)
+			resp := a.logAndGetErrorResponse("could not parse expiration header", err, log)
 			return ctx.JSON(http.StatusBadRequest, resp)
 		}
 	}
@@ -83,7 +84,7 @@ func (a *RestAPI) NewUploadContainerObject(ctx echo.Context, containerID apiserv
 	// prepares attributes from filtered headers
 	for key, val := range filtered {
 		attribute := object.NewAttribute(key, val)
-		a.log.Debug("Added attribute", zap.String("key", key), zap.String("value", val))
+		log.Debug("Added attribute", zap.String("key", key), zap.String("value", val))
 		attributes = append(attributes, *attribute)
 	}
 
@@ -92,7 +93,7 @@ func (a *RestAPI) NewUploadContainerObject(ctx echo.Context, containerID apiserv
 	if _, ok := filtered[object.AttributeContentType]; !ok {
 		if ct := ctx.Request().Header.Get("Content-Type"); len(ct) > 0 {
 			attrContentType := object.NewAttribute(object.AttributeContentType, ct)
-			a.log.Debug("Added attribute", zap.String("key", object.AttributeContentType), zap.String("value", ct))
+			log.Debug("Added attribute", zap.String("key", object.AttributeContentType), zap.String("value", ct))
 			attributes = append(attributes, *attrContentType)
 		}
 	}
@@ -104,13 +105,13 @@ func (a *RestAPI) NewUploadContainerObject(ctx echo.Context, containerID apiserv
 		} else if date := ctx.Request().Header.Get("Date"); len(date) > 0 {
 			parsedTime, err := time.Parse(time.RFC1123, date)
 			if err != nil {
-				resp := a.logAndGetErrorResponse("could not parse header Date", err)
+				resp := a.logAndGetErrorResponse("could not parse header Date", err, log.With(zap.String("date", date)))
 				return ctx.JSON(http.StatusBadRequest, resp)
 			}
 
 			tsStr := strconv.FormatInt(parsedTime.Unix(), 10)
 			timestamp := object.NewAttribute(object.AttributeTimestamp, tsStr)
-			a.log.Debug("Added attribute", zap.String("key", object.AttributeTimestamp), zap.String("value", tsStr))
+			log.Debug("Added attribute", zap.String("key", object.AttributeTimestamp), zap.String("value", tsStr))
 			attributes = append(attributes, *timestamp)
 		}
 	}
@@ -132,7 +133,7 @@ func (a *RestAPI) NewUploadContainerObject(ctx echo.Context, containerID apiserv
 		return err
 	})
 	if err != nil {
-		resp := a.logAndGetErrorResponse("put object", err)
+		resp := a.logAndGetErrorResponse("put object", err, log)
 		return ctx.JSON(http.StatusBadRequest, resp)
 	}
 
@@ -153,6 +154,12 @@ func (a *RestAPI) NewGetContainerObject(ctx echo.Context, containerID apiserver.
 		defer metrics.Elapsed(a.apiMetric.NewGetContainerObjectDuration)()
 	}
 
+	log := a.log.With(
+		zap.String(handlerFieldName, "NewGetContainerObject"),
+		zap.String("containerID", containerID),
+		zap.String("objectID", objectID),
+	)
+
 	principal, err := getPrincipal(ctx)
 	if err != nil {
 		return ctx.JSON(http.StatusBadRequest, util.NewErrorResponse(err))
@@ -160,7 +167,7 @@ func (a *RestAPI) NewGetContainerObject(ctx echo.Context, containerID apiserver.
 
 	addr, err := parseAddress(containerID, objectID)
 	if err != nil {
-		resp := a.logAndGetErrorResponse("invalid address", err)
+		resp := a.logAndGetErrorResponse("invalid address", err, log)
 		return ctx.JSON(http.StatusBadRequest, resp)
 	}
 
@@ -171,14 +178,14 @@ func (a *RestAPI) NewGetContainerObject(ctx echo.Context, containerID apiserver.
 
 	btoken, err := getBearerToken(principal, params.XBearerSignature, params.XBearerSignatureKey, walletConnect)
 	if err != nil {
-		resp := a.logAndGetErrorResponse("get bearer token", err)
+		resp := a.logAndGetErrorResponse("get bearer token", err, log)
 		return ctx.JSON(http.StatusBadRequest, resp)
 	}
 
 	if params.Range != nil {
-		return a.getRange(ctx, addr, *params.Range, params.Download, btoken)
+		return a.getRange(ctx, addr, *params.Range, params.Download, btoken, log)
 	}
-	return a.getByAddress(ctx, addr, params.Download, btoken, true)
+	return a.getByAddress(ctx, addr, params.Download, btoken, true, log)
 }
 
 // NewHeadContainerObject handler that returns object info (using container ID and object ID).
@@ -187,6 +194,12 @@ func (a *RestAPI) NewHeadContainerObject(ctx echo.Context, containerID apiserver
 		defer metrics.Elapsed(a.apiMetric.NewHeadContainerObjectDuration)()
 	}
 
+	log := a.log.With(
+		zap.String(handlerFieldName, "NewHeadContainerObject"),
+		zap.String("containerID", containerID),
+		zap.String("objectID", objectID),
+	)
+
 	principal, err := getPrincipal(ctx)
 	if err != nil {
 		return ctx.JSON(http.StatusBadRequest, util.NewErrorResponse(err))
@@ -194,7 +207,7 @@ func (a *RestAPI) NewHeadContainerObject(ctx echo.Context, containerID apiserver
 
 	addr, err := parseAddress(containerID, objectID)
 	if err != nil {
-		resp := a.logAndGetErrorResponse("invalid address", err)
+		resp := a.logAndGetErrorResponse("invalid address", err, log)
 		return ctx.JSON(http.StatusBadRequest, resp)
 	}
 
@@ -207,11 +220,11 @@ func (a *RestAPI) NewHeadContainerObject(ctx echo.Context, containerID apiserver
 
 	btoken, err := getBearerToken(principal, params.XBearerSignature, params.XBearerSignatureKey, walletConnect)
 	if err != nil {
-		resp := a.logAndGetErrorResponse("get bearer token", err)
+		resp := a.logAndGetErrorResponse("get bearer token", err, log)
 		return ctx.JSON(http.StatusBadRequest, resp)
 	}
 
-	return a.headByAddress(ctx, addr, params.Download, btoken, true)
+	return a.headByAddress(ctx, addr, params.Download, btoken, true, log)
 }
 
 // NewGetByAttribute handler that returns object (payload and attributes) by a specific attribute.
@@ -220,6 +233,13 @@ func (a *RestAPI) NewGetByAttribute(ctx echo.Context, containerID apiserver.Cont
 		defer metrics.Elapsed(a.apiMetric.NewGetByAttributeDuration)()
 	}
 
+	log := a.log.With(
+		zap.String(handlerFieldName, "NewGetByAttribute"),
+		zap.String("containerID", containerID),
+		zap.String("attrKey", attrKey),
+		zap.String("attrVal", attrVal),
+	)
+
 	principal, err := getPrincipal(ctx)
 	if err != nil {
 		return ctx.JSON(http.StatusBadRequest, util.NewErrorResponse(err))
@@ -227,7 +247,7 @@ func (a *RestAPI) NewGetByAttribute(ctx echo.Context, containerID apiserver.Cont
 
 	var cnrID cid.ID
 	if err = cnrID.DecodeString(containerID); err != nil {
-		resp := a.logAndGetErrorResponse("invalid container id", err)
+		resp := a.logAndGetErrorResponse("invalid container id", err, log)
 		return ctx.JSON(http.StatusBadRequest, resp)
 	}
 
@@ -238,13 +258,13 @@ func (a *RestAPI) NewGetByAttribute(ctx echo.Context, containerID apiserver.Cont
 
 	btoken, err := getBearerToken(principal, params.XBearerSignature, params.XBearerSignatureKey, walletConnect)
 	if err != nil {
-		resp := a.logAndGetErrorResponse("get bearer token", err)
+		resp := a.logAndGetErrorResponse("get bearer token", err, log)
 		return ctx.JSON(http.StatusBadRequest, resp)
 	}
 
 	objectID, err := a.search(ctx.Request().Context(), btoken, cnrID, attrKey, attrVal, object.MatchStringEqual)
 	if err != nil {
-		resp := a.logAndGetErrorResponse("could not search for objects", err)
+		resp := a.logAndGetErrorResponse("could not search for objects", err, log)
 		return ctx.JSON(getResponseCodeFromStatus(err), resp)
 	}
 
@@ -257,9 +277,9 @@ func (a *RestAPI) NewGetByAttribute(ctx echo.Context, containerID apiserver.Cont
 	addrObj.SetObject(objectID)
 
 	if params.Range != nil {
-		return a.getRange(ctx, addrObj, *params.Range, params.Download, btoken)
+		return a.getRange(ctx, addrObj, *params.Range, params.Download, btoken, log)
 	}
-	return a.getByAddress(ctx, addrObj, params.Download, btoken, true)
+	return a.getByAddress(ctx, addrObj, params.Download, btoken, true, log)
 }
 
 // NewHeadByAttribute handler that returns object info (payload and attributes) by a specific attribute.
@@ -268,6 +288,13 @@ func (a *RestAPI) NewHeadByAttribute(ctx echo.Context, containerID apiserver.Con
 		defer metrics.Elapsed(a.apiMetric.NewHeadByAttributeDuration)()
 	}
 
+	log := a.log.With(
+		zap.String(handlerFieldName, "NewHeadByAttribute"),
+		zap.String("containerID", containerID),
+		zap.String("attrKey", attrKey),
+		zap.String("attrVal", attrVal),
+	)
+
 	principal, err := getPrincipal(ctx)
 	if err != nil {
 		return ctx.JSON(http.StatusBadRequest, util.NewErrorResponse(err))
@@ -275,7 +302,7 @@ func (a *RestAPI) NewHeadByAttribute(ctx echo.Context, containerID apiserver.Con
 
 	var cnrID cid.ID
 	if err = cnrID.DecodeString(containerID); err != nil {
-		resp := a.logAndGetErrorResponse("invalid container id", err)
+		resp := a.logAndGetErrorResponse("invalid container id", err, log)
 		return ctx.JSON(http.StatusBadRequest, resp)
 	}
 
@@ -286,13 +313,13 @@ func (a *RestAPI) NewHeadByAttribute(ctx echo.Context, containerID apiserver.Con
 
 	btoken, err := getBearerToken(principal, params.XBearerSignature, params.XBearerSignatureKey, walletConnect)
 	if err != nil {
-		resp := a.logAndGetErrorResponse("get bearer token", err)
+		resp := a.logAndGetErrorResponse("get bearer token", err, log)
 		return ctx.JSON(http.StatusBadRequest, resp)
 	}
 
 	objectID, err := a.search(ctx.Request().Context(), btoken, cnrID, attrKey, attrVal, object.MatchStringEqual)
 	if err != nil {
-		resp := a.logAndGetErrorResponse("could not search for objects", err)
+		resp := a.logAndGetErrorResponse("could not search for objects", err, log)
 		return ctx.JSON(getResponseCodeFromStatus(err), resp)
 	}
 
@@ -306,10 +333,10 @@ func (a *RestAPI) NewHeadByAttribute(ctx echo.Context, containerID apiserver.Con
 
 	ctx.Response().Header().Set(accessControlAllowOriginHeader, "*")
 
-	return a.headByAddress(ctx, addrObj, params.Download, btoken, true)
+	return a.headByAddress(ctx, addrObj, params.Download, btoken, true, log)
 }
 
-func (a *RestAPI) getRange(ctx echo.Context, addr oid.Address, rangeParam string, downloadParam *string, btoken *bearer.Token) error {
+func (a *RestAPI) getRange(ctx echo.Context, addr oid.Address, rangeParam string, downloadParam *string, btoken *bearer.Token, log *zap.Logger) error {
 	// Read the object header to determine the attributes and the size of the payload.
 	var prm client.PrmObjectHead
 	if btoken != nil {
@@ -319,10 +346,10 @@ func (a *RestAPI) getRange(ctx echo.Context, addr oid.Address, rangeParam string
 	header, err := a.pool.ObjectHead(ctx.Request().Context(), addr.Container(), addr.Object(), a.signer, prm)
 	if err != nil {
 		if isNotFoundError(err) {
-			resp := a.logAndGetErrorResponse("not found", err)
+			resp := a.logAndGetErrorResponse("head object: not found", err, log)
 			return ctx.JSON(http.StatusNotFound, resp)
 		}
-		resp := a.logAndGetErrorResponse("head object", err)
+		resp := a.logAndGetErrorResponse("head object", err, log)
 		return ctx.JSON(http.StatusBadRequest, resp)
 	}
 
@@ -332,11 +359,11 @@ func (a *RestAPI) getRange(ctx echo.Context, addr oid.Address, rangeParam string
 	var start, end uint64
 	start, end, err = getRangeParams(rangeParam, payloadSize)
 	if err != nil {
-		resp := a.logAndGetErrorResponse("range", err, zap.String("range", rangeParam))
+		resp := a.logAndGetErrorResponse("get range params", err, log.With(zap.String("range", rangeParam)))
 		return ctx.JSON(http.StatusRequestedRangeNotSatisfiable, resp)
 	}
 
-	a.log.Debug("Range",
+	log.Debug("Range",
 		zap.Uint64("start", start),
 		zap.Uint64("end", end),
 		zap.Uint64("payloadSize", payloadSize))
@@ -350,7 +377,7 @@ func (a *RestAPI) getRange(ctx echo.Context, addr oid.Address, rangeParam string
 		useJSON:     true,
 		header:      *header,
 	}
-	contentType := a.setAttributes(ctx, param)
+	contentType := a.setAttributes(ctx, param, log)
 
 	// Find offset and length.
 	separateContentType := false
@@ -366,7 +393,7 @@ func (a *RestAPI) getRange(ctx echo.Context, addr oid.Address, rangeParam string
 		}
 	}
 	length := end - offset + 1
-	a.log.Debug("Params for ObjectRangeInit",
+	log.Debug("Params for ObjectRangeInit",
 		zap.Bool("separateContentType", separateContentType),
 		zap.Uint64("offset", offset),
 		zap.Uint64("length", length))
@@ -395,7 +422,7 @@ func (a *RestAPI) getRange(ctx echo.Context, addr oid.Address, rangeParam string
 				return beginObj, nil
 			})
 			if err != nil {
-				resp := a.logAndGetErrorResponse("invalid  ContentType", err)
+				resp := a.logAndGetErrorResponse("invalid  ContentType", err, log)
 				return ctx.JSON(http.StatusBadRequest, resp)
 			}
 		} else {
@@ -406,14 +433,14 @@ func (a *RestAPI) getRange(ctx echo.Context, addr oid.Address, rangeParam string
 				return payload, nil
 			})
 			if err != nil {
-				resp := a.logAndGetErrorResponse("invalid  ContentType", err)
+				resp := a.logAndGetErrorResponse("invalid  ContentType", err, log)
 				return ctx.JSON(http.StatusBadRequest, resp)
 			}
 
 			// A piece of `payload` was read and is stored in `payloadHead`.
 			// RangeReader allows reading data from both `payloadHead` and `payload` starting from position `start`,
 			// regardless of where the `start` is.
-			a.log.Debug("RangeReader params",
+			log.Debug("RangeReader params",
 				zap.Int("payloadHead length", len(payloadHead)),
 				zap.Uint64("length", length),
 				zap.Uint64("start", start))
