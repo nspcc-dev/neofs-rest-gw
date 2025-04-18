@@ -836,6 +836,12 @@ paths:
             '*/*':
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+        "409":
+          description: Extended ACL is disabled for this container.
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         "502":
           description: Bad gateway.
           content:

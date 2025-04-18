@@ -19,6 +19,7 @@ This document outlines major changes between releases.
 - Go 1.23+ is required to build now (#235)
 - Maximum search limit shrunk from 10000 to 1000 (#276)
 - Attribute-based GET and HEAD now return the latest (wrt `Timestamp` attribute) object from the first 1000 search results (#276)
+- Return http 500 instead of http 400 in some cases, when request is fine but runtime error occurred (#291)
 
 ### Removed
 
