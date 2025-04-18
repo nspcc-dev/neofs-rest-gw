@@ -14,6 +14,7 @@ import (
 	"github.com/nspcc-dev/neofs-rest-gw/metrics"
 	neofscrypto "github.com/nspcc-dev/neofs-sdk-go/crypto"
 	"github.com/nspcc-dev/neofs-sdk-go/user"
+	"go.uber.org/zap"
 )
 
 const defaultTokenExpDuration = 100 // in epoch
@@ -71,9 +72,11 @@ func (a *RestAPI) Auth(ctx echo.Context, params apiserver.AuthParams) error {
 		defer metrics.Elapsed(a.apiMetric.AuthDuration)()
 	}
 
+	log := a.log.With(zap.String(handlerFieldName, "Auth"))
+
 	var tokens []apiserver.Bearer
 	if err := ctx.Bind(&tokens); err != nil {
-		return ctx.JSON(http.StatusBadRequest, a.logAndGetErrorResponse("bind", err))
+		return ctx.JSON(http.StatusBadRequest, a.logAndGetErrorResponse("bind", err, log))
 	}
 
 	commonPrm := newHeaderParams(params)
@@ -83,7 +86,7 @@ func (a *RestAPI) Auth(ctx echo.Context, params apiserver.AuthParams) error {
 	for i, token := range tokens {
 		if _, ok := tokenNames[token.Name]; ok {
 			err := fmt.Errorf("duplicated token name '%s'", token.Name)
-			return ctx.JSON(http.StatusBadRequest, a.logAndGetErrorResponse("token", err))
+			return ctx.JSON(http.StatusBadRequest, a.logAndGetErrorResponse("token", err, log))
 		}
 		tokenNames[token.Name] = struct{}{}
 
@@ -115,6 +118,8 @@ func (a *RestAPI) FormBinaryBearer(ctx echo.Context, params apiserver.FormBinary
 		defer metrics.Elapsed(a.apiMetric.FormBinaryBearerDuration)()
 	}
 
+	log := a.log.With(zap.String(handlerFieldName, "FormBinaryBearer"))
+
 	principal, err := getPrincipal(ctx)
 	if err != nil {
 		return ctx.JSON(http.StatusBadRequest, util.NewErrorResponse(err))
@@ -127,7 +132,7 @@ func (a *RestAPI) FormBinaryBearer(ctx echo.Context, params apiserver.FormBinary
 
 	btoken, err := getBearerToken(principal, params.XBearerSignature, params.XBearerSignatureKey, walletConnect)
 	if err != nil {
-		resp := a.logAndGetErrorResponse("invalid bearer token", err)
+		resp := a.logAndGetErrorResponse("invalid bearer token", err, log)
 		return ctx.JSON(http.StatusBadRequest, resp)
 	}
 

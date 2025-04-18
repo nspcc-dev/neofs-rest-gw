@@ -52,6 +52,8 @@ const (
 	limitMin     = 1
 	limitMax     = 1000
 	limitDefault = 100
+
+	handlerFieldName = "handler"
 )
 
 func getObjectAttributes(ctx context.Context, networkInfoGetter networkInfoGetter, attrs []apiserver.Attribute, prm PrmAttributes) ([]object.Attribute, error) {

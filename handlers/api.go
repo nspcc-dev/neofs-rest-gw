@@ -137,9 +137,8 @@ func getPrincipal(ctx echo.Context) (string, error) {
 	return getPrincipalFromCookie(ctx)
 }
 
-func (a *RestAPI) logAndGetErrorResponse(msg string, err error, fields ...zap.Field) *apiserver.ErrorResponse {
-	fields = append(fields, zap.Error(err))
-	a.log.Error(msg, fields...)
+func (a *RestAPI) logAndGetErrorResponse(msg string, err error, log *zap.Logger) *apiserver.ErrorResponse {
+	log.Error(msg, zap.Error(err))
 	return util.NewErrorResponse(fmt.Errorf("%s: %w", msg, err))
 }
 

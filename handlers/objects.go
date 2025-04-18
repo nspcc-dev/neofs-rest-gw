@@ -76,6 +76,8 @@ func (a *RestAPI) PutObject(ctx echo.Context, params apiserver.PutObjectParams) 
 		defer metrics.Elapsed(a.apiMetric.PutObjectDuration)()
 	}
 
+	log := a.log.With(zap.String(handlerFieldName, "PutObject"))
+
 	principal, err := getPrincipal(ctx)
 	if err != nil {
 		return ctx.JSON(http.StatusBadRequest, util.NewErrorResponse(err))
@@ -83,7 +85,7 @@ func (a *RestAPI) PutObject(ctx echo.Context, params apiserver.PutObjectParams) 
 
 	var body apiserver.ObjectUpload
 	if err = ctx.Bind(&body); err != nil {
-		return ctx.JSON(http.StatusBadRequest, a.logAndGetErrorResponse("bind", err))
+		return ctx.JSON(http.StatusBadRequest, a.logAndGetErrorResponse("bind", err, log))
 	}
 
 	var walletConnect apiserver.SignatureScheme
@@ -93,13 +95,15 @@ func (a *RestAPI) PutObject(ctx echo.Context, params apiserver.PutObjectParams) 
 
 	btoken, err := getBearerToken(principal, params.XBearerSignature, params.XBearerSignatureKey, walletConnect)
 	if err != nil {
-		resp := a.logAndGetErrorResponse("invalid bearer token", err)
+		resp := a.logAndGetErrorResponse("invalid bearer token", err, log)
 		return ctx.JSON(http.StatusBadRequest, resp)
 	}
 
+	log = log.With(zap.String("containerID", body.ContainerId), zap.String("fileName", body.FileName))
+
 	var cnrID cid.ID
 	if err = cnrID.DecodeString(body.ContainerId); err != nil {
-		resp := a.logAndGetErrorResponse("invalid container id", err)
+		resp := a.logAndGetErrorResponse("invalid container id", err, log)
 		return ctx.JSON(http.StatusBadRequest, resp)
 	}
 
@@ -108,7 +112,7 @@ func (a *RestAPI) PutObject(ctx echo.Context, params apiserver.PutObjectParams) 
 	if body.Payload != nil {
 		payload, err = base64.StdEncoding.DecodeString(*body.Payload)
 		if err != nil {
-			resp := a.logAndGetErrorResponse("invalid object payload", err)
+			resp := a.logAndGetErrorResponse("invalid object payload", err, log)
 			return ctx.JSON(http.StatusBadRequest, resp)
 		}
 	}
@@ -119,7 +123,7 @@ func (a *RestAPI) PutObject(ctx echo.Context, params apiserver.PutObjectParams) 
 	}
 	attributes, err := getObjectAttributes(ctx.Request().Context(), a.networkInfoGetter, body.Attributes, prm)
 	if err != nil {
-		resp := a.logAndGetErrorResponse("failed to get object attributes", err)
+		resp := a.logAndGetErrorResponse("failed to get object attributes", err, log)
 		return ctx.JSON(http.StatusBadRequest, resp)
 	}
 
@@ -133,7 +137,7 @@ func (a *RestAPI) PutObject(ctx echo.Context, params apiserver.PutObjectParams) 
 		return err
 	})
 	if err != nil {
-		resp := a.logAndGetErrorResponse("put object", err)
+		resp := a.logAndGetErrorResponse("put object", err, log)
 		return ctx.JSON(http.StatusBadRequest, resp)
 	}
 
@@ -151,9 +155,15 @@ func (a *RestAPI) GetObjectInfo(ctx echo.Context, containerID apiserver.Containe
 		defer metrics.Elapsed(a.apiMetric.GetObjectInfoDuration)()
 	}
 
+	log := a.log.With(
+		zap.String(handlerFieldName, "GetObjectInfo"),
+		zap.String("containerID", containerID),
+		zap.String("objectID", objectID),
+	)
+
 	addr, err := parseAddress(containerID, objectID)
 	if err != nil {
-		resp := a.logAndGetErrorResponse("invalid address", err)
+		resp := a.logAndGetErrorResponse("invalid address", err, log)
 		return ctx.JSON(http.StatusBadRequest, resp)
 	}
 
@@ -169,7 +179,7 @@ func (a *RestAPI) GetObjectInfo(ctx echo.Context, containerID apiserver.Containe
 
 	btoken, err := getBearerToken(principal, params.XBearerSignature, params.XBearerSignatureKey, walletConnect)
 	if err != nil {
-		resp := a.logAndGetErrorResponse("get bearer token", err)
+		resp := a.logAndGetErrorResponse("get bearer token", err, log)
 		return ctx.JSON(http.StatusBadRequest, resp)
 	}
 
@@ -178,7 +188,7 @@ func (a *RestAPI) GetObjectInfo(ctx echo.Context, containerID apiserver.Containe
 
 	header, err := a.pool.ObjectHead(ctx.Request().Context(), addr.Container(), addr.Object(), a.signer, prm)
 	if err != nil {
-		resp := a.logAndGetErrorResponse("head object", err)
+		resp := a.logAndGetErrorResponse("head object", err, log)
 		return ctx.JSON(http.StatusBadRequest, resp)
 	}
 
@@ -203,9 +213,11 @@ func (a *RestAPI) GetObjectInfo(ctx echo.Context, containerID apiserver.Containe
 
 	offset, length, err := prepareOffsetLength(params, header.PayloadSize())
 	if err != nil {
-		errResp := a.logAndGetErrorResponse("invalid range param", err)
+		errResp := a.logAndGetErrorResponse("invalid offset/length", err, log)
 		return ctx.JSON(http.StatusBadRequest, errResp)
 	}
+
+	log = log.With(zap.Uint64("offset", offset), zap.Uint64("length", length))
 
 	if params.MaxPayloadSize != nil && uint64(*params.MaxPayloadSize) < length {
 		ctx.Response().Header().Set(accessControlAllowOriginHeader, "*")
@@ -217,13 +229,13 @@ func (a *RestAPI) GetObjectInfo(ctx echo.Context, containerID apiserver.Containe
 
 	rangeRes, err := a.pool.ObjectRangeInit(ctx.Request().Context(), addr.Container(), addr.Object(), offset, length, a.signer, prmRange)
 	if err != nil {
-		errResp := a.logAndGetErrorResponse("range object", err)
+		errResp := a.logAndGetErrorResponse("object range init", err, log)
 		return ctx.JSON(http.StatusBadRequest, errResp)
 	}
 
 	defer func() {
 		if err = rangeRes.Close(); err != nil {
-			zap.L().Error("close range result", zap.Error(err))
+			log.Error("close range result", zap.Error(err))
 		}
 	}()
 
@@ -231,11 +243,11 @@ func (a *RestAPI) GetObjectInfo(ctx echo.Context, containerID apiserver.Containe
 	encoder := base64.NewEncoder(base64.StdEncoding, sb)
 	payloadSize, err := io.Copy(encoder, rangeRes)
 	if err != nil {
-		errResp := a.logAndGetErrorResponse("encode object payload", err)
+		errResp := a.logAndGetErrorResponse("encode object payload", err, log)
 		return ctx.JSON(http.StatusBadRequest, errResp)
 	}
 	if err = encoder.Close(); err != nil {
-		errResp := a.logAndGetErrorResponse("close encoder", err)
+		errResp := a.logAndGetErrorResponse("close encoder", err, log)
 		return ctx.JSON(http.StatusBadRequest, errResp)
 	}
 
@@ -252,9 +264,15 @@ func (a *RestAPI) DeleteObject(ctx echo.Context, containerID apiserver.Container
 		defer metrics.Elapsed(a.apiMetric.DeleteObjectDuration)()
 	}
 
+	log := a.log.With(
+		zap.String(handlerFieldName, "DeleteObject"),
+		zap.String("containerID", containerID),
+		zap.String("objectID", objectID),
+	)
+
 	addr, err := parseAddress(containerID, objectID)
 	if err != nil {
-		resp := a.logAndGetErrorResponse("invalid address", err)
+		resp := a.logAndGetErrorResponse("invalid address", err, log)
 		return ctx.JSON(http.StatusBadRequest, resp)
 	}
 
@@ -270,7 +288,7 @@ func (a *RestAPI) DeleteObject(ctx echo.Context, containerID apiserver.Container
 
 	btoken, err := getBearerToken(principal, params.XBearerSignature, params.XBearerSignatureKey, walletConnect)
 	if err != nil {
-		resp := a.logAndGetErrorResponse("get bearer token", err)
+		resp := a.logAndGetErrorResponse("get bearer token", err, log)
 		return ctx.JSON(http.StatusBadRequest, resp)
 	}
 
@@ -280,7 +298,7 @@ func (a *RestAPI) DeleteObject(ctx echo.Context, containerID apiserver.Container
 	}
 
 	if _, err = a.pool.ObjectDelete(ctx.Request().Context(), addr.Container(), addr.Object(), a.signer, prm); err != nil {
-		resp := a.logAndGetErrorResponse("failed to delete object", err)
+		resp := a.logAndGetErrorResponse("failed to delete object", err, log)
 		return ctx.JSON(http.StatusBadRequest, resp)
 	}
 
@@ -294,9 +312,16 @@ func (a *RestAPI) SearchObjects(ctx echo.Context, containerID apiserver.Containe
 		defer metrics.Elapsed(a.apiMetric.SearchObjectsDuration)()
 	}
 
+	log := a.log.With(
+		zap.String(handlerFieldName, "SearchObjects"),
+		zap.String("containerID", containerID),
+		zap.Intp("offset", params.Offset),
+		zap.Intp("limit", params.Limit),
+	)
+
 	var cnrID cid.ID
 	if err := cnrID.DecodeString(containerID); err != nil {
-		resp := a.logAndGetErrorResponse("invalid container id", err)
+		resp := a.logAndGetErrorResponse("invalid container id", err, log)
 		return ctx.JSON(http.StatusBadRequest, resp)
 	}
 
@@ -312,18 +337,18 @@ func (a *RestAPI) SearchObjects(ctx echo.Context, containerID apiserver.Containe
 
 	btoken, err := getBearerToken(principal, params.XBearerSignature, params.XBearerSignatureKey, walletConnect)
 	if err != nil {
-		resp := a.logAndGetErrorResponse("get bearer token", err)
+		resp := a.logAndGetErrorResponse("get bearer token", err, log)
 		return ctx.JSON(http.StatusBadRequest, resp)
 	}
 
 	var searchFilters apiserver.SearchFilters
 	if err = ctx.Bind(&searchFilters); err != nil {
-		return ctx.JSON(http.StatusBadRequest, a.logAndGetErrorResponse("bind", err))
+		return ctx.JSON(http.StatusBadRequest, a.logAndGetErrorResponse("bind", err, log))
 	}
 
 	filters, err := util.ToNativeFilters(searchFilters.Filters)
 	if err != nil {
-		resp := a.logAndGetErrorResponse("failed to transform to native", err)
+		resp := a.logAndGetErrorResponse("failed to transform to native", err, log)
 		return ctx.JSON(http.StatusBadRequest, resp)
 	}
 
@@ -348,14 +373,14 @@ func (a *RestAPI) SearchObjects(ctx echo.Context, containerID apiserver.Containe
 
 	offset, limit, err := getOffsetAndLimit(params.Offset, params.Limit)
 	if err != nil {
-		resp := a.logAndGetErrorResponse("invalid parameter", err)
+		resp := a.logAndGetErrorResponse("invalid offset/limit", err, log)
 		return ctx.JSON(http.StatusBadRequest, resp)
 	}
 
 	for {
 		resSearch, nextCursor, err := a.pool.SearchObjects(ctx.Request().Context(), cnrID, filters, returningAttributes, cursor, a.signer, opts)
 		if err != nil {
-			resp := a.logAndGetErrorResponse("failed to search objects", err)
+			resp := a.logAndGetErrorResponse("failed to search objects", err, log)
 			return ctx.JSON(http.StatusBadRequest, resp)
 		}
 
@@ -404,9 +429,11 @@ func (a *RestAPI) V2SearchObjects(ctx echo.Context, containerID apiserver.Contai
 		defer metrics.Elapsed(a.apiMetric.V2SearchObjectsDuration)()
 	}
 
+	log := a.log.With(zap.String(handlerFieldName, "V2SearchObjects"), zap.String("containerID", containerID))
+
 	var cnrID cid.ID
 	if err := cnrID.DecodeString(containerID); err != nil {
-		resp := a.logAndGetErrorResponse("invalid container id", err)
+		resp := a.logAndGetErrorResponse("invalid container id", err, log)
 		return ctx.JSON(http.StatusBadRequest, resp)
 	}
 
@@ -422,22 +449,22 @@ func (a *RestAPI) V2SearchObjects(ctx echo.Context, containerID apiserver.Contai
 
 	btoken, err := getBearerToken(principal, params.XBearerSignature, params.XBearerSignatureKey, walletConnect)
 	if err != nil {
-		resp := a.logAndGetErrorResponse("get bearer token", err)
+		resp := a.logAndGetErrorResponse("get bearer token", err, log)
 		return ctx.JSON(http.StatusBadRequest, resp)
 	}
 
 	var searchFilters apiserver.SearchRequest
 	if err = ctx.Bind(&searchFilters); err != nil {
-		return ctx.JSON(http.StatusBadRequest, a.logAndGetErrorResponse("bind", err))
+		return ctx.JSON(http.StatusBadRequest, a.logAndGetErrorResponse("bind", err, log))
 	}
 
 	if len(searchFilters.Attributes) > searchRequestMaxAttributes {
-		return ctx.JSON(http.StatusBadRequest, a.logAndGetErrorResponse("attribute amount limit reached", err))
+		return ctx.JSON(http.StatusBadRequest, a.logAndGetErrorResponse("attribute amount limit reached", err, log))
 	}
 
 	filters, err := util.ToNativeFilters(searchFilters.Filters)
 	if err != nil {
-		resp := a.logAndGetErrorResponse("failed to transform to native", err)
+		resp := a.logAndGetErrorResponse("failed to transform to native", err, log)
 		return ctx.JSON(http.StatusBadRequest, resp)
 	}
 
@@ -458,7 +485,7 @@ func (a *RestAPI) V2SearchObjects(ctx echo.Context, containerID apiserver.Contai
 
 	limit, err := getLimit(params.Limit)
 	if err != nil {
-		resp := a.logAndGetErrorResponse("invalid parameter", err)
+		resp := a.logAndGetErrorResponse("invalid limit", err, log)
 		return ctx.JSON(http.StatusBadRequest, resp)
 	}
 
@@ -466,7 +493,7 @@ func (a *RestAPI) V2SearchObjects(ctx echo.Context, containerID apiserver.Contai
 	opts.SetCount(uint32(limit))
 	resSearch, nextCursor, err := a.pool.SearchObjects(ctx.Request().Context(), cnrID, filters, returningAttributes, cursor, a.signer, opts)
 	if err != nil {
-		resp := a.logAndGetErrorResponse("failed to search objects", err)
+		resp := a.logAndGetErrorResponse("failed to search objects", err, log)
 		return ctx.JSON(http.StatusBadRequest, resp)
 	}
 
@@ -500,6 +527,8 @@ func (a *RestAPI) GetContainerObject(ctx echo.Context, containerID apiserver.Con
 		defer metrics.Elapsed(a.apiMetric.GetContainerObjectDuration)()
 	}
 
+	log := a.log.With(zap.String(handlerFieldName, "GetContainerObject"), zap.String("containerID", containerID), zap.String("objectID", objectID))
+
 	principal, err := getPrincipal(ctx)
 	if err != nil {
 		return ctx.JSON(http.StatusBadRequest, util.NewErrorResponse(err))
@@ -507,7 +536,7 @@ func (a *RestAPI) GetContainerObject(ctx echo.Context, containerID apiserver.Con
 
 	addr, err := parseAddress(containerID, objectID)
 	if err != nil {
-		resp := a.logAndGetErrorResponse("invalid address", err)
+		resp := a.logAndGetErrorResponse("invalid address", err, log)
 		return ctx.JSON(http.StatusBadRequest, resp)
 	}
 
@@ -515,15 +544,15 @@ func (a *RestAPI) GetContainerObject(ctx echo.Context, containerID apiserver.Con
 	if principal != "" {
 		btoken, err = getBearerTokenFromString(principal)
 		if err != nil {
-			resp := a.logAndGetErrorResponse("get bearer token", err)
+			resp := a.logAndGetErrorResponse("get bearer token", err, log)
 			return ctx.JSON(http.StatusBadRequest, resp)
 		}
 	}
-	return a.getByAddress(ctx, addr, params.Download, btoken, false)
+	return a.getByAddress(ctx, addr, params.Download, btoken, false, log)
 }
 
 // getByAddress returns object (using container ID and object ID).
-func (a *RestAPI) getByAddress(ctx echo.Context, addr oid.Address, downloadParam *string, btoken *bearer.Token, useJSON bool) error {
+func (a *RestAPI) getByAddress(ctx echo.Context, addr oid.Address, downloadParam *string, btoken *bearer.Token, useJSON bool, log *zap.Logger) error {
 	var prm client.PrmObjectGet
 	if btoken != nil {
 		attachBearer(&prm, btoken)
@@ -532,10 +561,10 @@ func (a *RestAPI) getByAddress(ctx echo.Context, addr oid.Address, downloadParam
 	header, payloadReader, err := a.pool.ObjectGetInit(ctx.Request().Context(), addr.Container(), addr.Object(), a.signer, prm)
 	if err != nil {
 		if isNotFoundError(err) {
-			resp := a.logAndGetErrorResponse("not found", err)
+			resp := a.logAndGetErrorResponse("not found", err, log)
 			return ctx.JSON(http.StatusNotFound, resp)
 		}
-		resp := a.logAndGetErrorResponse("get object", err)
+		resp := a.logAndGetErrorResponse("get object", err, log)
 		return ctx.JSON(http.StatusBadRequest, resp)
 	}
 
@@ -548,7 +577,7 @@ func (a *RestAPI) getByAddress(ctx echo.Context, addr oid.Address, downloadParam
 		useJSON:     useJSON,
 		header:      header,
 	}
-	contentType := a.setAttributes(ctx, param)
+	contentType := a.setAttributes(ctx, param, log)
 	payload := io.ReadCloser(payloadReader)
 
 	if len(contentType) == 0 {
@@ -560,7 +589,7 @@ func (a *RestAPI) getByAddress(ctx echo.Context, addr oid.Address, downloadParam
 				return payload, nil
 			})
 			if err != nil {
-				resp := a.logAndGetErrorResponse("invalid  ContentType", err)
+				resp := a.logAndGetErrorResponse("invalid  ContentType", err, log)
 				return ctx.JSON(http.StatusBadRequest, resp)
 			}
 
@@ -589,6 +618,8 @@ func (a *RestAPI) HeadContainerObject(ctx echo.Context, containerID apiserver.Co
 		defer metrics.Elapsed(a.apiMetric.HeadContainerObjectDuration)()
 	}
 
+	log := a.log.With(zap.String(handlerFieldName, "HeadContainerObject"), zap.String("containerID", containerID), zap.String("objectID", objectID))
+
 	principal, err := getPrincipal(ctx)
 	if err != nil {
 		return ctx.JSON(http.StatusBadRequest, util.NewErrorResponse(err))
@@ -596,7 +627,7 @@ func (a *RestAPI) HeadContainerObject(ctx echo.Context, containerID apiserver.Co
 
 	addr, err := parseAddress(containerID, objectID)
 	if err != nil {
-		resp := a.logAndGetErrorResponse("invalid address", err)
+		resp := a.logAndGetErrorResponse("invalid address", err, log)
 		return ctx.JSON(http.StatusBadRequest, resp)
 	}
 
@@ -606,16 +637,16 @@ func (a *RestAPI) HeadContainerObject(ctx echo.Context, containerID apiserver.Co
 	if principal != "" {
 		btoken, err = getBearerTokenFromString(principal)
 		if err != nil {
-			resp := a.logAndGetErrorResponse("get bearer token", err)
+			resp := a.logAndGetErrorResponse("get bearer token", err, log)
 			return ctx.JSON(http.StatusBadRequest, resp)
 		}
 	}
 
-	return a.headByAddress(ctx, addr, params.Download, btoken, false)
+	return a.headByAddress(ctx, addr, params.Download, btoken, false, log)
 }
 
 // headByAddress returns object info (using container ID and object ID).
-func (a *RestAPI) headByAddress(ctx echo.Context, addr oid.Address, downloadParam *string, btoken *bearer.Token, useJSON bool) error {
+func (a *RestAPI) headByAddress(ctx echo.Context, addr oid.Address, downloadParam *string, btoken *bearer.Token, useJSON bool, log *zap.Logger) error {
 	var prm client.PrmObjectHead
 	if btoken != nil {
 		attachBearer(&prm, btoken)
@@ -624,10 +655,10 @@ func (a *RestAPI) headByAddress(ctx echo.Context, addr oid.Address, downloadPara
 	header, err := a.pool.ObjectHead(ctx.Request().Context(), addr.Container(), addr.Object(), a.signer, prm)
 	if err != nil {
 		if isNotFoundError(err) {
-			resp := a.logAndGetErrorResponse("not found", err)
+			resp := a.logAndGetErrorResponse("object head: not found", err, log)
 			return ctx.JSON(http.StatusNotFound, resp)
 		}
-		resp := a.logAndGetErrorResponse("head object", err)
+		resp := a.logAndGetErrorResponse("head object", err, log)
 		return ctx.JSON(http.StatusBadRequest, resp)
 	}
 
@@ -640,7 +671,7 @@ func (a *RestAPI) headByAddress(ctx echo.Context, addr oid.Address, downloadPara
 		useJSON:     useJSON,
 		header:      *header,
 	}
-	contentType := a.setAttributes(ctx, param)
+	contentType := a.setAttributes(ctx, param, log)
 	if len(contentType) == 0 {
 		if payloadSize > 0 {
 			contentType, _, err = readContentType(payloadSize, func(sz uint64) (io.Reader, error) {
@@ -654,7 +685,7 @@ func (a *RestAPI) headByAddress(ctx echo.Context, addr oid.Address, downloadPara
 				return resObj, nil
 			})
 			if err != nil {
-				resp := a.logAndGetErrorResponse("invalid  ContentType", err)
+				resp := a.logAndGetErrorResponse("invalid  ContentType", err, log)
 				return ctx.JSON(http.StatusBadRequest, resp)
 			}
 		} else {
@@ -673,7 +704,7 @@ func isNotFoundError(err error) bool {
 		errors.Is(err, apistatus.ErrObjectAlreadyRemoved)
 }
 
-func (a *RestAPI) setAttributes(ctx echo.Context, params setAttributeParams) string {
+func (a *RestAPI) setAttributes(ctx echo.Context, params setAttributeParams, log *zap.Logger) string {
 	ctx.Response().Header().Set("Content-Length", strconv.FormatUint(params.payloadSize, 10))
 
 	attrJSON := make(map[string]string)
@@ -712,7 +743,7 @@ func (a *RestAPI) setAttributes(ctx echo.Context, params setAttributeParams) str
 			case object.AttributeTimestamp:
 				attrTimestamp, err := strconv.ParseInt(val, 10, 64)
 				if err != nil {
-					a.log.Info("attribute timestamp parsing error",
+					log.Info("attribute timestamp parsing error",
 						zap.String("container ID", params.cid),
 						zap.String("object ID", params.oid),
 						zap.Error(err))
@@ -743,7 +774,7 @@ func (a *RestAPI) setAttributes(ctx echo.Context, params setAttributeParams) str
 		// Marshal the map to a JSON string
 		s, err := json.Marshal(attrJSON)
 		if err != nil {
-			a.log.Info("marshal attributes error",
+			log.Info("marshal attributes error",
 				zap.String("container ID", params.cid),
 				zap.String("object ID", params.oid),
 				zap.Error(err))
@@ -985,11 +1016,12 @@ func (a *RestAPI) UploadContainerObject(ctx echo.Context, containerID apiserver.
 		err    error
 		addr   oid.Address
 		btoken *bearer.Token
+		log    = a.log.With(zap.String(handlerFieldName, "UploadContainerObject"), zap.String("containerID", containerID))
 	)
 
 	var idCnr cid.ID
 	if err = idCnr.DecodeString(containerID); err != nil {
-		resp := a.logAndGetErrorResponse("invalid container id", err)
+		resp := a.logAndGetErrorResponse("invalid container id", err, log)
 		return ctx.JSON(http.StatusBadRequest, resp)
 	}
 
@@ -1001,18 +1033,18 @@ func (a *RestAPI) UploadContainerObject(ctx echo.Context, containerID apiserver.
 	if principal != "" {
 		btoken, err = getBearerTokenFromString(principal)
 		if err != nil {
-			resp := a.logAndGetErrorResponse("get bearer token", err)
+			resp := a.logAndGetErrorResponse("get bearer token", err, log)
 			return ctx.JSON(http.StatusBadRequest, resp)
 		}
 	}
 
 	if err = ctx.Request().ParseMultipartForm(defaultMaxMemory); err != nil {
-		resp := a.logAndGetErrorResponse("parse multi form", err)
+		resp := a.logAndGetErrorResponse("parse multi form", err, log)
 		return ctx.JSON(http.StatusBadRequest, resp)
 	}
 
 	if ctx.Request().MultipartForm == nil {
-		resp := a.logAndGetErrorResponse("multi form is nil", err)
+		resp := a.logAndGetErrorResponse("multi form is nil", err, log)
 		return ctx.JSON(http.StatusBadRequest, resp)
 	}
 
@@ -1020,12 +1052,12 @@ func (a *RestAPI) UploadContainerObject(ctx echo.Context, containerID apiserver.
 	for fileKey = range ctx.Request().MultipartForm.File {
 		file, header, err = ctx.Request().FormFile(fileKey)
 		if err != nil {
-			resp := a.logAndGetErrorResponse(fmt.Sprintf("get file %q from HTTP request", fileKey), err)
+			resp := a.logAndGetErrorResponse(fmt.Sprintf("get file %q from HTTP request", fileKey), err, log.With(zap.String("fileKey", fileKey)))
 			return ctx.JSON(http.StatusBadRequest, resp)
 		}
 		defer func() {
 			err := file.Close()
-			a.log.Debug(
+			log.Debug(
 				"close temporary multipart/form file",
 				zap.Stringer("address", addr),
 				zap.String("filename", header.Filename),
@@ -1037,25 +1069,25 @@ func (a *RestAPI) UploadContainerObject(ctx echo.Context, containerID apiserver.
 	}
 
 	if fileKey == "" {
-		resp := a.logAndGetErrorResponse("no multipart/form file", http.ErrMissingFile)
+		resp := a.logAndGetErrorResponse("no multipart/form file", http.ErrMissingFile, log)
 		return ctx.JSON(http.StatusBadRequest, resp)
 	}
 
-	filtered, err := filterHeaders(a.log, ctx.Request().Header)
+	filtered, err := filterHeaders(log, ctx.Request().Header)
 	if err != nil {
-		resp := a.logAndGetErrorResponse("could not process headers", err)
+		resp := a.logAndGetErrorResponse("could not process headers", err, log)
 		return ctx.JSON(http.StatusBadRequest, resp)
 	}
 
 	if needParseExpiration(filtered) {
 		epochDuration, err := getEpochDurations(ctx.Request().Context(), a.networkInfoGetter)
 		if err != nil {
-			resp := a.logAndGetErrorResponse("could not get epoch durations from network info", err)
+			resp := a.logAndGetErrorResponse("could not get epoch durations from network info", err, log)
 			return ctx.JSON(http.StatusBadRequest, resp)
 		}
 
 		if err = prepareExpirationHeader(filtered, epochDuration, time.Now()); err != nil {
-			resp := a.logAndGetErrorResponse("could not parse expiration header", err)
+			resp := a.logAndGetErrorResponse("could not parse expiration header", err, log)
 			return ctx.JSON(http.StatusBadRequest, resp)
 		}
 	}
@@ -1103,7 +1135,7 @@ func (a *RestAPI) UploadContainerObject(ctx echo.Context, containerID apiserver.
 		return err
 	})
 	if err != nil {
-		resp := a.logAndGetErrorResponse("put object", err)
+		resp := a.logAndGetErrorResponse("put object", err, log)
 		return ctx.JSON(http.StatusBadRequest, resp)
 	}
 
@@ -1132,6 +1164,13 @@ func (a *RestAPI) GetByAttribute(ctx echo.Context, containerID apiserver.Contain
 		defer metrics.Elapsed(a.apiMetric.GetByAttributeDuration)()
 	}
 
+	log := a.log.With(
+		zap.String(handlerFieldName, "GetByAttribute"),
+		zap.String("containerID", containerID),
+		zap.String("attrKey", attrKey),
+		zap.String("attrVal", attrVal),
+	)
+
 	principal, err := getPrincipal(ctx)
 	if err != nil {
 		return ctx.JSON(http.StatusBadRequest, util.NewErrorResponse(err))
@@ -1139,7 +1178,7 @@ func (a *RestAPI) GetByAttribute(ctx echo.Context, containerID apiserver.Contain
 
 	var cnrID cid.ID
 	if err = cnrID.DecodeString(containerID); err != nil {
-		resp := a.logAndGetErrorResponse("invalid container id", err)
+		resp := a.logAndGetErrorResponse("invalid container id", err, log)
 		return ctx.JSON(http.StatusBadRequest, resp)
 	}
 
@@ -1147,14 +1186,14 @@ func (a *RestAPI) GetByAttribute(ctx echo.Context, containerID apiserver.Contain
 	if principal != "" {
 		btoken, err = getBearerTokenFromString(principal)
 		if err != nil {
-			resp := a.logAndGetErrorResponse("get bearer token", err)
+			resp := a.logAndGetErrorResponse("get bearer token", err, log)
 			return ctx.JSON(http.StatusBadRequest, resp)
 		}
 	}
 
 	objectID, err := a.search(ctx.Request().Context(), btoken, cnrID, attrKey, attrVal, object.MatchStringEqual)
 	if err != nil {
-		resp := a.logAndGetErrorResponse("could not search for objects", err)
+		resp := a.logAndGetErrorResponse("could not search for objects", err, log)
 		return ctx.JSON(getResponseCodeFromStatus(err), resp)
 	}
 
@@ -1166,7 +1205,7 @@ func (a *RestAPI) GetByAttribute(ctx echo.Context, containerID apiserver.Contain
 	addrObj.SetContainer(cnrID)
 	addrObj.SetObject(objectID)
 
-	return a.getByAddress(ctx, addrObj, params.Download, btoken, false)
+	return a.getByAddress(ctx, addrObj, params.Download, btoken, false, log)
 }
 
 // HeadByAttribute handler that returns object info (payload and attributes) by a specific attribute.
@@ -1175,6 +1214,13 @@ func (a *RestAPI) HeadByAttribute(ctx echo.Context, containerID apiserver.Contai
 		defer metrics.Elapsed(a.apiMetric.HeadByAttributeDuration)()
 	}
 
+	log := a.log.With(
+		zap.String(handlerFieldName, "HeadByAttribute"),
+		zap.String("containerID", containerID),
+		zap.String("attrKey", attrKey),
+		zap.String("attrVal", attrVal),
+	)
+
 	principal, err := getPrincipal(ctx)
 	if err != nil {
 		return ctx.JSON(http.StatusBadRequest, util.NewErrorResponse(err))
@@ -1182,7 +1228,7 @@ func (a *RestAPI) HeadByAttribute(ctx echo.Context, containerID apiserver.Contai
 
 	var cnrID cid.ID
 	if err = cnrID.DecodeString(containerID); err != nil {
-		resp := a.logAndGetErrorResponse("invalid container id", err)
+		resp := a.logAndGetErrorResponse("invalid container id", err, log)
 		return ctx.JSON(http.StatusBadRequest, resp)
 	}
 
@@ -1190,14 +1236,14 @@ func (a *RestAPI) HeadByAttribute(ctx echo.Context, containerID apiserver.Contai
 	if principal != "" {
 		btoken, err = getBearerTokenFromString(principal)
 		if err != nil {
-			resp := a.logAndGetErrorResponse("get bearer token", err)
+			resp := a.logAndGetErrorResponse("get bearer token", err, log)
 			return ctx.JSON(http.StatusBadRequest, resp)
 		}
 	}
 
 	objectID, err := a.search(ctx.Request().Context(), btoken, cnrID, attrKey, attrVal, object.MatchStringEqual)
 	if err != nil {
-		resp := a.logAndGetErrorResponse("could not search for objects", err)
+		resp := a.logAndGetErrorResponse("could not search for objects", err, log)
 		return ctx.JSON(getResponseCodeFromStatus(err), resp)
 	}
 
@@ -1211,7 +1257,7 @@ func (a *RestAPI) HeadByAttribute(ctx echo.Context, containerID apiserver.Contai
 
 	ctx.Response().Header().Set(accessControlAllowOriginHeader, "*")
 
-	return a.headByAddress(ctx, addrObj, params.Download, btoken, false)
+	return a.headByAddress(ctx, addrObj, params.Download, btoken, false, log)
 }
 
 func (a *RestAPI) search(ctx context.Context, btoken *bearer.Token, cid cid.ID, key, val string, op object.SearchMatchType) (oid.ID, error) {
