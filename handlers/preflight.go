@@ -160,3 +160,11 @@ func (a *RestAPI) NewOptionsByAttribute(ctx echo.Context, _ apiserver.ContainerI
 	ctx.Response().Header().Set(accessControlAllowMethodsHeader, allowMethods(methodGet, methodHead))
 	return ctx.NoContent(http.StatusOK)
 }
+
+// OptionsV2SearchObjects handler for the objectsSearch options request.
+func (a *RestAPI) OptionsV2SearchObjects(ctx echo.Context, _ string) error {
+	ctx.Response().Header().Set(accessControlAllowOriginHeader, allOrigins)
+	ctx.Response().Header().Set(accessControlAllowHeadersHeader, allowHeaders)
+	ctx.Response().Header().Set(accessControlAllowMethodsHeader, allowMethods(methodPost))
+	return ctx.NoContent(http.StatusOK)
+}

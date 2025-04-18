@@ -361,6 +361,30 @@ paths:
         - { }
         - BearerAuth: [ ]
       x-codegen-request-body-name: searchFilters
+    options:
+      operationId: optionsV2SearchObjects
+      parameters:
+        - name: containerId
+          in: path
+          description: Base58 encoded container id.
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: CORS.
+          headers:
+            Access-Control-Allow-Origin:
+              schema:
+                type: string
+            Access-Control-Allow-Methods:
+              schema:
+                type: string
+            Access-Control-Allow-Headers:
+              schema:
+                type: string
+          content: { }
+      security: [ ]
   /v1/objects/{containerId}/{objectId}:
     get:
       deprecated: true
