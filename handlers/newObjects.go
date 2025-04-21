@@ -121,7 +121,7 @@ func (a *RestAPI) NewUploadContainerObject(ctx echo.Context, containerID apiserv
 	a.setOwner(&hdr, btoken)
 	hdr.SetAttributes(attributes...)
 
-	idObj, err := a.putObject(ctx, hdr, btoken, func(w io.Writer) error {
+	wp := func(w io.Writer) error {
 		var err error
 		if cln := ctx.Request().ContentLength; cln >= 0 && uint64(cln) < a.payloadBufferSize { // negative means unknown
 			if cln != 0 { // otherwise io.CopyBuffer panics
@@ -131,7 +131,9 @@ func (a *RestAPI) NewUploadContainerObject(ctx echo.Context, containerID apiserv
 			_, err = io.CopyBuffer(w, ctx.Request().Body, make([]byte, a.payloadBufferSize))
 		}
 		return err
-	})
+	}
+
+	idObj, err := a.putObject(ctx, hdr, btoken, wp)
 	if err != nil {
 		resp := a.logAndGetErrorResponse("put object", err, log)
 		return ctx.JSON(getResponseCodeFromStatus(err), resp)
@@ -413,14 +415,16 @@ func (a *RestAPI) getRange(ctx echo.Context, addr oid.Address, rangeParam string
 
 	if len(contentType) == 0 {
 		if separateContentType {
-			// Determine the Content-Type in a separate request .
-			contentType, _, err = readContentType(payloadSize, func(sz uint64) (io.Reader, error) {
+			readerInit := func(sz uint64) (io.Reader, error) {
 				beginObj, err := a.pool.ObjectRangeInit(ctx.Request().Context(), addr.Container(), addr.Object(), 0, sz, a.signer, prmRange)
 				if err != nil {
 					return nil, err
 				}
 				return beginObj, nil
-			})
+			}
+
+			// Determine the Content-Type in a separate request .
+			contentType, _, err = readContentType(payloadSize, readerInit)
 			if err != nil {
 				resp := a.logAndGetErrorResponse("invalid  ContentType", err, log)
 				return ctx.JSON(getResponseCodeFromStatus(err), resp)
