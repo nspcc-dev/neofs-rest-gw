@@ -71,7 +71,7 @@ func (a *RestAPI) NewUploadContainerObject(ctx echo.Context, containerID apiserv
 		epochDuration, err := getEpochDurations(ctx.Request().Context(), a.networkInfoGetter)
 		if err != nil {
 			resp := a.logAndGetErrorResponse("could not get epoch durations from network info", err, log)
-			return ctx.JSON(http.StatusBadRequest, resp)
+			return ctx.JSON(getResponseCodeFromStatus(err), resp)
 		}
 
 		if err = prepareExpirationHeader(filtered, epochDuration, time.Now()); err != nil {
@@ -134,7 +134,7 @@ func (a *RestAPI) NewUploadContainerObject(ctx echo.Context, containerID apiserv
 	})
 	if err != nil {
 		resp := a.logAndGetErrorResponse("put object", err, log)
-		return ctx.JSON(http.StatusBadRequest, resp)
+		return ctx.JSON(getResponseCodeFromStatus(err), resp)
 	}
 
 	addr.SetObject(idObj)
@@ -350,7 +350,7 @@ func (a *RestAPI) getRange(ctx echo.Context, addr oid.Address, rangeParam string
 			return ctx.JSON(http.StatusNotFound, resp)
 		}
 		resp := a.logAndGetErrorResponse("head object", err, log)
-		return ctx.JSON(http.StatusBadRequest, resp)
+		return ctx.JSON(getResponseCodeFromStatus(err), resp)
 	}
 
 	payloadSize := header.PayloadSize()
@@ -406,7 +406,7 @@ func (a *RestAPI) getRange(ctx echo.Context, addr oid.Address, rangeParam string
 
 	resObj, err := a.pool.ObjectRangeInit(ctx.Request().Context(), addr.Container(), addr.Object(), offset, length, a.signer, prmRange)
 	if err != nil {
-		return ctx.JSON(http.StatusBadRequest, util.NewErrorResponse(err))
+		return ctx.JSON(getResponseCodeFromStatus(err), util.NewErrorResponse(err))
 	}
 
 	payload := io.ReadCloser(resObj)
@@ -423,7 +423,7 @@ func (a *RestAPI) getRange(ctx echo.Context, addr oid.Address, rangeParam string
 			})
 			if err != nil {
 				resp := a.logAndGetErrorResponse("invalid  ContentType", err, log)
-				return ctx.JSON(http.StatusBadRequest, resp)
+				return ctx.JSON(getResponseCodeFromStatus(err), resp)
 			}
 		} else {
 			// Determine the Content-Type from the payload head.
@@ -434,7 +434,7 @@ func (a *RestAPI) getRange(ctx echo.Context, addr oid.Address, rangeParam string
 			})
 			if err != nil {
 				resp := a.logAndGetErrorResponse("invalid  ContentType", err, log)
-				return ctx.JSON(http.StatusBadRequest, resp)
+				return ctx.JSON(getResponseCodeFromStatus(err), resp)
 			}
 
 			// A piece of `payload` was read and is stored in `payloadHead`.

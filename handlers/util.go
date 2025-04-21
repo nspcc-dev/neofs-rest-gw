@@ -67,7 +67,7 @@ func getObjectAttributes(ctx context.Context, networkInfoGetter networkInfoGette
 	if needParseExpiration(headers) {
 		epochDuration, err := getEpochDurations(ctx, networkInfoGetter)
 		if err != nil {
-			return nil, fmt.Errorf("could not get epoch durations from network info: %w", err)
+			return nil, fmt.Errorf("could not get epoch durations from network info: %w", errors.Join(errNeoFSRequestFailed, err))
 		}
 		now := time.Now().UTC()
 		if err = prepareExpirationHeader(headers, epochDuration, now); err != nil {

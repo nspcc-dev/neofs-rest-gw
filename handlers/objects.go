@@ -124,6 +124,10 @@ func (a *RestAPI) PutObject(ctx echo.Context, params apiserver.PutObjectParams) 
 	attributes, err := getObjectAttributes(ctx.Request().Context(), a.networkInfoGetter, body.Attributes, prm)
 	if err != nil {
 		resp := a.logAndGetErrorResponse("failed to get object attributes", err, log)
+		if errors.Is(err, errNeoFSRequestFailed) {
+			return ctx.JSON(getResponseCodeFromStatus(err), resp)
+		}
+
 		return ctx.JSON(http.StatusBadRequest, resp)
 	}
 
@@ -138,7 +142,7 @@ func (a *RestAPI) PutObject(ctx echo.Context, params apiserver.PutObjectParams) 
 	})
 	if err != nil {
 		resp := a.logAndGetErrorResponse("put object", err, log)
-		return ctx.JSON(http.StatusBadRequest, resp)
+		return ctx.JSON(getResponseCodeFromStatus(err), resp)
 	}
 
 	var resp apiserver.Address
@@ -189,7 +193,7 @@ func (a *RestAPI) GetObjectInfo(ctx echo.Context, containerID apiserver.Containe
 	header, err := a.pool.ObjectHead(ctx.Request().Context(), addr.Container(), addr.Object(), a.signer, prm)
 	if err != nil {
 		resp := a.logAndGetErrorResponse("head object", err, log)
-		return ctx.JSON(http.StatusBadRequest, resp)
+		return ctx.JSON(getResponseCodeFromStatus(err), resp)
 	}
 
 	var resp apiserver.ObjectInfo
@@ -230,7 +234,7 @@ func (a *RestAPI) GetObjectInfo(ctx echo.Context, containerID apiserver.Containe
 	rangeRes, err := a.pool.ObjectRangeInit(ctx.Request().Context(), addr.Container(), addr.Object(), offset, length, a.signer, prmRange)
 	if err != nil {
 		errResp := a.logAndGetErrorResponse("object range init", err, log)
-		return ctx.JSON(http.StatusBadRequest, errResp)
+		return ctx.JSON(getResponseCodeFromStatus(err), errResp)
 	}
 
 	defer func() {
@@ -244,11 +248,11 @@ func (a *RestAPI) GetObjectInfo(ctx echo.Context, containerID apiserver.Containe
 	payloadSize, err := io.Copy(encoder, rangeRes)
 	if err != nil {
 		errResp := a.logAndGetErrorResponse("encode object payload", err, log)
-		return ctx.JSON(http.StatusBadRequest, errResp)
+		return ctx.JSON(getResponseCodeFromStatus(err), errResp)
 	}
 	if err = encoder.Close(); err != nil {
 		errResp := a.logAndGetErrorResponse("close encoder", err, log)
-		return ctx.JSON(http.StatusBadRequest, errResp)
+		return ctx.JSON(getResponseCodeFromStatus(err), errResp)
 	}
 
 	resp.Payload = util.NewString(sb.String())
@@ -299,7 +303,7 @@ func (a *RestAPI) DeleteObject(ctx echo.Context, containerID apiserver.Container
 
 	if _, err = a.pool.ObjectDelete(ctx.Request().Context(), addr.Container(), addr.Object(), a.signer, prm); err != nil {
 		resp := a.logAndGetErrorResponse("failed to delete object", err, log)
-		return ctx.JSON(http.StatusBadRequest, resp)
+		return ctx.JSON(getResponseCodeFromStatus(err), resp)
 	}
 
 	ctx.Response().Header().Set(accessControlAllowOriginHeader, "*")
@@ -381,7 +385,7 @@ func (a *RestAPI) SearchObjects(ctx echo.Context, containerID apiserver.Containe
 		resSearch, nextCursor, err := a.pool.SearchObjects(ctx.Request().Context(), cnrID, filters, returningAttributes, cursor, a.signer, opts)
 		if err != nil {
 			resp := a.logAndGetErrorResponse("failed to search objects", err, log)
-			return ctx.JSON(http.StatusBadRequest, resp)
+			return ctx.JSON(getResponseCodeFromStatus(err), resp)
 		}
 
 		allObjects = append(allObjects, resSearch...)
@@ -494,7 +498,7 @@ func (a *RestAPI) V2SearchObjects(ctx echo.Context, containerID apiserver.Contai
 	resSearch, nextCursor, err := a.pool.SearchObjects(ctx.Request().Context(), cnrID, filters, returningAttributes, cursor, a.signer, opts)
 	if err != nil {
 		resp := a.logAndGetErrorResponse("failed to search objects", err, log)
-		return ctx.JSON(http.StatusBadRequest, resp)
+		return ctx.JSON(getResponseCodeFromStatus(err), resp)
 	}
 
 	var objects = make([]apiserver.ObjectBaseInfoV2, len(resSearch))
@@ -565,7 +569,7 @@ func (a *RestAPI) getByAddress(ctx echo.Context, addr oid.Address, downloadParam
 			return ctx.JSON(http.StatusNotFound, resp)
 		}
 		resp := a.logAndGetErrorResponse("get object", err, log)
-		return ctx.JSON(http.StatusBadRequest, resp)
+		return ctx.JSON(getResponseCodeFromStatus(err), resp)
 	}
 
 	payloadSize := header.PayloadSize()
@@ -590,7 +594,7 @@ func (a *RestAPI) getByAddress(ctx echo.Context, addr oid.Address, downloadParam
 			})
 			if err != nil {
 				resp := a.logAndGetErrorResponse("invalid  ContentType", err, log)
-				return ctx.JSON(http.StatusBadRequest, resp)
+				return ctx.JSON(getResponseCodeFromStatus(err), resp)
 			}
 
 			// reset payload reader since a part of the data has been read
@@ -659,7 +663,7 @@ func (a *RestAPI) headByAddress(ctx echo.Context, addr oid.Address, downloadPara
 			return ctx.JSON(http.StatusNotFound, resp)
 		}
 		resp := a.logAndGetErrorResponse("head object", err, log)
-		return ctx.JSON(http.StatusBadRequest, resp)
+		return ctx.JSON(getResponseCodeFromStatus(err), resp)
 	}
 
 	payloadSize := header.PayloadSize()
@@ -686,7 +690,7 @@ func (a *RestAPI) headByAddress(ctx echo.Context, addr oid.Address, downloadPara
 			})
 			if err != nil {
 				resp := a.logAndGetErrorResponse("invalid  ContentType", err, log)
-				return ctx.JSON(http.StatusBadRequest, resp)
+				return ctx.JSON(getResponseCodeFromStatus(err), resp)
 			}
 		} else {
 			contentType = http.DetectContentType(nil)
@@ -1083,7 +1087,7 @@ func (a *RestAPI) UploadContainerObject(ctx echo.Context, containerID apiserver.
 		epochDuration, err := getEpochDurations(ctx.Request().Context(), a.networkInfoGetter)
 		if err != nil {
 			resp := a.logAndGetErrorResponse("could not get epoch durations from network info", err, log)
-			return ctx.JSON(http.StatusBadRequest, resp)
+			return ctx.JSON(getResponseCodeFromStatus(err), resp)
 		}
 
 		if err = prepareExpirationHeader(filtered, epochDuration, time.Now()); err != nil {
@@ -1136,7 +1140,7 @@ func (a *RestAPI) UploadContainerObject(ctx echo.Context, containerID apiserver.
 	})
 	if err != nil {
 		resp := a.logAndGetErrorResponse("put object", err, log)
-		return ctx.JSON(http.StatusBadRequest, resp)
+		return ctx.JSON(getResponseCodeFromStatus(err), resp)
 	}
 
 	addr.SetObject(idObj)

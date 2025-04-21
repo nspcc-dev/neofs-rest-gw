@@ -1089,7 +1089,7 @@ func restObjectGetUnauthenticated(ctx context.Context, t *testing.T, p *pool.Poo
 	request.Header.Add("Content-Type", "application/json")
 
 	resp := &apiserver.ErrorResponse{}
-	doRequest(t, httpClient, request, http.StatusBadRequest, resp)
+	doRequest(t, httpClient, request, http.StatusForbidden, resp)
 	require.Equal(t, uint32(2048), resp.Code)
 	require.Equal(t, apiserver.API, resp.Type)
 

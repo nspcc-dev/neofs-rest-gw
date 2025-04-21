@@ -36,6 +36,10 @@ const (
 	attributeTimestamp     = "Timestamp"
 )
 
+var (
+	errNeoFSRequestFailed = errors.New("neofs request failed")
+)
+
 // PutContainer handler that creates container in NeoFS.
 func (a *RestAPI) PutContainer(ctx echo.Context, params apiserver.PutContainerParams) error {
 	if a.apiMetric != nil {
@@ -160,7 +164,7 @@ func (a *RestAPI) GetContainer(ctx echo.Context, containerID apiserver.Container
 	cnrInfo, err := getContainerInfo(ctx.Request().Context(), a.pool, cnrID)
 	if err != nil {
 		resp := a.logAndGetErrorResponse("get container", err, log)
-		return ctx.JSON(http.StatusBadRequest, resp)
+		return ctx.JSON(getResponseCodeFromStatus(err), resp)
 	}
 
 	ctx.Response().Header().Set(accessControlAllowOriginHeader, "*")
@@ -186,9 +190,15 @@ func (a *RestAPI) PutContainerEACL(ctx echo.Context, containerID apiserver.Conta
 		return ctx.JSON(http.StatusBadRequest, resp)
 	}
 
-	if err = checkContainerExtendable(ctx.Request().Context(), a.pool, cnrID); err != nil {
-		resp := a.logAndGetErrorResponse("check acl allowance", err, log)
-		return ctx.JSON(http.StatusBadRequest, resp)
+	cnr, err := getContainer(ctx.Request().Context(), a.pool, cnrID)
+	if err != nil {
+		resp := a.logAndGetErrorResponse("get container", err, log)
+		return ctx.JSON(getResponseCodeFromStatus(err), resp)
+	}
+
+	if !cnr.BasicACL().Extendable() {
+		resp := a.logAndGetErrorResponse("extended ACL is disabled for this container", err, log)
+		return ctx.JSON(http.StatusConflict, resp)
 	}
 
 	principal, err := getPrincipal(ctx)
@@ -242,7 +252,11 @@ func (a *RestAPI) GetContainerEACL(ctx echo.Context, containerID apiserver.Conta
 	resp, err := getContainerEACL(ctx.Request().Context(), a.pool, cnrID)
 	if err != nil {
 		errResp := a.logAndGetErrorResponse("failed to get container eacl", err, log)
-		return ctx.JSON(http.StatusBadRequest, errResp)
+		if errors.Is(err, errNeoFSRequestFailed) {
+			return ctx.JSON(getResponseCodeFromStatus(err), errResp)
+		}
+
+		return ctx.JSON(http.StatusInternalServerError, errResp)
 	}
 
 	ctx.Response().Header().Set(accessControlAllowOriginHeader, "*")
@@ -268,7 +282,7 @@ func (a *RestAPI) ListContainers(ctx echo.Context, params apiserver.ListContaine
 	ids, err := a.pool.ContainerList(ctx.Request().Context(), ownerID, prm)
 	if err != nil {
 		resp := a.logAndGetErrorResponse("list containers", err, log)
-		return ctx.JSON(http.StatusBadRequest, resp)
+		return ctx.JSON(getResponseCodeFromStatus(err), resp)
 	}
 
 	offset, limit, err := getOffsetAndLimit(params.Offset, params.Limit)
@@ -299,7 +313,7 @@ func (a *RestAPI) ListContainers(ctx echo.Context, params apiserver.ListContaine
 		cnrInfo, err := getContainerInfo(ctx.Request().Context(), a.pool, id)
 		if err != nil {
 			resp := a.logAndGetErrorResponse("get container", err, log.With(zap.String("cid", id.String())))
-			return ctx.JSON(http.StatusBadRequest, resp)
+			return ctx.JSON(getResponseCodeFromStatus(err), resp)
 		}
 
 		if cnrInfo != nil {
@@ -363,19 +377,6 @@ func (a *RestAPI) DeleteContainer(ctx echo.Context, containerID apiserver.Contai
 
 	ctx.Response().Header().Set(accessControlAllowOriginHeader, "*")
 	return ctx.JSON(http.StatusOK, util.NewSuccessResponse())
-}
-
-func checkContainerExtendable(ctx context.Context, p *pool.Pool, cnrID cid.ID) error {
-	cnr, err := getContainer(ctx, p, cnrID)
-	if err != nil {
-		return fmt.Errorf("get container: %w", err)
-	}
-
-	if !cnr.BasicACL().Extendable() {
-		return errors.New("container acl isn't extendable")
-	}
-
-	return nil
 }
 
 func getContainer(ctx context.Context, p *pool.Pool, cnrID cid.ID) (container.Container, error) {
@@ -463,7 +464,7 @@ func setContainerEACL(ctx context.Context, p *pool.Pool, cnrID cid.ID, stoken se
 func getContainerEACL(ctx context.Context, p *pool.Pool, cnrID cid.ID) (*apiserver.Eacl, error) {
 	table, err := p.ContainerEACL(ctx, cnrID, client.PrmContainerEACL{})
 	if err != nil {
-		return nil, fmt.Errorf("get eacl: %w", err)
+		return nil, fmt.Errorf("get eacl: %w", errors.Join(errNeoFSRequestFailed, err))
 	}
 
 	tableResp := &apiserver.Eacl{
