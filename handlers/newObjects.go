@@ -71,7 +71,7 @@ func (a *RestAPI) NewUploadContainerObject(ctx echo.Context, containerID apiserv
 		epochDuration, err := getEpochDurations(ctx.Request().Context(), a.networkInfoGetter)
 		if err != nil {
 			resp := a.logAndGetErrorResponse("could not get epoch durations from network info", err, log)
-			return ctx.JSON(http.StatusBadRequest, resp)
+			return ctx.JSON(getResponseCodeFromStatus(err), resp)
 		}
 
 		if err = prepareExpirationHeader(filtered, epochDuration, time.Now()); err != nil {
@@ -121,7 +121,7 @@ func (a *RestAPI) NewUploadContainerObject(ctx echo.Context, containerID apiserv
 	a.setOwner(&hdr, btoken)
 	hdr.SetAttributes(attributes...)
 
-	idObj, err := a.putObject(ctx, hdr, btoken, func(w io.Writer) error {
+	wp := func(w io.Writer) error {
 		var err error
 		if cln := ctx.Request().ContentLength; cln >= 0 && uint64(cln) < a.payloadBufferSize { // negative means unknown
 			if cln != 0 { // otherwise io.CopyBuffer panics
@@ -131,10 +131,12 @@ func (a *RestAPI) NewUploadContainerObject(ctx echo.Context, containerID apiserv
 			_, err = io.CopyBuffer(w, ctx.Request().Body, make([]byte, a.payloadBufferSize))
 		}
 		return err
-	})
+	}
+
+	idObj, err := a.putObject(ctx, hdr, btoken, wp)
 	if err != nil {
 		resp := a.logAndGetErrorResponse("put object", err, log)
-		return ctx.JSON(http.StatusBadRequest, resp)
+		return ctx.JSON(getResponseCodeFromStatus(err), resp)
 	}
 
 	addr.SetObject(idObj)
@@ -350,7 +352,7 @@ func (a *RestAPI) getRange(ctx echo.Context, addr oid.Address, rangeParam string
 			return ctx.JSON(http.StatusNotFound, resp)
 		}
 		resp := a.logAndGetErrorResponse("head object", err, log)
-		return ctx.JSON(http.StatusBadRequest, resp)
+		return ctx.JSON(getResponseCodeFromStatus(err), resp)
 	}
 
 	payloadSize := header.PayloadSize()
@@ -406,24 +408,26 @@ func (a *RestAPI) getRange(ctx echo.Context, addr oid.Address, rangeParam string
 
 	resObj, err := a.pool.ObjectRangeInit(ctx.Request().Context(), addr.Container(), addr.Object(), offset, length, a.signer, prmRange)
 	if err != nil {
-		return ctx.JSON(http.StatusBadRequest, util.NewErrorResponse(err))
+		return ctx.JSON(getResponseCodeFromStatus(err), util.NewErrorResponse(err))
 	}
 
 	payload := io.ReadCloser(resObj)
 
 	if len(contentType) == 0 {
 		if separateContentType {
-			// Determine the Content-Type in a separate request .
-			contentType, _, err = readContentType(payloadSize, func(sz uint64) (io.Reader, error) {
+			readerInit := func(sz uint64) (io.Reader, error) {
 				beginObj, err := a.pool.ObjectRangeInit(ctx.Request().Context(), addr.Container(), addr.Object(), 0, sz, a.signer, prmRange)
 				if err != nil {
 					return nil, err
 				}
 				return beginObj, nil
-			})
+			}
+
+			// Determine the Content-Type in a separate request .
+			contentType, _, err = readContentType(payloadSize, readerInit)
 			if err != nil {
 				resp := a.logAndGetErrorResponse("invalid  ContentType", err, log)
-				return ctx.JSON(http.StatusBadRequest, resp)
+				return ctx.JSON(getResponseCodeFromStatus(err), resp)
 			}
 		} else {
 			// Determine the Content-Type from the payload head.
@@ -434,7 +438,7 @@ func (a *RestAPI) getRange(ctx echo.Context, addr oid.Address, rangeParam string
 			})
 			if err != nil {
 				resp := a.logAndGetErrorResponse("invalid  ContentType", err, log)
-				return ctx.JSON(http.StatusBadRequest, resp)
+				return ctx.JSON(getResponseCodeFromStatus(err), resp)
 			}
 
 			// A piece of `payload` was read and is stored in `payloadHead`.

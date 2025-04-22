@@ -32,7 +32,7 @@ func (a *RestAPI) GetBalance(ctx echo.Context, address string) error {
 	neofsBalance, err := a.pool.BalanceGet(ctx.Request().Context(), prm)
 	if err != nil {
 		resp := a.logAndGetErrorResponse("get balance", err, log)
-		return ctx.JSON(http.StatusBadRequest, resp)
+		return ctx.JSON(getResponseCodeFromStatus(err), resp)
 	}
 
 	var resp apiserver.Balance

@@ -21,7 +21,7 @@ func (a *RestAPI) GetNetworkInfo(ctx echo.Context) error {
 	networkInfo, err := a.pool.NetworkInfo(ctx.Request().Context(), prm)
 	if err != nil {
 		resp := a.logAndGetErrorResponse("get network info", err, log)
-		return ctx.JSON(http.StatusBadRequest, resp)
+		return ctx.JSON(getResponseCodeFromStatus(err), resp)
 	}
 
 	a.networkInfoGetter.StoreNetworkInfo(networkInfo)
