@@ -1902,6 +1902,7 @@ components:
           type: string
         value:
           type: string
+          description: Numeric filters MatchNumGT, MatchNumGE, MatchNumLT, MatchNumLE can be in range [-2^255, 2^255 -1].
         match:
           $ref: '#/components/schemas/SearchMatch'
       description: Search filter to find objects.

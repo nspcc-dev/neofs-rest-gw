@@ -4,7 +4,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"strconv"
+	"math/big"
 
 	"github.com/nspcc-dev/neofs-rest-gw/handlers/apiserver"
 	"github.com/nspcc-dev/neofs-sdk-go/bearer"
@@ -14,6 +14,19 @@ import (
 	"github.com/nspcc-dev/neofs-sdk-go/object"
 	"github.com/nspcc-dev/neofs-sdk-go/session"
 )
+
+var (
+	start big.Int
+	end   big.Int
+)
+
+func init() {
+	// -57896044618658097711785492504343953926634992332820282019728792003956564819968
+	start.Exp(big.NewInt(-2), big.NewInt(255), nil)
+	// 57896044618658097711785492504343953926634992332820282019728792003956564819967
+	end.Exp(big.NewInt(2), big.NewInt(255), nil)
+	end.Add(&end, big.NewInt(-1))
+}
 
 // ToNativeAction converts [apiserver.Action] to appropriate [eacl.Action].
 func ToNativeAction(a apiserver.Action) (eacl.Action, error) {
@@ -405,9 +418,14 @@ func ToNativeFilters(searchFilters []apiserver.SearchFilter) (object.SearchFilte
 		case object.MatchNumLT:
 			fallthrough
 		case object.MatchNumLE:
+			var bi big.Int
 			// Filter value must be numeric.
-			if _, err = strconv.ParseInt(f.Value, 10, 64); err != nil {
+			if _, ok := bi.SetString(f.Value, 10); !ok {
 				return nil, fmt.Errorf("filter %s value %s is not numeric", f.Key, f.Value)
+			}
+
+			if bi.Cmp(&start) < 0 || bi.Cmp(&end) > 0 {
+				return nil, fmt.Errorf("filter %s value %s is out of range", f.Key, f.Value)
 			}
 		default:
 		}
