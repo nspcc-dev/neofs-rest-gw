@@ -5,30 +5,45 @@ This document outlines major changes between releases.
 ## [Unreleased]
 
 ### Added
+
+### Fixed
+
+### Changed
+
+### Removed
+
+### Updated
+
+## [0.12.0] - 2025-04-30
+
+### Added
 - `logger.encoding` config option (#273)
 - `logger.timestamp` config option (#273)
-- `/v2/objects/{containerId}/search` entrypoint with `cursor` support (instead of `offset`) for objects search (#276)
+- `/v2/objects/{containerId}/search` entrypoint with `cursor` support (instead of `offset`) for objects search (#276, #294)
 - Ability to request and return attributes for `search v2` (#277)
 - `pool.container_ops_timeout` config option (#254)
+- POST /containers API replacing the old PUT-based one (#287)
+- Request processing histograms in metrics (#285)
 - `MatchNumGT`, `MatchNumGE`, `MatchNumLT`, `MatchNumLE` operators to search (#260)
 
 ### Fixed
 - Double JSON response output for failed PUT operation (#265)
 
 ### Changed
+- Log sampling is disabled now (#258)
 - Go 1.23+ is required to build now (#235)
 - Maximum search limit shrunk from 10000 to 1000 (#276)
 - Attribute-based GET and HEAD now return the latest (wrt `Timestamp` attribute) object from the first 1000 search results (#276)
 - Incorrect HTTP codes returned in many cases (#291)
+- More informative operation logs (#289)
 - Implicit root object filter is removed from search, other object types can be searched for properly now (#298)
 
-### Removed
-
 ### Updated
-- `github.com/nspcc-dev/neofs-sdk-go` dependency to `v1.0.0-rc.13` (#1092)
-- `github.com/nspcc-dev/neo-go` dependency to `v0.108.1` (#1092)
-- `github.com/stretchr/testify` dependency to `v1.10.0` (#1092)
-- `github.com/testcontainers/testcontainers-go` dependency to `v0.35.0` (#1092)
+- `github.com/nspcc-dev/neofs-sdk-go` dependency to `v1.0.0-rc.13` (#267)
+- `github.com/nspcc-dev/neo-go` dependency to `v0.108.1` (#259, #267)
+- `golang.org/x/crypto` dependency to 0.31.0 (#262)
+- `github.com/stretchr/testify` dependency to `v1.10.0` (#267)
+- `github.com/testcontainers/testcontainers-go` dependency to `v0.35.0` (#267)
 - `github.com/getkin/kin-openapi` dependency to `v0.131.0` (#277)
 - `github.com/labstack/echo/v4` dependency to `v4.13.3` (#277)
 
@@ -328,4 +343,5 @@ Please refer to [GitHub releases](https://github.com/nspcc-dev/neofs-rest-gw/rel
 [0.10.1]: https://github.com/nspcc-dev/neofs-rest-gw/compare/v0.10.0...v0.10.1
 [0.11.0]: https://github.com/nspcc-dev/neofs-rest-gw/compare/v0.10.1...v0.11.0
 [0.11.1]: https://github.com/nspcc-dev/neofs-rest-gw/compare/v0.11.0...v0.11.1
-[Unreleased]: https://github.com/nspcc-dev/neofs-rest-gw/compare/v0.11.1...master
+[0.12.0]: https://github.com/nspcc-dev/neofs-rest-gw/compare/v0.11.1...v0.12.0
+[Unreleased]: https://github.com/nspcc-dev/neofs-rest-gw/compare/v0.12.0...master
