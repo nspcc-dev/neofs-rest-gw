@@ -16,16 +16,16 @@ import (
 )
 
 var (
-	start big.Int
-	end   big.Int
+	intFilterLimitMin big.Int
+	intFilterLimitMax big.Int
 )
 
 func init() {
 	// -57896044618658097711785492504343953926634992332820282019728792003956564819968
-	start.Exp(big.NewInt(-2), big.NewInt(255), nil)
+	intFilterLimitMin.Exp(big.NewInt(-2), big.NewInt(255), nil)
 	// 57896044618658097711785492504343953926634992332820282019728792003956564819967
-	end.Exp(big.NewInt(2), big.NewInt(255), nil)
-	end.Add(&end, big.NewInt(-1))
+	intFilterLimitMax.Exp(big.NewInt(2), big.NewInt(255), nil)
+	intFilterLimitMax.Add(&intFilterLimitMax, big.NewInt(-1))
 }
 
 // ToNativeAction converts [apiserver.Action] to appropriate [eacl.Action].
@@ -424,7 +424,7 @@ func ToNativeFilters(searchFilters []apiserver.SearchFilter) (object.SearchFilte
 				return nil, fmt.Errorf("filter %s value %s is not numeric", f.Key, f.Value)
 			}
 
-			if bi.Cmp(&start) < 0 || bi.Cmp(&end) > 0 {
+			if bi.Cmp(&intFilterLimitMin) < 0 || bi.Cmp(&intFilterLimitMax) > 0 {
 				return nil, fmt.Errorf("filter %s value %s is out of range", f.Key, f.Value)
 			}
 		default:
