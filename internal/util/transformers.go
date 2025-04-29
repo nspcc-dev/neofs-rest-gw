@@ -16,17 +16,11 @@ import (
 )
 
 var (
-	intFilterLimitMin big.Int
-	intFilterLimitMax big.Int
+	// uint256 effectively.
+	intFilterLimitMax = new(big.Int).SetBytes([]byte{255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+		255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255})
+	intFilterLimitMin = new(big.Int).Neg(intFilterLimitMax)
 )
-
-func init() {
-	// -57896044618658097711785492504343953926634992332820282019728792003956564819968
-	intFilterLimitMin.Exp(big.NewInt(-2), big.NewInt(255), nil)
-	// 57896044618658097711785492504343953926634992332820282019728792003956564819967
-	intFilterLimitMax.Exp(big.NewInt(2), big.NewInt(255), nil)
-	intFilterLimitMax.Add(&intFilterLimitMax, big.NewInt(-1))
-}
 
 // ToNativeAction converts [apiserver.Action] to appropriate [eacl.Action].
 func ToNativeAction(a apiserver.Action) (eacl.Action, error) {
@@ -424,7 +418,7 @@ func ToNativeFilters(searchFilters []apiserver.SearchFilter) (object.SearchFilte
 				return nil, fmt.Errorf("filter %s value %s is not numeric", f.Key, f.Value)
 			}
 
-			if bi.Cmp(&intFilterLimitMin) < 0 || bi.Cmp(&intFilterLimitMax) > 0 {
+			if bi.Cmp(intFilterLimitMin) < 0 || bi.Cmp(intFilterLimitMax) > 0 {
 				return nil, fmt.Errorf("filter %s value %s is out of range", f.Key, f.Value)
 			}
 		default:
@@ -432,7 +426,6 @@ func ToNativeFilters(searchFilters []apiserver.SearchFilter) (object.SearchFilte
 
 		filters.AddFilter(f.Key, f.Value, matchFilter)
 	}
-	filters.AddRootFilter()
 
 	return filters, nil
 }

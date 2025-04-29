@@ -20,6 +20,7 @@ This document outlines major changes between releases.
 - Maximum search limit shrunk from 10000 to 1000 (#276)
 - Attribute-based GET and HEAD now return the latest (wrt `Timestamp` attribute) object from the first 1000 search results (#276)
 - Incorrect HTTP codes returned in many cases (#291)
+- Implicit root object filter is removed from search, other object types can be searched for properly now (#298)
 
 ### Removed
 
