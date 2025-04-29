@@ -476,8 +476,13 @@ func (a *RestAPI) V2SearchObjects(ctx echo.Context, containerID apiserver.Contai
 		cursor string
 		opts   client.SearchObjectsOptions
 
-		searchHeader = filters[0].Header()
+		returningAttributes = make([]string, 0, len(searchFilters.Attributes)+1)
+		searchHeader        string
 	)
+	if len(filters) > 0 {
+		searchHeader = filters[0].Header()
+		returningAttributes = append(returningAttributes, searchHeader)
+	}
 
 	for i, attr := range searchFilters.Attributes {
 		if attr == searchHeader {
@@ -486,7 +491,7 @@ func (a *RestAPI) V2SearchObjects(ctx echo.Context, containerID apiserver.Contai
 		}
 	}
 
-	returningAttributes := append([]string{searchHeader}, searchFilters.Attributes...)
+	returningAttributes = append(returningAttributes, searchFilters.Attributes...)
 	if params.Cursor != nil {
 		cursor = *params.Cursor
 	}
