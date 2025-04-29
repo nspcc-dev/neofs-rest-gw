@@ -432,7 +432,6 @@ func ToNativeFilters(searchFilters []apiserver.SearchFilter) (object.SearchFilte
 
 		filters.AddFilter(f.Key, f.Value, matchFilter)
 	}
-	filters.AddRootFilter()
 
 	return filters, nil
 }
