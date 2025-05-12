@@ -144,6 +144,7 @@ func runTests(ctx context.Context, t *testing.T, key *keys.PrivateKey, node stri
 	t.Run("rest delete object", func(t *testing.T) { restObjectDelete(ctx, t, clientPool, &owner, cnrID, signer) })
 	t.Run("rest search objects", func(t *testing.T) { restObjectsSearch(ctx, t, clientPool, &owner, cnrID, signer) })
 	t.Run("rest search objects v2", func(t *testing.T) { restObjectsSearchV2(ctx, t, clientPool, &owner, cnrID, signer) })
+	t.Run("rest search objects v2 cursor and limit", func(t *testing.T) { restObjectsSearchV2CursorAndLimit(ctx, t, clientPool, &owner, signer) })
 	t.Run("rest search objects v2 filters", func(t *testing.T) { restObjectsSearchV2Filters(ctx, t, clientPool, &owner, signer) })
 	t.Run("rest upload object", func(t *testing.T) { restObjectUpload(ctx, t, clientPool, cnrID, signer) })
 	t.Run("rest upload object with bearer in cookie", func(t *testing.T) { restObjectUploadCookie(ctx, t, clientPool, cnrID, signer) })
@@ -1448,6 +1449,123 @@ func restObjectsSearchV2(ctx context.Context, t *testing.T, p *pool.Pool, owner 
 		resp := &apiserver.ObjectListV2{}
 		doRequest(t, httpClient, request, http.StatusBadRequest, resp)
 	})
+}
+
+func restObjectsSearchV2CursorAndLimit(ctx context.Context, t *testing.T, p *pool.Pool, owner *user.ID, signer user.Signer) {
+	var (
+		cnrID     = createContainer(ctx, t, p, *owner, strconv.FormatInt(time.Now().UnixNano(), 16), signer)
+		fileNames = []string{"888.jpg", "IMG_1123.jpeg", "cat.jpg", "errfwre.jpg"}
+	)
+
+	restrictByEACL(ctx, t, p, cnrID, signer)
+
+	for _, name := range fileNames {
+		headers := map[string]string{
+			object.AttributeFileName: name,
+			object.AttributeFilePath: "path/to/object/" + name,
+		}
+
+		createObject(ctx, t, p, owner, cnrID, headers, []byte("some content"), signer)
+	}
+
+	bearer := apiserver.Bearer{
+		Object: []apiserver.Record{
+			{
+				Operation: apiserver.OperationSEARCH,
+				Action:    apiserver.ALLOW,
+				Filters:   []apiserver.Filter{},
+				Targets:   []apiserver.Target{{Role: apiserver.OTHERS, Keys: []string{}}},
+			},
+			{
+				Operation: apiserver.OperationHEAD,
+				Action:    apiserver.ALLOW,
+				Filters:   []apiserver.Filter{},
+				Targets:   []apiserver.Target{{Role: apiserver.OTHERS, Keys: []string{}}},
+			},
+			{
+				Operation: apiserver.OperationGET,
+				Action:    apiserver.ALLOW,
+				Filters:   []apiserver.Filter{},
+				Targets:   []apiserver.Target{{Role: apiserver.OTHERS, Keys: []string{}}},
+			},
+		},
+	}
+	bearer.Object = append(bearer.Object, getRestrictBearerRecords()...)
+
+	httpClient := defaultHTTPClient()
+	bearerTokens := makeAuthTokenRequest(ctx, t, []apiserver.Bearer{bearer}, httpClient, false)
+	bearerToken := bearerTokens[0]
+
+	search := &apiserver.SearchRequest{
+		Filters: []apiserver.SearchFilter{
+			{
+				Key:   object.AttributeFileName,
+				Match: apiserver.MatchCommonPrefix,
+				Value: "",
+			},
+		},
+		Attributes: []string{object.AttributeFileName, object.AttributeFilePath},
+	}
+
+	body, err := json.Marshal(search)
+	require.NoError(t, err)
+
+	var nextCursor string
+
+	for i, name := range fileNames {
+		t.Run("limit 1, step="+strconv.Itoa(i), func(t *testing.T) {
+			query := make(url.Values)
+			query.Add(walletConnectQuery, strconv.FormatBool(useWalletConnect))
+			query.Add("limit", "1")
+			if i > 0 {
+				query.Add("cursor", nextCursor)
+			}
+
+			request, err := http.NewRequest(http.MethodPost, testHost+"/v2/objects/"+cnrID.EncodeToString()+"/search?"+query.Encode(), bytes.NewReader(body))
+			require.NoError(t, err)
+			prepareCommonHeaders(request.Header, bearerToken)
+
+			resp := &apiserver.ObjectListV2{}
+			doRequest(t, httpClient, request, http.StatusOK, resp)
+			nextCursor = resp.Cursor
+
+			if i < len(fileNames)-1 {
+				require.NotEmpty(t, nextCursor)
+			} else {
+				require.Empty(t, nextCursor)
+			}
+
+			require.Len(t, resp.Objects, 1)
+			require.Equal(t, name, resp.Objects[0].Attributes[object.AttributeFileName])
+		})
+	}
+
+	for i := range 2 {
+		t.Run("limit 3, step="+strconv.Itoa(i), func(t *testing.T) {
+			query := make(url.Values)
+			query.Add(walletConnectQuery, strconv.FormatBool(useWalletConnect))
+			query.Add("limit", "3")
+			if i > 0 {
+				query.Add("cursor", nextCursor)
+			}
+
+			request, err := http.NewRequest(http.MethodPost, testHost+"/v2/objects/"+cnrID.EncodeToString()+"/search?"+query.Encode(), bytes.NewReader(body))
+			require.NoError(t, err)
+			prepareCommonHeaders(request.Header, bearerToken)
+
+			resp := &apiserver.ObjectListV2{}
+			doRequest(t, httpClient, request, http.StatusOK, resp)
+			nextCursor = resp.Cursor
+
+			if i == 0 {
+				require.NotEmpty(t, nextCursor)
+				require.Len(t, resp.Objects, 3)
+			} else {
+				require.Empty(t, nextCursor)
+				require.Len(t, resp.Objects, 1)
+			}
+		})
+	}
 }
 
 func restObjectsSearchV2Filters(ctx context.Context, t *testing.T, p *pool.Pool, owner *user.ID, signer user.Signer) {
