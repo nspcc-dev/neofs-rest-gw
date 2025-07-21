@@ -7,6 +7,7 @@ This document outlines major changes between releases.
 ### Added
 
 ### Fixed
+- Panic on search v1 (#305)
 
 ### Changed
 
