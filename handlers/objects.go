@@ -378,6 +378,9 @@ func (a *RestAPI) SearchObjects(ctx echo.Context, containerID apiserver.Containe
 		indexes.FileName = 0
 		indexes.FilePath = 1
 		indexes.Timestamp = 2
+
+		// As minimum one filter must be presented, and it must be equal to the first returning attribute in the search.
+		filters.AddFilter(object.AttributeFileName, "", object.MatchCommonPrefix)
 	}
 
 	if btoken != nil {
