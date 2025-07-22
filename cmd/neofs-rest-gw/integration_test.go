@@ -2384,7 +2384,7 @@ func createObject(ctx context.Context, t *testing.T, p *pool.Pool, ownerID *user
 
 	for key, val := range headers {
 		attr := object.NewAttribute(key, val)
-		attributes = append(attributes, *attr)
+		attributes = append(attributes, attr)
 	}
 
 	var obj object.Object
