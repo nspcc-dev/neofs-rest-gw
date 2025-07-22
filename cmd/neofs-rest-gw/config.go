@@ -54,7 +54,7 @@ const (
 	cfgPeerAddress            = "address"
 	cfgPeerPriority           = "priority"
 	cfgPeerWeight             = "weight"
-	cfgWaiterOperationTimeout = "pool.container_ops_timeout"
+	cfgWaiterOperationTimeout = "pool.container-ops-timeout"
 
 	// Metrics / Profiler.
 	cfgPrometheusEnabled = "prometheus.enabled"

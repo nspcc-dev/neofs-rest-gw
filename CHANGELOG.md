@@ -11,12 +11,14 @@ This document outlines major changes between releases.
 
 ### Changed
 - Peers list definition in config files (#302)
+- `pool.container_ops_timeout` name to `pool.container-ops-timeout` (#307)
 
 ### Removed
 
 ### Updated
 
 ## Upgrading from 0.12.0
+- Rename `pool.container_ops_timeout` to `pool.container-ops-timeout` if used
 
 Updating peers config should be done from old format:
 ```yaml
