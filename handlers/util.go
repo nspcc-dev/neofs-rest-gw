@@ -78,15 +78,15 @@ func getObjectAttributes(ctx context.Context, networkInfoGetter networkInfoGette
 	attributes := make([]object.Attribute, 0, len(headers))
 	for key, val := range headers {
 		attribute := object.NewAttribute(key, val)
-		attributes = append(attributes, *attribute)
+		attributes = append(attributes, attribute)
 	}
 
 	filename := object.NewAttribute(object.AttributeFileName, prm.DefaultFileName)
-	attributes = append(attributes, *filename)
+	attributes = append(attributes, filename)
 
 	if _, ok := headers[object.AttributeTimestamp]; !ok && prm.DefaultTimestamp {
 		timestamp := object.NewAttribute(object.AttributeTimestamp, strconv.FormatInt(time.Now().Unix(), 10))
-		attributes = append(attributes, *timestamp)
+		attributes = append(attributes, timestamp)
 	}
 
 	return attributes, nil

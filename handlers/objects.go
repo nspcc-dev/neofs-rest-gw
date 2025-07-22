@@ -1125,25 +1125,25 @@ func (a *RestAPI) UploadContainerObject(ctx echo.Context, containerID apiserver.
 	// prepares attributes from filtered headers
 	for key, val := range filtered {
 		attribute := object.NewAttribute(key, val)
-		attributes = append(attributes, *attribute)
+		attributes = append(attributes, attribute)
 	}
 	// sets FileName attribute if it wasn't set from header
 	if _, ok := filtered[object.AttributeFileName]; !ok {
 		filename := object.NewAttribute(object.AttributeFileName, header.Filename)
-		attributes = append(attributes, *filename)
+		attributes = append(attributes, filename)
 	}
 	// sets Content-Type attribute if it wasn't set from header
 	if _, ok := filtered[object.AttributeContentType]; !ok {
 		if contentTypes, ok := header.Header["Content-Type"]; ok && len(contentTypes) > 0 {
 			contentType := contentTypes[0]
 			cType := object.NewAttribute(object.AttributeContentType, contentType)
-			attributes = append(attributes, *cType)
+			attributes = append(attributes, cType)
 		}
 	}
 	// sets Timestamp attribute if it wasn't set from header and enabled by settings
 	if _, ok := filtered[object.AttributeTimestamp]; !ok && a.defaultTimestamp {
 		timestamp := object.NewAttribute(object.AttributeTimestamp, strconv.FormatInt(time.Now().Unix(), 10))
-		attributes = append(attributes, *timestamp)
+		attributes = append(attributes, timestamp)
 	}
 
 	var hdr object.Object

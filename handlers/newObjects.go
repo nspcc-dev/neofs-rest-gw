@@ -85,7 +85,7 @@ func (a *RestAPI) NewUploadContainerObject(ctx echo.Context, containerID apiserv
 	for key, val := range filtered {
 		attribute := object.NewAttribute(key, val)
 		log.Debug("Added attribute", zap.String("key", key), zap.String("value", val))
-		attributes = append(attributes, *attribute)
+		attributes = append(attributes, attribute)
 	}
 
 	// sets Content-Type attribute if the attribute isn't already set
@@ -94,14 +94,14 @@ func (a *RestAPI) NewUploadContainerObject(ctx echo.Context, containerID apiserv
 		if ct := ctx.Request().Header.Get("Content-Type"); len(ct) > 0 {
 			attrContentType := object.NewAttribute(object.AttributeContentType, ct)
 			log.Debug("Added attribute", zap.String("key", object.AttributeContentType), zap.String("value", ct))
-			attributes = append(attributes, *attrContentType)
+			attributes = append(attributes, attrContentType)
 		}
 	}
 	// sets Timestamp attribute if it wasn't set from header and enabled by settings
 	if _, ok := filtered[object.AttributeTimestamp]; !ok {
 		if a.defaultTimestamp {
 			timestamp := object.NewAttribute(object.AttributeTimestamp, strconv.FormatInt(time.Now().Unix(), 10))
-			attributes = append(attributes, *timestamp)
+			attributes = append(attributes, timestamp)
 		} else if date := ctx.Request().Header.Get("Date"); len(date) > 0 {
 			parsedTime, err := time.Parse(time.RFC1123, date)
 			if err != nil {
@@ -112,7 +112,7 @@ func (a *RestAPI) NewUploadContainerObject(ctx echo.Context, containerID apiserv
 			tsStr := strconv.FormatInt(parsedTime.Unix(), 10)
 			timestamp := object.NewAttribute(object.AttributeTimestamp, tsStr)
 			log.Debug("Added attribute", zap.String("key", object.AttributeTimestamp), zap.String("value", tsStr))
-			attributes = append(attributes, *timestamp)
+			attributes = append(attributes, timestamp)
 		}
 	}
 
