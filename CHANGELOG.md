@@ -7,21 +7,30 @@ This document outlines major changes between releases.
 ### Added
 
 ### Fixed
-- Panic on search v1 (#305)
+
+### Changed
+
+### Removed
+
+### Updated
+
+## Upgrading from 0.13.0
+
+## [0.13.0] - 2025-07-22
+
+### Fixed
+- Panic on search v1 (#305, #308)
 
 ### Changed
 - Peers list definition in config files (#302)
 - `pool.container_ops_timeout` name to `pool.container-ops-timeout` (#307)
 
-### Removed
-
 ### Updated
 - NeoFS SDK to v1.0.0-rc.13.0.20250715070617-c7038b450691 (API 2.18, #311)
 
 ## Upgrading from 0.12.0
-- Rename `pool.container_ops_timeout` to `pool.container-ops-timeout` if used
-
-Updating peers config should be done from old format:
+Rename `pool.container_ops_timeout` option to `pool.container-ops-timeout`
+if used. Update peer configuration from the old format:
 ```yaml
 peers:
   0:
@@ -367,4 +376,5 @@ Please refer to [GitHub releases](https://github.com/nspcc-dev/neofs-rest-gw/rel
 [0.11.0]: https://github.com/nspcc-dev/neofs-rest-gw/compare/v0.10.1...v0.11.0
 [0.11.1]: https://github.com/nspcc-dev/neofs-rest-gw/compare/v0.11.0...v0.11.1
 [0.12.0]: https://github.com/nspcc-dev/neofs-rest-gw/compare/v0.11.1...v0.12.0
-[Unreleased]: https://github.com/nspcc-dev/neofs-rest-gw/compare/v0.12.0...master
+[0.13.0]: https://github.com/nspcc-dev/neofs-rest-gw/compare/v0.12.0...v0.13.0
+[Unreleased]: https://github.com/nspcc-dev/neofs-rest-gw/compare/v0.13.0...master
