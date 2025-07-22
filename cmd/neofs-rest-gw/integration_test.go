@@ -1284,37 +1284,58 @@ func restObjectsSearch(ctx context.Context, t *testing.T, p *pool.Pool, owner *u
 	bearerTokens := makeAuthTokenRequest(ctx, t, []apiserver.Bearer{bearer}, httpClient, false)
 	bearerToken := bearerTokens[0]
 
-	search := &apiserver.SearchFilters{
-		Filters: []apiserver.SearchFilter{
-			{
-				Key:   userKey,
-				Match: apiserver.MatchStringEqual,
-				Value: userValue,
+	t.Run("with filter", func(t *testing.T) {
+		search := &apiserver.SearchFilters{
+			Filters: []apiserver.SearchFilter{
+				{
+					Key:   userKey,
+					Match: apiserver.MatchStringEqual,
+					Value: userValue,
+				},
 			},
-		},
-	}
+		}
 
-	body, err := json.Marshal(search)
-	require.NoError(t, err)
+		body, err := json.Marshal(search)
+		require.NoError(t, err)
 
-	query := make(url.Values)
-	query.Add(walletConnectQuery, strconv.FormatBool(useWalletConnect))
+		query := make(url.Values)
+		query.Add(walletConnectQuery, strconv.FormatBool(useWalletConnect))
 
-	request, err := http.NewRequest(http.MethodPost, testHost+"/v1/objects/"+cnrID.EncodeToString()+"/search?"+query.Encode(), bytes.NewReader(body))
-	require.NoError(t, err)
-	prepareCommonHeaders(request.Header, bearerToken)
+		request, err := http.NewRequest(http.MethodPost, testHost+"/v1/objects/"+cnrID.EncodeToString()+"/search?"+query.Encode(), bytes.NewReader(body))
+		require.NoError(t, err)
+		prepareCommonHeaders(request.Header, bearerToken)
 
-	resp := &apiserver.ObjectList{}
-	doRequest(t, httpClient, request, http.StatusOK, resp)
+		resp := &apiserver.ObjectList{}
+		doRequest(t, httpClient, request, http.StatusOK, resp)
 
-	require.Equal(t, 1, resp.Size)
-	require.Len(t, resp.Objects, 1)
+		require.Equal(t, 1, resp.Size)
+		require.Len(t, resp.Objects, 1)
 
-	objBaseInfo := resp.Objects[0]
-	require.Equal(t, cnrID.EncodeToString(), objBaseInfo.Address.ContainerId)
-	require.Equal(t, objID.EncodeToString(), objBaseInfo.Address.ObjectId)
-	require.Equal(t, objectName, *objBaseInfo.Name)
-	require.Equal(t, filePath, *objBaseInfo.FilePath)
+		objBaseInfo := resp.Objects[0]
+		require.Equal(t, cnrID.EncodeToString(), objBaseInfo.Address.ContainerId)
+		require.Equal(t, objID.EncodeToString(), objBaseInfo.Address.ObjectId)
+		require.Equal(t, objectName, *objBaseInfo.Name)
+		require.Equal(t, filePath, *objBaseInfo.FilePath)
+	})
+
+	t.Run("no filters", func(t *testing.T) {
+		search := &apiserver.SearchFilters{}
+
+		body, err := json.Marshal(search)
+		require.NoError(t, err)
+
+		query := make(url.Values)
+		query.Add(walletConnectQuery, strconv.FormatBool(useWalletConnect))
+
+		request, err := http.NewRequest(http.MethodPost, testHost+"/v1/objects/"+cnrID.EncodeToString()+"/search?"+query.Encode(), bytes.NewReader(body))
+		require.NoError(t, err)
+		prepareCommonHeaders(request.Header, bearerToken)
+
+		resp := &apiserver.ObjectList{}
+		doRequest(t, httpClient, request, http.StatusOK, resp)
+
+		require.Greater(t, len(resp.Objects), 0)
+	})
 }
 
 func restObjectsSearchV2(ctx context.Context, t *testing.T, p *pool.Pool, owner *user.ID, cnrID cid.ID, signer user.Signer) {
@@ -1843,6 +1864,21 @@ func restObjectsSearchV2Filters(ctx context.Context, t *testing.T, p *pool.Pool,
 
 		resp := &apiserver.ObjectListV2{}
 		doRequest(t, httpClient, request, http.StatusBadRequest, resp)
+	})
+
+	t.Run("search without filters", func(t *testing.T) {
+		var search apiserver.SearchFilters
+
+		body, err := json.Marshal(search)
+		require.NoError(t, err)
+
+		request, err := http.NewRequest(http.MethodPost, testHost+"/v2/objects/"+cnrID.EncodeToString()+"/search?"+query.Encode(), bytes.NewReader(body))
+		require.NoError(t, err)
+		prepareCommonHeaders(request.Header, bearerToken)
+
+		resp := &apiserver.ObjectListV2{}
+		doRequest(t, httpClient, request, http.StatusOK, resp)
+		require.Greater(t, len(resp.Objects), 0)
 	})
 }
 
