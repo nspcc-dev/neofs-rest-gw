@@ -10,10 +10,29 @@ This document outlines major changes between releases.
 - Panic on search v1 (#305)
 
 ### Changed
+- Peers list definition in config files (#302)
 
 ### Removed
 
 ### Updated
+
+## Upgrading from 0.12.0
+
+Updating peers config should be done from old format:
+```yaml
+peers:
+  0:
+    address: node1.neofs:8080
+    priority: 1
+    weight: 1
+```
+to the new one:
+```yaml
+peers:
+  - address: node1.neofs:8080
+    priority: 1
+    weight: 1
+```
 
 ## [0.12.0] - 2025-04-30
 
