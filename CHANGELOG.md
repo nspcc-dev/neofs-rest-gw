@@ -7,6 +7,7 @@ This document outlines major changes between releases.
 ### Added
 
 ### Fixed
+- Expiration parameter using pre-2.18 API meaning of EpochDuration (blocks vs seconds, #313)
 
 ### Changed
 
