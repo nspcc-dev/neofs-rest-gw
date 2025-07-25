@@ -34,6 +34,8 @@ const (
 
 	defaultShutdownTimeout = 15 * time.Second
 
+	defaultWaiterOperationTimeout = 10 * time.Second
+
 	defaultPoolErrorThreshold   uint32 = 100
 	defaultPoolDefaultTimestamp bool   = false
 
@@ -612,7 +614,7 @@ func newNeofsAPI(ctx context.Context, logger *zap.Logger, v *viper.Viper) (*hand
 	apiPrm.DefaultTimestamp = v.GetBool(cfgPoolDefaultTimestamp)
 	apiPrm.WaiterOperationTimeout = v.GetDuration(cfgWaiterOperationTimeout)
 	if apiPrm.WaiterOperationTimeout == 0 {
-		apiPrm.WaiterOperationTimeout = time.Duration(uint64(ni.MsPerBlock())*4) * time.Millisecond
+		apiPrm.WaiterOperationTimeout = defaultWaiterOperationTimeout
 	}
 
 	return handlers.NewAPI(&apiPrm)
