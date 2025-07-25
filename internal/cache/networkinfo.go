@@ -49,7 +49,7 @@ func (n *NetworkInfo) NetworkInfo(ctx context.Context) (netmap.NetworkInfo, erro
 }
 
 func (n *NetworkInfo) update(ni netmap.NetworkInfo) {
-	n.ttl = time.Duration(int64(ni.EpochDuration())/2*ni.MsPerBlock()) * time.Millisecond
+	n.ttl = time.Duration(ni.EpochDuration()/2) * time.Second
 	n.validUntil = time.Now().Add(n.ttl)
 	n.ni = ni
 }

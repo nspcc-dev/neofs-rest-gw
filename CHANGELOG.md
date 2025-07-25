@@ -11,6 +11,7 @@ This document outlines major changes between releases.
 
 ### Changed
 - Default container-ops-timeout to 10s (previously dynamic, based on block time, #313)
+- Network info is cached for half epoch duration now (#313)
 
 ### Removed
 
