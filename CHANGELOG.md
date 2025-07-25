@@ -14,7 +14,7 @@ This document outlines major changes between releases.
 
 ### Updated
 
-## Upgrading from 0.13.0
+### Upgrading from 0.13.0
 
 ## [0.13.0] - 2025-07-22
 
@@ -28,7 +28,7 @@ This document outlines major changes between releases.
 ### Updated
 - NeoFS SDK to v1.0.0-rc.13.0.20250715070617-c7038b450691 (API 2.18, #311)
 
-## Upgrading from 0.12.0
+### Upgrading from 0.12.0
 Rename `pool.container_ops_timeout` option to `pool.container-ops-timeout`
 if used. Update peer configuration from the old format:
 ```yaml
