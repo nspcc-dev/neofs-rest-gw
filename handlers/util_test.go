@@ -26,14 +26,12 @@ func TestPrepareExpirationHeader(t *testing.T) {
 	timestampNano := strconv.FormatInt(tomorrowUnixNano, 10)
 
 	defaultDurations := &epochDurations{
-		currentEpoch:  10,
-		msPerBlock:    1000,
-		blockPerEpoch: 101,
+		currentEpoch:    10,
+		secondsPerEpoch: 101,
 	}
 
-	msPerBlock := defaultDurations.blockPerEpoch * uint64(defaultDurations.msPerBlock)
-	epochPerDay := uint64((24 * time.Hour).Milliseconds()) / msPerBlock
-	if uint64((24*time.Hour).Milliseconds())%msPerBlock != 0 {
+	epochPerDay := uint64((24 * time.Hour).Seconds()) / defaultDurations.secondsPerEpoch
+	if uint64((24*time.Hour).Seconds())%defaultDurations.secondsPerEpoch != 0 {
 		epochPerDay++
 	}
 
@@ -118,9 +116,8 @@ func TestPrepareExpirationHeader(t *testing.T) {
 			name:    "valid max uint 64",
 			headers: map[string]string{ExpirationRFC3339Attr: tomorrow.Format(time.RFC3339)},
 			durations: &epochDurations{
-				currentEpoch:  math.MaxUint64 - 1,
-				msPerBlock:    defaultDurations.msPerBlock,
-				blockPerEpoch: defaultDurations.blockPerEpoch,
+				currentEpoch:    math.MaxUint64 - 1,
+				secondsPerEpoch: defaultDurations.secondsPerEpoch,
 			},
 			expected: map[string]string{object.AttributeExpirationEpoch: strconv.FormatUint(uint64(math.MaxUint64), 10)},
 		},

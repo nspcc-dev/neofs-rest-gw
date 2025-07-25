@@ -7,8 +7,11 @@ This document outlines major changes between releases.
 ### Added
 
 ### Fixed
+- Expiration parameter using pre-2.18 API meaning of EpochDuration (blocks vs seconds, #313)
 
 ### Changed
+- Default container-ops-timeout to 10s (previously dynamic, based on block time, #313)
+- Network info is cached for half epoch duration now (#313)
 
 ### Removed
 

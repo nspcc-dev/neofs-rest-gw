@@ -30,9 +30,8 @@ type PrmAttributes struct {
 }
 
 type epochDurations struct {
-	currentEpoch  uint64
-	msPerBlock    int64
-	blockPerEpoch uint64
+	currentEpoch    uint64
+	secondsPerEpoch uint64
 }
 
 const (
@@ -99,12 +98,11 @@ func getEpochDurations(ctx context.Context, networkInfoGetter networkInfoGetter)
 	}
 
 	res := &epochDurations{
-		currentEpoch:  networkInfo.CurrentEpoch(),
-		msPerBlock:    networkInfo.MsPerBlock(),
-		blockPerEpoch: networkInfo.EpochDuration(),
+		currentEpoch:    networkInfo.CurrentEpoch(),
+		secondsPerEpoch: networkInfo.EpochDuration(),
 	}
 
-	if res.blockPerEpoch == 0 {
+	if res.secondsPerEpoch == 0 {
 		return nil, errors.New("EpochDuration is zero")
 	}
 	return res, nil
@@ -168,13 +166,8 @@ func prepareExpirationHeader(headers map[string]string, epochDurations *epochDur
 }
 
 func updateExpirationHeader(headers map[string]string, durations *epochDurations, expDuration time.Duration) {
-	epochDuration := uint64(durations.msPerBlock) * durations.blockPerEpoch
 	currentEpoch := durations.currentEpoch
-	numEpoch := uint64(expDuration.Milliseconds()) / epochDuration
-
-	if uint64(expDuration.Milliseconds())%epochDuration != 0 {
-		numEpoch++
-	}
+	numEpoch := (uint64(expDuration.Seconds()) + durations.secondsPerEpoch - 1) / durations.secondsPerEpoch
 
 	expirationEpoch := uint64(math.MaxUint64)
 	if numEpoch < math.MaxUint64-currentEpoch {
