@@ -106,8 +106,9 @@ pool:
 | `healthcheck-timeout`   | `duration` | `15s`         | Timeout to check node health during rebalance.                                                          |
 | `rebalance-timer`       | `duration` | `60s`         | Interval to check node health.                                                                          |
 | `error-threshold`       | `uint32`   | `100`         | The number of errors on connection after which node is considered as unhealthy.                         |
-| `default-timestamp`     | `bool`     | `false`       | By default, add a Timestamp to the object upon creation.                                                |                                                                                                                         |
-| `container-ops-timeout` | `duration` | 4 Blocks      | Timeout for operations covered by SDK waiters. (create container, delete container, set container EACL) |
+| `default-timestamp`     | `bool`     | `false`       | By default, add a Timestamp to the object upon creation.                                                |
+| `container-ops-timeout` | `duration` | `10s`         | Timeout for operations covered by SDK waiters. (create container, delete container, set container EACL) |
+| `container-ops-poll-interval` | `duration` | dynamic | Polling interval for container operation waiter (half a block, but not less than 50ms by default)       |
 
 ## `peers` section
 

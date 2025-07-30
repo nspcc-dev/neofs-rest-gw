@@ -40,6 +40,7 @@ import (
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/require"
 	"github.com/testcontainers/testcontainers-go"
+	"github.com/testcontainers/testcontainers-go/log"
 	"github.com/testcontainers/testcontainers-go/wait"
 )
 
@@ -187,6 +188,7 @@ func createDockerContainer(ctx context.Context, t *testing.T, image, version str
 	aioC, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
 		ContainerRequest: req,
 		Started:          true,
+		Logger:           log.TestLogger(t),
 	})
 	require.NoError(t, err)
 
@@ -1981,7 +1983,7 @@ func restContainerEACLPut(ctx context.Context, t *testing.T, clientPool *pool.Po
 	query := make(url.Values)
 	query.Add(walletConnectQuery, strconv.FormatBool(useWalletConnect))
 
-	doSetEACLRequest(ctx, t, httpClient, cnrID, query, bearerToken, invalidBody, http.StatusInternalServerError, nil)
+	doSetEACLRequest(ctx, t, httpClient, cnrID, query, bearerToken, invalidBody, http.StatusBadRequest, nil)
 
 	resp := &apiserver.SuccessResponse{}
 	doSetEACLRequest(ctx, t, httpClient, cnrID, query, bearerToken, body, http.StatusOK, resp)

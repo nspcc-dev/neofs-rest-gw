@@ -80,7 +80,7 @@ func (a *RestAPI) PutContainer(ctx echo.Context, params apiserver.PutContainerPa
 	defer cancel()
 
 	// PutContainer will be removed in the next release. We may update old method to use new structures.
-	cnrID, err := createContainer(wCtx, a.pool, stoken, body, apiserver.PostContainerParams(params), a.signer, a.networkInfoGetter)
+	cnrID, err := createContainer(wCtx, a.containerWaiter, stoken, body, apiserver.PostContainerParams(params), a.signer, a.networkInfoGetter)
 	if err != nil {
 		resp := a.logAndGetErrorResponse("create container", err, log)
 		return ctx.JSON(getResponseCodeFromStatus(err), resp)
@@ -132,7 +132,7 @@ func (a *RestAPI) PostContainer(ctx echo.Context, params apiserver.PostContainer
 	wCtx, cancel := context.WithTimeout(ctx.Request().Context(), a.waiterOperationTimeout)
 	defer cancel()
 
-	cnrID, err := createContainer(wCtx, a.pool, stoken, body, params, a.signer, a.networkInfoGetter)
+	cnrID, err := createContainer(wCtx, a.containerWaiter, stoken, body, params, a.signer, a.networkInfoGetter)
 	if err != nil {
 		resp := a.logAndGetErrorResponse("create container", err, log)
 		return ctx.JSON(getResponseCodeFromStatus(err), resp)
@@ -226,7 +226,19 @@ func (a *RestAPI) PutContainerEACL(ctx echo.Context, containerID apiserver.Conta
 	wCtx, cancel := context.WithTimeout(ctx.Request().Context(), a.waiterOperationTimeout)
 	defer cancel()
 
-	if err = setContainerEACL(wCtx, a.pool, cnrID, stoken, body, a.signer); err != nil {
+	table, err := util.ToNativeTable(body.Records)
+	if err != nil {
+		resp := a.logAndGetErrorResponse("failed to convert EACL", err, log)
+		return ctx.JSON(http.StatusBadRequest, resp)
+	}
+
+	table.SetCID(cnrID)
+
+	var prm client.PrmContainerSetEACL
+	prm.WithinSession(stoken)
+
+	err = a.containerWaiter.ContainerSetEACL(wCtx, *table, a.signer, prm)
+	if err != nil {
 		resp := a.logAndGetErrorResponse("failed set container eacl", err, log)
 		return ctx.JSON(getResponseCodeFromStatus(err), resp)
 	}
@@ -366,11 +378,10 @@ func (a *RestAPI) DeleteContainer(ctx echo.Context, containerID apiserver.Contai
 	var prm client.PrmContainerDelete
 	prm.WithinSession(stoken)
 
-	wait := waiter.NewContainerDeleteWaiter(a.pool, waiter.DefaultPollInterval)
 	wCtx, cancel := context.WithTimeout(ctx.Request().Context(), a.waiterOperationTimeout)
 	defer cancel()
 
-	if err = wait.ContainerDelete(wCtx, cnrID, a.signer, prm); err != nil {
+	if err = a.containerWaiter.ContainerDelete(wCtx, cnrID, a.signer, prm); err != nil {
 		resp := a.logAndGetErrorResponse("delete container", err, log)
 		return ctx.JSON(getResponseCodeFromStatus(err), resp)
 	}
@@ -446,21 +457,6 @@ func parseContainerID(containerID string) (cid.ID, error) {
 	return cnrID, nil
 }
 
-func setContainerEACL(ctx context.Context, p *pool.Pool, cnrID cid.ID, stoken session.Container, eaclPrm apiserver.Eacl, signer user.Signer) error {
-	table, err := util.ToNativeTable(eaclPrm.Records)
-	if err != nil {
-		return err
-	}
-
-	table.SetCID(cnrID)
-
-	var prm client.PrmContainerSetEACL
-	prm.WithinSession(stoken)
-
-	wait := waiter.NewContainerSetEACLWaiter(p, waiter.DefaultPollInterval)
-	return wait.ContainerSetEACL(ctx, *table, signer, prm)
-}
-
 func getContainerEACL(ctx context.Context, p *pool.Pool, cnrID cid.ID) (*apiserver.Eacl, error) {
 	table, err := p.ContainerEACL(ctx, cnrID, client.PrmContainerEACL{})
 	if err != nil {
@@ -483,7 +479,7 @@ func getContainerEACL(ctx context.Context, p *pool.Pool, cnrID cid.ID) (*apiserv
 	return tableResp, nil
 }
 
-func createContainer(ctx context.Context, p *pool.Pool, stoken session.Container, request apiserver.ContainerPostInfo, params apiserver.PostContainerParams, signer user.Signer, networkInfoGetter networkInfoGetter) (cid.ID, error) {
+func createContainer(ctx context.Context, p *waiter.Waiter, stoken session.Container, request apiserver.ContainerPostInfo, params apiserver.PostContainerParams, signer user.Signer, networkInfoGetter networkInfoGetter) (cid.ID, error) {
 	if request.PlacementPolicy == "" {
 		request.PlacementPolicy = defaultPlacementPolicy
 	}
@@ -545,9 +541,7 @@ func createContainer(ctx context.Context, p *pool.Pool, stoken session.Container
 	var prm client.PrmContainerPut
 	prm.WithinSession(stoken)
 
-	wait := waiter.NewContainerPutWaiter(p, waiter.DefaultPollInterval)
-
-	cnrID, err := wait.ContainerPut(ctx, cnr, signer, prm)
+	cnrID, err := p.ContainerPut(ctx, cnr, signer, prm)
 	if err != nil {
 		return cid.ID{}, fmt.Errorf("put container: %w", err)
 	}

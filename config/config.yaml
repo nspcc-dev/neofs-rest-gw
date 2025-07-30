@@ -32,6 +32,8 @@ pool:
   default-timestamp: false
   # Timeout for waiter container operations.
   container-ops-timeout: 10s
+  # Polling interval for container operation waiter (half a block, but not less than 50ms by default).
+  container-ops-poll-interval: 100ms
 
   # Nodes configuration.
   # This configuration make gateway use the first node (grpc://s01.neofs.devenv:8080)
