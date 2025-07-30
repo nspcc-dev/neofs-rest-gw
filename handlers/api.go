@@ -19,6 +19,7 @@ import (
 	"github.com/nspcc-dev/neofs-sdk-go/pool"
 	"github.com/nspcc-dev/neofs-sdk-go/session"
 	"github.com/nspcc-dev/neofs-sdk-go/user"
+	"github.com/nspcc-dev/neofs-sdk-go/waiter"
 	"go.uber.org/zap"
 )
 
@@ -90,7 +91,7 @@ func NewAPI(prm *PrmAPI) (*RestAPI, error) {
 		serviceShutdownTimeout: prm.ServiceShutdownTimeout,
 		networkInfoGetter:      cache.NewNetworkInfoCache(prm.Pool),
 		waiterOperationTimeout: prm.WaiterOperationTimeout,
-		waiterPollInterval:     prm.WaiterPollInterval,
+		containerWaiter:        waiter.NewWaiter(prm.Pool, prm.WaiterPollInterval),
 	}, nil
 }
 
@@ -159,7 +160,7 @@ type RestAPI struct {
 	serviceShutdownTimeout time.Duration
 	networkInfoGetter      networkInfoGetter
 	waiterOperationTimeout time.Duration
-	waiterPollInterval     time.Duration
+	containerWaiter        *waiter.Waiter
 }
 
 func (a *RestAPI) StartCallback() {
