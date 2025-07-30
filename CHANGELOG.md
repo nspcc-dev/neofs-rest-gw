@@ -5,6 +5,20 @@ This document outlines major changes between releases.
 ## [Unreleased]
 
 ### Added
+
+### Fixed
+
+### Changed
+
+### Removed
+
+### Updated
+
+### Upgrading from 0.14.0
+
+## [0.14.0] - 2025-07-30
+
+### Added
 - `pool.container-ops-poll-interval` option to control polling behavior for container operations (#315)
 
 ### Fixed
@@ -15,12 +29,6 @@ This document outlines major changes between releases.
 - Default container-ops-timeout to 10s (previously dynamic, based on block time, #313)
 - Network info is cached for half epoch duration now (#313)
 - Default polling interval for container operations from fixed 1s to dynamic value based on block time (#315)
-
-### Removed
-
-### Updated
-
-### Upgrading from 0.13.0
 
 ## [0.13.0] - 2025-07-22
 
@@ -383,4 +391,5 @@ Please refer to [GitHub releases](https://github.com/nspcc-dev/neofs-rest-gw/rel
 [0.11.1]: https://github.com/nspcc-dev/neofs-rest-gw/compare/v0.11.0...v0.11.1
 [0.12.0]: https://github.com/nspcc-dev/neofs-rest-gw/compare/v0.11.1...v0.12.0
 [0.13.0]: https://github.com/nspcc-dev/neofs-rest-gw/compare/v0.12.0...v0.13.0
-[Unreleased]: https://github.com/nspcc-dev/neofs-rest-gw/compare/v0.13.0...master
+[0.14.0]: https://github.com/nspcc-dev/neofs-rest-gw/compare/v0.13.0...v0.14.0
+[Unreleased]: https://github.com/nspcc-dev/neofs-rest-gw/compare/v0.14.0...master
