@@ -226,7 +226,20 @@ func (a *RestAPI) PutContainerEACL(ctx echo.Context, containerID apiserver.Conta
 	wCtx, cancel := context.WithTimeout(ctx.Request().Context(), a.waiterOperationTimeout)
 	defer cancel()
 
-	if err = setContainerEACL(wCtx, a.pool, cnrID, stoken, body, a.signer); err != nil {
+	table, err := util.ToNativeTable(body.Records)
+	if err != nil {
+		resp := a.logAndGetErrorResponse("failed to convert EACL", err, log)
+		return ctx.JSON(http.StatusBadRequest, resp)
+	}
+
+	table.SetCID(cnrID)
+
+	var prm client.PrmContainerSetEACL
+	prm.WithinSession(stoken)
+
+	wait := waiter.NewContainerSetEACLWaiter(a.pool, waiter.DefaultPollInterval)
+	err = wait.ContainerSetEACL(wCtx, *table, a.signer, prm)
+	if err != nil {
 		resp := a.logAndGetErrorResponse("failed set container eacl", err, log)
 		return ctx.JSON(getResponseCodeFromStatus(err), resp)
 	}
@@ -444,21 +457,6 @@ func parseContainerID(containerID string) (cid.ID, error) {
 	}
 
 	return cnrID, nil
-}
-
-func setContainerEACL(ctx context.Context, p *pool.Pool, cnrID cid.ID, stoken session.Container, eaclPrm apiserver.Eacl, signer user.Signer) error {
-	table, err := util.ToNativeTable(eaclPrm.Records)
-	if err != nil {
-		return err
-	}
-
-	table.SetCID(cnrID)
-
-	var prm client.PrmContainerSetEACL
-	prm.WithinSession(stoken)
-
-	wait := waiter.NewContainerSetEACLWaiter(p, waiter.DefaultPollInterval)
-	return wait.ContainerSetEACL(ctx, *table, signer, prm)
 }
 
 func getContainerEACL(ctx context.Context, p *pool.Pool, cnrID cid.ID) (*apiserver.Eacl, error) {
