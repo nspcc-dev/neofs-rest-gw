@@ -13,6 +13,7 @@ This document outlines major changes between releases.
 ### Removed
 
 ### Updated
+- NeoFS SDK to RC14 version (#319)
 
 ### Upgrading from 0.14.0
 
