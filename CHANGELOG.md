@@ -13,11 +13,18 @@ This document outlines major changes between releases.
 ### Removed
 
 ### Updated
+
+### Upgrading from 0.14.1
+
+## [0.14.1] - 2025-08-12
+
+### Fixed
+- Panic in auth requests without X-Bearer-For-All-Users parameter (#320)
+
+### Updated
 - NeoFS SDK to RC14 version (#319)
 - github.com/nspcc-dev/neo-go v0.108.1 => v0.111.0 (#318)
 - github.com/labstack/echo/v4 v4.13.3 => v4.13.4 (#318)
-
-### Upgrading from 0.14.0
 
 ## [0.14.0] - 2025-07-30
 
@@ -395,4 +402,5 @@ Please refer to [GitHub releases](https://github.com/nspcc-dev/neofs-rest-gw/rel
 [0.12.0]: https://github.com/nspcc-dev/neofs-rest-gw/compare/v0.11.1...v0.12.0
 [0.13.0]: https://github.com/nspcc-dev/neofs-rest-gw/compare/v0.12.0...v0.13.0
 [0.14.0]: https://github.com/nspcc-dev/neofs-rest-gw/compare/v0.13.0...v0.14.0
-[Unreleased]: https://github.com/nspcc-dev/neofs-rest-gw/compare/v0.14.0...master
+[0.14.1]: https://github.com/nspcc-dev/neofs-rest-gw/compare/v0.14.0...v0.14.1
+[Unreleased]: https://github.com/nspcc-dev/neofs-rest-gw/compare/v0.14.1...master
