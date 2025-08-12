@@ -15,6 +15,7 @@ This document outlines major changes between releases.
 ### Updated
 - NeoFS SDK to RC14 version (#319)
 - github.com/nspcc-dev/neo-go v0.108.1 => v0.111.0 (#318)
+- github.com/labstack/echo/v4 v4.13.3 => v4.13.4 (#318)
 
 ### Upgrading from 0.14.0
 
