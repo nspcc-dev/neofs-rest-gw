@@ -38,9 +38,14 @@ type containerTokenParams struct {
 }
 
 func newHeaderParams(params apiserver.AuthParams) headersParams {
+	var bearerForAllUsers bool
+	if params.XBearerForAllUsers != nil {
+		bearerForAllUsers = *params.XBearerForAllUsers
+	}
+
 	prm := headersParams{
 		XBearerOwnerID:     params.XBearerOwnerId,
-		XBearerForAllUsers: *params.XBearerForAllUsers,
+		XBearerForAllUsers: bearerForAllUsers,
 	}
 
 	if params.XBearerLifetime != nil && *params.XBearerLifetime > 0 {
