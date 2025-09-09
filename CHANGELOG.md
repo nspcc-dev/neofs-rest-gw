@@ -15,6 +15,7 @@ This document outlines major changes between releases.
 
 ### Updated
 - github.com/nspcc-dev/neo-go v0.111.0 => v0.112.0 (#266)
+- github.com/spf13/pflag v1.0.5 => v1.0.10 (#266)
 
 ### Upgrading from 0.14.1
 

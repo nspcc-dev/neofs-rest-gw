@@ -10,7 +10,7 @@ require (
 	github.com/nspcc-dev/neofs-sdk-go v1.0.0-rc.14
 	github.com/oapi-codegen/echo-middleware v1.0.2
 	github.com/oapi-codegen/runtime v1.1.1
-	github.com/spf13/pflag v1.0.5
+	github.com/spf13/pflag v1.0.10
 	github.com/stretchr/testify v1.10.0
 	github.com/testcontainers/testcontainers-go v0.38.0
 	go.uber.org/zap v1.27.0
