@@ -14,6 +14,7 @@ This document outlines major changes between releases.
 ### Removed
 
 ### Updated
+- github.com/nspcc-dev/neo-go v0.111.0 => v0.112.0 (#266)
 
 ### Upgrading from 0.14.1
 
