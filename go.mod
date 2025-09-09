@@ -1,6 +1,6 @@
 module github.com/nspcc-dev/neofs-rest-gw
 
-go 1.23.0
+go 1.24
 
 require (
 	github.com/getkin/kin-openapi v0.131.0
