@@ -9,10 +9,14 @@ This document outlines major changes between releases.
 ### Fixed
 
 ### Changed
+- Go 1.24+ is required to build now (#266)
 
 ### Removed
 
 ### Updated
+- github.com/nspcc-dev/neo-go v0.111.0 => v0.112.0 (#266)
+- github.com/spf13/pflag v1.0.5 => v1.0.10 (#266)
+- github.com/stretchr/testify v1.10.0 => v1.11.1 (#266)
 
 ### Upgrading from 0.14.1
 

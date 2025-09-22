@@ -5,7 +5,7 @@ VERSION ?= "$(shell git describe --tags --match "v*" --dirty --always --abbrev=8
 
 BUILD_OS ?= linux
 BUILD_ARCH ?= amd64
-GO_VERSION ?= 1.23
+GO_VERSION ?= 1.24
 
 HUB_IMAGE ?= nspccdev/neofs-rest-gw
 HUB_TAG ?= "$(shell echo ${VERSION} | sed 's/^v//')"

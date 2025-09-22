@@ -1,17 +1,17 @@
 module github.com/nspcc-dev/neofs-rest-gw
 
-go 1.23.0
+go 1.24
 
 require (
 	github.com/getkin/kin-openapi v0.131.0
 	github.com/google/uuid v1.6.0
 	github.com/labstack/echo/v4 v4.13.4
-	github.com/nspcc-dev/neo-go v0.111.0
+	github.com/nspcc-dev/neo-go v0.112.0
 	github.com/nspcc-dev/neofs-sdk-go v1.0.0-rc.14
 	github.com/oapi-codegen/echo-middleware v1.0.2
 	github.com/oapi-codegen/runtime v1.1.1
-	github.com/spf13/pflag v1.0.5
-	github.com/stretchr/testify v1.10.0
+	github.com/spf13/pflag v1.0.10
+	github.com/stretchr/testify v1.11.1
 	github.com/testcontainers/testcontainers-go v0.38.0
 	go.uber.org/zap v1.27.0
 )

@@ -554,9 +554,8 @@ func checkNNSContainerName(name string) error {
 	if length < 3 || 255 < length {
 		return fmt.Errorf("invalid length: %d", length)
 	}
-	fragments := strings.Split(name, ".")
 
-	for _, fragment := range fragments {
+	for fragment := range strings.SplitSeq(name, ".") {
 		fLength := len(fragment)
 		if fLength < 1 || 63 < fLength {
 			return fmt.Errorf("invalid fragment length: %d", fLength)
