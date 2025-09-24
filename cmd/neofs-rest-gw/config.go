@@ -202,7 +202,7 @@ func config() *viper.Viper {
 				continue
 			}
 
-			k := strings.Replace(cmdKeys[i], ".", "_", -1)
+			k := strings.ReplaceAll(cmdKeys[i], ".", "_")
 			fmt.Printf("%s_%s = %v\n", Prefix, strings.ToUpper(k), v.Get(cmdKeys[i]))
 		}
 
