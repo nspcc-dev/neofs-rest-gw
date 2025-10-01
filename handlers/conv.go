@@ -18,10 +18,16 @@ func getResponseCodeFromStatus(err error) int {
 		return http.StatusGatewayTimeout
 	case errors.Is(err, context.DeadlineExceeded):
 		return http.StatusGatewayTimeout
+	case errors.Is(err, apistatus.ErrBadRequest):
+		return http.StatusBadGateway
+	case errors.Is(err, apistatus.ErrBusy):
+		return http.StatusServiceUnavailable
 	case errors.Is(err, apistatus.ErrEACLNotFound):
 		return http.StatusNotFound
 	case errors.Is(err, apistatus.ErrContainerNotFound):
 		return http.StatusNotFound
+	case errors.Is(err, apistatus.ErrIncomplete):
+		return http.StatusBadGateway
 	case errors.Is(err, apistatus.ErrSessionTokenNotFound):
 		return http.StatusNotFound
 	case errors.Is(err, apistatus.ErrSessionTokenExpired):
