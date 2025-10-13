@@ -399,6 +399,15 @@ func ToNativeFilters(searchFilters []apiserver.SearchFilter) (object.SearchFilte
 	filters := object.NewSearchFilters()
 
 	for _, f := range searchFilters {
+		if f.Key == object.FilterRoot {
+			filters.AddRootFilter()
+			continue
+		}
+		if f.Key == object.FilterPhysical {
+			filters.AddPhyFilter()
+			continue
+		}
+
 		matchFilter, err := ToNativeMatchFilter(f.Match)
 		if err != nil {
 			return nil, err

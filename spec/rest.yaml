@@ -1900,6 +1900,7 @@ components:
       properties:
         key:
           type: string
+          description: For special `$Object:ROOT` and `$Object:PHY` filters value and match are ignored, other object header filters are supported normally.
         value:
           type: string
           description: Numeric filters MatchNumGT, MatchNumGE, MatchNumLT, MatchNumLE can be in range [-2^255, 2^255 -1].
