@@ -7,19 +7,28 @@ This document outlines major changes between releases.
 ### Added
 
 ### Fixed
+
+### Changed
+
+### Removed
+
+### Updated
+
+### Upgrading from 0.14.2
+
+## [0.14.2] - 2025-10-15
+
+### Fixed
 - Support for ROOT and PHY filters (#326)
 
 ### Changed
 - Go 1.24+ is required to build now (#266)
 
-### Removed
-
 ### Updated
-- github.com/nspcc-dev/neo-go v0.111.0 => v0.112.0 (#266)
+- github.com/nspcc-dev/neo-go v0.111.0 => v0.113.0 (#266, #325)
 - github.com/spf13/pflag v1.0.5 => v1.0.10 (#266)
 - github.com/stretchr/testify v1.10.0 => v1.11.1 (#266)
-
-### Upgrading from 0.14.1
+- NeoFS SDK to RC15 (#325)
 
 ## [0.14.1] - 2025-08-12
 
@@ -408,4 +417,5 @@ Please refer to [GitHub releases](https://github.com/nspcc-dev/neofs-rest-gw/rel
 [0.13.0]: https://github.com/nspcc-dev/neofs-rest-gw/compare/v0.12.0...v0.13.0
 [0.14.0]: https://github.com/nspcc-dev/neofs-rest-gw/compare/v0.13.0...v0.14.0
 [0.14.1]: https://github.com/nspcc-dev/neofs-rest-gw/compare/v0.14.0...v0.14.1
-[Unreleased]: https://github.com/nspcc-dev/neofs-rest-gw/compare/v0.14.1...master
+[0.14.2]: https://github.com/nspcc-dev/neofs-rest-gw/compare/v0.14.1...v0.14.2
+[Unreleased]: https://github.com/nspcc-dev/neofs-rest-gw/compare/v0.14.2...master
