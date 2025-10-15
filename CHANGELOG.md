@@ -7,6 +7,7 @@ This document outlines major changes between releases.
 ### Added
 
 ### Fixed
+- Support for ROOT and PHY filters (#326)
 
 ### Changed
 - Go 1.24+ is required to build now (#266)
