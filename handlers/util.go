@@ -55,42 +55,6 @@ const (
 	handlerFieldName = "handler"
 )
 
-func getObjectAttributes(ctx context.Context, networkInfoGetter networkInfoGetter, attrs []apiserver.Attribute, prm PrmAttributes) ([]object.Attribute, error) {
-	headers := make(map[string]string, len(attrs))
-
-	for _, attr := range attrs {
-		headers[attr.Key] = attr.Value
-	}
-	delete(headers, object.AttributeFileName)
-
-	if needParseExpiration(headers) {
-		epochDuration, err := getEpochDurations(ctx, networkInfoGetter)
-		if err != nil {
-			return nil, fmt.Errorf("could not get epoch durations from network info: %w", errors.Join(errNeoFSRequestFailed, err))
-		}
-		now := time.Now().UTC()
-		if err = prepareExpirationHeader(headers, epochDuration, now); err != nil {
-			return nil, fmt.Errorf("could not prepare expiration header: %w", err)
-		}
-	}
-
-	attributes := make([]object.Attribute, 0, len(headers))
-	for key, val := range headers {
-		attribute := object.NewAttribute(key, val)
-		attributes = append(attributes, attribute)
-	}
-
-	filename := object.NewAttribute(object.AttributeFileName, prm.DefaultFileName)
-	attributes = append(attributes, filename)
-
-	if _, ok := headers[object.AttributeTimestamp]; !ok && prm.DefaultTimestamp {
-		timestamp := object.NewAttribute(object.AttributeTimestamp, strconv.FormatInt(time.Now().Unix(), 10))
-		attributes = append(attributes, timestamp)
-	}
-
-	return attributes, nil
-}
-
 func getEpochDurations(ctx context.Context, networkInfoGetter networkInfoGetter) (*epochDurations, error) {
 	networkInfo, err := networkInfoGetter.NetworkInfo(ctx)
 	if err != nil {
