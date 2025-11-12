@@ -1615,6 +1615,9 @@ components:
         cursor:
           description: Value to start the next batch from.
           type: string
+        incomplete:
+          description: If true, it describes incomplete success. The search has been done, but not all nodes returned the result, so it may be missing some items.
+          type: boolean
       description: List of objects.
       example:
         size: 2

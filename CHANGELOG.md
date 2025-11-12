@@ -5,6 +5,7 @@ This document outlines major changes between releases.
 ## [Unreleased]
 
 ### Added
+- Incomplete flag to `/v2/objects/{cid}/search` operation (#329)
 
 ### Fixed
 

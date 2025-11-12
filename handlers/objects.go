@@ -322,12 +322,18 @@ func (a *RestAPI) V2SearchObjects(ctx echo.Context, containerID apiserver.Contai
 		return ctx.JSON(http.StatusBadRequest, resp)
 	}
 
+	var incomplete bool
+
 	// limit already checked in getLimit.
 	opts.SetCount(uint32(limit))
 	resSearch, nextCursor, err := a.pool.SearchObjects(ctx.Request().Context(), cnrID, filters, returningAttributes, cursor, a.signer, opts)
 	if err != nil {
-		resp := a.logAndGetErrorResponse("failed to search objects", err, log)
-		return ctx.JSON(getResponseCodeFromStatus(err), resp)
+		if !errors.Is(err, apistatus.ErrIncomplete) {
+			resp := a.logAndGetErrorResponse("failed to search objects", err, log)
+			return ctx.JSON(getResponseCodeFromStatus(err), resp)
+		}
+
+		incomplete = true
 	}
 
 	var objects = make([]apiserver.ObjectBaseInfoV2, len(resSearch))
@@ -348,6 +354,10 @@ func (a *RestAPI) V2SearchObjects(ctx echo.Context, containerID apiserver.Contai
 	list := &apiserver.ObjectListV2{
 		Objects: objects,
 		Cursor:  nextCursor,
+	}
+
+	if incomplete {
+		list.Incomplete = &incomplete
 	}
 
 	ctx.Response().Header().Set(accessControlAllowOriginHeader, "*")
@@ -760,7 +770,7 @@ func (a *RestAPI) search(ctx context.Context, btoken *bearer.Token, cid cid.ID, 
 	}
 
 	searchResult, _, err := a.pool.SearchObjects(ctx, cid, filters, returningAttributes, "", a.signer, opts)
-	if err != nil {
+	if err != nil && !errors.Is(err, apistatus.ErrIncomplete) {
 		return oid.ID{}, fmt.Errorf("search: %w", err)
 	}
 
