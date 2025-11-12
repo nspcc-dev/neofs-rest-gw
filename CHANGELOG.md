@@ -5,7 +5,6 @@ This document outlines major changes between releases.
 ## [Unreleased]
 
 ### Added
-- Incomplete flag to `/v2/objects/{cid}/search` operation (#329)
 
 ### Fixed
 
@@ -15,7 +14,23 @@ This document outlines major changes between releases.
 
 ### Updated
 
+### Upgrading from 0.15.0
+
+## [0.15.0] - 2025-11-13
+
+### Added
+- Incomplete flag to `/v2/objects/{cid}/search` operation (#329)
+
+### Fixed
+- "Incomplete" code handling for implicit searches (#331)
+
+### Removed
+- Deprecated `/v1/objects`, `/v1/objects/{containerId}/{objectId}`, `/v1/get/{containerId}/{objectId}`, `/v1/upload/{containerId}` and `/v1/get_by_attribute/{containerId}/{attrKey}/{attrVal}` APIs (#330)
+
 ### Upgrading from 0.14.2
+Please refer to migration guides for [new upload](./docs/migration-new-upload.md)
+and [HTTP](./docs/migration-from-http.md) in case your application still uses
+any of the removed APIs.
 
 ## [0.14.2] - 2025-10-15
 
@@ -419,4 +434,5 @@ Please refer to [GitHub releases](https://github.com/nspcc-dev/neofs-rest-gw/rel
 [0.14.0]: https://github.com/nspcc-dev/neofs-rest-gw/compare/v0.13.0...v0.14.0
 [0.14.1]: https://github.com/nspcc-dev/neofs-rest-gw/compare/v0.14.0...v0.14.1
 [0.14.2]: https://github.com/nspcc-dev/neofs-rest-gw/compare/v0.14.1...v0.14.2
-[Unreleased]: https://github.com/nspcc-dev/neofs-rest-gw/compare/v0.14.2...master
+[0.15.0]: https://github.com/nspcc-dev/neofs-rest-gw/compare/v0.14.2...v0.15.0
+[Unreleased]: https://github.com/nspcc-dev/neofs-rest-gw/compare/v0.15.0...master
