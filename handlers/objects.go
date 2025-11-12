@@ -760,7 +760,7 @@ func (a *RestAPI) search(ctx context.Context, btoken *bearer.Token, cid cid.ID, 
 	}
 
 	searchResult, _, err := a.pool.SearchObjects(ctx, cid, filters, returningAttributes, "", a.signer, opts)
-	if err != nil {
+	if err != nil && !errors.Is(err, apistatus.ErrIncomplete) {
 		return oid.ID{}, fmt.Errorf("search: %w", err)
 	}
 
