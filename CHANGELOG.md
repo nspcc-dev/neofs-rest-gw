@@ -13,6 +13,8 @@ This document outlines major changes between releases.
 ### Removed
 
 ### Updated
+- NeoGo dependency to 0.114.0 (#334)
+- NeoFS SDK dependency to RC16+ fixing Incomplete status processing (#334)
 
 ### Upgrading from 0.15.0
 
