@@ -37,5 +37,5 @@ jobs:
       neofs_rest_gw_commit: ${{ github.event.inputs.neofs_rest_gw_ref }}
       tests_path: 'pytest_tests/tests/services/rest_gate'
       tests_parallel_level: 1
-      os: '[{runner: "ubuntu-latest", binary: "linux-amd64"}, {runner: "macos-14", binary: "darwin-arm64"}]'
+      os: '[{runner: "ubuntu-latest", binary: "linux-amd64"}, {runner: "macos-latest", binary: "darwin-arm64"}]'
     secrets: inherit
