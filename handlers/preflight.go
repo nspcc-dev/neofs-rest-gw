@@ -168,3 +168,19 @@ func (a *RestAPI) OptionsV2SearchObjects(ctx echo.Context, _ string) error {
 	ctx.Response().Header().Set(accessControlAllowMethodsHeader, allowMethods(methodPost))
 	return ctx.NoContent(http.StatusOK)
 }
+
+// OptionsV2AuthSessionToken handler for the auth v2 session token options request.
+func (a *RestAPI) OptionsV2AuthSessionToken(ctx echo.Context) error {
+	ctx.Response().Header().Set(accessControlAllowOriginHeader, allOrigins)
+	ctx.Response().Header().Set(accessControlAllowHeadersHeader, allowHeaders)
+	ctx.Response().Header().Set(accessControlAllowMethodsHeader, allowMethods(methodPost))
+	return ctx.NoContent(http.StatusOK)
+}
+
+// OptionsV2FormAuthSessionToken handler for the form v2 session token options request.
+func (a *RestAPI) OptionsV2FormAuthSessionToken(ctx echo.Context) error {
+	ctx.Response().Header().Set(accessControlAllowOriginHeader, allOrigins)
+	ctx.Response().Header().Set(accessControlAllowHeadersHeader, allowHeaders)
+	ctx.Response().Header().Set(accessControlAllowMethodsHeader, allowMethods(methodPost))
+	return ctx.NoContent(http.StatusOK)
+}
