@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"math"
+	"net"
 	"net/http"
 	"strconv"
 	"strings"
@@ -401,4 +402,46 @@ func (a *RestAPI) putObject(ctx echo.Context, hdr object.Object, bt *bearer.Toke
 	}
 
 	return writer.GetResult().StoredObjectID(), nil
+}
+
+func isDomainName(d string) error {
+	if len(d) < 3 {
+		return errors.New("domain name is too short")
+	}
+
+	if len(d) > 255 {
+		return errors.New("domain name is too long")
+	}
+
+	// Raw IP is not a valid domain.
+	if ip := net.ParseIP(d); ip != nil {
+		return errors.New("IP addresses are not valid domain names in this context")
+	}
+
+	labels := strings.Split(d, ".")
+	if len(labels) < 2 {
+		return errors.New("domain must have at least a TLD (e.g., example.com)")
+	}
+
+	for _, label := range labels {
+		l := len(label)
+		if l < 1 || l > 63 {
+			return errors.New("domain labels must be between 1 and 63 characters")
+		}
+		if label[0] == '-' || label[l-1] == '-' {
+			return errors.New("domain labels cannot start or end with a hyphen")
+		}
+
+		for _, char := range label {
+			isAlphaNum := (char >= 'a' && char <= 'z') ||
+				(char >= 'A' && char <= 'Z') ||
+				(char >= '0' && char <= '9')
+
+			if !isAlphaNum && char != '-' {
+				return errors.New("domain contains invalid characters")
+			}
+		}
+	}
+
+	return nil
 }

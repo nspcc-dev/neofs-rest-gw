@@ -38,6 +38,8 @@ type ApiMetrics struct {
 	GetObjectInfoDuration            prometheus.Histogram
 	UploadContainerObjectDuration    prometheus.Histogram
 	V2SearchObjectsDuration          prometheus.Histogram
+	V2AuthDuration                   prometheus.Histogram
+	V2AuthFormSessionTokenDuration   prometheus.Histogram
 }
 
 // Elapsed calculates and store method execution time for corresponding histogram.
@@ -209,6 +211,18 @@ func NewApiMetrics() *ApiMetrics {
 			Name:      "v2_search_objects_duration",
 			Help:      "V2 search objects request handling time",
 		}),
+		V2AuthDuration: prometheus.NewHistogram(prometheus.HistogramOpts{
+			Namespace: namespace,
+			Subsystem: apiSubsystem,
+			Name:      "v2_auth_duration",
+			Help:      "V2 Auth request handling time",
+		}),
+		V2AuthFormSessionTokenDuration: prometheus.NewHistogram(prometheus.HistogramOpts{
+			Namespace: namespace,
+			Subsystem: apiSubsystem,
+			Name:      "v2_auth_form_session_token_duration",
+			Help:      "V2 Auth form session token request handling time",
+		}),
 	}
 
 	m.register()
@@ -243,4 +257,6 @@ func (m ApiMetrics) register() {
 	prometheus.MustRegister(m.GetObjectInfoDuration)
 	prometheus.MustRegister(m.UploadContainerObjectDuration)
 	prometheus.MustRegister(m.V2SearchObjectsDuration)
+	prometheus.MustRegister(m.V2AuthDuration)
+	prometheus.MustRegister(m.V2AuthFormSessionTokenDuration)
 }

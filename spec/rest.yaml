@@ -125,6 +125,96 @@ paths:
                 type: string
           content: { }
       security: [ ]
+  /v2/auth/session:
+    post:
+      summary: Form v2 session token to subsequent requests.
+      operationId: v2AuthSessionToken
+      requestBody:
+        description: V2 session token parameters.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SessionTokenV2Request'
+        required: true
+      responses:
+        "200":
+          description: Base64 encoded stable binary marshaled session v2 token body.
+          headers:
+            Access-Control-Allow-Origin:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionTokenv2Response'
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      security: [ ]
+    options:
+      operationId: optionsV2AuthSessionToken
+      responses:
+        "200":
+          description: CORS
+          headers:
+            Access-Control-Allow-Origin:
+              schema:
+                type: string
+            Access-Control-Allow-Methods:
+              schema:
+                type: string
+            Access-Control-Allow-Headers:
+              schema:
+                type: string
+          content: { }
+      security: [ ]
+  /v2/auth/session/complete:
+    post:
+      summary: Joining the binary Session v2 token along with its signature to prepare the session token for use.
+      operationId: v2CompleteAuthSessionToken
+      requestBody:
+        description: V2 session token and signature.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CompleteSessionTokenV2Request'
+      responses:
+        "200":
+          description: Base64 encoded stable binary marshaled signed session v2 token.
+          headers:
+            Access-Control-Allow-Origin:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BinarySessionV2'
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    options:
+      operationId: optionsV2FormAuthSessionToken
+      responses:
+        "200":
+          description: CORS
+          headers:
+            Access-Control-Allow-Origin:
+              schema:
+                type: string
+            Access-Control-Allow-Methods:
+              schema:
+                type: string
+            Access-Control-Allow-Headers:
+              schema:
+                type: string
+          content: { }
+      security: [ ]
   /v1/accounting/balance/{address}:
     get:
       summary: Get balance in NeoFS
@@ -1135,6 +1225,18 @@ paths:
 
 components:
   schemas:
+    BinarySessionV2:
+      required:
+        - token
+      type: object
+      properties:
+        token:
+          type: string
+          description: Base64 encoded session v2 token.
+      description: Session v2 token for operations.
+        form.
+      example:
+        token: Cn8Q8++/nQUaGwoZNQHEjiF1+c2We9QFWXWpYdNhDgsrvW52NyIdChsKGTXOZ69H2RVwFMjbItwYdpvhKxsTajlO8dsqEgjy0ufLBhDyjN3LBhjyjN3LBjInCiIKIHtFefMExdKd+2dN4+nkqjN7y5CQU+ZNzBa8kIhBWvTcEgEBEmYKIQKWrf/UBXKYNS68tkQyRlkvNrFf46VFPSa08X4hRk2ZYxJBBPN5PPWyXzdYlPbvBkyMB48eeHA/m5k041pjeRcBX2CI8ainqNvPXesCXKwohD4e27i9Y0le7dXGXswhMGx4eHg=
     BinaryBearer:
       required:
         - token
@@ -1915,6 +2017,123 @@ components:
         namedContainerFee: 0
         storagePrice: 0
         withdrawalFee: 0
+    SessionTokenV2Request:
+      type: object
+      required:
+        - owner
+        - targets
+        - contexts
+      properties:
+        owner:
+          description: Token issuer ID (account address).
+          type: string
+          example: NfgHwwTi3wHAS8aFAN243C5vGbkYDpqLHP
+        targets:
+          type: array
+          description: The accounts authorized (owners) by this token.
+          x-go-type-skip-optional-pointer: true
+          items:
+            type: string
+            description: Target entity that can use the token, an N3 address or an NNS name.
+            example: NejLbQpojKJWec4NQRMBhzsrmCyhXfGJJe, entity.domain
+        contexts:
+          type: array
+          description: The session token contexts.
+          x-go-type-skip-optional-pointer: true
+          items:
+            $ref: '#/components/schemas/TokenContext'
+        final:
+          description: If true, preventing further delegations.
+          type: boolean
+          x-go-type-skip-optional-pointer: true
+        expiration-rfc3339:
+          type: string
+          description: |
+            Specifies the expiration time in RFC3339 format. Examples:
+            - "2024-12-31T23:59:59Z" represents the last moment of 2024 in UTC.
+            - "2024-12-31T15:59:59-08:00" represents 3:59 PM on December 31, 2024, Pacific Time.
+          x-go-type-skip-optional-pointer: true
+        expiration-duration:
+          type: string
+          description: |
+            Specifies the duration until object expiration in Go's duration format. Examples:
+              - "300s" represents 5 minutes.
+              - "2h45m" represents 2 hours and 45 minutes.
+          x-go-type-skip-optional-pointer: true
+        origin:
+          description: If passed, sets the origin token for delegation chain. Base64 encoded.
+          type: string
+          x-go-type-skip-optional-pointer: true
+      description: Session token v2 that is expected to be formed.
+    CompleteSessionTokenV2Request:
+      type: object
+      description: The unsigned Session Token v2, its associated signature, and the public component of the signing key.
+      required:
+        - token
+        - key
+        - value
+        - scheme
+      properties:
+        token:
+          description: Base64 encoded unsigned session v2 token.
+          type: string
+        key:
+          description: If scheme is not N3, Hex encoded public part of the key that signed the session token.
+            If scheme N3, Base64 encoded verifScript.
+          type: string
+          x-go-type-skip-optional-pointer: true
+        value:
+          description: If scheme is not N3, Base64 encoded signature for session v2 token.
+            If scheme N3, Base64 encoded invocScript.
+          type: string
+        scheme:
+          description: Use wallet connect signature scheme or native NeoFS signature.
+          $ref: '#/components/schemas/SchemaType'
+    TokenContext:
+      type: object
+      properties:
+        containerID:
+          description: If set, narrows the session token to this container id. Container can be zero (wildcard).
+          x-go-type-skip-optional-pointer: true
+          type: string
+          example: 2fU9HWgoiUoXy9aTHhFnPmx2KPEQZXZiwqXWvdpkhaQe
+        verbs:
+          type: array
+          x-go-type-skip-optional-pointer: true
+          items:
+            $ref: '#/components/schemas/TokenVerb'
+    TokenVerb:
+      type: string
+      description: Verb that describes the allowed operations for token.
+      enum:
+        - OBJECT_PUT
+        - OBJECT_GET
+        - OBJECT_HEAD
+        - OBJECT_SEARCH
+        - OBJECT_DELETE
+        - OBJECT_RANGE
+        - OBJECT_RANGE_HASH
+        - CONTAINER_PUT
+        - CONTAINER_DELETE
+        - CONTAINER_SET_EACL
+        - CONTAINER_SET_ATTRIBUTE
+        - CONTAINER_REMOVE_ATTRIBUTE
+    SchemaType:
+      type: string
+      description: Signature scheme type for a session token.
+      enum:
+        - WALLETCONNECT
+        - SHA512
+        - DETERMINISTIC_SHA256
+        - N3
+    SessionTokenv2Response:
+      type: object
+      required:
+        - token
+      properties:
+        token:
+          type: string
+          description: Base64 encoded unsigned token, what should be signed.
   responses:
     ObjectContentOK:
       description: Object.

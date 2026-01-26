@@ -12,12 +12,14 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 
 	dockerContainer "github.com/docker/docker/api/types/container"
 	"github.com/labstack/echo/v4"
 	"github.com/nspcc-dev/neo-go/pkg/crypto/keys"
+	"github.com/nspcc-dev/neo-go/pkg/wallet"
 	"github.com/nspcc-dev/neofs-rest-gw/handlers"
 	"github.com/nspcc-dev/neofs-rest-gw/handlers/apiserver"
 	"github.com/nspcc-dev/neofs-rest-gw/internal/util"
@@ -33,6 +35,7 @@ import (
 	oid "github.com/nspcc-dev/neofs-sdk-go/object/id"
 	"github.com/nspcc-dev/neofs-sdk-go/object/slicer"
 	"github.com/nspcc-dev/neofs-sdk-go/pool"
+	"github.com/nspcc-dev/neofs-sdk-go/session/v2"
 	"github.com/nspcc-dev/neofs-sdk-go/user"
 	"github.com/nspcc-dev/neofs-sdk-go/waiter"
 	middleware "github.com/oapi-codegen/echo-middleware"
@@ -124,6 +127,7 @@ func runTests(ctx context.Context, t *testing.T, key *keys.PrivateKey, node stri
 	restrictByEACL(ctx, t, clientPool, cnrID, signer)
 
 	t.Run("rest auth several tokens", func(t *testing.T) { authTokens(ctx, t) })
+	t.Run("rest auth session token v2", func(t *testing.T) { v2AuthSessionToken(ctx, t) })
 	t.Run("rest form full binary bearer", func(t *testing.T) { formFullBinaryBearer(ctx, t) })
 
 	t.Run("rest put container invalid", func(t *testing.T) { restContainerPutInvalid(ctx, t) })
@@ -2235,4 +2239,216 @@ func getObjectCreateTimestamp(ctx context.Context, t *testing.T, clientPool *poo
 		}
 	}
 	return ""
+}
+
+func v2AuthSessionToken(ctx context.Context, t *testing.T) {
+	key, err := keys.NewPrivateKeyFromHex(devenvPrivateKey)
+	require.NoError(t, err)
+
+	signer := user.NewAutoIDSigner(key.PrivateKey)
+	ownerID := signer.UserID()
+
+	cnrIDStr := "9JCbLjeipa75ymzkcyDpocWyFjmsTuYjGw8aSdJKxUn7"
+	cnrID, err := cid.DecodeString(cnrIDStr)
+	require.NoError(t, err)
+
+	acc, err := wallet.NewAccount()
+	require.NoError(t, err)
+	targetID := user.NewFromScriptHash(acc.ScriptHash())
+
+	t.Run("ok", func(t *testing.T) {
+		var (
+			originToken session.Token
+			now         = time.Now()
+		)
+
+		originToken.SetNbf(now)
+		originToken.SetIat(now)
+		originToken.SetExp(now.Add(24 * time.Hour))
+		originToken.SetIssuer(ownerID)
+		originToken.SetVersion(session.TokenCurrentVersion)
+		originToken.SetNonce(session.RandomNonce())
+
+		c, err := session.NewContext(cnrID, []session.Verb{session.VerbContainerPut})
+		require.NoError(t, err)
+		var contexts = []session.Context{c}
+		err = originToken.SetContexts(contexts)
+		require.NoError(t, err)
+
+		var targets = []session.Target{session.NewTargetUser(targetID)}
+		err = originToken.SetSubjects(targets)
+		require.NoError(t, err)
+
+		err = originToken.Sign(signer)
+		require.NoError(t, err)
+
+		exp := now.Add(48 * time.Hour).Truncate(time.Second)
+
+		request := apiserver.SessionTokenV2Request{
+			Contexts:          []apiserver.TokenContext{{Verbs: []apiserver.TokenVerb{"OBJECT_PUT"}}},
+			ExpirationRfc3339: exp.Format(time.RFC3339),
+			Owner:             ownerID.String(),
+			Targets:           []string{targetID.String()},
+			Origin:            base64.StdEncoding.EncodeToString(originToken.Marshal()),
+		}
+
+		httpClient := defaultHTTPClient()
+		response := makeV2AuthSessionTokenRequest(ctx, t, request, httpClient, http.StatusOK, "")
+
+		t.Run("stitch session token", func(t *testing.T) {
+			signedData, err := base64.StdEncoding.DecodeString(response.Token)
+			require.NoError(t, err)
+
+			signed, err := signer.Sign(signedData)
+			require.NoError(t, err)
+
+			req := apiserver.CompleteSessionTokenV2Request{
+				Key:    hex.EncodeToString(key.PublicKey().Bytes()),
+				Value:  base64.StdEncoding.EncodeToString(signed),
+				Token:  response.Token,
+				Scheme: apiserver.SHA512,
+			}
+
+			sessionTokenResponse := completeV2AuthSessionTokenRequest(ctx, t, req, httpClient, http.StatusOK, "")
+			sessionToken := extractSessionV2Token(t, sessionTokenResponse)
+
+			require.Equal(t, exp, sessionToken.Exp())
+			// require.False(t, sessionToken.Exp().After(time.Now().Add(48*time.Hour)))
+			require.True(t, sessionToken.VerifySignature())
+		})
+	})
+
+	t.Run("invalid owner", func(t *testing.T) {
+		request := apiserver.SessionTokenV2Request{
+			Owner: "invalid owner",
+		}
+
+		httpClient := defaultHTTPClient()
+		makeV2AuthSessionTokenRequest(ctx, t, request, httpClient, http.StatusBadRequest, "invalid owner")
+	})
+
+	t.Run("zero targets", func(t *testing.T) {
+		request := apiserver.SessionTokenV2Request{
+			Owner: ownerID.String(),
+		}
+
+		httpClient := defaultHTTPClient()
+		makeV2AuthSessionTokenRequest(ctx, t, request, httpClient, http.StatusBadRequest, "at least one target required")
+	})
+
+	t.Run("both targets empty", func(t *testing.T) {
+		request := apiserver.SessionTokenV2Request{
+			Owner:   ownerID.String(),
+			Targets: []string{""},
+		}
+
+		httpClient := defaultHTTPClient()
+		makeV2AuthSessionTokenRequest(ctx, t, request, httpClient, http.StatusBadRequest, "either owner or nns name must be set")
+	})
+
+	t.Run("zero contexts", func(t *testing.T) {
+		request := apiserver.SessionTokenV2Request{
+			Owner:    ownerID.String(),
+			Targets:  []string{targetID.String()},
+			Contexts: []apiserver.TokenContext{},
+		}
+
+		httpClient := defaultHTTPClient()
+		makeV2AuthSessionTokenRequest(ctx, t, request, httpClient, http.StatusBadRequest, "at least one context required")
+	})
+
+	t.Run("zero verbs", func(t *testing.T) {
+		request := apiserver.SessionTokenV2Request{
+			Owner:    ownerID.String(),
+			Targets:  []string{targetID.String()},
+			Contexts: []apiserver.TokenContext{{ContainerID: cnrIDStr}},
+		}
+
+		httpClient := defaultHTTPClient()
+		makeV2AuthSessionTokenRequest(ctx, t, request, httpClient, http.StatusBadRequest, "zero verbs")
+	})
+
+	t.Run("invalid verb", func(t *testing.T) {
+		request := apiserver.SessionTokenV2Request{
+			Owner:    ownerID.String(),
+			Targets:  []string{targetID.String()},
+			Contexts: []apiserver.TokenContext{{Verbs: []apiserver.TokenVerb{"invalid"}}},
+		}
+
+		httpClient := defaultHTTPClient()
+		makeV2AuthSessionTokenRequest(ctx, t, request, httpClient, http.StatusBadRequest, "invalid verb")
+	})
+
+	t.Run("invalid expiration", func(t *testing.T) {
+		request := apiserver.SessionTokenV2Request{
+			Owner:             ownerID.String(),
+			Targets:           []string{targetID.String()},
+			Contexts:          []apiserver.TokenContext{{Verbs: []apiserver.TokenVerb{"OBJECT_PUT"}}},
+			ExpirationRfc3339: time.Now().Add(-time.Hour).Format(time.RFC3339),
+		}
+
+		httpClient := defaultHTTPClient()
+		makeV2AuthSessionTokenRequest(ctx, t, request, httpClient, http.StatusBadRequest, "invalid expiration")
+	})
+
+	t.Run("different contexts with one container", func(t *testing.T) {
+		request := apiserver.SessionTokenV2Request{
+			Owner:   ownerID.String(),
+			Targets: []string{targetID.String()},
+			Contexts: []apiserver.TokenContext{
+				{ContainerID: cnrIDStr, Verbs: []apiserver.TokenVerb{"OBJECT_PUT"}},
+				{ContainerID: cnrIDStr, Verbs: []apiserver.TokenVerb{"OBJECT_DELETE"}},
+			},
+		}
+
+		httpClient := defaultHTTPClient()
+		makeV2AuthSessionTokenRequest(ctx, t, request, httpClient, http.StatusBadRequest, "two different contexts have the same container")
+	})
+}
+
+func extractSessionV2Token(t *testing.T, response apiserver.BinarySessionV2) session.Token {
+	bts, err := base64.StdEncoding.DecodeString(response.Token)
+	require.NoError(t, err)
+
+	var st session.Token
+	err = st.Unmarshal(bts)
+	require.NoError(t, err)
+
+	return st
+}
+
+func makeV2AuthSessionTokenRequest(ctx context.Context, t *testing.T, req apiserver.SessionTokenV2Request, httpClient *http.Client, expectedCode int, expecterError string) apiserver.SessionTokenv2Response {
+	data, err := json.Marshal(req)
+	require.NoError(t, err)
+
+	request, err := http.NewRequest(http.MethodPost, testHost+"/v2/auth/session", bytes.NewReader(data))
+	require.NoError(t, err)
+	request = request.WithContext(ctx)
+	request.Header.Add("Content-Type", "application/json")
+
+	var stokenResp apiserver.SessionTokenv2Response
+	_, body := doRequest(t, httpClient, request, expectedCode, &stokenResp)
+	if expecterError != "" {
+		require.True(t, strings.Contains(string(body), expecterError))
+	}
+
+	return stokenResp
+}
+
+func completeV2AuthSessionTokenRequest(ctx context.Context, t *testing.T, req apiserver.CompleteSessionTokenV2Request, httpClient *http.Client, expectedCode int, expecterError string) apiserver.BinarySessionV2 {
+	data, err := json.Marshal(req)
+	require.NoError(t, err)
+
+	request, err := http.NewRequest(http.MethodPost, testHost+"/v2/auth/session/complete", bytes.NewReader(data))
+	require.NoError(t, err)
+	request = request.WithContext(ctx)
+	request.Header.Add("Content-Type", "application/json")
+
+	var stokenResp apiserver.BinarySessionV2
+	_, body := doRequest(t, httpClient, request, expectedCode, &stokenResp)
+	if expecterError != "" {
+		require.True(t, strings.Contains(string(body), expecterError))
+	}
+
+	return stokenResp
 }
