@@ -14,7 +14,7 @@ const (
 		"X-Bearer-Signature, X-Bearer-Signature-Key, Content-Type, Authorization, " +
 		"X-Attribute-Filename, X-Attribute-Filepath, X-Attributes, " +
 		"X-Neofs-Expiration-RFC3339, X-Neofs-Expiration-Timestamp, X-Neofs-Expiration-Duration, " +
-		"X-Session-Token"
+		"X-Session-Token, X-Bearer-Issuer-Id"
 	allowUploadHeader = "*"
 
 	methodGet    = "GET"
@@ -191,5 +191,13 @@ func (a *RestAPI) OptionsGatewayMetadata(ctx echo.Context) error {
 	ctx.Response().Header().Set(accessControlAllowOriginHeader, allOrigins)
 	ctx.Response().Header().Set(accessControlAllowHeadersHeader, allowHeaders)
 	ctx.Response().Header().Set(accessControlAllowMethodsHeader, allowMethods(methodGet))
+	return ctx.NoContent(http.StatusOK)
+}
+
+// OptionsUnsignedBearerToken handler for the form unsigned bearer token options request.
+func (a *RestAPI) OptionsUnsignedBearerToken(ctx echo.Context) error {
+	ctx.Response().Header().Set(accessControlAllowOriginHeader, allOrigins)
+	ctx.Response().Header().Set(accessControlAllowHeadersHeader, allowHeaders)
+	ctx.Response().Header().Set(accessControlAllowMethodsHeader, allowMethods(methodPost))
 	return ctx.NoContent(http.StatusOK)
 }

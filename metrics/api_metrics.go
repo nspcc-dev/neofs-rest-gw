@@ -41,6 +41,7 @@ type ApiMetrics struct {
 	V2AuthDuration                   prometheus.Histogram
 	V2AuthFormSessionTokenDuration   prometheus.Histogram
 	GatewayMetadataDuration          prometheus.Histogram
+	UnsignedBearerTokenDuration      prometheus.Histogram
 }
 
 // Elapsed calculates and store method execution time for corresponding histogram.
@@ -230,6 +231,12 @@ func NewApiMetrics() *ApiMetrics {
 			Name:      "gateway_metadata_duration",
 			Help:      "Gateway metadata request handling time",
 		}),
+		UnsignedBearerTokenDuration: prometheus.NewHistogram(prometheus.HistogramOpts{
+			Namespace: namespace,
+			Subsystem: apiSubsystem,
+			Name:      "unsigned_bearer_token_duration",
+			Help:      "Unsigned bearer token request handling time",
+		}),
 	}
 
 	m.register()
@@ -267,4 +274,5 @@ func (m ApiMetrics) register() {
 	prometheus.MustRegister(m.V2AuthDuration)
 	prometheus.MustRegister(m.V2AuthFormSessionTokenDuration)
 	prometheus.MustRegister(m.GatewayMetadataDuration)
+	prometheus.MustRegister(m.UnsignedBearerTokenDuration)
 }
