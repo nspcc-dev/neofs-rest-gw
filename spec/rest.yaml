@@ -285,6 +285,7 @@ paths:
         - $ref: '#/components/parameters/signatureKeyParam'
         - $ref: '#/components/parameters/signatureScheme'
         - $ref: '#/components/parameters/containerId'
+        - $ref: '#/components/parameters/sessionToken'
         - name: offset
           in: query
           description: The number of containers to skip before starting to collect the
@@ -362,6 +363,7 @@ paths:
         - $ref: '#/components/parameters/signatureKeyParam'
         - $ref: '#/components/parameters/signatureScheme'
         - $ref: '#/components/parameters/containerId'
+        - $ref: '#/components/parameters/sessionToken'
         - name: cursor
           in: query
           description: Value to start the next batch from. It returns the first elements batch if empty value passed.
@@ -439,6 +441,7 @@ paths:
         - $ref: '#/components/parameters/signatureParam'
         - $ref: '#/components/parameters/signatureKeyParam'
         - $ref: '#/components/parameters/signatureScheme'
+        - $ref: '#/components/parameters/sessionToken'
       responses:
         "200":
           description: Successful deletion.
@@ -878,6 +881,7 @@ paths:
         - $ref: '#/components/parameters/signatureKeyParam'
         - $ref: '#/components/parameters/signatureScheme'
         - $ref: '#/components/parameters/range'
+        - $ref: '#/components/parameters/sessionToken'
         - name: download
           in: query
           description: Set the Content-Disposition header as attachment in response.
@@ -946,6 +950,7 @@ paths:
         - $ref: '#/components/parameters/signatureParam'
         - $ref: '#/components/parameters/signatureKeyParam'
         - $ref: '#/components/parameters/signatureScheme'
+        - $ref: '#/components/parameters/sessionToken'
         - name: download
           in: query
           description: Set the Content-Disposition header as attachment in response.
@@ -982,6 +987,7 @@ paths:
         - $ref: '#/components/parameters/signatureParam'
         - $ref: '#/components/parameters/signatureKeyParam'
         - $ref: '#/components/parameters/signatureScheme'
+        - $ref: '#/components/parameters/sessionToken'
         - name: X-Attributes
           in: header
           description: |
@@ -1089,6 +1095,7 @@ paths:
         - $ref: '#/components/parameters/signatureKeyParam'
         - $ref: '#/components/parameters/signatureScheme'
         - $ref: '#/components/parameters/range'
+        - $ref: '#/components/parameters/sessionToken'
         - name: download
           in: query
           description: Set the Content-Disposition header as attachment in response.
@@ -1162,6 +1169,7 @@ paths:
         - $ref: '#/components/parameters/signatureParam'
         - $ref: '#/components/parameters/signatureKeyParam'
         - $ref: '#/components/parameters/signatureScheme'
+        - $ref: '#/components/parameters/sessionToken'
         - name: download
           in: query
           description: Set the Content-Disposition header as attachment in response.
@@ -2394,6 +2402,12 @@ components:
           schema:
             $ref: '#/components/schemas/ErrorResponse'
   parameters:
+    sessionToken:
+      name: X-Session-Token
+      in: header
+      description: Base64 encoded, signed session v2 token.
+      schema:
+        type: string
     signatureParam:
       name: X-Bearer-Signature
       in: header
