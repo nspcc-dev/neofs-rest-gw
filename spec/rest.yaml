@@ -125,6 +125,76 @@ paths:
                 type: string
           content: { }
       security: [ ]
+  /v2/auth/bearer:
+    post:
+      summary: Form bearer token to further requests
+      operationId: unsignedBearerToken
+      parameters:
+        - name: X-Bearer-Owner-Id
+          in: header
+          description: Owner Id (wallet address) that will sign the token.
+          required: true
+          schema:
+            type: string
+        - name: X-Bearer-Lifetime
+          in: header
+          description: Token lifetime in epoch.
+          schema:
+            type: integer
+            default: 100
+        - name: X-Bearer-For-All-Users
+          in: header
+          description: Form token for all users or only for this gate.
+          schema:
+            type: boolean
+            default: false
+      requestBody:
+        description: Bearer token parameters to form.
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                $ref: '#/components/schemas/FormBearerRequest'
+        required: true
+      responses:
+        "200":
+          description: Base64 encoded stable binary marshaled bearer token bodies.
+          headers:
+            Access-Control-Allow-Origin:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/FormBearerResponse'
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      security: [ ]
+      x-codegen-request-body-name: tokens
+    options:
+      operationId: optionsUnsignedBearerToken
+      responses:
+        "200":
+          description: CORS
+          headers:
+            Access-Control-Allow-Origin:
+              schema:
+                type: string
+            Access-Control-Allow-Methods:
+              schema:
+                type: string
+            Access-Control-Allow-Headers:
+              schema:
+                type: string
+          content: { }
+      security: [ ]
   /v2/auth/session:
     post:
       summary: Form v2 session token to further requests.
@@ -1316,19 +1386,41 @@ components:
             $ref: '#/components/schemas/Record'
         container:
           $ref: '#/components/schemas/Rule'
+    FormBearerRequest:
+      type: object
+      required:
+        - records
+      properties:
+        records:
+          type: array
+          items:
+            $ref: '#/components/schemas/Record'
       description: Bearer token that is expected to be formed.
       example:
-        - name: my-bearer-token
-          object:
-            - operation: GET
-              action: ALLOW
-              filters: [ ]
-              targets:
-                - role: OTHERS
-                  keys: [ ]
-        - name: my token to create container
-          container:
-            verb: PUT
+        records:
+          - operation: GET
+            action: ALLOW
+            filters: [ ]
+            targets:
+              - role: OTHERS
+                keys: [ ]
+    FormBearerResponse:
+      type: object
+      required:
+        - token
+      properties:
+        token:
+          type: string
+          description: Base64 encoded unsigned bearer token.
+      description: Bearer token that is expected to be formed.
+      example:
+        records:
+          - operation: GET
+            action: ALLOW
+            filters: [ ]
+            targets:
+              - role: OTHERS
+                keys: [ ]
     Record:
       required:
         - action
