@@ -192,3 +192,11 @@ func (a *RestAPI) OptionsGatewayMetadata(ctx echo.Context) error {
 	ctx.Response().Header().Set(accessControlAllowMethodsHeader, allowMethods(methodGet))
 	return ctx.NoContent(http.StatusOK)
 }
+
+// OptionsUnsignedBearerToken handler for the form unsigned bearer token options request.
+func (a *RestAPI) OptionsUnsignedBearerToken(ctx echo.Context) error {
+	ctx.Response().Header().Set(accessControlAllowOriginHeader, allOrigins)
+	ctx.Response().Header().Set(accessControlAllowHeadersHeader, allowHeaders)
+	ctx.Response().Header().Set(accessControlAllowMethodsHeader, allowMethods(methodPost))
+	return ctx.NoContent(http.StatusOK)
+}
