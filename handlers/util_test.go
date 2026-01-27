@@ -372,7 +372,7 @@ func TestIsDomainName(t *testing.T) {
 		{"With short path", "my.domain/path", true},
 		{"With trailing slash", "my.domain/", true},
 		{"Too short", "a", true},
-		{"Too logs", strings.Repeat("a", 127) + "." + strings.Repeat("a", 128), true},
+		{"Too long", strings.Repeat("a", 127) + "." + strings.Repeat("a", 128), true},
 		{"Leading hyphen", "-example.com", true},
 		{"Trailing hyphen", "example-.com", true},
 		{"Empty label", "example..com", true},

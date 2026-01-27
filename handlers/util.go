@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -21,6 +22,7 @@ import (
 	"github.com/nspcc-dev/neofs-sdk-go/object"
 	oid "github.com/nspcc-dev/neofs-sdk-go/object/id"
 	"github.com/nspcc-dev/neofs-sdk-go/session"
+	sessionv2 "github.com/nspcc-dev/neofs-sdk-go/session/v2"
 	"go.uber.org/zap"
 )
 
@@ -382,10 +384,13 @@ func addExpirationHeaders(headers map[string]string, params apiserver.NewUploadC
 }
 
 // shares code of NeoFS object recording performed by various RestAPI methods.
-func (a *RestAPI) putObject(ctx echo.Context, hdr object.Object, bt *bearer.Token, wp func(io.Writer) error) (oid.ID, error) {
+func (a *RestAPI) putObject(ctx echo.Context, hdr object.Object, bt *bearer.Token, sessionToken *sessionv2.Token, wp func(io.Writer) error) (oid.ID, error) {
 	var opts client.PrmObjectPutInit
 	if bt != nil {
 		opts.WithBearerToken(*bt)
+	}
+	if sessionToken != nil {
+		opts.WithinSessionV2(*sessionToken)
 	}
 	writer, err := a.pool.ObjectPutInit(ctx.Request().Context(), hdr, a.signer, opts)
 	if err != nil {
@@ -444,4 +449,26 @@ func isDomainName(d string) error {
 	}
 
 	return nil
+}
+
+func getSessionTokenV2(v *string) (*sessionv2.Token, error) {
+	if v == nil || *v == "" {
+		return nil, nil
+	}
+
+	tokenBts, err := base64.StdEncoding.DecodeString(*v)
+	if err != nil {
+		return nil, fmt.Errorf("base64 encoding: %w", err)
+	}
+
+	var st sessionv2.Token
+	if err = st.Unmarshal(tokenBts); err != nil {
+		return nil, fmt.Errorf("token unmarshal: %w", err)
+	}
+
+	if !st.VerifySignature() {
+		return nil, errors.New("invalid signature")
+	}
+
+	return &st, nil
 }

@@ -13,7 +13,8 @@ const (
 	allowHeaders = "X-Bearer-For-All-Users, X-Bearer-Lifetime, X-Bearer-Owner-Id, " +
 		"X-Bearer-Signature, X-Bearer-Signature-Key, Content-Type, Authorization, " +
 		"X-Attribute-Filename, X-Attribute-Filepath, X-Attributes, " +
-		"X-Neofs-Expiration-RFC3339, X-Neofs-Expiration-Timestamp, X-Neofs-Expiration-Duration"
+		"X-Neofs-Expiration-RFC3339, X-Neofs-Expiration-Timestamp, X-Neofs-Expiration-Duration, " +
+		"X-Session-Token"
 	allowUploadHeader = "*"
 
 	methodGet    = "GET"
