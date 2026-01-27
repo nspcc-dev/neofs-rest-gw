@@ -184,3 +184,11 @@ func (a *RestAPI) OptionsV2FormAuthSessionToken(ctx echo.Context) error {
 	ctx.Response().Header().Set(accessControlAllowMethodsHeader, allowMethods(methodPost))
 	return ctx.NoContent(http.StatusOK)
 }
+
+// OptionsGatewayMetadata handler for the gateway metadata options request.
+func (a *RestAPI) OptionsGatewayMetadata(ctx echo.Context) error {
+	ctx.Response().Header().Set(accessControlAllowOriginHeader, allOrigins)
+	ctx.Response().Header().Set(accessControlAllowHeadersHeader, allowHeaders)
+	ctx.Response().Header().Set(accessControlAllowMethodsHeader, allowMethods(methodGet))
+	return ctx.NoContent(http.StatusOK)
+}

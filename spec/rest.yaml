@@ -1222,6 +1222,45 @@ paths:
                 type: string
           content: { }
       security: [ ]
+  /v1/gateway:
+    get:
+      summary: "Get gateway metadata"
+      operationId: gatewayMetadata
+      responses:
+        "200":
+          description: Gateway metadata.
+          headers:
+            Access-Control-Allow-Origin:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GatewayMetadataResponse'
+        "400":
+          description: Bad request.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      security: [ ]
+    options:
+      operationId: optionsGatewayMetadata
+      responses:
+        "200":
+          description: CORS
+          headers:
+            Access-Control-Allow-Origin:
+              schema:
+                type: string
+            Access-Control-Allow-Methods:
+              schema:
+                type: string
+            Access-Control-Allow-Headers:
+              schema:
+                type: string
+          content: { }
+      security: [ ]
 
 components:
   schemas:
@@ -2134,6 +2173,15 @@ components:
         token:
           type: string
           description: Base64 encoded unsigned token, what should be signed.
+    GatewayMetadataResponse:
+      required:
+        - address
+      type: object
+      properties:
+        address:
+          type: string
+        nns_name:
+          type: string
   responses:
     ObjectContentOK:
       description: Object.
