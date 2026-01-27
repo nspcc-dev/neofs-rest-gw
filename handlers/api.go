@@ -28,6 +28,7 @@ type PrmAPI struct {
 	Logger           *zap.Logger
 	Pool             *pool.Pool
 	Key              *keys.PrivateKey
+	NNSName          string
 	DefaultTimestamp bool
 	// Size limit for buffering of object payloads. Must be positive.
 	MaxPayloadBufferSize uint64
@@ -81,6 +82,7 @@ func NewAPI(prm *PrmAPI) (*RestAPI, error) {
 		log:               prm.Logger,
 		pool:              prm.Pool,
 		signer:            signer,
+		nnsName:           prm.NNSName,
 		defaultTimestamp:  prm.DefaultTimestamp,
 		payloadBufferSize: prm.MaxPayloadBufferSize,
 
@@ -152,6 +154,7 @@ type RestAPI struct {
 	signer            user.Signer
 	defaultTimestamp  bool
 	payloadBufferSize uint64
+	nnsName           string
 
 	gateMetric             *metrics.GateMetrics
 	apiMetric              *metrics.ApiMetrics

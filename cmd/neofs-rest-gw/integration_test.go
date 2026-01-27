@@ -126,6 +126,7 @@ func runTests(ctx context.Context, t *testing.T, key *keys.PrivateKey, node stri
 	cnrID := createContainer(ctx, t, clientPool, owner, containerName, signer)
 	restrictByEACL(ctx, t, clientPool, cnrID, signer)
 
+	t.Run("rest gate metadata", func(t *testing.T) { gateMetadata(ctx, t) })
 	t.Run("rest auth several tokens", func(t *testing.T) { authTokens(ctx, t) })
 	t.Run("rest auth session token v2", func(t *testing.T) { v2AuthSessionToken(ctx, t) })
 	t.Run("rest form full binary bearer", func(t *testing.T) { formFullBinaryBearer(ctx, t) })
@@ -2435,4 +2436,20 @@ func completeV2AuthSessionTokenRequest(ctx context.Context, t *testing.T, req ap
 	}
 
 	return stokenResp
+}
+
+func gateMetadata(_ context.Context, t *testing.T) {
+	request, err := http.NewRequest(http.MethodGet, testHost+"/v1/gateway", nil)
+	require.NoError(t, err)
+
+	var response apiserver.GetawayMetadataResponse
+
+	httpClient := defaultHTTPClient()
+	doRequest(t, httpClient, request, http.StatusOK, &response)
+
+	require.NotEmpty(t, response.Id)
+
+	var id user.ID
+	err = id.DecodeString(response.Id)
+	require.NoError(t, err)
 }
