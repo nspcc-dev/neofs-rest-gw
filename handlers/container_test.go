@@ -93,7 +93,8 @@ func TestPrepareSessionToken(t *testing.T) {
 		Verb: verb,
 	}, false)
 	require.NoError(t, err)
-	require.Equal(t, token, res)
+	require.NotNil(t, res)
+	require.Equal(t, token, *res)
 
 	t.Run("invalid signature hex", func(t *testing.T) {
 		_, err := prepareSessionToken(&SessionToken{
@@ -179,7 +180,8 @@ func TestPrepareSessionToken(t *testing.T) {
 			Verb: verb,
 		}, true)
 		require.NoError(t, err)
-		require.Equal(t, tokenCp, res)
+		require.NotNil(t, res)
+		require.Equal(t, tokenCp, *res)
 
 		// corrupt signature
 		sig[0]++
