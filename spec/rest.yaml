@@ -1764,7 +1764,7 @@ components:
       properties:
         objectId:
           type: string
-          example:
+          example: 8N3o7Dtr6T1xteCt6eRwhpmJ7JhME58Hyu1dvaswuTDd
         attributes:
           type: object
           additionalProperties: true
