@@ -17,6 +17,7 @@ paths:
     post:
       summary: Form bearer token to further requests
       operationId: auth
+      deprecated: true
       parameters:
         - name: X-Bearer-Owner-Id
           in: header
