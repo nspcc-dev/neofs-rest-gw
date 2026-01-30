@@ -79,6 +79,7 @@ const (
 	// Server endpoints.
 	cfgServerSection   = "server."
 	cfgServerEndpoints = cfgServerSection + "endpoints"
+	cfgServerNNSName   = cfgServerSection + "nns-name"
 
 	cfgTLSEnabled    = "tls.enabled"
 	cfgTLSKeyFile    = "tls.key"
@@ -594,6 +595,7 @@ func newNeofsAPI(ctx context.Context, logger *zap.Logger, v *viper.Viper) (*hand
 	apiPrm.Pool = p
 	apiPrm.Key = key
 	apiPrm.Logger = logger
+	apiPrm.NNSName = v.GetString(cfgServerNNSName)
 
 	pprofConfig := metrics.Config{Enabled: v.GetBool(cfgPprofEnabled), Address: v.GetString(cfgPprofAddress)}
 	apiPrm.PprofService = metrics.NewPprofService(logger, pprofConfig)

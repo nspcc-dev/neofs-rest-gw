@@ -32,6 +32,7 @@ import (
 	neofscrypto "github.com/nspcc-dev/neofs-sdk-go/crypto"
 	"github.com/nspcc-dev/neofs-sdk-go/object"
 	oid "github.com/nspcc-dev/neofs-sdk-go/object/id"
+	"github.com/nspcc-dev/neofs-sdk-go/session/v2"
 	"go.uber.org/zap"
 )
 
@@ -100,9 +101,17 @@ func (a *RestAPI) DeleteObject(ctx echo.Context, containerID apiserver.Container
 		return ctx.JSON(http.StatusBadRequest, resp)
 	}
 
+	sessionTokenV2, err := getSessionTokenV2(params.XSessionToken)
+	if err != nil {
+		return ctx.JSON(http.StatusBadRequest, a.logAndGetErrorResponse("session token", err, log))
+	}
+
 	var prm client.PrmObjectDelete
 	if btoken != nil {
 		prm.WithBearerToken(*btoken)
+	}
+	if sessionTokenV2 != nil {
+		prm.WithinSessionV2(*sessionTokenV2)
 	}
 
 	if _, err = a.pool.ObjectDelete(ctx.Request().Context(), addr.Container(), addr.Object(), a.signer, prm); err != nil {
@@ -149,6 +158,11 @@ func (a *RestAPI) SearchObjects(ctx echo.Context, containerID apiserver.Containe
 		return ctx.JSON(http.StatusBadRequest, resp)
 	}
 
+	sessionTokenV2, err := getSessionTokenV2(params.XSessionToken)
+	if err != nil {
+		return ctx.JSON(http.StatusBadRequest, a.logAndGetErrorResponse("session token", err, log))
+	}
+
 	var searchFilters apiserver.SearchFilters
 	if err = ctx.Bind(&searchFilters); err != nil {
 		return ctx.JSON(http.StatusBadRequest, a.logAndGetErrorResponse("bind", err, log))
@@ -189,6 +203,9 @@ func (a *RestAPI) SearchObjects(ctx echo.Context, containerID apiserver.Containe
 
 	if btoken != nil {
 		opts.WithBearerToken(*btoken)
+	}
+	if sessionTokenV2 != nil {
+		opts.WithSessionTokenV2(*sessionTokenV2)
 	}
 
 	offset, limit, err := getOffsetAndLimit(params.Offset, params.Limit)
@@ -273,6 +290,11 @@ func (a *RestAPI) V2SearchObjects(ctx echo.Context, containerID apiserver.Contai
 		return ctx.JSON(http.StatusBadRequest, resp)
 	}
 
+	sessionTokenV2, err := getSessionTokenV2(params.XSessionToken)
+	if err != nil {
+		return ctx.JSON(http.StatusBadRequest, a.logAndGetErrorResponse("session token", err, log))
+	}
+
 	var searchFilters apiserver.SearchRequest
 	if err = ctx.Bind(&searchFilters); err != nil {
 		return ctx.JSON(http.StatusBadRequest, a.logAndGetErrorResponse("bind", err, log))
@@ -314,6 +336,9 @@ func (a *RestAPI) V2SearchObjects(ctx echo.Context, containerID apiserver.Contai
 
 	if btoken != nil {
 		opts.WithBearerToken(*btoken)
+	}
+	if sessionTokenV2 != nil {
+		opts.WithSessionTokenV2(*sessionTokenV2)
 	}
 
 	limit, err := getLimit(params.Limit)
@@ -365,10 +390,13 @@ func (a *RestAPI) V2SearchObjects(ctx echo.Context, containerID apiserver.Contai
 }
 
 // getByAddress returns object (using container ID and object ID).
-func (a *RestAPI) getByAddress(ctx echo.Context, addr oid.Address, downloadParam *string, btoken *bearer.Token, useJSON bool, log *zap.Logger) error {
+func (a *RestAPI) getByAddress(ctx echo.Context, addr oid.Address, downloadParam *string, btoken *bearer.Token, sessionToken *session.Token, useJSON bool, log *zap.Logger) error {
 	var prm client.PrmObjectGet
 	if btoken != nil {
 		attachBearer(&prm, btoken)
+	}
+	if sessionToken != nil {
+		prm.WithinSessionV2(*sessionToken)
 	}
 
 	header, payloadReader, err := a.pool.ObjectGetInit(ctx.Request().Context(), addr.Container(), addr.Object(), a.signer, prm)
@@ -426,10 +454,13 @@ func (a *RestAPI) getByAddress(ctx echo.Context, addr oid.Address, downloadParam
 }
 
 // headByAddress returns object info (using container ID and object ID).
-func (a *RestAPI) headByAddress(ctx echo.Context, addr oid.Address, downloadParam *string, btoken *bearer.Token, useJSON bool, log *zap.Logger) error {
+func (a *RestAPI) headByAddress(ctx echo.Context, addr oid.Address, downloadParam *string, btoken *bearer.Token, sessionToken *session.Token, useJSON bool, log *zap.Logger) error {
 	var prm client.PrmObjectHead
 	if btoken != nil {
 		attachBearer(&prm, btoken)
+	}
+	if sessionToken != nil {
+		prm.WithinSessionV2(*sessionToken)
 	}
 
 	header, err := a.pool.ObjectHead(ctx.Request().Context(), addr.Container(), addr.Object(), a.signer, prm)
@@ -457,6 +488,9 @@ func (a *RestAPI) headByAddress(ctx echo.Context, addr oid.Address, downloadPara
 			contentType, _, err = readContentType(payloadSize, func(sz uint64) (io.Reader, error) {
 				var prmRange client.PrmObjectRange
 				attachBearer(&prmRange, btoken)
+				if sessionToken != nil {
+					prmRange.WithinSessionV2(*sessionToken)
+				}
 
 				resObj, err := a.pool.ObjectRangeInit(ctx.Request().Context(), addr.Container(), addr.Object(), 0, sz, a.signer, prmRange)
 				if err != nil {
@@ -747,7 +781,7 @@ func (a *RestAPI) setOwner(obj *object.Object, btoken *bearer.Token) {
 	}
 }
 
-func (a *RestAPI) search(ctx context.Context, btoken *bearer.Token, cid cid.ID, key, val string, op object.SearchMatchType) (oid.ID, error) {
+func (a *RestAPI) search(ctx context.Context, btoken *bearer.Token, sessionToken *session.Token, cid cid.ID, key, val string, op object.SearchMatchType) (oid.ID, error) {
 	var (
 		opts                    client.SearchObjectsOptions
 		filters                 object.SearchFilters
@@ -767,6 +801,9 @@ func (a *RestAPI) search(ctx context.Context, btoken *bearer.Token, cid cid.ID, 
 
 	if btoken != nil {
 		opts.WithBearerToken(*btoken)
+	}
+	if sessionToken != nil {
+		opts.WithSessionTokenV2(*sessionToken)
 	}
 
 	searchResult, _, err := a.pool.SearchObjects(ctx, cid, filters, returningAttributes, "", a.signer, opts)

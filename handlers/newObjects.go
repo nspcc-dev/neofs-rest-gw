@@ -18,6 +18,7 @@ import (
 	cid "github.com/nspcc-dev/neofs-sdk-go/container/id"
 	"github.com/nspcc-dev/neofs-sdk-go/object"
 	oid "github.com/nspcc-dev/neofs-sdk-go/object/id"
+	"github.com/nspcc-dev/neofs-sdk-go/session/v2"
 	"go.uber.org/zap"
 )
 
@@ -58,6 +59,11 @@ func (a *RestAPI) NewUploadContainerObject(ctx echo.Context, containerID apiserv
 	if err != nil {
 		resp := a.logAndGetErrorResponse("invalid bearer token", err, log)
 		return ctx.JSON(http.StatusBadRequest, resp)
+	}
+
+	sessionTokenV2, err := getSessionTokenV2(params.XSessionToken)
+	if err != nil {
+		return ctx.JSON(http.StatusBadRequest, a.logAndGetErrorResponse("session token", err, log))
 	}
 
 	filtered, err := parseAndFilterAttributes(log, params.XAttributes)
@@ -133,7 +139,7 @@ func (a *RestAPI) NewUploadContainerObject(ctx echo.Context, containerID apiserv
 		return err
 	}
 
-	idObj, err := a.putObject(ctx, hdr, btoken, wp)
+	idObj, err := a.putObject(ctx, hdr, btoken, sessionTokenV2, wp)
 	if err != nil {
 		resp := a.logAndGetErrorResponse("put object", err, log)
 		return ctx.JSON(getResponseCodeFromStatus(err), resp)
@@ -184,10 +190,15 @@ func (a *RestAPI) NewGetContainerObject(ctx echo.Context, containerID apiserver.
 		return ctx.JSON(http.StatusBadRequest, resp)
 	}
 
-	if params.Range != nil {
-		return a.getRange(ctx, addr, *params.Range, params.Download, btoken, log)
+	sessionTokenV2, err := getSessionTokenV2(params.XSessionToken)
+	if err != nil {
+		return ctx.JSON(http.StatusBadRequest, a.logAndGetErrorResponse("session token", err, log))
 	}
-	return a.getByAddress(ctx, addr, params.Download, btoken, true, log)
+
+	if params.Range != nil {
+		return a.getRange(ctx, addr, *params.Range, params.Download, btoken, sessionTokenV2, log)
+	}
+	return a.getByAddress(ctx, addr, params.Download, btoken, sessionTokenV2, true, log)
 }
 
 // NewHeadContainerObject handler that returns object info (using container ID and object ID).
@@ -226,7 +237,12 @@ func (a *RestAPI) NewHeadContainerObject(ctx echo.Context, containerID apiserver
 		return ctx.JSON(http.StatusBadRequest, resp)
 	}
 
-	return a.headByAddress(ctx, addr, params.Download, btoken, true, log)
+	sessionTokenV2, err := getSessionTokenV2(params.XSessionToken)
+	if err != nil {
+		return ctx.JSON(http.StatusBadRequest, a.logAndGetErrorResponse("session token", err, log))
+	}
+
+	return a.headByAddress(ctx, addr, params.Download, btoken, sessionTokenV2, true, log)
 }
 
 // NewGetByAttribute handler that returns object (payload and attributes) by a specific attribute.
@@ -264,7 +280,12 @@ func (a *RestAPI) NewGetByAttribute(ctx echo.Context, containerID apiserver.Cont
 		return ctx.JSON(http.StatusBadRequest, resp)
 	}
 
-	objectID, err := a.search(ctx.Request().Context(), btoken, cnrID, attrKey, attrVal, object.MatchStringEqual)
+	sessionTokenV2, err := getSessionTokenV2(params.XSessionToken)
+	if err != nil {
+		return ctx.JSON(http.StatusBadRequest, a.logAndGetErrorResponse("session token", err, log))
+	}
+
+	objectID, err := a.search(ctx.Request().Context(), btoken, sessionTokenV2, cnrID, attrKey, attrVal, object.MatchStringEqual)
 	if err != nil {
 		resp := a.logAndGetErrorResponse("could not search for objects", err, log)
 		return ctx.JSON(getResponseCodeFromStatus(err), resp)
@@ -279,9 +300,9 @@ func (a *RestAPI) NewGetByAttribute(ctx echo.Context, containerID apiserver.Cont
 	addrObj.SetObject(objectID)
 
 	if params.Range != nil {
-		return a.getRange(ctx, addrObj, *params.Range, params.Download, btoken, log)
+		return a.getRange(ctx, addrObj, *params.Range, params.Download, btoken, sessionTokenV2, log)
 	}
-	return a.getByAddress(ctx, addrObj, params.Download, btoken, true, log)
+	return a.getByAddress(ctx, addrObj, params.Download, btoken, sessionTokenV2, true, log)
 }
 
 // NewHeadByAttribute handler that returns object info (payload and attributes) by a specific attribute.
@@ -319,7 +340,12 @@ func (a *RestAPI) NewHeadByAttribute(ctx echo.Context, containerID apiserver.Con
 		return ctx.JSON(http.StatusBadRequest, resp)
 	}
 
-	objectID, err := a.search(ctx.Request().Context(), btoken, cnrID, attrKey, attrVal, object.MatchStringEqual)
+	sessionTokenV2, err := getSessionTokenV2(params.XSessionToken)
+	if err != nil {
+		return ctx.JSON(http.StatusBadRequest, a.logAndGetErrorResponse("session token", err, log))
+	}
+
+	objectID, err := a.search(ctx.Request().Context(), btoken, sessionTokenV2, cnrID, attrKey, attrVal, object.MatchStringEqual)
 	if err != nil {
 		resp := a.logAndGetErrorResponse("could not search for objects", err, log)
 		return ctx.JSON(getResponseCodeFromStatus(err), resp)
@@ -335,14 +361,17 @@ func (a *RestAPI) NewHeadByAttribute(ctx echo.Context, containerID apiserver.Con
 
 	ctx.Response().Header().Set(accessControlAllowOriginHeader, "*")
 
-	return a.headByAddress(ctx, addrObj, params.Download, btoken, true, log)
+	return a.headByAddress(ctx, addrObj, params.Download, btoken, sessionTokenV2, true, log)
 }
 
-func (a *RestAPI) getRange(ctx echo.Context, addr oid.Address, rangeParam string, downloadParam *string, btoken *bearer.Token, log *zap.Logger) error {
+func (a *RestAPI) getRange(ctx echo.Context, addr oid.Address, rangeParam string, downloadParam *string, btoken *bearer.Token, sessionToken *session.Token, log *zap.Logger) error {
 	// Read the object header to determine the attributes and the size of the payload.
 	var prm client.PrmObjectHead
 	if btoken != nil {
 		attachBearer(&prm, btoken)
+	}
+	if sessionToken != nil {
+		prm.WithinSessionV2(*sessionToken)
 	}
 
 	header, err := a.pool.ObjectHead(ctx.Request().Context(), addr.Container(), addr.Object(), a.signer, prm)
@@ -404,6 +433,9 @@ func (a *RestAPI) getRange(ctx echo.Context, addr oid.Address, rangeParam string
 	var prmRange client.PrmObjectRange
 	if btoken != nil {
 		attachBearer(&prmRange, btoken)
+	}
+	if sessionToken != nil {
+		prmRange.WithinSessionV2(*sessionToken)
 	}
 
 	resObj, err := a.pool.ObjectRangeInit(ctx.Request().Context(), addr.Container(), addr.Object(), offset, length, a.signer, prmRange)
