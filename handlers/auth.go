@@ -33,7 +33,7 @@ const (
 
 type headersParams struct {
 	XBearerLifetime    uint64
-	XBearerOwnerID     string
+	XBearerIssuerID    string
 	XBearerForAllUsers bool
 }
 
@@ -56,7 +56,7 @@ func newHeaderParams(params apiserver.AuthParams) headersParams {
 	}
 
 	prm := headersParams{
-		XBearerOwnerID:     params.XBearerOwnerId,
+		XBearerIssuerID:    params.XBearerOwnerId,
 		XBearerForAllUsers: bearerForAllUsers,
 	}
 
@@ -172,8 +172,8 @@ func prepareObjectToken(ctx context.Context, params objectTokenParams, networkIn
 	}
 
 	var issuer user.ID
-	if err = issuer.DecodeString(params.XBearerOwnerID); err != nil {
-		return nil, fmt.Errorf("invalid bearer owner: %w", err)
+	if err = issuer.DecodeString(params.XBearerIssuerID); err != nil {
+		return nil, fmt.Errorf("invalid bearer issuer: %w", err)
 	}
 	btoken.SetIssuer(issuer)
 
@@ -204,8 +204,8 @@ func prepareContainerTokens(ctx context.Context, params containerTokenParams, ne
 	}
 
 	var ownerID user.ID
-	if err = ownerID.DecodeString(params.XBearerOwnerID); err != nil {
-		return nil, fmt.Errorf("invalid bearer owner: %w", err)
+	if err = ownerID.DecodeString(params.XBearerIssuerID); err != nil {
+		return nil, fmt.Errorf("invalid bearer issuer: %w", err)
 	}
 
 	if params.Rule == nil {
@@ -549,7 +549,7 @@ func (a *RestAPI) UnsignedBearerToken(ctx echo.Context, params apiserver.Unsigne
 	}
 
 	prm := headersParams{
-		XBearerOwnerID: params.XBearerIssuerId,
+		XBearerIssuerID: params.XBearerIssuerId,
 	}
 
 	if params.XBearerLifetime != nil && *params.XBearerLifetime > 0 {
