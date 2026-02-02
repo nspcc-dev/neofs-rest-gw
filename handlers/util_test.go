@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"reflect"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 
@@ -346,6 +347,45 @@ func Test_parseAndFilterAttributes(t *testing.T) {
 			}
 			if !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("parseAndFilterAttributes() got = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestIsDomainName(t *testing.T) {
+	tests := []struct {
+		name    string
+		input   string
+		wantErr bool
+	}{
+		// Valid cases
+		{"Simple domain", "example.com", false},
+		{"Subdomain", "sub.example.com", false},
+		{"Multi-level", "deeply.nested.sub.domain.co.uk", false},
+		{"Numeric label", "321.com", false},
+		{"With hyphen", "my-domain.com", false},
+
+		// Invalid cases
+		{"With http schema", "http://my.domain", true},
+		{"With https schema", "https://my.domain", true},
+		{"With path", "my.domain/some/path", true},
+		{"With short path", "my.domain/path", true},
+		{"With trailing slash", "my.domain/", true},
+		{"Too short", "a", true},
+		{"Too long", strings.Repeat("a", 127) + "." + strings.Repeat("a", 128), true},
+		{"Leading hyphen", "-example.com", true},
+		{"Trailing hyphen", "example-.com", true},
+		{"Empty label", "example..com", true},
+		{"Invalid characters", "hey_there.com", true},
+		{"Spaces", "my domain.com", true},
+		{"Raw IP", "192.168.1.1", true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := isDomainName(tt.input)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("isDomainName(%q) error = %v, wantErr %v", tt.input, err, tt.wantErr)
 			}
 		})
 	}

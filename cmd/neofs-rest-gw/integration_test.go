@@ -12,12 +12,14 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 
 	dockerContainer "github.com/docker/docker/api/types/container"
 	"github.com/labstack/echo/v4"
 	"github.com/nspcc-dev/neo-go/pkg/crypto/keys"
+	"github.com/nspcc-dev/neo-go/pkg/wallet"
 	"github.com/nspcc-dev/neofs-rest-gw/handlers"
 	"github.com/nspcc-dev/neofs-rest-gw/handlers/apiserver"
 	"github.com/nspcc-dev/neofs-rest-gw/internal/util"
@@ -26,6 +28,7 @@ import (
 	"github.com/nspcc-dev/neofs-sdk-go/container"
 	"github.com/nspcc-dev/neofs-sdk-go/container/acl"
 	cid "github.com/nspcc-dev/neofs-sdk-go/container/id"
+	neofscrypto "github.com/nspcc-dev/neofs-sdk-go/crypto"
 	neofsecdsa "github.com/nspcc-dev/neofs-sdk-go/crypto/ecdsa"
 	"github.com/nspcc-dev/neofs-sdk-go/eacl"
 	"github.com/nspcc-dev/neofs-sdk-go/netmap"
@@ -33,6 +36,7 @@ import (
 	oid "github.com/nspcc-dev/neofs-sdk-go/object/id"
 	"github.com/nspcc-dev/neofs-sdk-go/object/slicer"
 	"github.com/nspcc-dev/neofs-sdk-go/pool"
+	"github.com/nspcc-dev/neofs-sdk-go/session/v2"
 	"github.com/nspcc-dev/neofs-sdk-go/user"
 	"github.com/nspcc-dev/neofs-sdk-go/waiter"
 	middleware "github.com/oapi-codegen/echo-middleware"
@@ -63,6 +67,8 @@ const (
 	XBearerForAllUsers = "X-Bearer-For-All-Users"
 	xNonce             = "nonce"
 
+	xSessionTokenV2 = "X-Session-Token"
+
 	// tests configuration.
 	useWalletConnect    = true
 	useLocalEnvironment = false
@@ -92,7 +98,6 @@ func runLocalTests(ctx context.Context, t *testing.T, key *keys.PrivateKey) {
 func runTestInContainer(rootCtx context.Context, t *testing.T, key *keys.PrivateKey) {
 	versions := []dockerImage{
 		{image: "nspccdev/neofs-aio", version: "latest"},
-		{image: "nspccdev/neofs-aio", version: "0.45.0"},
 	}
 
 	for _, version := range versions {
@@ -117,28 +122,48 @@ func runTests(ctx context.Context, t *testing.T, key *keys.PrivateKey, node stri
 	defer cancel()
 
 	signer := user.NewAutoIDSignerRFC6979(key.PrivateKey)
+	sessionV2Signer := user.NewAutoIDSigner(key.PrivateKey)
 	owner := signer.UserID()
 
 	clientPool := getPool(ctx, t, key, node)
 	cnrID := createContainer(ctx, t, clientPool, owner, containerName, signer)
 	restrictByEACL(ctx, t, clientPool, cnrID, signer)
 
+	t.Run("rest gate metadata", func(t *testing.T) { gateMetadata(ctx, t) })
 	t.Run("rest auth several tokens", func(t *testing.T) { authTokens(ctx, t) })
+	t.Run("rest auth session token v2", func(t *testing.T) { v2AuthSessionToken(ctx, t) })
 	t.Run("rest form full binary bearer", func(t *testing.T) { formFullBinaryBearer(ctx, t) })
 
 	t.Run("rest put container invalid", func(t *testing.T) { restContainerPutInvalid(ctx, t) })
 	t.Run("rest post container invalid", func(t *testing.T) { restContainerPostInvalid(ctx, t) })
 	t.Run("rest put container", func(t *testing.T) { restContainerPut(ctx, t, clientPool) })
+	t.Run("rest put container session v2", func(t *testing.T) {
+		restContainerPutSessionTokenV2(ctx, t, clientPool, sessionV2Signer)
+	})
 	t.Run("rest post container", func(t *testing.T) { restContainerPost(ctx, t, clientPool) })
+	t.Run("rest post container session v2", func(t *testing.T) {
+		restContainerPostSessionTokenV2(ctx, t, clientPool, sessionV2Signer)
+	})
 	t.Run("rest get container", func(t *testing.T) { restContainerGet(ctx, t, owner, cnrID) })
 	t.Run("rest delete container", func(t *testing.T) { restContainerDelete(ctx, t, clientPool, owner, signer) })
+	t.Run("rest delete container session v2", func(t *testing.T) { restContainerDeleteSessionV2(ctx, t, clientPool, owner, signer, sessionV2Signer) })
 	t.Run("rest put container eacl", func(t *testing.T) { restContainerEACLPut(ctx, t, clientPool, owner, signer) })
+	t.Run("rest put container eacl session v2", func(t *testing.T) { restContainerEACLPutSessionV2(ctx, t, clientPool, owner, signer, sessionV2Signer) })
 	t.Run("rest get container eacl", func(t *testing.T) { restContainerEACLGet(ctx, t, clientPool, cnrID) })
 	t.Run("rest list containers", func(t *testing.T) { restContainerList(ctx, t, clientPool, owner, cnrID) })
 
 	t.Run("rest delete object", func(t *testing.T) { restObjectDelete(ctx, t, clientPool, &owner, cnrID, signer) })
+	t.Run("rest delete object session v2", func(t *testing.T) {
+		restObjectDeleteSessionV2(ctx, t, clientPool, &owner, cnrID, signer, sessionV2Signer)
+	})
 	t.Run("rest search objects", func(t *testing.T) { restObjectsSearch(ctx, t, clientPool, &owner, cnrID, signer) })
+	t.Run("rest search objects session v2", func(t *testing.T) {
+		restObjectsSearchSessionV2(ctx, t, clientPool, &owner, cnrID, signer, sessionV2Signer)
+	})
 	t.Run("rest search objects v2", func(t *testing.T) { restObjectsSearchV2(ctx, t, clientPool, &owner, cnrID, signer) })
+	t.Run("rest search objects v2 session v2", func(t *testing.T) {
+		restObjectsSearchV2SessionV2(ctx, t, clientPool, &owner, cnrID, signer, sessionV2Signer)
+	})
 	t.Run("rest search objects v2 cursor and limit", func(t *testing.T) { restObjectsSearchV2CursorAndLimit(ctx, t, clientPool, &owner, signer) })
 	t.Run("rest search objects v2 filters", func(t *testing.T) { restObjectsSearchV2Filters(ctx, t, clientPool, &owner, signer) })
 
@@ -147,14 +172,24 @@ func runTests(ctx context.Context, t *testing.T, key *keys.PrivateKey, node stri
 	t.Run("rest balance", func(t *testing.T) { restBalance(ctx, t) })
 
 	t.Run("rest new upload object", func(t *testing.T) { restNewObjectUpload(ctx, t, clientPool, cnrID, signer) })
+	t.Run("rest new upload object session v2", func(t *testing.T) {
+		restNewObjectUploadSessionTokenV2(ctx, t, clientPool, cnrID, sessionV2Signer)
+	})
 	t.Run("rest new upload object with bearer in cookie", func(t *testing.T) { restNewObjectUploadCookie(ctx, t, clientPool, cnrID, signer) })
 	t.Run("rest new upload object with wallet connect", func(t *testing.T) { restNewObjectUploadWC(ctx, t, clientPool, cnrID, signer) })
 	t.Run("rest new head object", func(t *testing.T) { restNewObjectHead(ctx, t, clientPool, &owner, cnrID, signer, false) })
+	t.Run("rest new head object session v2", func(t *testing.T) { restNewObjectHeadSessionV2(ctx, t, clientPool, cnrID, signer, sessionV2Signer) })
 	t.Run("rest new head object with wallet connect", func(t *testing.T) { restNewObjectHead(ctx, t, clientPool, &owner, cnrID, signer, true) })
 	t.Run("rest new head by attribute", func(t *testing.T) { restNewObjectHeadByAttribute(ctx, t, clientPool, &owner, cnrID, signer, false) })
+	t.Run("rest new head by attribute session v2", func(t *testing.T) {
+		restNewObjectHeadByAttributeSessionV2(ctx, t, clientPool, cnrID, signer, sessionV2Signer)
+	})
 	t.Run("rest new head by attribute with wallet connect", func(t *testing.T) { restNewObjectHeadByAttribute(ctx, t, clientPool, &owner, cnrID, signer, true) })
 	t.Run("rest new get by attribute", func(t *testing.T) {
 		restNewObjectGetByAttribute(ctx, t, clientPool, &owner, cnrID, signer, false, false)
+	})
+	t.Run("rest new get by attribute session v2", func(t *testing.T) {
+		restNewObjectGetByAttributeSessionV2(ctx, t, clientPool, cnrID, signer, sessionV2Signer)
 	})
 	t.Run("rest new get by attribute with wallet connect", func(t *testing.T) {
 		restNewObjectGetByAttribute(ctx, t, clientPool, &owner, cnrID, signer, true, false)
@@ -510,6 +545,36 @@ func restObjectDelete(ctx context.Context, t *testing.T, p *pool.Pool, owner *us
 	require.Error(t, err)
 }
 
+func restObjectDeleteSessionV2(ctx context.Context, t *testing.T, p *pool.Pool, owner *user.ID, cnrID cid.ID, signer, signerForToken user.Signer) {
+	var (
+		ownerID    = signer.UserID()
+		gateUserID = gateMetadataID(ctx, t)
+		objID      = createObject(ctx, t, p, owner, cnrID, nil, []byte(randomString()), signer)
+	)
+
+	tokenRequest := apiserver.SessionTokenV2Request{
+		Contexts: []apiserver.TokenContext{{ContainerID: cnrID.String(), Verbs: []apiserver.TokenVerb{"OBJECT_DELETE"}}},
+		Owner:    ownerID.String(),
+		Targets:  []string{gateUserID.String()},
+	}
+
+	httpClient := defaultHTTPClient()
+	signedToken := getSignedSessionToken(ctx, t, tokenRequest, httpClient, signerForToken)
+
+	request, err := http.NewRequest(http.MethodDelete, testHost+"/v1/objects/"+cnrID.EncodeToString()+"/"+objID.EncodeToString(), nil)
+	require.NoError(t, err)
+	prepareSessionV2Headers(request.Header, signedToken)
+
+	resp := &apiserver.SuccessResponse{}
+	doRequest(t, httpClient, request, http.StatusOK, resp)
+	require.True(t, resp.Success)
+
+	var prm client.PrmObjectHead
+
+	_, err = p.ObjectHead(ctx, cnrID, objID, signer, prm)
+	require.Error(t, err)
+}
+
 func restObjectsSearch(ctx context.Context, t *testing.T, p *pool.Pool, owner *user.ID, cnrID cid.ID, signer user.Signer) {
 	userKey, userValue := "User-Attribute", "user-attribute-value"
 	objectName := "object-name"
@@ -597,6 +662,81 @@ func restObjectsSearch(ctx context.Context, t *testing.T, p *pool.Pool, owner *u
 		request, err := http.NewRequest(http.MethodPost, testHost+"/v1/objects/"+cnrID.EncodeToString()+"/search?"+query.Encode(), bytes.NewReader(body))
 		require.NoError(t, err)
 		prepareCommonHeaders(request.Header, bearerToken)
+
+		resp := &apiserver.ObjectList{}
+		doRequest(t, httpClient, request, http.StatusOK, resp)
+
+		require.Greater(t, len(resp.Objects), 0)
+	})
+}
+
+func restObjectsSearchSessionV2(ctx context.Context, t *testing.T, p *pool.Pool, owner *user.ID, cnrID cid.ID, signer, signerForToken user.Signer) {
+	userKey, userValue := randomString(), randomString()
+	objectName := randomString()
+	filePath := "path/to/object/" + string(randomString())
+	headers := map[string]string{
+		object.AttributeFileName: objectName,
+		object.AttributeFilePath: filePath,
+		userKey:                  userValue,
+	}
+	objID := createObject(ctx, t, p, owner, cnrID, headers, []byte(randomString()), signer)
+	headers[userKey] = "dummy"
+	_ = createObject(ctx, t, p, owner, cnrID, headers, []byte(randomString()), signer)
+
+	var (
+		ownerID    = signer.UserID()
+		gateUserID = gateMetadataID(ctx, t)
+	)
+
+	tokenRequest := apiserver.SessionTokenV2Request{
+		Contexts: []apiserver.TokenContext{{ContainerID: cnrID.String(), Verbs: []apiserver.TokenVerb{"OBJECT_SEARCH"}}},
+		Owner:    ownerID.String(),
+		Targets:  []string{gateUserID.String()},
+	}
+
+	httpClient := defaultHTTPClient()
+	signedToken := getSignedSessionToken(ctx, t, tokenRequest, httpClient, signerForToken)
+
+	t.Run("with filter", func(t *testing.T) {
+		search := &apiserver.SearchFilters{
+			Filters: []apiserver.SearchFilter{
+				{
+					Key:   userKey,
+					Match: apiserver.MatchStringEqual,
+					Value: userValue,
+				},
+			},
+		}
+
+		body, err := json.Marshal(search)
+		require.NoError(t, err)
+
+		request, err := http.NewRequest(http.MethodPost, testHost+"/v1/objects/"+cnrID.EncodeToString()+"/search", bytes.NewReader(body))
+		require.NoError(t, err)
+		prepareSessionV2Headers(request.Header, signedToken)
+
+		resp := &apiserver.ObjectList{}
+		doRequest(t, httpClient, request, http.StatusOK, resp)
+
+		require.Equal(t, 1, resp.Size)
+		require.Len(t, resp.Objects, 1)
+
+		objBaseInfo := resp.Objects[0]
+		require.Equal(t, cnrID.EncodeToString(), objBaseInfo.Address.ContainerId)
+		require.Equal(t, objID.EncodeToString(), objBaseInfo.Address.ObjectId)
+		require.Equal(t, objectName, *objBaseInfo.Name)
+		require.Equal(t, filePath, *objBaseInfo.FilePath)
+	})
+
+	t.Run("no filters", func(t *testing.T) {
+		search := &apiserver.SearchFilters{}
+
+		body, err := json.Marshal(search)
+		require.NoError(t, err)
+
+		request, err := http.NewRequest(http.MethodPost, testHost+"/v1/objects/"+cnrID.EncodeToString()+"/search", bytes.NewReader(body))
+		require.NoError(t, err)
+		prepareSessionV2Headers(request.Header, signedToken)
 
 		resp := &apiserver.ObjectList{}
 		doRequest(t, httpClient, request, http.StatusOK, resp)
@@ -733,6 +873,125 @@ func restObjectsSearchV2(ctx context.Context, t *testing.T, p *pool.Pool, owner 
 		request, err := http.NewRequest(http.MethodPost, testHost+"/v2/objects/"+cnrID.EncodeToString()+"/search", bytes.NewReader(limitedBody))
 		require.NoError(t, err)
 		prepareCommonHeaders(request.Header, bearerToken)
+
+		resp := &apiserver.ObjectListV2{}
+		doRequest(t, httpClient, request, http.StatusBadRequest, resp)
+	})
+}
+
+func restObjectsSearchV2SessionV2(ctx context.Context, t *testing.T, p *pool.Pool, owner *user.ID, cnrID cid.ID, signer, signerForToken user.Signer) {
+	var (
+		userKey, userValue = randomString(), randomString()
+		objectName         = randomString()
+		filePath           = "path/to/object/" + objectName
+
+		headers = map[string]string{
+			object.AttributeFileName: objectName,
+			object.AttributeFilePath: filePath,
+			userKey:                  userValue,
+			xNonce:                   strconv.FormatInt(time.Now().UnixNano(), 10),
+		}
+	)
+
+	objID := createObject(ctx, t, p, owner, cnrID, headers, []byte(randomString()), signer)
+	// Objects created in the same timestamp, with identical attributes have the same ID. Make each object unique.
+	headers[xNonce] = strconv.FormatInt(time.Now().UnixNano(), 10)
+	objID2 := createObject(ctx, t, p, owner, cnrID, headers, []byte(randomString()), signer)
+
+	idsGroup := []string{objID.EncodeToString(), objID2.EncodeToString()}
+
+	headers[userKey] = "dummy"
+	_ = createObject(ctx, t, p, owner, cnrID, headers, []byte(randomString()), signer)
+
+	var (
+		ownerID    = signer.UserID()
+		gateUserID = gateMetadataID(ctx, t)
+	)
+
+	tokenRequest := apiserver.SessionTokenV2Request{
+		Contexts: []apiserver.TokenContext{{ContainerID: cnrID.String(), Verbs: []apiserver.TokenVerb{"OBJECT_SEARCH"}}},
+		Owner:    ownerID.String(),
+		Targets:  []string{gateUserID.String()},
+	}
+
+	httpClient := defaultHTTPClient()
+	signedToken := getSignedSessionToken(ctx, t, tokenRequest, httpClient, signerForToken)
+
+	search := &apiserver.SearchRequest{
+		Filters: []apiserver.SearchFilter{
+			{
+				Key:   userKey,
+				Match: apiserver.MatchStringEqual,
+				Value: userValue,
+			},
+		},
+		Attributes: []string{object.AttributeFileName, object.AttributeFilePath},
+	}
+
+	body, err := json.Marshal(search)
+	require.NoError(t, err)
+
+	var nextCursor string
+
+	query := make(url.Values)
+	query.Add("limit", "1")
+
+	t.Run("check first object", func(t *testing.T) {
+		request, err := http.NewRequest(http.MethodPost, testHost+"/v2/objects/"+cnrID.EncodeToString()+"/search?"+query.Encode(), bytes.NewReader(body))
+		require.NoError(t, err)
+		prepareSessionV2Headers(request.Header, signedToken)
+
+		resp := &apiserver.ObjectListV2{}
+		doRequest(t, httpClient, request, http.StatusOK, resp)
+		nextCursor = resp.Cursor
+
+		require.NotEmpty(t, nextCursor)
+		require.Len(t, resp.Objects, 1)
+
+		objBaseInfo := resp.Objects[0]
+		require.Contains(t, idsGroup, objBaseInfo.ObjectId)
+		require.Equal(t, userValue, objBaseInfo.Attributes[userKey])
+		require.Equal(t, objectName, objBaseInfo.Attributes[object.AttributeFileName])
+		require.Equal(t, filePath, objBaseInfo.Attributes[object.AttributeFilePath])
+	})
+
+	t.Run("check second object", func(t *testing.T) {
+		query.Add("cursor", nextCursor)
+
+		request, err := http.NewRequest(http.MethodPost, testHost+"/v2/objects/"+cnrID.EncodeToString()+"/search?"+query.Encode(), bytes.NewReader(body))
+		require.NoError(t, err)
+		prepareSessionV2Headers(request.Header, signedToken)
+
+		resp := &apiserver.ObjectListV2{}
+		doRequest(t, httpClient, request, http.StatusOK, resp)
+
+		require.Empty(t, resp.Cursor)
+		require.Len(t, resp.Objects, 1)
+
+		objBaseInfo := resp.Objects[0]
+		require.Contains(t, idsGroup, objBaseInfo.ObjectId)
+		require.Equal(t, userValue, objBaseInfo.Attributes[userKey])
+		require.Equal(t, objectName, objBaseInfo.Attributes[object.AttributeFileName])
+		require.Equal(t, filePath, objBaseInfo.Attributes[object.AttributeFilePath])
+	})
+
+	t.Run("returning attribute limit", func(t *testing.T) {
+		limitedSearch := &apiserver.SearchRequest{
+			Filters: []apiserver.SearchFilter{
+				{
+					Key:   userKey,
+					Match: apiserver.MatchStringEqual,
+					Value: userValue,
+				},
+			},
+			Attributes: []string{"a", "a", "a", "a", "a", "a", "a", "a"},
+		}
+		limitedBody, err := json.Marshal(limitedSearch)
+		require.NoError(t, err)
+
+		request, err := http.NewRequest(http.MethodPost, testHost+"/v2/objects/"+cnrID.EncodeToString()+"/search", bytes.NewReader(limitedBody))
+		require.NoError(t, err)
+		prepareSessionV2Headers(request.Header, signedToken)
 
 		resp := &apiserver.ObjectListV2{}
 		doRequest(t, httpClient, request, http.StatusBadRequest, resp)
@@ -1215,6 +1474,36 @@ func restContainerDelete(ctx context.Context, t *testing.T, clientPool *pool.Poo
 	require.Contains(t, err.Error(), "not found")
 }
 
+func restContainerDeleteSessionV2(ctx context.Context, t *testing.T, clientPool *pool.Pool, owner user.ID, signer, signerForToken user.Signer) {
+	var (
+		ownerID    = signer.UserID()
+		gateUserID = gateMetadataID(ctx, t)
+		cnrID      = createContainer(ctx, t, clientPool, owner, randomString(), signer)
+	)
+
+	tokenRequest := apiserver.SessionTokenV2Request{
+		Contexts: []apiserver.TokenContext{{Verbs: []apiserver.TokenVerb{"CONTAINER_DELETE"}}},
+		Owner:    ownerID.String(),
+		Targets:  []string{gateUserID.String()},
+	}
+
+	httpClient := defaultHTTPClient()
+	signedToken := getSignedSessionToken(ctx, t, tokenRequest, httpClient, signerForToken)
+
+	request, err := http.NewRequest(http.MethodDelete, testHost+"/v1/containers/"+cnrID.EncodeToString(), nil)
+	require.NoError(t, err)
+	request = request.WithContext(ctx)
+	prepareSessionV2Headers(request.Header, signedToken)
+
+	resp := &apiserver.SuccessResponse{}
+	doRequest(t, httpClient, request, http.StatusOK, resp)
+	require.True(t, resp.Success)
+
+	_, err = clientPool.ContainerGet(ctx, cnrID, client.PrmContainerGet{})
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "not found")
+}
+
 func restContainerEACLPut(ctx context.Context, t *testing.T, clientPool *pool.Pool, owner user.ID, signer user.Signer) {
 	cnrID := createContainer(ctx, t, clientPool, owner, "for-eacl-put", signer)
 	httpClient := &http.Client{Timeout: 60 * time.Second}
@@ -1264,11 +1553,71 @@ func restContainerEACLPut(ctx context.Context, t *testing.T, clientPool *pool.Po
 	require.Equal(t, expectedTable.Marshal(), table.Marshal())
 }
 
+func restContainerEACLPutSessionV2(ctx context.Context, t *testing.T, clientPool *pool.Pool, owner user.ID, signer, signerForToken user.Signer) {
+	cnrID := createContainer(ctx, t, clientPool, owner, randomString(), signer)
+	var (
+		ownerID    = signer.UserID()
+		gateUserID = gateMetadataID(ctx, t)
+	)
+
+	tokenRequest := apiserver.SessionTokenV2Request{
+		Contexts: []apiserver.TokenContext{{ContainerID: cnrID.String(), Verbs: []apiserver.TokenVerb{"CONTAINER_SET_EACL"}}},
+		Owner:    ownerID.String(),
+		Targets:  []string{gateUserID.String()},
+	}
+
+	httpClient := defaultHTTPClient()
+	signedToken := getSignedSessionToken(ctx, t, tokenRequest, httpClient, signerForToken)
+
+	req := apiserver.Eacl{
+		Records: []apiserver.Record{{
+			Action:    apiserver.DENY,
+			Filters:   []apiserver.Filter{},
+			Operation: apiserver.OperationDELETE,
+			Targets: []apiserver.Target{{
+				Keys: []string{"031a6c6fbbdf02ca351745fa86b9ba5a9452d785ac4f7fc2b7548ca2a46c4fcf4a"},
+				Role: apiserver.OTHERS,
+			}},
+		}},
+	}
+
+	invalidBody, err := json.Marshal(&req)
+	require.NoError(t, err)
+
+	req.Records[0].Targets[0].Role = apiserver.KEYS
+	body, err := json.Marshal(&req)
+	require.NoError(t, err)
+
+	doSetEACLRequestSessionV2(ctx, t, httpClient, cnrID, signedToken, invalidBody, http.StatusBadRequest, nil)
+
+	resp := &apiserver.SuccessResponse{}
+	doSetEACLRequestSessionV2(ctx, t, httpClient, cnrID, signedToken, body, http.StatusOK, resp)
+	require.True(t, resp.Success)
+
+	table, err := clientPool.ContainerEACL(ctx, cnrID, client.PrmContainerEACL{})
+	require.NoError(t, err)
+
+	expectedTable, err := util.ToNativeTable(req.Records)
+	require.NoError(t, err)
+	expectedTable.SetCID(cnrID)
+
+	require.Equal(t, expectedTable.Marshal(), table.Marshal())
+}
+
 func doSetEACLRequest(ctx context.Context, t *testing.T, httpClient *http.Client, cnrID cid.ID, query url.Values, bearerToken *handlers.BearerToken, body []byte, status int, model any) {
 	request, err := http.NewRequest(http.MethodPut, testHost+"/v1/containers/"+cnrID.EncodeToString()+"/eacl?"+query.Encode(), bytes.NewReader(body))
 	require.NoError(t, err)
 	request = request.WithContext(ctx)
 	prepareCommonHeaders(request.Header, bearerToken)
+
+	doRequest(t, httpClient, request, status, model)
+}
+
+func doSetEACLRequestSessionV2(ctx context.Context, t *testing.T, httpClient *http.Client, cnrID cid.ID, signedToken session.Token, body []byte, status int, model any) {
+	request, err := http.NewRequest(http.MethodPut, testHost+"/v1/containers/"+cnrID.EncodeToString()+"/eacl", bytes.NewReader(body))
+	require.NoError(t, err)
+	request = request.WithContext(ctx)
+	prepareSessionV2Headers(request.Header, signedToken)
 
 	doRequest(t, httpClient, request, status, model)
 }
@@ -1541,6 +1890,79 @@ func restContainerPut(ctx context.Context, t *testing.T, clientPool *pool.Pool) 
 	}
 }
 
+func restContainerPutSessionTokenV2(ctx context.Context, t *testing.T, clientPool *pool.Pool, signer user.Signer) {
+	var (
+		ownerID    = signer.UserID()
+		gateUserID = gateMetadataID(ctx, t)
+	)
+
+	tokenRequest := apiserver.SessionTokenV2Request{
+		Contexts: []apiserver.TokenContext{{Verbs: []apiserver.TokenVerb{"CONTAINER_PUT"}}},
+		Owner:    ownerID.String(),
+		Targets:  []string{gateUserID.String()},
+	}
+
+	httpClient := defaultHTTPClient()
+	signedToken := getSignedSessionToken(ctx, t, tokenRequest, httpClient, signer)
+
+	attrKey, attrValue := randomString(), randomString()
+	userAttributes := map[string]string{
+		attrKey: attrValue,
+	}
+
+	// try to create container without name but with name-scope-global
+	body, err := json.Marshal(&apiserver.ContainerPostInfo{})
+	require.NoError(t, err)
+
+	reqURL, err := url.Parse(testHost + "/v1/containers")
+	require.NoError(t, err)
+	query := reqURL.Query()
+	query.Add("name-scope-global", "true")
+	reqURL.RawQuery = query.Encode()
+
+	request, err := http.NewRequest(http.MethodPut, reqURL.String(), bytes.NewReader(body))
+	require.NoError(t, err)
+	prepareSessionV2Headers(request.Header, signedToken)
+
+	doRequest(t, httpClient, request, http.StatusInternalServerError, nil)
+
+	// create container with name in local scope
+	containerPutInfo := &apiserver.ContainerPostInfo{
+		Attributes: []apiserver.Attribute{{
+			Key:   attrKey,
+			Value: attrValue,
+		}},
+	}
+	body, err = json.Marshal(containerPutInfo)
+	require.NoError(t, err)
+
+	reqURL, err = url.Parse(testHost + "/v1/containers")
+	require.NoError(t, err)
+	query = reqURL.Query()
+	reqURL.RawQuery = query.Encode()
+
+	request, err = http.NewRequest(http.MethodPut, reqURL.String(), bytes.NewReader(body))
+	require.NoError(t, err)
+	prepareSessionV2Headers(request.Header, signedToken)
+
+	addr := &apiserver.PostContainerOK{}
+	doRequest(t, httpClient, request, http.StatusOK, addr)
+
+	var CID cid.ID
+	err = CID.DecodeString(addr.ContainerId)
+	require.NoError(t, err)
+	t.Logf("created container: %s", CID.String())
+
+	cnr, err := clientPool.ContainerGet(ctx, CID, client.PrmContainerGet{})
+	require.NoError(t, err)
+
+	cnrAttr := maps.Collect(cnr.Attributes())
+
+	for key, val := range userAttributes {
+		require.Equal(t, val, cnrAttr[key])
+	}
+}
+
 func restContainerPost(ctx context.Context, t *testing.T, clientPool *pool.Pool) {
 	bearer := apiserver.Bearer{
 		Container: &apiserver.Rule{
@@ -1613,11 +2035,90 @@ func restContainerPost(ctx context.Context, t *testing.T, clientPool *pool.Pool)
 	}
 }
 
+func restContainerPostSessionTokenV2(ctx context.Context, t *testing.T, clientPool *pool.Pool, signer user.Signer) {
+	var (
+		ownerID    = signer.UserID()
+		gateUserID = gateMetadataID(ctx, t)
+	)
+
+	tokenRequest := apiserver.SessionTokenV2Request{
+		Contexts: []apiserver.TokenContext{{Verbs: []apiserver.TokenVerb{"CONTAINER_PUT"}}},
+		Owner:    ownerID.String(),
+		Targets:  []string{gateUserID.String()},
+	}
+
+	httpClient := defaultHTTPClient()
+	signedToken := getSignedSessionToken(ctx, t, tokenRequest, httpClient, signer)
+
+	attrKey, attrValue := randomString(), randomString()
+	userAttributes := map[string]string{
+		attrKey: attrValue,
+	}
+
+	// try to create container without name but with name-scope-global
+	body, err := json.Marshal(&apiserver.ContainerPostInfo{})
+	require.NoError(t, err)
+
+	reqURL, err := url.Parse(testHost + "/v1/containers")
+	require.NoError(t, err)
+	query := reqURL.Query()
+	query.Add("name-scope-global", "true")
+	reqURL.RawQuery = query.Encode()
+
+	request, err := http.NewRequest(http.MethodPost, reqURL.String(), bytes.NewReader(body))
+	require.NoError(t, err)
+	prepareSessionV2Headers(request.Header, signedToken)
+
+	doRequest(t, httpClient, request, http.StatusInternalServerError, nil)
+
+	// create container with name in local scope
+	containerPutInfo := &apiserver.ContainerPostInfo{
+		Attributes: []apiserver.Attribute{{
+			Key:   attrKey,
+			Value: attrValue,
+		}},
+	}
+	body, err = json.Marshal(containerPutInfo)
+	require.NoError(t, err)
+
+	reqURL, err = url.Parse(testHost + "/v1/containers")
+	require.NoError(t, err)
+	query = reqURL.Query()
+	reqURL.RawQuery = query.Encode()
+
+	request, err = http.NewRequest(http.MethodPost, reqURL.String(), bytes.NewReader(body))
+	require.NoError(t, err)
+	prepareSessionV2Headers(request.Header, signedToken)
+
+	addr := &apiserver.PostContainerOK{}
+	responseHeaders, _ := doRequest(t, httpClient, request, http.StatusCreated, addr)
+
+	var CID cid.ID
+	err = CID.DecodeString(addr.ContainerId)
+	require.NoError(t, err)
+	t.Logf("created container: %s", CID.String())
+	require.Equal(t, handlers.LocationHeader(CID), responseHeaders.Get("Location"))
+
+	cnr, err := clientPool.ContainerGet(ctx, CID, client.PrmContainerGet{})
+	require.NoError(t, err)
+
+	cnrAttr := maps.Collect(cnr.Attributes())
+
+	for key, val := range userAttributes {
+		require.Equal(t, val, cnrAttr[key])
+	}
+}
+
 func prepareCommonHeaders(header http.Header, bearerToken *handlers.BearerToken) {
 	header.Add("Content-Type", "application/json")
 	header.Add(XBearerSignature, bearerToken.Signature)
 	header.Add("Authorization", "Bearer "+bearerToken.Token)
 	header.Add(XBearerSignatureKey, bearerToken.Key)
+}
+
+func prepareSessionV2Headers(header http.Header, signedToken session.Token) {
+	header.Add("Content-Type", "application/json")
+	header.Add(xSessionTokenV2, base64.StdEncoding.EncodeToString(signedToken.Marshal()))
 }
 
 func createContainer(ctx context.Context, t *testing.T, clientPool *pool.Pool, owner user.ID, name string, signer user.Signer) cid.ID {
@@ -1795,6 +2296,64 @@ func restNewObjectUploadInt(ctx context.Context, t *testing.T, clientPool *pool.
 	}
 }
 
+func restNewObjectUploadSessionTokenV2(ctx context.Context, t *testing.T, clientPool *pool.Pool, cnrID cid.ID, signer user.Signer) {
+	var (
+		ownerID    = signer.UserID()
+		gateUserID = gateMetadataID(ctx, t)
+	)
+
+	tokenRequest := apiserver.SessionTokenV2Request{
+		Contexts: []apiserver.TokenContext{{ContainerID: cnrID.EncodeToString(), Verbs: []apiserver.TokenVerb{"OBJECT_PUT"}}},
+		Owner:    ownerID.String(),
+		Targets:  []string{gateUserID.String()},
+	}
+
+	httpClient := defaultHTTPClient()
+	signedToken := getSignedSessionToken(ctx, t, tokenRequest, httpClient, signer)
+
+	content := randomString()
+	attributes := map[string]string{
+		object.AttributeFileName:    randomString(),
+		object.AttributeContentType: "application/octet-stream",
+		"User-Attribute":            randomString(),
+		"FREE-case-kEy":             randomString(),
+	}
+	attributesJSON, err := json.Marshal(attributes)
+	require.NoError(t, err)
+
+	body := bytes.NewBufferString(content)
+	request, err := http.NewRequest(http.MethodPost, testHost+"/v1/objects/"+cnrID.String(), body)
+	require.NoError(t, err)
+
+	request.Header.Add("X-Session-Token", base64.StdEncoding.EncodeToString(signedToken.Marshal()))
+	request.Header.Set("Content-Type", "text/plain")
+	request.Header.Set("X-Attributes", string(attributesJSON))
+
+	addr := &apiserver.AddressForUpload{}
+	doRequest(t, httpClient, request, http.StatusOK, addr)
+
+	var CID cid.ID
+	err = CID.DecodeString(addr.ContainerId)
+	require.NoError(t, err)
+
+	var id oid.ID
+	err = id.DecodeString(addr.ObjectId)
+	require.NoError(t, err)
+
+	var prm client.PrmObjectGet
+	res, payloadReader, err := clientPool.ObjectGetInit(ctx, CID, id, signer, prm)
+	require.NoError(t, err)
+
+	payload := bytes.NewBuffer(nil)
+	_, err = io.Copy(payload, payloadReader)
+	require.NoError(t, err)
+	require.Equal(t, content, payload.String())
+
+	for _, attribute := range res.Attributes() {
+		require.Equal(t, attributes[attribute.Key()], attribute.Value(), attribute.Key())
+	}
+}
+
 func restNewObjectHead(ctx context.Context, t *testing.T, p *pool.Pool, ownerID *user.ID, cnrID cid.ID, signer user.Signer, walletConnect bool) {
 	bearer := apiserver.Bearer{
 		Object: []apiserver.Record{
@@ -1910,6 +2469,138 @@ func restNewObjectHead(ctx context.Context, t *testing.T, p *pool.Pool, ownerID 
 		} else {
 			prepareCommonHeaders(request.Header, bearerToken)
 		}
+
+		headers, _ := doRequest(t, httpClient, request, http.StatusOK, nil)
+		require.NotEmpty(t, headers)
+
+		for key, vals := range headers {
+			require.Len(t, vals, 1)
+
+			switch key {
+			case "X-Attributes":
+				var customAttr map[string]string
+				err := json.Unmarshal([]byte(vals[0]), &customAttr)
+				require.NoError(t, err)
+				require.Equal(t, fileNameAttr, customAttr[object.AttributeFileName])
+				require.Equal(t, attrValue, customAttr[attrKey])
+				require.Equal(t, strconv.FormatInt(createTS, 10), customAttr[object.AttributeTimestamp])
+			case "Content-Disposition":
+				require.Equal(t, "inline; filename="+fileNameAttr, vals[0])
+			case "X-Object-Id":
+				require.Equal(t, objID.String(), vals[0])
+			case "Last-Modified":
+				require.Equal(t, time.Unix(createTS, 0).UTC().Format(http.TimeFormat), vals[0])
+			case "X-Owner-Id":
+				require.Equal(t, signer.UserID().String(), vals[0])
+			case "X-Container-Id":
+				require.Equal(t, cnrID.String(), vals[0])
+			case "Content-Length":
+				require.Equal(t, strconv.FormatInt(int64(len(content)), 10), vals[0])
+			case "Content-Type":
+				require.Equal(t, customContentType, vals[0])
+			case "Date":
+				tm, err := time.ParseInLocation(http.TimeFormat, vals[0], time.UTC)
+				require.NoError(t, err)
+				require.GreaterOrEqual(t, tm.Unix(), createTS)
+			case "Access-Control-Allow-Origin":
+				require.Equal(t, "*", vals[0])
+			}
+		}
+	})
+}
+
+func restNewObjectHeadSessionV2(ctx context.Context, t *testing.T, p *pool.Pool, cnrID cid.ID, signer, signerForToken user.Signer) {
+	var (
+		ownerID    = signer.UserID()
+		gateUserID = gateMetadataID(ctx, t)
+	)
+
+	tokenRequest := apiserver.SessionTokenV2Request{
+		Contexts: []apiserver.TokenContext{{ContainerID: cnrID.String(), Verbs: []apiserver.TokenVerb{"OBJECT_HEAD", "OBJECT_SEARCH", "OBJECT_RANGE"}}},
+		Owner:    ownerID.String(),
+		Targets:  []string{gateUserID.String()},
+	}
+
+	httpClient := defaultHTTPClient()
+	signedToken := getSignedSessionToken(ctx, t, tokenRequest, httpClient, signerForToken)
+
+	var (
+		content      = []byte(randomString())
+		fileNameAttr = randomString()
+		attrKey      = randomString()
+		attrValue    = randomString()
+
+		attributes = map[string]string{
+			object.AttributeFileName:  fileNameAttr,
+			object.AttributeTimestamp: strconv.FormatInt(time.Now().Unix(), 10),
+			attrKey:                   attrValue,
+		}
+	)
+
+	t.Run("head", func(t *testing.T) {
+		objID := createObject(ctx, t, p, &ownerID, cnrID, attributes, content, signer)
+
+		attrTS := getObjectCreateTimestamp(ctx, t, p, cnrID, objID, signer)
+		createTS, err := strconv.ParseInt(attrTS, 10, 64)
+		require.NoError(t, err)
+
+		request, err := http.NewRequest(http.MethodHead, testHost+"/v1/objects/"+cnrID.EncodeToString()+"/by_id/"+objID.EncodeToString(), nil)
+		require.NoError(t, err)
+
+		prepareSessionV2Headers(request.Header, signedToken)
+
+		headers, _ := doRequest(t, httpClient, request, http.StatusOK, nil)
+		require.NotEmpty(t, headers)
+
+		for key, vals := range headers {
+			require.Len(t, vals, 1)
+
+			switch key {
+			case "X-Attributes":
+				var customAttr map[string]string
+				err := json.Unmarshal([]byte(vals[0]), &customAttr)
+				require.NoError(t, err)
+				require.Equal(t, fileNameAttr, customAttr[object.AttributeFileName])
+				require.Equal(t, attrValue, customAttr[attrKey])
+				require.Equal(t, strconv.FormatInt(createTS, 10), customAttr[object.AttributeTimestamp])
+			case "Content-Disposition":
+				require.Equal(t, "inline; filename="+fileNameAttr, vals[0])
+			case "X-Object-Id":
+				require.Equal(t, objID.String(), vals[0])
+			case "Last-Modified":
+				require.Equal(t, time.Unix(createTS, 0).UTC().Format(http.TimeFormat), vals[0])
+			case "X-Owner-Id":
+				require.Equal(t, signer.UserID().String(), vals[0])
+			case "X-Container-Id":
+				require.Equal(t, cnrID.String(), vals[0])
+			case "Content-Length":
+				require.Equal(t, strconv.FormatInt(int64(len(content)), 10), vals[0])
+			case "Content-Type":
+				require.Equal(t, "text/plain; charset=utf-8", vals[0])
+			case "Date":
+				tm, err := time.ParseInLocation(http.TimeFormat, vals[0], time.UTC)
+				require.NoError(t, err)
+				require.GreaterOrEqual(t, tm.Unix(), createTS)
+			case "Access-Control-Allow-Origin":
+				require.Equal(t, "*", vals[0])
+			}
+		}
+	})
+
+	t.Run("custom content-type", func(t *testing.T) {
+		customContentType := "some/type"
+		attributes[object.AttributeContentType] = customContentType
+
+		objID := createObject(ctx, t, p, &ownerID, cnrID, attributes, content, signer)
+
+		attrTS := getObjectCreateTimestamp(ctx, t, p, cnrID, objID, signer)
+		createTS, err := strconv.ParseInt(attrTS, 10, 64)
+		require.NoError(t, err)
+
+		request, err := http.NewRequest(http.MethodHead, testHost+"/v1/objects/"+cnrID.EncodeToString()+"/by_id/"+objID.EncodeToString(), nil)
+		require.NoError(t, err)
+
+		prepareSessionV2Headers(request.Header, signedToken)
 
 		headers, _ := doRequest(t, httpClient, request, http.StatusOK, nil)
 		require.NotEmpty(t, headers)
@@ -2104,6 +2795,137 @@ func restNewObjectHeadByAttribute(ctx context.Context, t *testing.T, p *pool.Poo
 	})
 }
 
+func restNewObjectHeadByAttributeSessionV2(ctx context.Context, t *testing.T, p *pool.Pool, cnrID cid.ID, signer, signerForToken user.Signer) {
+	var (
+		ownerID    = signer.UserID()
+		gateUserID = gateMetadataID(ctx, t)
+	)
+
+	tokenRequest := apiserver.SessionTokenV2Request{
+		Contexts: []apiserver.TokenContext{{ContainerID: cnrID.String(), Verbs: []apiserver.TokenVerb{"OBJECT_HEAD", "OBJECT_SEARCH", "OBJECT_RANGE"}}},
+		Owner:    ownerID.String(),
+		Targets:  []string{gateUserID.String()},
+	}
+
+	httpClient := defaultHTTPClient()
+	signedToken := getSignedSessionToken(ctx, t, tokenRequest, httpClient, signerForToken)
+
+	var (
+		content      = []byte(randomString())
+		fileNameAttr = randomString()
+		attrKey      = randomString()
+		attrValue    = randomString()
+		attributes   = map[string]string{
+			object.AttributeFileName:  fileNameAttr,
+			object.AttributeTimestamp: strconv.FormatInt(time.Now().Unix(), 10),
+			attrKey:                   attrValue,
+		}
+	)
+
+	t.Run("head", func(t *testing.T) {
+		objID := createObject(ctx, t, p, &ownerID, cnrID, attributes, content, signer)
+
+		attrTS := getObjectCreateTimestamp(ctx, t, p, cnrID, objID, signer)
+		createTS, err := strconv.ParseInt(attrTS, 10, 64)
+		require.NoError(t, err)
+
+		request, err := http.NewRequest(http.MethodHead, testHost+"/v1/objects/"+cnrID.EncodeToString()+"/by_attribute/"+object.AttributeFileName+"/"+fileNameAttr, nil)
+		require.NoError(t, err)
+
+		prepareSessionV2Headers(request.Header, signedToken)
+
+		headers, _ := doRequest(t, httpClient, request, http.StatusOK, nil)
+		require.NotEmpty(t, headers)
+
+		for key, vals := range headers {
+			require.Len(t, vals, 1)
+
+			switch key {
+			case "X-Attributes":
+				var customAttr map[string]string
+				err := json.Unmarshal([]byte(vals[0]), &customAttr)
+				require.NoError(t, err)
+				require.Equal(t, fileNameAttr, customAttr[object.AttributeFileName])
+				require.Equal(t, attrValue, customAttr[attrKey])
+				require.Equal(t, strconv.FormatInt(createTS, 10), customAttr[object.AttributeTimestamp])
+			case "Content-Disposition":
+				require.Equal(t, "inline; filename="+fileNameAttr, vals[0])
+			case "X-Object-Id":
+				require.Equal(t, objID.String(), vals[0])
+			case "Last-Modified":
+				require.Equal(t, time.Unix(createTS, 0).UTC().Format(http.TimeFormat), vals[0])
+			case "X-Owner-Id":
+				require.Equal(t, signer.UserID().String(), vals[0])
+			case "X-Container-Id":
+				require.Equal(t, cnrID.String(), vals[0])
+			case "Content-Length":
+				require.Equal(t, strconv.FormatInt(int64(len(content)), 10), vals[0])
+			case "Content-Type":
+				require.Equal(t, "text/plain; charset=utf-8", vals[0])
+			case "Date":
+				tm, err := time.ParseInLocation(http.TimeFormat, vals[0], time.UTC)
+				require.NoError(t, err)
+				require.GreaterOrEqual(t, tm.Unix(), createTS)
+			case "Access-Control-Allow-Origin":
+				require.Equal(t, "*", vals[0])
+			}
+		}
+	})
+
+	t.Run("head multi-segment path attribute", func(t *testing.T) {
+		multiSegmentName := "path/" + fileNameAttr
+		attributes[object.AttributeFileName] = multiSegmentName
+
+		objID := createObject(ctx, t, p, &ownerID, cnrID, attributes, content, signer)
+
+		attrTS := getObjectCreateTimestamp(ctx, t, p, cnrID, objID, signer)
+		createTS, err := strconv.ParseInt(attrTS, 10, 64)
+		require.NoError(t, err)
+
+		request, err := http.NewRequest(http.MethodHead, testHost+"/v1/objects/"+cnrID.EncodeToString()+"/by_attribute/"+object.AttributeFileName+"/"+multiSegmentName, nil)
+		require.NoError(t, err)
+
+		prepareSessionV2Headers(request.Header, signedToken)
+
+		headers, _ := doRequest(t, httpClient, request, http.StatusOK, nil)
+		require.NotEmpty(t, headers)
+
+		for key, vals := range headers {
+			require.Len(t, vals, 1)
+
+			switch key {
+			case "X-Attributes":
+				var customAttr map[string]string
+				err := json.Unmarshal([]byte(vals[0]), &customAttr)
+				require.NoError(t, err)
+				require.Equal(t, multiSegmentName, customAttr[object.AttributeFileName])
+				require.Equal(t, attrValue, customAttr[attrKey])
+				require.Equal(t, strconv.FormatInt(createTS, 10), customAttr[object.AttributeTimestamp])
+			case "Content-Disposition":
+				require.Equal(t, "inline; filename="+fileNameAttr, vals[0])
+			case "X-Object-Id":
+				require.Equal(t, objID.String(), vals[0])
+			case "Last-Modified":
+				require.Equal(t, time.Unix(createTS, 0).UTC().Format(http.TimeFormat), vals[0])
+			case "X-Owner-Id":
+				require.Equal(t, signer.UserID().String(), vals[0])
+			case "X-Container-Id":
+				require.Equal(t, cnrID.String(), vals[0])
+			case "Content-Length":
+				require.Equal(t, strconv.FormatInt(int64(len(content)), 10), vals[0])
+			case "Content-Type":
+				require.Equal(t, "text/plain; charset=utf-8", vals[0])
+			case "Date":
+				tm, err := time.ParseInLocation(http.TimeFormat, vals[0], time.UTC)
+				require.NoError(t, err)
+				require.GreaterOrEqual(t, tm.Unix(), createTS)
+			case "Access-Control-Allow-Origin":
+				require.Equal(t, "*", vals[0])
+			}
+		}
+	})
+}
+
 func restNewObjectGetByAttribute(ctx context.Context, t *testing.T, p *pool.Pool, ownerID *user.ID, cnrID cid.ID, signer user.Signer, walletConnect, addRange bool) {
 	bearer := apiserver.Bearer{
 		Object: []apiserver.Record{
@@ -2220,6 +3042,85 @@ func restNewObjectGetByAttribute(ctx context.Context, t *testing.T, p *pool.Pool
 	})
 }
 
+func restNewObjectGetByAttributeSessionV2(ctx context.Context, t *testing.T, p *pool.Pool, cnrID cid.ID, signer, signerForToken user.Signer) {
+	var (
+		ownerID    = signer.UserID()
+		gateUserID = gateMetadataID(ctx, t)
+	)
+
+	tokenRequest := apiserver.SessionTokenV2Request{
+		Contexts: []apiserver.TokenContext{{ContainerID: cnrID.String(), Verbs: []apiserver.TokenVerb{"OBJECT_GET", "OBJECT_HEAD", "OBJECT_SEARCH", "OBJECT_RANGE"}}},
+		Owner:    ownerID.String(),
+		Targets:  []string{gateUserID.String()},
+	}
+
+	httpClient := defaultHTTPClient()
+	signedToken := getSignedSessionToken(ctx, t, tokenRequest, httpClient, signerForToken)
+
+	var (
+		content      = []byte(randomString())
+		fileNameAttr = randomString()
+		createTS     = time.Now().Unix()
+		attrKey      = randomString()
+		attrValue    = randomString()
+		attributes   = map[string]string{
+			object.AttributeFileName:  fileNameAttr,
+			object.AttributeTimestamp: strconv.FormatInt(createTS, 10),
+			attrKey:                   attrValue,
+		}
+	)
+
+	t.Run("get", func(t *testing.T) {
+		objID := createObject(ctx, t, p, &ownerID, cnrID, attributes, content, signer)
+
+		request, err := http.NewRequest(http.MethodGet, testHost+"/v1/objects/"+cnrID.EncodeToString()+"/by_attribute/"+object.AttributeFileName+"/"+fileNameAttr, nil)
+		require.NoError(t, err)
+
+		prepareSessionV2Headers(request.Header, signedToken)
+
+		status := http.StatusOK
+		headers, rawPayload := doRequest(t, httpClient, request, status, nil)
+
+		require.NotEmpty(t, headers)
+
+		for key, vals := range headers {
+			require.Len(t, vals, 1)
+
+			switch key {
+			case "X-Attributes":
+				var customAttr map[string]string
+				err := json.Unmarshal([]byte(vals[0]), &customAttr)
+				require.NoError(t, err)
+				require.Equal(t, fileNameAttr, customAttr[object.AttributeFileName])
+				require.Equal(t, attrValue, customAttr[attrKey])
+				require.Equal(t, strconv.FormatInt(createTS, 10), customAttr[object.AttributeTimestamp])
+			case "Content-Disposition":
+				require.Equal(t, "inline; filename="+fileNameAttr, vals[0])
+			case "X-Object-Id":
+				require.Equal(t, objID.String(), vals[0])
+			case "Last-Modified":
+				require.Equal(t, time.Unix(createTS, 0).UTC().Format(http.TimeFormat), vals[0])
+			case "X-Owner-Id":
+				require.Equal(t, signer.UserID().String(), vals[0])
+			case "X-Container-Id":
+				require.Equal(t, cnrID.String(), vals[0])
+			case "Content-Length":
+				require.Equal(t, strconv.Itoa(len(content)), vals[0])
+			case "Content-Type":
+				require.Equal(t, "text/plain; charset=utf-8", vals[0])
+			case "Date":
+				tm, err := time.ParseInLocation(http.TimeFormat, vals[0], time.UTC)
+				require.NoError(t, err)
+				require.GreaterOrEqual(t, tm.Unix(), createTS)
+			case "Access-Control-Allow-Origin":
+				require.Equal(t, "*", vals[0])
+			}
+		}
+
+		require.Equal(t, content, rawPayload)
+	})
+}
+
 func getObjectCreateTimestamp(ctx context.Context, t *testing.T, clientPool *pool.Pool, CID cid.ID, id oid.ID, signer user.Signer) string {
 	var prm client.PrmObjectGet
 	res, payloadReader, err := clientPool.ObjectGetInit(ctx, CID, id, signer, prm)
@@ -2235,4 +3136,281 @@ func getObjectCreateTimestamp(ctx context.Context, t *testing.T, clientPool *poo
 		}
 	}
 	return ""
+}
+
+func v2AuthSessionToken(ctx context.Context, t *testing.T) {
+	key, err := keys.NewPrivateKeyFromHex(devenvPrivateKey)
+	require.NoError(t, err)
+
+	signer := user.NewAutoIDSigner(key.PrivateKey)
+	ownerID := signer.UserID()
+
+	cnrIDStr := "9JCbLjeipa75ymzkcyDpocWyFjmsTuYjGw8aSdJKxUn7"
+	cnrID, err := cid.DecodeString(cnrIDStr)
+	require.NoError(t, err)
+
+	acc, err := wallet.NewAccount()
+	require.NoError(t, err)
+	targetID := user.NewFromScriptHash(acc.ScriptHash())
+
+	t.Run("ok", func(t *testing.T) {
+		var (
+			originToken session.Token
+			now         = time.Now()
+		)
+
+		originToken.SetNbf(now)
+		originToken.SetIat(now)
+		originToken.SetExp(now.Add(24 * time.Hour))
+		originToken.SetIssuer(ownerID)
+		originToken.SetVersion(session.TokenCurrentVersion)
+		originToken.SetNonce(session.RandomNonce())
+
+		c, err := session.NewContext(cnrID, []session.Verb{session.VerbContainerPut})
+		require.NoError(t, err)
+		var contexts = []session.Context{c}
+		err = originToken.SetContexts(contexts)
+		require.NoError(t, err)
+
+		var targets = []session.Target{session.NewTargetUser(targetID)}
+		err = originToken.SetSubjects(targets)
+		require.NoError(t, err)
+
+		err = originToken.Sign(signer)
+		require.NoError(t, err)
+
+		exp := now.Add(48 * time.Hour).Truncate(time.Second)
+
+		request := apiserver.SessionTokenV2Request{
+			Contexts:          []apiserver.TokenContext{{Verbs: []apiserver.TokenVerb{"OBJECT_PUT"}}},
+			ExpirationRfc3339: exp.Format(time.RFC3339),
+			Owner:             ownerID.String(),
+			Targets:           []string{targetID.String()},
+			Origin:            base64.StdEncoding.EncodeToString(originToken.Marshal()),
+		}
+
+		httpClient := defaultHTTPClient()
+		response := makeV2AuthSessionTokenRequest(ctx, t, request, httpClient, http.StatusOK, "")
+
+		t.Run("stitch session token", func(t *testing.T) {
+			signedData, err := base64.StdEncoding.DecodeString(response.Token)
+			require.NoError(t, err)
+
+			signed, err := signer.Sign(signedData)
+			require.NoError(t, err)
+
+			req := apiserver.CompleteSessionTokenV2Request{
+				Key:    hex.EncodeToString(key.PublicKey().Bytes()),
+				Value:  base64.StdEncoding.EncodeToString(signed),
+				Token:  response.Token,
+				Scheme: apiserver.SHA512,
+			}
+
+			sessionTokenResponse := completeV2AuthSessionTokenRequest(ctx, t, req, httpClient, http.StatusOK, "")
+			sessionToken := extractSessionV2Token(t, sessionTokenResponse)
+
+			require.Equal(t, exp, sessionToken.Exp())
+			// require.False(t, sessionToken.Exp().After(time.Now().Add(48*time.Hour)))
+			require.True(t, sessionToken.VerifySignature())
+		})
+	})
+
+	t.Run("invalid owner", func(t *testing.T) {
+		request := apiserver.SessionTokenV2Request{
+			Owner: "invalid owner",
+		}
+
+		httpClient := defaultHTTPClient()
+		makeV2AuthSessionTokenRequest(ctx, t, request, httpClient, http.StatusBadRequest, "invalid owner")
+	})
+
+	t.Run("zero targets", func(t *testing.T) {
+		request := apiserver.SessionTokenV2Request{
+			Owner: ownerID.String(),
+		}
+
+		httpClient := defaultHTTPClient()
+		makeV2AuthSessionTokenRequest(ctx, t, request, httpClient, http.StatusBadRequest, "at least one target required")
+	})
+
+	t.Run("both targets empty", func(t *testing.T) {
+		request := apiserver.SessionTokenV2Request{
+			Owner:   ownerID.String(),
+			Targets: []string{""},
+		}
+
+		httpClient := defaultHTTPClient()
+		makeV2AuthSessionTokenRequest(ctx, t, request, httpClient, http.StatusBadRequest, "either owner or nns name must be set")
+	})
+
+	t.Run("zero contexts", func(t *testing.T) {
+		request := apiserver.SessionTokenV2Request{
+			Owner:    ownerID.String(),
+			Targets:  []string{targetID.String()},
+			Contexts: []apiserver.TokenContext{},
+		}
+
+		httpClient := defaultHTTPClient()
+		makeV2AuthSessionTokenRequest(ctx, t, request, httpClient, http.StatusBadRequest, "at least one context required")
+	})
+
+	t.Run("zero verbs", func(t *testing.T) {
+		request := apiserver.SessionTokenV2Request{
+			Owner:    ownerID.String(),
+			Targets:  []string{targetID.String()},
+			Contexts: []apiserver.TokenContext{{ContainerID: cnrIDStr}},
+		}
+
+		httpClient := defaultHTTPClient()
+		makeV2AuthSessionTokenRequest(ctx, t, request, httpClient, http.StatusBadRequest, "zero verbs")
+	})
+
+	t.Run("invalid verb", func(t *testing.T) {
+		request := apiserver.SessionTokenV2Request{
+			Owner:    ownerID.String(),
+			Targets:  []string{targetID.String()},
+			Contexts: []apiserver.TokenContext{{Verbs: []apiserver.TokenVerb{"invalid"}}},
+		}
+
+		httpClient := defaultHTTPClient()
+		makeV2AuthSessionTokenRequest(ctx, t, request, httpClient, http.StatusBadRequest, "invalid verb")
+	})
+
+	t.Run("invalid expiration", func(t *testing.T) {
+		request := apiserver.SessionTokenV2Request{
+			Owner:             ownerID.String(),
+			Targets:           []string{targetID.String()},
+			Contexts:          []apiserver.TokenContext{{Verbs: []apiserver.TokenVerb{"OBJECT_PUT"}}},
+			ExpirationRfc3339: time.Now().Add(-time.Hour).Format(time.RFC3339),
+		}
+
+		httpClient := defaultHTTPClient()
+		makeV2AuthSessionTokenRequest(ctx, t, request, httpClient, http.StatusBadRequest, "invalid expiration")
+	})
+
+	t.Run("different contexts with one container", func(t *testing.T) {
+		request := apiserver.SessionTokenV2Request{
+			Owner:   ownerID.String(),
+			Targets: []string{targetID.String()},
+			Contexts: []apiserver.TokenContext{
+				{ContainerID: cnrIDStr, Verbs: []apiserver.TokenVerb{"OBJECT_PUT"}},
+				{ContainerID: cnrIDStr, Verbs: []apiserver.TokenVerb{"OBJECT_DELETE"}},
+			},
+		}
+
+		httpClient := defaultHTTPClient()
+		makeV2AuthSessionTokenRequest(ctx, t, request, httpClient, http.StatusBadRequest, "two different contexts have the same container")
+	})
+}
+
+func extractSessionV2Token(t *testing.T, response apiserver.BinarySessionV2) session.Token {
+	bts, err := base64.StdEncoding.DecodeString(response.Token)
+	require.NoError(t, err)
+
+	var st session.Token
+	err = st.Unmarshal(bts)
+	require.NoError(t, err)
+
+	return st
+}
+
+func makeV2AuthSessionTokenRequest(ctx context.Context, t *testing.T, req apiserver.SessionTokenV2Request, httpClient *http.Client, expectedCode int, expecterError string) apiserver.SessionTokenv2Response {
+	data, err := json.Marshal(req)
+	require.NoError(t, err)
+
+	request, err := http.NewRequest(http.MethodPost, testHost+"/v2/auth/session", bytes.NewReader(data))
+	require.NoError(t, err)
+	request = request.WithContext(ctx)
+	request.Header.Add("Content-Type", "application/json")
+
+	var stokenResp apiserver.SessionTokenv2Response
+	_, body := doRequest(t, httpClient, request, expectedCode, &stokenResp)
+	if expecterError != "" {
+		require.True(t, strings.Contains(string(body), expecterError))
+	}
+
+	return stokenResp
+}
+
+func completeV2AuthSessionTokenRequest(ctx context.Context, t *testing.T, req apiserver.CompleteSessionTokenV2Request, httpClient *http.Client, expectedCode int, expecterError string) apiserver.BinarySessionV2 {
+	data, err := json.Marshal(req)
+	require.NoError(t, err)
+
+	request, err := http.NewRequest(http.MethodPost, testHost+"/v2/auth/session/complete", bytes.NewReader(data))
+	require.NoError(t, err)
+	request = request.WithContext(ctx)
+	request.Header.Add("Content-Type", "application/json")
+
+	var stokenResp apiserver.BinarySessionV2
+	_, body := doRequest(t, httpClient, request, expectedCode, &stokenResp)
+	if expecterError != "" {
+		require.True(t, strings.Contains(string(body), expecterError))
+	}
+
+	return stokenResp
+}
+
+func gateMetadata(_ context.Context, t *testing.T) {
+	request, err := http.NewRequest(http.MethodGet, testHost+"/v1/gateway", nil)
+	require.NoError(t, err)
+
+	var response apiserver.GatewayMetadataResponse
+
+	httpClient := defaultHTTPClient()
+	doRequest(t, httpClient, request, http.StatusOK, &response)
+
+	require.NotEmpty(t, response.Address)
+
+	var id user.ID
+	err = id.DecodeString(response.Address)
+	require.NoError(t, err)
+}
+
+func gateMetadataID(_ context.Context, t *testing.T) user.ID {
+	request, err := http.NewRequest(http.MethodGet, testHost+"/v1/gateway", nil)
+	require.NoError(t, err)
+
+	var response apiserver.GatewayMetadataResponse
+
+	httpClient := defaultHTTPClient()
+	doRequest(t, httpClient, request, http.StatusOK, &response)
+
+	require.NotEmpty(t, response.Address)
+
+	var id user.ID
+	err = id.DecodeString(response.Address)
+	require.NoError(t, err)
+
+	return id
+}
+
+func getSignedSessionToken(ctx context.Context, t *testing.T, req apiserver.SessionTokenV2Request, httpClient *http.Client, signer neofscrypto.Signer) session.Token {
+	response := makeV2AuthSessionTokenRequest(ctx, t, req, httpClient, http.StatusOK, "")
+
+	signedData, err := base64.StdEncoding.DecodeString(response.Token)
+	require.NoError(t, err)
+
+	signed, err := signer.Sign(signedData)
+	require.NoError(t, err)
+
+	var pubKeyBts = make([]byte, signer.Public().MaxEncodedSize())
+	signer.Public().Encode(pubKeyBts)
+
+	req2 := apiserver.CompleteSessionTokenV2Request{
+		Key:    hex.EncodeToString(pubKeyBts),
+		Value:  base64.StdEncoding.EncodeToString(signed),
+		Token:  response.Token,
+		Scheme: apiserver.SHA512,
+	}
+
+	sessionTokenResponse := completeV2AuthSessionTokenRequest(ctx, t, req2, httpClient, http.StatusOK, "")
+	st := extractSessionV2Token(t, sessionTokenResponse)
+
+	require.True(t, st.VerifySignature())
+
+	return st
+}
+
+func randomString() string {
+	return strconv.FormatInt(time.Now().UnixNano(), 16)
 }

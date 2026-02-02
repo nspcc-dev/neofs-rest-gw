@@ -99,3 +99,5 @@ server:
   max-header-size: 1000000
   # Limit the number of outstanding requests.
   listen-limit: 0
+  # Gate's NNS name
+  nns-name: "rest.gate"

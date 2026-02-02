@@ -2,11 +2,13 @@ package handlers
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"math"
+	"net"
 	"net/http"
 	"strconv"
 	"strings"
@@ -20,6 +22,7 @@ import (
 	"github.com/nspcc-dev/neofs-sdk-go/object"
 	oid "github.com/nspcc-dev/neofs-sdk-go/object/id"
 	"github.com/nspcc-dev/neofs-sdk-go/session"
+	sessionv2 "github.com/nspcc-dev/neofs-sdk-go/session/v2"
 	"go.uber.org/zap"
 )
 
@@ -381,10 +384,13 @@ func addExpirationHeaders(headers map[string]string, params apiserver.NewUploadC
 }
 
 // shares code of NeoFS object recording performed by various RestAPI methods.
-func (a *RestAPI) putObject(ctx echo.Context, hdr object.Object, bt *bearer.Token, wp func(io.Writer) error) (oid.ID, error) {
+func (a *RestAPI) putObject(ctx echo.Context, hdr object.Object, bt *bearer.Token, sessionToken *sessionv2.Token, wp func(io.Writer) error) (oid.ID, error) {
 	var opts client.PrmObjectPutInit
 	if bt != nil {
 		opts.WithBearerToken(*bt)
+	}
+	if sessionToken != nil {
+		opts.WithinSessionV2(*sessionToken)
 	}
 	writer, err := a.pool.ObjectPutInit(ctx.Request().Context(), hdr, a.signer, opts)
 	if err != nil {
@@ -401,4 +407,68 @@ func (a *RestAPI) putObject(ctx echo.Context, hdr object.Object, bt *bearer.Toke
 	}
 
 	return writer.GetResult().StoredObjectID(), nil
+}
+
+func isDomainName(d string) error {
+	if len(d) < 3 {
+		return errors.New("domain name is too short")
+	}
+
+	if len(d) > 255 {
+		return errors.New("domain name is too long")
+	}
+
+	// Raw IP is not a valid domain.
+	if ip := net.ParseIP(d); ip != nil {
+		return errors.New("IP addresses are not valid domain names in this context")
+	}
+
+	labels := strings.Split(d, ".")
+	if len(labels) < 2 {
+		return errors.New("domain must have at least a TLD (e.g., example.com)")
+	}
+
+	for _, label := range labels {
+		l := len(label)
+		if l < 1 || l > 63 {
+			return errors.New("domain labels must be between 1 and 63 characters")
+		}
+		if label[0] == '-' || label[l-1] == '-' {
+			return errors.New("domain labels cannot start or end with a hyphen")
+		}
+
+		for _, char := range label {
+			isAlphaNum := (char >= 'a' && char <= 'z') ||
+				(char >= 'A' && char <= 'Z') ||
+				(char >= '0' && char <= '9')
+
+			if !isAlphaNum && char != '-' {
+				return errors.New("domain contains invalid characters")
+			}
+		}
+	}
+
+	return nil
+}
+
+func getSessionTokenV2(v *string) (*sessionv2.Token, error) {
+	if v == nil || *v == "" {
+		return nil, nil
+	}
+
+	tokenBts, err := base64.StdEncoding.DecodeString(*v)
+	if err != nil {
+		return nil, fmt.Errorf("base64 encoding: %w", err)
+	}
+
+	var st sessionv2.Token
+	if err = st.Unmarshal(tokenBts); err != nil {
+		return nil, fmt.Errorf("token unmarshal: %w", err)
+	}
+
+	if !st.VerifySignature() {
+		return nil, errors.New("invalid signature")
+	}
+
+	return &st, nil
 }
