@@ -125,6 +125,16 @@ func ToNativeMatchType(t apiserver.MatchType) (eacl.Match, error) {
 		return eacl.MatchStringEqual, nil
 	case apiserver.STRINGNOTEQUAL:
 		return eacl.MatchStringNotEqual, nil
+	case apiserver.NOTPRESENT:
+		return eacl.MatchNotPresent, nil
+	case apiserver.NUMGT:
+		return eacl.MatchNumGT, nil
+	case apiserver.NUMGE:
+		return eacl.MatchNumGE, nil
+	case apiserver.NUMLT:
+		return eacl.MatchNumLT, nil
+	case apiserver.NUMLE:
+		return eacl.MatchNumLE, nil
 	default:
 		return 0, fmt.Errorf("unsupported match type: '%s'", t)
 	}
@@ -137,6 +147,16 @@ func FromNativeMatchType(t eacl.Match) (apiserver.MatchType, error) {
 		return apiserver.STRINGEQUAL, nil
 	case eacl.MatchStringNotEqual:
 		return apiserver.STRINGNOTEQUAL, nil
+	case eacl.MatchNotPresent:
+		return apiserver.NOTPRESENT, nil
+	case eacl.MatchNumGT:
+		return apiserver.NUMGT, nil
+	case eacl.MatchNumGE:
+		return apiserver.NUMGE, nil
+	case eacl.MatchNumLT:
+		return apiserver.NUMLT, nil
+	case eacl.MatchNumLE:
+		return apiserver.NUMLE, nil
 	default:
 		return "", fmt.Errorf("unsupported match type: '%s'", t)
 	}
@@ -231,8 +251,26 @@ func ToNativeRecord(r apiserver.Record) (*eacl.Record, error) {
 		if err != nil {
 			return nil, err
 		}
-		if filter.Key == "" || filter.Value == "" {
-			return nil, errors.New("invalid filter")
+		if filter.Key == "" {
+			return nil, errors.New("invalid filter: empty key")
+		}
+		if matchType != eacl.MatchNotPresent {
+			if filter.Value == "" {
+				return nil, errors.New("invalid filter: empty value")
+			}
+
+			switch matchType {
+			case eacl.MatchNumGE, eacl.MatchNumGT, eacl.MatchNumLE, eacl.MatchNumLT:
+				num, ok := new(big.Int).SetString(filter.Value, 10)
+				if !ok {
+					return nil, fmt.Errorf("invalid filter: %s is not a valid numeric value", filter.Value)
+				}
+
+				if num.BitLen() > 256 {
+					return nil, fmt.Errorf("invalid filter: %s is too big. NeoFS supports integers up to 256 bits", filter.Value)
+				}
+			default:
+			}
 		}
 		filters = append(filters, eacl.ConstructFilter(headerType, filter.Key, matchType, filter.Value))
 	}

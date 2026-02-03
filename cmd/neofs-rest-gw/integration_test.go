@@ -74,10 +74,17 @@ const (
 	useLocalEnvironment = false
 )
 
-type dockerImage struct {
-	image   string
-	version string
-}
+type (
+	dockerImage struct {
+		image   string
+		version string
+	}
+
+	errorResponse struct {
+		Type    string `json:"type"`
+		Message string `json:"message"`
+	}
+)
 
 func TestIntegration(t *testing.T) {
 	ctx := context.Background()
@@ -1569,18 +1576,217 @@ func restContainerEACLPutSessionV2(ctx context.Context, t *testing.T, clientPool
 	httpClient := defaultHTTPClient()
 	signedToken := getSignedSessionToken(ctx, t, tokenRequest, httpClient, signerForToken)
 
-	req := apiserver.Eacl{
-		Records: []apiserver.Record{{
-			Action:    apiserver.DENY,
-			Filters:   []apiserver.Filter{},
-			Operation: apiserver.OperationDELETE,
-			Targets: []apiserver.Target{{
-				Keys: []string{"031a6c6fbbdf02ca351745fa86b9ba5a9452d785ac4f7fc2b7548ca2a46c4fcf4a"},
-				Role: apiserver.OTHERS,
+	t.Run("set EACL", func(t *testing.T) {
+		req := apiserver.Eacl{
+			Records: []apiserver.Record{{
+				Action:    apiserver.DENY,
+				Filters:   []apiserver.Filter{},
+				Operation: apiserver.OperationDELETE,
+				Targets: []apiserver.Target{{
+					Keys: []string{"031a6c6fbbdf02ca351745fa86b9ba5a9452d785ac4f7fc2b7548ca2a46c4fcf4a"},
+					Role: apiserver.OTHERS,
+				}},
 			}},
-		}},
-	}
+		}
 
+		setAndCheckEACL(ctx, t, clientPool, req, httpClient, cnrID, signedToken)
+	})
+
+	t.Run("filters", func(t *testing.T) {
+		t.Run("STRING_EQUAL", func(t *testing.T) {
+			req := apiserver.Eacl{
+				Records: []apiserver.Record{{
+					Action: apiserver.DENY,
+					Filters: []apiserver.Filter{
+						{HeaderType: "OBJECT", Key: "MyKey", MatchType: apiserver.STRINGEQUAL, Value: "MyValue"},
+					},
+					Operation: apiserver.OperationDELETE,
+					Targets: []apiserver.Target{{
+						Keys: []string{"031a6c6fbbdf02ca351745fa86b9ba5a9452d785ac4f7fc2b7548ca2a46c4fcf4a"},
+						Role: apiserver.OTHERS,
+					}},
+				}},
+			}
+
+			setAndCheckEACL(ctx, t, clientPool, req, httpClient, cnrID, signedToken)
+		})
+
+		t.Run("STRING_NOT_EQUAL", func(t *testing.T) {
+			req := apiserver.Eacl{
+				Records: []apiserver.Record{{
+					Action: apiserver.DENY,
+					Filters: []apiserver.Filter{
+						{HeaderType: "OBJECT", Key: "MyKey", MatchType: apiserver.STRINGNOTEQUAL, Value: "MyValue"},
+					},
+					Operation: apiserver.OperationDELETE,
+					Targets: []apiserver.Target{{
+						Keys: []string{"031a6c6fbbdf02ca351745fa86b9ba5a9452d785ac4f7fc2b7548ca2a46c4fcf4a"},
+						Role: apiserver.OTHERS,
+					}},
+				}},
+			}
+
+			setAndCheckEACL(ctx, t, clientPool, req, httpClient, cnrID, signedToken)
+		})
+
+		t.Run("NOT_PRESENT", func(t *testing.T) {
+			req := apiserver.Eacl{
+				Records: []apiserver.Record{{
+					Action: apiserver.DENY,
+					Filters: []apiserver.Filter{
+						{HeaderType: "OBJECT", Key: "MyKey", MatchType: apiserver.NOTPRESENT},
+					},
+					Operation: apiserver.OperationDELETE,
+					Targets: []apiserver.Target{{
+						Keys: []string{"031a6c6fbbdf02ca351745fa86b9ba5a9452d785ac4f7fc2b7548ca2a46c4fcf4a"},
+						Role: apiserver.OTHERS,
+					}},
+				}},
+			}
+
+			setAndCheckEACL(ctx, t, clientPool, req, httpClient, cnrID, signedToken)
+		})
+
+		t.Run("NUM_LE", func(t *testing.T) {
+			req := apiserver.Eacl{
+				Records: []apiserver.Record{{
+					Action: apiserver.DENY,
+					Filters: []apiserver.Filter{
+						{HeaderType: "OBJECT", Key: "MyKey", MatchType: apiserver.NUMLE, Value: "123"},
+					},
+					Operation: apiserver.OperationDELETE,
+					Targets: []apiserver.Target{{
+						Keys: []string{"031a6c6fbbdf02ca351745fa86b9ba5a9452d785ac4f7fc2b7548ca2a46c4fcf4a"},
+						Role: apiserver.OTHERS,
+					}},
+				}},
+			}
+
+			setAndCheckEACL(ctx, t, clientPool, req, httpClient, cnrID, signedToken)
+		})
+
+		t.Run("NUM_LT", func(t *testing.T) {
+			req := apiserver.Eacl{
+				Records: []apiserver.Record{{
+					Action: apiserver.DENY,
+					Filters: []apiserver.Filter{
+						{HeaderType: "OBJECT", Key: "MyKey", MatchType: apiserver.NUMLT, Value: "123"},
+					},
+					Operation: apiserver.OperationDELETE,
+					Targets: []apiserver.Target{{
+						Keys: []string{"031a6c6fbbdf02ca351745fa86b9ba5a9452d785ac4f7fc2b7548ca2a46c4fcf4a"},
+						Role: apiserver.OTHERS,
+					}},
+				}},
+			}
+
+			setAndCheckEACL(ctx, t, clientPool, req, httpClient, cnrID, signedToken)
+		})
+
+		t.Run("NUM_GT", func(t *testing.T) {
+			req := apiserver.Eacl{
+				Records: []apiserver.Record{{
+					Action: apiserver.DENY,
+					Filters: []apiserver.Filter{
+						{HeaderType: "OBJECT", Key: "MyKey", MatchType: apiserver.NUMGT, Value: "123"},
+					},
+					Operation: apiserver.OperationDELETE,
+					Targets: []apiserver.Target{{
+						Keys: []string{"031a6c6fbbdf02ca351745fa86b9ba5a9452d785ac4f7fc2b7548ca2a46c4fcf4a"},
+						Role: apiserver.OTHERS,
+					}},
+				}},
+			}
+
+			setAndCheckEACL(ctx, t, clientPool, req, httpClient, cnrID, signedToken)
+		})
+
+		t.Run("NUM_GE", func(t *testing.T) {
+			req := apiserver.Eacl{
+				Records: []apiserver.Record{{
+					Action: apiserver.DENY,
+					Filters: []apiserver.Filter{
+						{HeaderType: "OBJECT", Key: "MyKey", MatchType: apiserver.NUMGE, Value: "123"},
+					},
+					Operation: apiserver.OperationDELETE,
+					Targets: []apiserver.Target{{
+						Keys: []string{"031a6c6fbbdf02ca351745fa86b9ba5a9452d785ac4f7fc2b7548ca2a46c4fcf4a"},
+						Role: apiserver.OTHERS,
+					}},
+				}},
+			}
+
+			setAndCheckEACL(ctx, t, clientPool, req, httpClient, cnrID, signedToken)
+		})
+
+		t.Run("INVALID", func(t *testing.T) {
+			req := apiserver.Eacl{
+				Records: []apiserver.Record{{
+					Action: apiserver.DENY,
+					Filters: []apiserver.Filter{
+						{HeaderType: "OBJECT", Key: "MyKey", MatchType: "INVALID", Value: "123"},
+					},
+					Operation: apiserver.OperationDELETE,
+					Targets: []apiserver.Target{{
+						Keys: []string{"031a6c6fbbdf02ca351745fa86b9ba5a9452d785ac4f7fc2b7548ca2a46c4fcf4a"},
+						Role: apiserver.KEYS,
+					}},
+				}},
+			}
+
+			setAndCheckEACLError(ctx, t, http.StatusBadRequest, "unsupported match type", req, httpClient, cnrID, signedToken)
+		})
+
+		t.Run("Empty key", func(t *testing.T) {
+			req := apiserver.Eacl{
+				Records: []apiserver.Record{{
+					Action: apiserver.DENY,
+					Filters: []apiserver.Filter{
+						{HeaderType: "OBJECT", Key: "", MatchType: apiserver.NUMGE, Value: "123"},
+					},
+					Operation: apiserver.OperationDELETE,
+					Targets: []apiserver.Target{{
+						Keys: []string{"031a6c6fbbdf02ca351745fa86b9ba5a9452d785ac4f7fc2b7548ca2a46c4fcf4a"},
+						Role: apiserver.KEYS,
+					}},
+				}},
+			}
+
+			setAndCheckEACLError(ctx, t, http.StatusBadRequest, "invalid filter: empty key", req, httpClient, cnrID, signedToken)
+		})
+
+		t.Run("Invalid number", func(t *testing.T) {
+			req := apiserver.Eacl{
+				Records: []apiserver.Record{{
+					Action: apiserver.DENY,
+					Filters: []apiserver.Filter{
+						{HeaderType: "OBJECT", Key: "MyKey", MatchType: apiserver.NUMGE, Value: "123a"},
+					},
+					Operation: apiserver.OperationDELETE,
+					Targets: []apiserver.Target{{
+						Keys: []string{"031a6c6fbbdf02ca351745fa86b9ba5a9452d785ac4f7fc2b7548ca2a46c4fcf4a"},
+						Role: apiserver.KEYS,
+					}},
+				}},
+			}
+
+			setAndCheckEACLError(ctx, t, http.StatusBadRequest, "is not a valid numeric value", req, httpClient, cnrID, signedToken)
+		})
+	})
+}
+
+func setAndCheckEACLError(ctx context.Context, t *testing.T, statusCode int, errorMessage string, req apiserver.Eacl, httpClient *http.Client, cnrID cid.ID, signedToken session.Token) {
+	body, err := json.Marshal(&req)
+	require.NoError(t, err)
+
+	resp := &apiserver.SuccessResponse{}
+	pl := doSetEACLRequestSessionV2(ctx, t, httpClient, cnrID, signedToken, body, statusCode, resp)
+	if errorMessage != "" {
+		require.Contains(t, pl.Message, errorMessage)
+	}
+}
+
+func setAndCheckEACL(ctx context.Context, t *testing.T, clientPool *pool.Pool, req apiserver.Eacl, httpClient *http.Client, cnrID cid.ID, signedToken session.Token) {
 	invalidBody, err := json.Marshal(&req)
 	require.NoError(t, err)
 
@@ -1613,13 +1819,19 @@ func doSetEACLRequest(ctx context.Context, t *testing.T, httpClient *http.Client
 	doRequest(t, httpClient, request, status, model)
 }
 
-func doSetEACLRequestSessionV2(ctx context.Context, t *testing.T, httpClient *http.Client, cnrID cid.ID, signedToken session.Token, body []byte, status int, model any) {
+func doSetEACLRequestSessionV2(ctx context.Context, t *testing.T, httpClient *http.Client, cnrID cid.ID, signedToken session.Token, body []byte, status int, model any) errorResponse {
 	request, err := http.NewRequest(http.MethodPut, testHost+"/v1/containers/"+cnrID.EncodeToString()+"/eacl", bytes.NewReader(body))
 	require.NoError(t, err)
 	request = request.WithContext(ctx)
 	prepareSessionV2Headers(request.Header, signedToken)
 
-	doRequest(t, httpClient, request, status, model)
+	_, payload := doRequest(t, httpClient, request, status, model)
+
+	var er errorResponse
+	err = json.Unmarshal(payload, &er)
+	require.NoError(t, err)
+
+	return er
 }
 
 func restContainerEACLGet(ctx context.Context, t *testing.T, p *pool.Pool, cnrID cid.ID) {
