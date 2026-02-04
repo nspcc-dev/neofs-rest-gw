@@ -20,13 +20,14 @@ func TestSign(t *testing.T) {
 	require.NoError(t, err)
 
 	pubKeyHex := hex.EncodeToString(key.PublicKey().Bytes())
+	oth := apiserver.OTHERS
 
 	records := []apiserver.Record{{
 		Operation: apiserver.PUT,
 		Action:    apiserver.ALLOW,
 		Filters:   []apiserver.Filter{},
 		Targets: []apiserver.Target{{
-			Role: apiserver.OTHERS,
+			Role: &oth,
 			Keys: []string{},
 		}},
 	}}

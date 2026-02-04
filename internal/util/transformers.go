@@ -11,6 +11,7 @@ import (
 	apistatus "github.com/nspcc-dev/neofs-sdk-go/client/status"
 	"github.com/nspcc-dev/neofs-sdk-go/eacl"
 	"github.com/nspcc-dev/neofs-sdk-go/object"
+	"github.com/nspcc-dev/neofs-sdk-go/user"
 )
 
 var (
@@ -301,15 +302,24 @@ func FromNativeRecord(r eacl.Record) (apiserver.Record, error) {
 func ToNativeTarget(t apiserver.Target) (*eacl.Target, error) {
 	var target eacl.Target
 
-	if len(t.Keys) > 0 && t.Role != apiserver.KEYS {
-		return nil, fmt.Errorf("you cannot set binary keys with role other than '%s'", apiserver.KEYS)
+	if len(t.Accounts) > 0 {
+		var accounts = make([]user.ID, 0, len(t.Accounts))
+		for _, acc := range t.Accounts {
+			u, err := user.DecodeString(acc)
+			if err != nil {
+				return nil, fmt.Errorf("%s is invalid account: %w", acc, err)
+			}
+
+			accounts = append(accounts, u)
+		}
+
+		target = eacl.NewTargetByAccounts(accounts)
+		return &target, nil
 	}
 
-	role, err := ToNativeRole(t.Role)
-	if err != nil {
-		return nil, err
+	if len(t.Keys) > 0 && *t.Role != apiserver.KEYS {
+		return nil, fmt.Errorf("you cannot set binary keys with role other than '%s'", apiserver.KEYS)
 	}
-	target.SetRole(role)
 
 	keys := make([][]byte, len(t.Keys))
 	for i, key := range t.Keys {
@@ -319,19 +329,32 @@ func ToNativeTarget(t apiserver.Target) (*eacl.Target, error) {
 		}
 		keys[i] = binaryKey
 	}
-	target.SetRawSubjects(keys)
+
+	if len(keys) > 0 {
+		target.SetRawSubjects(keys)
+		return &target, nil
+	}
+
+	if t.Role != nil {
+		role, err := ToNativeRole(*t.Role)
+		if err != nil {
+			return nil, err
+		}
+		target.SetRole(role)
+	}
 
 	return &target, nil
 }
 
 // FromNativeTarget converts [eacl.Target] to appropriate [apiserver.Target].
 func FromNativeTarget(t eacl.Target) (apiserver.Target, error) {
-	var err error
 	var target apiserver.Target
+	if len(t.Accounts()) > 0 {
+		for _, acc := range t.Accounts() {
+			target.Accounts = append(target.Accounts, acc.EncodeToString())
+		}
 
-	target.Role, err = FromNativeRole(t.Role())
-	if err != nil {
-		return target, err
+		return target, nil
 	}
 
 	subjs := t.RawSubjects()
@@ -339,6 +362,17 @@ func FromNativeTarget(t eacl.Target) (apiserver.Target, error) {
 	for i := range subjs {
 		target.Keys[i] = hex.EncodeToString(subjs[i])
 	}
+
+	if len(target.Keys) > 0 {
+		return target, nil
+	}
+
+	role, err := FromNativeRole(t.Role())
+	if err != nil {
+		return target, err
+	}
+
+	target.Role = &role
 
 	return target, nil
 }
