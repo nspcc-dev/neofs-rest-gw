@@ -1487,6 +1487,11 @@ components:
       enum:
         - STRING_EQUAL
         - STRING_NOT_EQUAL
+        - NOT_PRESENT
+        - NUM_GT
+        - NUM_GE
+        - NUM_LT
+        - NUM_LE
     Target:
       required:
         - keys
