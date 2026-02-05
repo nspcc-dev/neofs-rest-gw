@@ -14,10 +14,12 @@ import (
 	"github.com/nspcc-dev/neofs-rest-gw/internal/cache"
 	"github.com/nspcc-dev/neofs-rest-gw/internal/util"
 	"github.com/nspcc-dev/neofs-rest-gw/metrics"
+	"github.com/nspcc-dev/neofs-sdk-go/bearer"
 	cid "github.com/nspcc-dev/neofs-sdk-go/container/id"
 	"github.com/nspcc-dev/neofs-sdk-go/netmap"
 	"github.com/nspcc-dev/neofs-sdk-go/pool"
 	"github.com/nspcc-dev/neofs-sdk-go/session"
+	sessionv2 "github.com/nspcc-dev/neofs-sdk-go/session/v2"
 	"github.com/nspcc-dev/neofs-sdk-go/user"
 	"github.com/nspcc-dev/neofs-sdk-go/waiter"
 	"go.uber.org/zap"
@@ -68,7 +70,7 @@ const (
 	authorizationHeader            = "Authorization"
 	locationHeader                 = "Location"
 
-	xSessionTokenV2 = "X-Session-Token"
+	neofsBearerToken = "NeoFS-Bearer-Token"
 )
 
 //go:generate go run github.com/deepmap/oapi-codegen/cmd/oapi-codegen --config=server.cfg.yaml ../spec/rest.yaml
@@ -99,7 +101,7 @@ func NewAPI(prm *PrmAPI) (*RestAPI, error) {
 	}, nil
 }
 
-func getPrincipalFromHeader(ctx echo.Context) (string, error) {
+func getAuthorizationHeaderValue(ctx echo.Context) (string, error) {
 	headerValue := ctx.Request().Header.Get(authorizationHeader)
 	if headerValue == "" {
 		// just not exists
@@ -117,7 +119,7 @@ func getPrincipalFromHeader(ctx echo.Context) (string, error) {
 	return headerValue, nil
 }
 
-func getPrincipalFromCookie(ctx echo.Context) (string, error) {
+func getNeoFSBearerFromCookie(ctx echo.Context) (string, error) {
 	for _, cookie := range ctx.Request().Cookies() {
 		if cookie.Name == bearerCookieName {
 			if len(cookie.Value) == 0 {
@@ -132,16 +134,24 @@ func getPrincipalFromCookie(ctx echo.Context) (string, error) {
 }
 
 func getPrincipal(ctx echo.Context) (string, error) {
-	principal, err := getPrincipalFromHeader(ctx)
+	headerValue, err := getAuthorizationHeaderValue(ctx)
 	if err != nil {
 		return "", err
 	}
 
-	if principal != "" {
+	if headerValue != "" {
+		return headerValue, nil
+	}
+
+	return getNeoFSBearerFromCookie(ctx)
+}
+
+func getNeoFSBearerToken(ctx echo.Context) (string, error) {
+	if principal := ctx.Request().Header.Get(neofsBearerToken); principal != "" {
 		return principal, nil
 	}
 
-	return getPrincipalFromCookie(ctx)
+	return getNeoFSBearerFromCookie(ctx)
 }
 
 func (a *RestAPI) logAndGetErrorResponse(msg string, err error, log *zap.Logger) *apiserver.ErrorResponse {
@@ -201,4 +211,107 @@ func (a *RestAPI) StopServices() {
 // LocationHeader generates Location header for container creation request.
 func LocationHeader(containerID cid.ID) string {
 	return fmt.Sprintf("/v1/containers/%s", containerID.EncodeToString())
+}
+
+func getBearerAndSession(ctx echo.Context, signature *apiserver.SignatureParam, key *apiserver.SignatureKeyParam, walletConnect bool) (*bearer.Token, *sessionv2.Token, error) {
+	headerValue, err := getAuthorizationHeaderValue(ctx)
+	if err != nil {
+		// Authorization header has invalid format or empty.
+		return nil, nil, err
+	}
+
+	// Try to form NeoFS bearer.
+	btoken, err := assembleBearerToken(headerValue, signature, key, walletConnect)
+	if err == nil {
+		// It is an "old call" with bearer in Authorization header.
+		if btoken != nil {
+			return btoken, nil, nil
+		}
+	}
+
+	var sessionTokenV2 *sessionv2.Token
+	if headerValue != "" {
+		sessionTokenV2, err = getSessionTokenV2(headerValue)
+		if err != nil {
+			return nil, nil, fmt.Errorf("session v2 is invalid: %w", err)
+		}
+	}
+
+	btokenStr, err := getNeoFSBearerToken(ctx)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	btoken, err = assembleBearerToken(btokenStr, signature, key, walletConnect)
+	if err != nil {
+		// btokenStr was not empty, but something wrong with bearer.
+		return nil, nil, err
+	}
+
+	return btoken, sessionTokenV2, nil
+}
+
+func getSessionTokens(ctx echo.Context, signature *apiserver.SignatureParam, key *apiserver.SignatureKeyParam, isWalletConnect bool, v1Verb session.ContainerVerb, cnrID cid.ID) (*session.Container, *sessionv2.Token, error) {
+	v, err := getNeoFSBearerFromCookie(ctx)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	if v == "" {
+		return sessionTokensFromAuthHeader(ctx, signature, key, isWalletConnect, v1Verb, cnrID)
+	}
+
+	st, err := formSessionTokenFromHeaders(v, signature, key, v1Verb)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	sessionTokenV1, err := prepareSessionToken(st, isWalletConnect)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return sessionTokenV1, nil, err
+}
+
+func sessionTokensFromAuthHeader(ctx echo.Context, signature *apiserver.SignatureParam, key *apiserver.SignatureKeyParam, isWalletConnect bool, v1Verb session.ContainerVerb, cnrID cid.ID) (*session.Container, *sessionv2.Token, error) {
+	headerValue, err := getAuthorizationHeaderValue(ctx)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	if headerValue == "" {
+		return nil, nil, errors.New("empty auth header")
+	}
+
+	st, err := formSessionTokenFromHeaders(headerValue, signature, key, v1Verb)
+	if err == nil {
+		sessionTokenV1, err := prepareSessionToken(st, isWalletConnect)
+		if err == nil {
+			return sessionTokenV1, nil, nil
+		}
+	}
+
+	sessionTokenV2, err := getSessionTokenV2(headerValue)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	var verb2 sessionv2.Verb
+	switch v1Verb {
+	case session.VerbContainerDelete:
+		verb2 = sessionv2.VerbContainerDelete
+	case session.VerbContainerPut:
+		verb2 = sessionv2.VerbContainerPut
+	case session.VerbContainerSetEACL:
+		verb2 = sessionv2.VerbContainerSetEACL
+	default:
+		return nil, nil, fmt.Errorf("invalid verb: %d", v1Verb)
+	}
+
+	if err = prepareSessionTokenV2(sessionTokenV2, cnrID, verb2); err != nil {
+		return nil, nil, err
+	}
+
+	return nil, sessionTokenV2, nil
 }

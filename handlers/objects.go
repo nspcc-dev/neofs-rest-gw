@@ -85,25 +85,15 @@ func (a *RestAPI) DeleteObject(ctx echo.Context, containerID apiserver.Container
 		return ctx.JSON(http.StatusBadRequest, resp)
 	}
 
-	principal, err := getPrincipal(ctx)
-	if err != nil {
-		return ctx.JSON(http.StatusBadRequest, util.NewErrorResponse(err))
-	}
-
 	var walletConnect apiserver.SignatureScheme
 	if params.WalletConnect != nil {
 		walletConnect = *params.WalletConnect
 	}
 
-	btoken, err := getBearerToken(principal, params.XBearerSignature, params.XBearerSignatureKey, walletConnect)
+	btoken, sessionTokenV2, err := getBearerAndSession(ctx, params.XBearerSignature, params.XBearerSignatureKey, walletConnect)
 	if err != nil {
-		resp := a.logAndGetErrorResponse("get bearer token", err, log)
+		resp := a.logAndGetErrorResponse("auth failed", err, log)
 		return ctx.JSON(http.StatusBadRequest, resp)
-	}
-
-	sessionTokenV2, err := getSessionTokenV2(params.XSessionToken)
-	if err != nil {
-		return ctx.JSON(http.StatusBadRequest, a.logAndGetErrorResponse("session token", err, log))
 	}
 
 	var prm client.PrmObjectDelete
@@ -142,25 +132,15 @@ func (a *RestAPI) SearchObjects(ctx echo.Context, containerID apiserver.Containe
 		return ctx.JSON(http.StatusBadRequest, resp)
 	}
 
-	principal, err := getPrincipal(ctx)
-	if err != nil {
-		return ctx.JSON(http.StatusBadRequest, util.NewErrorResponse(err))
-	}
-
 	var walletConnect apiserver.SignatureScheme
 	if params.WalletConnect != nil {
 		walletConnect = *params.WalletConnect
 	}
 
-	btoken, err := getBearerToken(principal, params.XBearerSignature, params.XBearerSignatureKey, walletConnect)
+	btoken, sessionTokenV2, err := getBearerAndSession(ctx, params.XBearerSignature, params.XBearerSignatureKey, walletConnect)
 	if err != nil {
-		resp := a.logAndGetErrorResponse("get bearer token", err, log)
+		resp := a.logAndGetErrorResponse("auth failed", err, log)
 		return ctx.JSON(http.StatusBadRequest, resp)
-	}
-
-	sessionTokenV2, err := getSessionTokenV2(params.XSessionToken)
-	if err != nil {
-		return ctx.JSON(http.StatusBadRequest, a.logAndGetErrorResponse("session token", err, log))
 	}
 
 	var searchFilters apiserver.SearchFilters
@@ -274,25 +254,15 @@ func (a *RestAPI) V2SearchObjects(ctx echo.Context, containerID apiserver.Contai
 		return ctx.JSON(http.StatusBadRequest, resp)
 	}
 
-	principal, err := getPrincipal(ctx)
-	if err != nil {
-		return ctx.JSON(http.StatusBadRequest, util.NewErrorResponse(err))
-	}
-
 	var walletConnect apiserver.SignatureScheme
 	if params.WalletConnect != nil {
 		walletConnect = *params.WalletConnect
 	}
 
-	btoken, err := getBearerToken(principal, params.XBearerSignature, params.XBearerSignatureKey, walletConnect)
+	btoken, sessionTokenV2, err := getBearerAndSession(ctx, params.XBearerSignature, params.XBearerSignatureKey, walletConnect)
 	if err != nil {
-		resp := a.logAndGetErrorResponse("get bearer token", err, log)
+		resp := a.logAndGetErrorResponse("auth failed", err, log)
 		return ctx.JSON(http.StatusBadRequest, resp)
-	}
-
-	sessionTokenV2, err := getSessionTokenV2(params.XSessionToken)
-	if err != nil {
-		return ctx.JSON(http.StatusBadRequest, a.logAndGetErrorResponse("session token", err, log))
 	}
 
 	var searchFilters apiserver.SearchRequest
@@ -692,7 +662,7 @@ func parseAddress(containerID, objectID string) (oid.Address, error) {
 	return addr, nil
 }
 
-func getBearerToken(token string, signature, key *string, isWalletConnect bool) (*bearer.Token, error) {
+func assembleBearerToken(token string, signature, key *string, isWalletConnect bool) (*bearer.Token, error) {
 	if token == "" {
 		return nil, nil
 	}

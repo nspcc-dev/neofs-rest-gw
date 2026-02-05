@@ -451,12 +451,8 @@ func isDomainName(d string) error {
 	return nil
 }
 
-func getSessionTokenV2(v *string) (*sessionv2.Token, error) {
-	if v == nil || *v == "" {
-		return nil, nil
-	}
-
-	tokenBts, err := base64.StdEncoding.DecodeString(*v)
+func getSessionTokenV2(v string) (*sessionv2.Token, error) {
+	tokenBts, err := base64.StdEncoding.DecodeString(v)
 	if err != nil {
 		return nil, fmt.Errorf("base64 encoding: %w", err)
 	}

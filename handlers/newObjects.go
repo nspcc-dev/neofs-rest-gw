@@ -35,7 +35,6 @@ func (a *RestAPI) NewUploadContainerObject(ctx echo.Context, containerID apiserv
 	var (
 		err           error
 		addr          oid.Address
-		btoken        *bearer.Token
 		walletConnect apiserver.SignatureScheme
 		log           = a.log.With(zap.String(handlerFieldName, "NewUploadContainerObject"), zap.String("containerID", containerID))
 	)
@@ -50,20 +49,10 @@ func (a *RestAPI) NewUploadContainerObject(ctx echo.Context, containerID apiserv
 		return ctx.JSON(http.StatusBadRequest, resp)
 	}
 
-	principal, err := getPrincipal(ctx)
+	btoken, sessionTokenV2, err := getBearerAndSession(ctx, params.XBearerSignature, params.XBearerSignatureKey, walletConnect)
 	if err != nil {
-		return ctx.JSON(http.StatusBadRequest, util.NewErrorResponse(err))
-	}
-
-	btoken, err = getBearerToken(principal, params.XBearerSignature, params.XBearerSignatureKey, walletConnect)
-	if err != nil {
-		resp := a.logAndGetErrorResponse("invalid bearer token", err, log)
+		resp := a.logAndGetErrorResponse("auth failed", err, log)
 		return ctx.JSON(http.StatusBadRequest, resp)
-	}
-
-	sessionTokenV2, err := getSessionTokenV2(params.XSessionToken)
-	if err != nil {
-		return ctx.JSON(http.StatusBadRequest, a.logAndGetErrorResponse("session token", err, log))
 	}
 
 	filtered, err := parseAndFilterAttributes(log, params.XAttributes)
@@ -168,11 +157,6 @@ func (a *RestAPI) NewGetContainerObject(ctx echo.Context, containerID apiserver.
 		zap.String("objectID", objectID),
 	)
 
-	principal, err := getPrincipal(ctx)
-	if err != nil {
-		return ctx.JSON(http.StatusBadRequest, util.NewErrorResponse(err))
-	}
-
 	addr, err := parseAddress(containerID, objectID)
 	if err != nil {
 		resp := a.logAndGetErrorResponse("invalid address", err, log)
@@ -184,15 +168,10 @@ func (a *RestAPI) NewGetContainerObject(ctx echo.Context, containerID apiserver.
 		walletConnect = *params.WalletConnect
 	}
 
-	btoken, err := getBearerToken(principal, params.XBearerSignature, params.XBearerSignatureKey, walletConnect)
+	btoken, sessionTokenV2, err := getBearerAndSession(ctx, params.XBearerSignature, params.XBearerSignatureKey, walletConnect)
 	if err != nil {
-		resp := a.logAndGetErrorResponse("get bearer token", err, log)
+		resp := a.logAndGetErrorResponse("auth failed", err, log)
 		return ctx.JSON(http.StatusBadRequest, resp)
-	}
-
-	sessionTokenV2, err := getSessionTokenV2(params.XSessionToken)
-	if err != nil {
-		return ctx.JSON(http.StatusBadRequest, a.logAndGetErrorResponse("session token", err, log))
 	}
 
 	if params.Range != nil {
@@ -213,11 +192,6 @@ func (a *RestAPI) NewHeadContainerObject(ctx echo.Context, containerID apiserver
 		zap.String("objectID", objectID),
 	)
 
-	principal, err := getPrincipal(ctx)
-	if err != nil {
-		return ctx.JSON(http.StatusBadRequest, util.NewErrorResponse(err))
-	}
-
 	addr, err := parseAddress(containerID, objectID)
 	if err != nil {
 		resp := a.logAndGetErrorResponse("invalid address", err, log)
@@ -231,15 +205,10 @@ func (a *RestAPI) NewHeadContainerObject(ctx echo.Context, containerID apiserver
 		walletConnect = *params.WalletConnect
 	}
 
-	btoken, err := getBearerToken(principal, params.XBearerSignature, params.XBearerSignatureKey, walletConnect)
+	btoken, sessionTokenV2, err := getBearerAndSession(ctx, params.XBearerSignature, params.XBearerSignatureKey, walletConnect)
 	if err != nil {
-		resp := a.logAndGetErrorResponse("get bearer token", err, log)
+		resp := a.logAndGetErrorResponse("auth failed", err, log)
 		return ctx.JSON(http.StatusBadRequest, resp)
-	}
-
-	sessionTokenV2, err := getSessionTokenV2(params.XSessionToken)
-	if err != nil {
-		return ctx.JSON(http.StatusBadRequest, a.logAndGetErrorResponse("session token", err, log))
 	}
 
 	return a.headByAddress(ctx, addr, params.Download, btoken, sessionTokenV2, true, log)
@@ -258,13 +227,8 @@ func (a *RestAPI) NewGetByAttribute(ctx echo.Context, containerID apiserver.Cont
 		zap.String("attrVal", attrVal),
 	)
 
-	principal, err := getPrincipal(ctx)
-	if err != nil {
-		return ctx.JSON(http.StatusBadRequest, util.NewErrorResponse(err))
-	}
-
 	var cnrID cid.ID
-	if err = cnrID.DecodeString(containerID); err != nil {
+	if err := cnrID.DecodeString(containerID); err != nil {
 		resp := a.logAndGetErrorResponse("invalid container id", err, log)
 		return ctx.JSON(http.StatusBadRequest, resp)
 	}
@@ -274,15 +238,10 @@ func (a *RestAPI) NewGetByAttribute(ctx echo.Context, containerID apiserver.Cont
 		walletConnect = *params.WalletConnect
 	}
 
-	btoken, err := getBearerToken(principal, params.XBearerSignature, params.XBearerSignatureKey, walletConnect)
+	btoken, sessionTokenV2, err := getBearerAndSession(ctx, params.XBearerSignature, params.XBearerSignatureKey, walletConnect)
 	if err != nil {
-		resp := a.logAndGetErrorResponse("get bearer token", err, log)
+		resp := a.logAndGetErrorResponse("auth failed", err, log)
 		return ctx.JSON(http.StatusBadRequest, resp)
-	}
-
-	sessionTokenV2, err := getSessionTokenV2(params.XSessionToken)
-	if err != nil {
-		return ctx.JSON(http.StatusBadRequest, a.logAndGetErrorResponse("session token", err, log))
 	}
 
 	objectID, err := a.search(ctx.Request().Context(), btoken, sessionTokenV2, cnrID, attrKey, attrVal, object.MatchStringEqual)
@@ -318,13 +277,8 @@ func (a *RestAPI) NewHeadByAttribute(ctx echo.Context, containerID apiserver.Con
 		zap.String("attrVal", attrVal),
 	)
 
-	principal, err := getPrincipal(ctx)
-	if err != nil {
-		return ctx.JSON(http.StatusBadRequest, util.NewErrorResponse(err))
-	}
-
 	var cnrID cid.ID
-	if err = cnrID.DecodeString(containerID); err != nil {
+	if err := cnrID.DecodeString(containerID); err != nil {
 		resp := a.logAndGetErrorResponse("invalid container id", err, log)
 		return ctx.JSON(http.StatusBadRequest, resp)
 	}
@@ -334,15 +288,10 @@ func (a *RestAPI) NewHeadByAttribute(ctx echo.Context, containerID apiserver.Con
 		walletConnect = *params.WalletConnect
 	}
 
-	btoken, err := getBearerToken(principal, params.XBearerSignature, params.XBearerSignatureKey, walletConnect)
+	btoken, sessionTokenV2, err := getBearerAndSession(ctx, params.XBearerSignature, params.XBearerSignatureKey, walletConnect)
 	if err != nil {
-		resp := a.logAndGetErrorResponse("get bearer token", err, log)
+		resp := a.logAndGetErrorResponse("auth failed", err, log)
 		return ctx.JSON(http.StatusBadRequest, resp)
-	}
-
-	sessionTokenV2, err := getSessionTokenV2(params.XSessionToken)
-	if err != nil {
-		return ctx.JSON(http.StatusBadRequest, a.logAndGetErrorResponse("session token", err, log))
 	}
 
 	objectID, err := a.search(ctx.Request().Context(), btoken, sessionTokenV2, cnrID, attrKey, attrVal, object.MatchStringEqual)

@@ -67,7 +67,7 @@ const (
 	XBearerForAllUsers = "X-Bearer-For-All-Users"
 	xNonce             = "nonce"
 
-	xSessionTokenV2 = "X-Session-Token"
+	neofsBearerToken = "NeoFS-Bearer-Token"
 
 	// tests configuration.
 	useWalletConnect    = true
@@ -180,7 +180,10 @@ func runTests(ctx context.Context, t *testing.T, key *keys.PrivateKey, node stri
 
 	t.Run("rest new upload object", func(t *testing.T) { restNewObjectUpload(ctx, t, clientPool, cnrID, signer) })
 	t.Run("rest new upload object session v2", func(t *testing.T) {
-		restNewObjectUploadSessionTokenV2(ctx, t, clientPool, cnrID, sessionV2Signer)
+		restNewObjectUploadSessionTokenV2(ctx, t, clientPool, cnrID, sessionV2Signer, false)
+	})
+	t.Run("rest new upload object session v2 and bearer", func(t *testing.T) {
+		restNewObjectUploadSessionTokenV2(ctx, t, clientPool, cnrID, sessionV2Signer, true)
 	})
 	t.Run("rest new upload object with bearer in cookie", func(t *testing.T) { restNewObjectUploadCookie(ctx, t, clientPool, cnrID, signer) })
 	t.Run("rest new upload object with wallet connect", func(t *testing.T) { restNewObjectUploadWC(ctx, t, clientPool, cnrID, signer) })
@@ -2328,9 +2331,16 @@ func prepareCommonHeaders(header http.Header, bearerToken *handlers.BearerToken)
 	header.Add(XBearerSignatureKey, bearerToken.Key)
 }
 
+func prepareCommonHeadersSeparateBearerHeader(header http.Header, bearerToken *handlers.BearerToken) {
+	header.Add("Content-Type", "application/json")
+	header.Add(XBearerSignature, bearerToken.Signature)
+	header.Add(neofsBearerToken, bearerToken.Token)
+	header.Add(XBearerSignatureKey, bearerToken.Key)
+}
+
 func prepareSessionV2Headers(header http.Header, signedToken session.Token) {
 	header.Add("Content-Type", "application/json")
-	header.Add(xSessionTokenV2, base64.StdEncoding.EncodeToString(signedToken.Marshal()))
+	header.Add("Authorization", "Bearer "+base64.StdEncoding.EncodeToString(signedToken.Marshal()))
 }
 
 func createContainer(ctx context.Context, t *testing.T, clientPool *pool.Pool, owner user.ID, name string, signer user.Signer) cid.ID {
@@ -2508,7 +2518,7 @@ func restNewObjectUploadInt(ctx context.Context, t *testing.T, clientPool *pool.
 	}
 }
 
-func restNewObjectUploadSessionTokenV2(ctx context.Context, t *testing.T, clientPool *pool.Pool, cnrID cid.ID, signer user.Signer) {
+func restNewObjectUploadSessionTokenV2(ctx context.Context, t *testing.T, clientPool *pool.Pool, cnrID cid.ID, signer user.Signer, useBearer bool) {
 	var (
 		ownerID    = signer.UserID()
 		gateUserID = gateMetadataID(ctx, t)
@@ -2533,11 +2543,28 @@ func restNewObjectUploadSessionTokenV2(ctx context.Context, t *testing.T, client
 	attributesJSON, err := json.Marshal(attributes)
 	require.NoError(t, err)
 
+	query := make(url.Values)
+	query.Add(walletConnectQuery, strconv.FormatBool(useWalletConnect))
+
 	body := bytes.NewBufferString(content)
-	request, err := http.NewRequest(http.MethodPost, testHost+"/v1/objects/"+cnrID.String(), body)
+	request, err := http.NewRequest(http.MethodPost, testHost+"/v1/objects/"+cnrID.String()+"?"+query.Encode(), body)
 	require.NoError(t, err)
 
-	request.Header.Add("X-Session-Token", base64.StdEncoding.EncodeToString(signedToken.Marshal()))
+	if useBearer {
+		bt := apiserver.Bearer{
+			Object: []apiserver.Record{
+				formAllowRecord(apiserver.OperationPUT),
+			},
+		}
+		bt.Object = append(bt.Object, getRestrictBearerRecords()...)
+
+		bearerTokens := makeAuthTokenRequest(ctx, t, []apiserver.Bearer{bt}, httpClient, true)
+		bearerToken := bearerTokens[0]
+
+		prepareCommonHeadersSeparateBearerHeader(request.Header, bearerToken)
+	}
+
+	request.Header.Add("Authorization", "Bearer "+base64.StdEncoding.EncodeToString(signedToken.Marshal()))
 	request.Header.Set("Content-Type", "text/plain")
 	request.Header.Set("X-Attributes", string(attributesJSON))
 

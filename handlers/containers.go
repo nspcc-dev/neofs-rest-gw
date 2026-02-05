@@ -54,41 +54,16 @@ func (a *RestAPI) PutContainer(ctx echo.Context, params apiserver.PutContainerPa
 		return ctx.JSON(http.StatusBadRequest, a.logAndGetErrorResponse("bind", err, log))
 	}
 
-	principal, err := getPrincipal(ctx)
-	if err != nil {
-		return ctx.JSON(http.StatusBadRequest, util.NewErrorResponse(err))
+	var isWalletConnect bool
+	if params.WalletConnect != nil {
+		isWalletConnect = *params.WalletConnect
+		log = log.With(zap.Bool("walletConnect", isWalletConnect))
 	}
 
-	var st *SessionToken
-	if principal != "" {
-		st, err = formSessionTokenFromHeaders(principal, params.XBearerSignature, params.XBearerSignatureKey, session.VerbContainerPut)
-		if err != nil {
-			resp := a.logAndGetErrorResponse("invalid session token headers", err, log)
-			return ctx.JSON(http.StatusBadRequest, resp)
-		}
-	}
-
-	var (
-		sessionTokenV1 *session.Container
-		sessionTokenV2 *sessionv2.Token
-	)
-
-	sessionTokenV2, err = prepareSessionTokenV2(ctx.Request().Header.Get(xSessionTokenV2), cid.ID{}, sessionv2.VerbContainerPut)
+	sessionTokenV1, sessionTokenV2, err := getSessionTokens(ctx, params.XBearerSignature, params.XBearerSignatureKey, isWalletConnect, session.VerbContainerPut, cid.ID{})
 	if err != nil {
-		if st == nil {
-			return ctx.JSON(http.StatusBadRequest, a.logAndGetErrorResponse("invalid session token", err, log))
-		}
-
-		var isWalletConnect bool
-		if params.WalletConnect != nil {
-			isWalletConnect = *params.WalletConnect
-			log = log.With(zap.Bool("walletConnect", isWalletConnect))
-		}
-
-		sessionTokenV1, err = prepareSessionToken(st, isWalletConnect)
-		if err != nil {
-			return ctx.JSON(http.StatusBadRequest, a.logAndGetErrorResponse("invalid session token", err, log))
-		}
+		resp := a.logAndGetErrorResponse("invalid auth", err, log)
+		return ctx.JSON(http.StatusBadRequest, resp)
 	}
 
 	wCtx, cancel := context.WithTimeout(ctx.Request().Context(), a.waiterOperationTimeout)
@@ -122,41 +97,16 @@ func (a *RestAPI) PostContainer(ctx echo.Context, params apiserver.PostContainer
 		return ctx.JSON(http.StatusBadRequest, a.logAndGetErrorResponse("bind", err, log))
 	}
 
-	principal, err := getPrincipal(ctx)
-	if err != nil {
-		return ctx.JSON(http.StatusBadRequest, util.NewErrorResponse(err))
+	var isWalletConnect bool
+	if params.WalletConnect != nil {
+		isWalletConnect = *params.WalletConnect
+		log = log.With(zap.Bool("walletConnect", isWalletConnect))
 	}
 
-	var st *SessionToken
-	if principal != "" {
-		st, err = formSessionTokenFromHeaders(principal, params.XBearerSignature, params.XBearerSignatureKey, session.VerbContainerPut)
-		if err != nil {
-			resp := a.logAndGetErrorResponse("invalid session token headers", err, log)
-			return ctx.JSON(http.StatusBadRequest, resp)
-		}
-	}
-
-	var (
-		sessionTokenV1 *session.Container
-		sessionTokenV2 *sessionv2.Token
-	)
-
-	sessionTokenV2, err = prepareSessionTokenV2(ctx.Request().Header.Get(xSessionTokenV2), cid.ID{}, sessionv2.VerbContainerPut)
+	sessionTokenV1, sessionTokenV2, err := getSessionTokens(ctx, params.XBearerSignature, params.XBearerSignatureKey, isWalletConnect, session.VerbContainerPut, cid.ID{})
 	if err != nil {
-		if st == nil {
-			return ctx.JSON(http.StatusBadRequest, a.logAndGetErrorResponse("invalid session token", err, log))
-		}
-
-		var isWalletConnect bool
-		if params.WalletConnect != nil {
-			isWalletConnect = *params.WalletConnect
-			log = log.With(zap.Bool("walletConnect", isWalletConnect))
-		}
-
-		sessionTokenV1, err = prepareSessionToken(st, isWalletConnect)
-		if err != nil {
-			return ctx.JSON(http.StatusBadRequest, a.logAndGetErrorResponse("invalid session token", err, log))
-		}
+		resp := a.logAndGetErrorResponse("invalid auth", err, log)
+		return ctx.JSON(http.StatusBadRequest, resp)
 	}
 
 	wCtx, cancel := context.WithTimeout(ctx.Request().Context(), a.waiterOperationTimeout)
@@ -231,44 +181,23 @@ func (a *RestAPI) PutContainerEACL(ctx echo.Context, containerID apiserver.Conta
 		return ctx.JSON(http.StatusConflict, resp)
 	}
 
-	principal, err := getPrincipal(ctx)
-	if err != nil {
-		return ctx.JSON(http.StatusBadRequest, util.NewErrorResponse(err))
-	}
-
-	var st *SessionToken
-	if principal != "" {
-		st, err = formSessionTokenFromHeaders(principal, params.XBearerSignature, params.XBearerSignatureKey, session.VerbContainerSetEACL)
-		if err != nil {
-			resp := a.logAndGetErrorResponse("invalid session token headers", err, log)
-			return ctx.JSON(http.StatusBadRequest, resp)
-		}
-	}
-
-	var (
-		isWalletConnect bool
-		sessionTokenV1  *session.Container
-		sessionTokenV2  *sessionv2.Token
-		prm             client.PrmContainerSetEACL
-	)
+	var isWalletConnect bool
+	var prm client.PrmContainerSetEACL
 	if params.WalletConnect != nil {
 		isWalletConnect = *params.WalletConnect
+		log = log.With(zap.Bool("walletConnect", isWalletConnect))
 	}
 
-	sessionTokenV2, err = prepareSessionTokenV2(ctx.Request().Header.Get(xSessionTokenV2), cnrID, sessionv2.VerbContainerSetEACL)
+	sessionTokenV1, sessionTokenV2, err := getSessionTokens(ctx, params.XBearerSignature, params.XBearerSignatureKey, isWalletConnect, session.VerbContainerSetEACL, cnrID)
 	if err != nil {
-		if st == nil {
-			return ctx.JSON(http.StatusBadRequest, a.logAndGetErrorResponse("invalid session token", err, log))
-		}
+		resp := a.logAndGetErrorResponse("invalid auth", err, log)
+		return ctx.JSON(http.StatusBadRequest, resp)
+	}
 
-		sessionTokenV1, err = prepareSessionToken(st, isWalletConnect)
-		if err != nil {
-			resp := a.logAndGetErrorResponse("invalid session token", err, log)
-			return ctx.JSON(http.StatusBadRequest, resp)
-		}
-
+	if sessionTokenV1 != nil {
 		prm.WithinSession(*sessionTokenV1)
-	} else {
+	}
+	if sessionTokenV2 != nil {
 		prm.WithinSessionV2(*sessionTokenV2)
 	}
 
@@ -393,51 +322,28 @@ func (a *RestAPI) DeleteContainer(ctx echo.Context, containerID apiserver.Contai
 
 	log := a.log.With(zap.String(handlerFieldName, "DeleteContainer"), zap.String("containerID", containerID))
 
-	principal, err := getPrincipal(ctx)
-	if err != nil {
-		return ctx.JSON(http.StatusBadRequest, util.NewErrorResponse(err))
-	}
-
-	var st *SessionToken
-	if principal != "" {
-		st, err = formSessionTokenFromHeaders(principal, params.XBearerSignature, params.XBearerSignatureKey, session.VerbContainerDelete)
-		if err != nil {
-			resp := a.logAndGetErrorResponse("invalid session token headers", err, log)
-			return ctx.JSON(http.StatusBadRequest, resp)
-		}
-	}
-
 	cnrID, err := parseContainerID(containerID)
 	if err != nil {
 		resp := a.logAndGetErrorResponse("invalid container id", err, log)
 		return ctx.JSON(http.StatusBadRequest, resp)
 	}
+	var prm client.PrmContainerDelete
+	var isWalletConnect bool
+	if params.WalletConnect != nil {
+		isWalletConnect = *params.WalletConnect
+		log = log.With(zap.Bool("walletConnect", isWalletConnect))
+	}
 
-	var (
-		prm            client.PrmContainerDelete
-		sessionTokenV1 *session.Container
-		sessionTokenV2 *sessionv2.Token
-	)
-
-	sessionTokenV2, err = prepareSessionTokenV2(ctx.Request().Header.Get(xSessionTokenV2), cid.ID{}, sessionv2.VerbContainerDelete)
+	sessionTokenV1, sessionTokenV2, err := getSessionTokens(ctx, params.XBearerSignature, params.XBearerSignatureKey, isWalletConnect, session.VerbContainerDelete, cnrID)
 	if err != nil {
-		if st == nil {
-			return ctx.JSON(http.StatusBadRequest, a.logAndGetErrorResponse("invalid session token", err, log))
-		}
+		resp := a.logAndGetErrorResponse("invalid auth", err, log)
+		return ctx.JSON(http.StatusBadRequest, resp)
+	}
 
-		var isWalletConnect bool
-		if params.WalletConnect != nil {
-			isWalletConnect = *params.WalletConnect
-			log = log.With(zap.Bool("walletConnect", isWalletConnect))
-		}
-
-		sessionTokenV1, err = prepareSessionToken(st, isWalletConnect)
-		if err != nil {
-			return ctx.JSON(http.StatusBadRequest, a.logAndGetErrorResponse("invalid session token", err, log))
-		}
-
+	if sessionTokenV1 != nil {
 		prm.WithinSession(*sessionTokenV1)
-	} else {
+	}
+	if sessionTokenV2 != nil {
 		prm.WithinSessionV2(*sessionTokenV2)
 	}
 
@@ -676,32 +582,22 @@ func prepareSessionToken(st *SessionToken, isWalletConnect bool) (*session.Conta
 	return &stoken, err
 }
 
-func prepareSessionTokenV2(sessionToken string, cnrID cid.ID, verb sessionv2.Verb) (*sessionv2.Token, error) {
-	data, err := base64.StdEncoding.DecodeString(sessionToken)
-	if err != nil {
-		return nil, fmt.Errorf("can't unmarshal session token from base64: %w", err)
+func prepareSessionTokenV2(token *sessionv2.Token, cnrID cid.ID, verb sessionv2.Verb) error {
+	if token == nil {
+		return nil
 	}
 
-	var stoken sessionv2.Token
-	if err = stoken.Unmarshal(data); err != nil {
-		return nil, fmt.Errorf("can't unmarshal session token: %w", err)
+	if !token.VerifySignature() {
+		return errors.New("invalid signature")
 	}
-
-	if !stoken.VerifySignature() {
-		return nil, errors.New("invalid signature")
-	}
-
-	// if err = stoken.Validate(); err != nil {
-	// 	return nil, fmt.Errorf("invalid token: %w", err)
-	// }
 
 	if verb != sessionv2.VerbContainerPut {
-		if !stoken.AssertVerb(verb, cnrID) {
-			return nil, errors.New("wrong container session verb")
+		if !token.AssertVerb(verb, cnrID) {
+			return errors.New("wrong container session verb")
 		}
 	}
 
-	return &stoken, err
+	return nil
 }
 
 func sessionTokenDataAndSignature(st *SessionToken, isWalletConnect bool) ([]byte, neofscrypto.Signature, error) {
