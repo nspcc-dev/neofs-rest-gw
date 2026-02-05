@@ -1362,8 +1362,6 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/Record'
-        container:
-          $ref: '#/components/schemas/Rule'
     FormBearerRequest:
       type: object
       required:
@@ -1506,15 +1504,6 @@ components:
         - SYSTEM
         - OTHERS
         - KEYS
-    Rule:
-      type: object
-      properties:
-        containerId:
-          type: string
-      description: Container session token rule.
-      example:
-        verb: DELETE
-        containerId: 6jvKJCQr6e47Yx8SsbSN3fNgzroUJVkY66Q9wqxYcAjc
     TokenResponse:
       required:
         - token
