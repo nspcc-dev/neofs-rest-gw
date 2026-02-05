@@ -1,7 +1,9 @@
 package handlers
 
 import (
+	"bytes"
 	"context"
+	"crypto/sha256"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
@@ -457,9 +459,16 @@ func getSessionTokenV2(v string) (*sessionv2.Token, error) {
 		return nil, fmt.Errorf("base64 encoding: %w", err)
 	}
 
+	lock := tokenBts[:sessionLockSize]
+
 	var st sessionv2.Token
-	if err = st.Unmarshal(tokenBts); err != nil {
+	if err = st.Unmarshal(tokenBts[sessionLockSize:]); err != nil {
 		return nil, fmt.Errorf("token unmarshal: %w", err)
+	}
+
+	lockHash := sha256.Sum256(lock)
+	if !bytes.Equal(lockHash[:], st.AppData()) {
+		return nil, fmt.Errorf("lock mismatch: %w", err)
 	}
 
 	if !st.VerifySignature() {

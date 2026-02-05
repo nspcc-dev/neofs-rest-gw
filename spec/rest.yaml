@@ -1554,14 +1554,11 @@ components:
       example:
         - type: object
           token: ClYKBAgCEA0aCAgDEAEiAggDGggIARACIgIIAxoICAIQAiICCAMaCAgDEAIiAggDGggIBBACIgIIAxoICAUQAiICCAMaCAgGEAIiAggDGggIBxACIgIIAxIbChk182WEDFuAqq3nssrGOaH0NK0ZhzF8bu+YGgQIaBgE
-        - type: container
-          token: ChCpanIBJCpJuJz42KOmGMSnEhsKGTWquaX2Lq6GhhO4faOYkLD0f9WkXuYJlq4aBAhnGAMiIQJgFcIEghQB5lq3AJZOVswInwc1IGhlQ7NCUh4DFO3UATIECAEQAQ==
     TokenType:
       type: string
       description: Type of token.
       enum:
         - object
-        - container
     ContainerPostInfo:
       type: object
       properties:
@@ -2205,6 +2202,7 @@ components:
         - key
         - value
         - scheme
+        - lock
       properties:
         token:
           description: Base64 encoded unsigned session v2 token.
@@ -2221,6 +2219,9 @@ components:
         scheme:
           description: Use wallet connect signature scheme or native NeoFS signature.
           $ref: '#/components/schemas/SchemaType'
+        lock:
+          type: string
+          description: Session token lock data. It prevents unauthorized usage of session token.
     TokenContext:
       type: object
       properties:
@@ -2262,10 +2263,14 @@ components:
       type: object
       required:
         - token
+        - lock
       properties:
         token:
           type: string
           description: Base64 encoded unsigned token, what should be signed.
+        lock:
+          type: string
+          description: Session token lock data. It prevent unauthorized usage of session token.
     GatewayMetadataResponse:
       required:
         - address

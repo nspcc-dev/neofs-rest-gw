@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
@@ -72,6 +73,8 @@ const (
 	// tests configuration.
 	useWalletConnect    = true
 	useLocalEnvironment = false
+
+	sessionLockSize = 32
 )
 
 type (
@@ -1778,7 +1781,7 @@ func restContainerEACLPutSessionV2(ctx context.Context, t *testing.T, clientPool
 	})
 }
 
-func setAndCheckEACLError(ctx context.Context, t *testing.T, statusCode int, errorMessage string, req apiserver.Eacl, httpClient *http.Client, cnrID cid.ID, signedToken session.Token) {
+func setAndCheckEACLError(ctx context.Context, t *testing.T, statusCode int, errorMessage string, req apiserver.Eacl, httpClient *http.Client, cnrID cid.ID, signedToken string) {
 	body, err := json.Marshal(&req)
 	require.NoError(t, err)
 
@@ -1789,7 +1792,7 @@ func setAndCheckEACLError(ctx context.Context, t *testing.T, statusCode int, err
 	}
 }
 
-func setAndCheckEACL(ctx context.Context, t *testing.T, clientPool *pool.Pool, req apiserver.Eacl, httpClient *http.Client, cnrID cid.ID, signedToken session.Token) {
+func setAndCheckEACL(ctx context.Context, t *testing.T, clientPool *pool.Pool, req apiserver.Eacl, httpClient *http.Client, cnrID cid.ID, signedToken string) {
 	invalidBody, err := json.Marshal(&req)
 	require.NoError(t, err)
 
@@ -1822,7 +1825,7 @@ func doSetEACLRequest(ctx context.Context, t *testing.T, httpClient *http.Client
 	doRequest(t, httpClient, request, status, model)
 }
 
-func doSetEACLRequestSessionV2(ctx context.Context, t *testing.T, httpClient *http.Client, cnrID cid.ID, signedToken session.Token, body []byte, status int, model any) errorResponse {
+func doSetEACLRequestSessionV2(ctx context.Context, t *testing.T, httpClient *http.Client, cnrID cid.ID, signedToken string, body []byte, status int, model any) errorResponse {
 	request, err := http.NewRequest(http.MethodPut, testHost+"/v1/containers/"+cnrID.EncodeToString()+"/eacl", bytes.NewReader(body))
 	require.NoError(t, err)
 	request = request.WithContext(ctx)
@@ -2338,9 +2341,9 @@ func prepareCommonHeadersSeparateBearerHeader(header http.Header, bearerToken *h
 	header.Add(XBearerSignatureKey, bearerToken.Key)
 }
 
-func prepareSessionV2Headers(header http.Header, signedToken session.Token) {
+func prepareSessionV2Headers(header http.Header, signedToken string) {
 	header.Add("Content-Type", "application/json")
-	header.Add("Authorization", "Bearer "+base64.StdEncoding.EncodeToString(signedToken.Marshal()))
+	header.Add("Authorization", "Bearer "+signedToken)
 }
 
 func createContainer(ctx context.Context, t *testing.T, clientPool *pool.Pool, owner user.ID, name string, signer user.Signer) cid.ID {
@@ -2564,7 +2567,7 @@ func restNewObjectUploadSessionTokenV2(ctx context.Context, t *testing.T, client
 		prepareCommonHeadersSeparateBearerHeader(request.Header, bearerToken)
 	}
 
-	request.Header.Add("Authorization", "Bearer "+base64.StdEncoding.EncodeToString(signedToken.Marshal()))
+	request.Header.Add("Authorization", "Bearer "+signedToken)
 	request.Header.Set("Content-Type", "text/plain")
 	request.Header.Set("X-Attributes", string(attributesJSON))
 
@@ -3442,6 +3445,7 @@ func v2AuthSessionToken(ctx context.Context, t *testing.T) {
 				Value:  base64.StdEncoding.EncodeToString(signed),
 				Token:  response.Token,
 				Scheme: apiserver.SHA512,
+				Lock:   response.Lock,
 			}
 
 			sessionTokenResponse := completeV2AuthSessionTokenRequest(ctx, t, req, httpClient, http.StatusOK, "")
@@ -3541,13 +3545,18 @@ func v2AuthSessionToken(ctx context.Context, t *testing.T) {
 	})
 }
 
-func extractSessionV2Token(t *testing.T, response apiserver.BinarySessionV2) session.Token {
-	bts, err := base64.StdEncoding.DecodeString(response.Token)
+func extractSessionV2Token(t *testing.T, token apiserver.BinarySessionV2) session.Token {
+	bts, err := base64.StdEncoding.DecodeString(token.Token)
 	require.NoError(t, err)
 
+	lock := bts[:sessionLockSize]
+
 	var st session.Token
-	err = st.Unmarshal(bts)
+	err = st.Unmarshal(bts[sessionLockSize:])
 	require.NoError(t, err)
+
+	lockHash := sha256.Sum256(lock)
+	require.True(t, bytes.Equal(lockHash[:], st.AppData()))
 
 	return st
 }
@@ -3622,7 +3631,7 @@ func gateMetadataID(_ context.Context, t *testing.T) user.ID {
 	return id
 }
 
-func getSignedSessionToken(ctx context.Context, t *testing.T, req apiserver.SessionTokenV2Request, httpClient *http.Client, signer neofscrypto.Signer) session.Token {
+func getSignedSessionToken(ctx context.Context, t *testing.T, req apiserver.SessionTokenV2Request, httpClient *http.Client, signer neofscrypto.Signer) string {
 	response := makeV2AuthSessionTokenRequest(ctx, t, req, httpClient, http.StatusOK, "")
 
 	signedData, err := base64.StdEncoding.DecodeString(response.Token)
@@ -3639,6 +3648,7 @@ func getSignedSessionToken(ctx context.Context, t *testing.T, req apiserver.Sess
 		Value:  base64.StdEncoding.EncodeToString(signed),
 		Token:  response.Token,
 		Scheme: apiserver.SHA512,
+		Lock:   response.Lock,
 	}
 
 	sessionTokenResponse := completeV2AuthSessionTokenRequest(ctx, t, req2, httpClient, http.StatusOK, "")
@@ -3646,7 +3656,8 @@ func getSignedSessionToken(ctx context.Context, t *testing.T, req apiserver.Sess
 
 	require.True(t, st.VerifySignature())
 
-	return st
+	// Token + lock.
+	return sessionTokenResponse.Token
 }
 
 func randomString() string {

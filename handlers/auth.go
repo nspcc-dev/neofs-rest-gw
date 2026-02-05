@@ -1,8 +1,11 @@
 package handlers
 
 import (
+	"bytes"
 	"context"
 	"crypto/elliptic"
+	"crypto/rand"
+	"crypto/sha256"
 	"encoding/base64"
 	"encoding/hex"
 	"errors"
@@ -29,6 +32,8 @@ const (
 	defaultTokenExpDuration = 100 // in epoch
 
 	defaultSessionTokenExpiration = 24 * time.Hour
+
+	sessionLockSize = 32
 )
 
 type headersParams struct {
@@ -412,8 +417,17 @@ func (a *RestAPI) V2AuthSessionToken(ctx echo.Context) error {
 		tokenV2.SetOrigin(originToken)
 	}
 
+	lock := make([]byte, sessionLockSize)
+	_, _ = rand.Read(lock)
+	lockHash := sha256.Sum256(lock)
+
+	if err := tokenV2.SetAppData(lockHash[:]); err != nil {
+		return ctx.JSON(http.StatusInternalServerError, a.logAndGetErrorResponse("lock generation", err, log))
+	}
+
 	var resp = apiserver.SessionTokenv2Response{
 		Token: base64.StdEncoding.EncodeToString(tokenV2.SignedData()),
+		Lock:  base64.StdEncoding.EncodeToString(lock),
 	}
 
 	ctx.Response().Header().Set(accessControlAllowOriginHeader, "*")
@@ -489,6 +503,24 @@ func (a *RestAPI) V2CompleteAuthSessionToken(ctx echo.Context) error {
 		return ctx.JSON(http.StatusBadRequest, a.logAndGetErrorResponse("malformed session token", err, log))
 	}
 
+	if len(apiParams.Lock) == 0 {
+		return ctx.JSON(http.StatusBadRequest, a.logAndGetErrorResponse("empty lock", err, log))
+	}
+
+	lock, err := base64.StdEncoding.DecodeString(apiParams.Lock)
+	if err != nil {
+		return ctx.JSON(http.StatusBadRequest, a.logAndGetErrorResponse("malformed lock", err, log))
+	}
+
+	if len(lock) != sessionLockSize {
+		return ctx.JSON(http.StatusBadRequest, a.logAndGetErrorResponse("wrong lock size", err, log))
+	}
+
+	lockHash := sha256.Sum256(lock)
+	if !bytes.Equal(sessionToken.AppData(), lockHash[:]) {
+		return ctx.JSON(http.StatusBadRequest, a.logAndGetErrorResponse("invalid lock", err, log))
+	}
+
 	signatureValue, err := base64.StdEncoding.DecodeString(apiParams.Value)
 	if err != nil {
 		return ctx.JSON(http.StatusBadRequest, a.logAndGetErrorResponse("couldn't decode session token signature", err, log))
@@ -519,8 +551,9 @@ func (a *RestAPI) V2CompleteAuthSessionToken(ctx echo.Context) error {
 		}
 	}
 
+	tokenWithLock := append(lock, sessionToken.Marshal()...)
 	var resp = apiserver.BinarySessionV2{
-		Token: base64.StdEncoding.EncodeToString(sessionToken.Marshal()),
+		Token: base64.StdEncoding.EncodeToString(tokenWithLock),
 	}
 
 	ctx.Response().Header().Set(accessControlAllowOriginHeader, "*")
