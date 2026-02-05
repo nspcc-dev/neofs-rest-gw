@@ -144,20 +144,14 @@ func runTests(ctx context.Context, t *testing.T, key *keys.PrivateKey, node stri
 	t.Run("rest auth session token v2", func(t *testing.T) { v2AuthSessionToken(ctx, t) })
 	t.Run("rest form full binary bearer", func(t *testing.T) { formFullBinaryBearer(ctx, t) })
 
-	t.Run("rest put container invalid", func(t *testing.T) { restContainerPutInvalid(ctx, t) })
-	t.Run("rest post container invalid", func(t *testing.T) { restContainerPostInvalid(ctx, t) })
-	t.Run("rest put container", func(t *testing.T) { restContainerPut(ctx, t, clientPool) })
 	t.Run("rest put container session v2", func(t *testing.T) {
 		restContainerPutSessionTokenV2(ctx, t, clientPool, sessionV2Signer)
 	})
-	t.Run("rest post container", func(t *testing.T) { restContainerPost(ctx, t, clientPool) })
 	t.Run("rest post container session v2", func(t *testing.T) {
 		restContainerPostSessionTokenV2(ctx, t, clientPool, sessionV2Signer)
 	})
 	t.Run("rest get container", func(t *testing.T) { restContainerGet(ctx, t, owner, cnrID) })
-	t.Run("rest delete container", func(t *testing.T) { restContainerDelete(ctx, t, clientPool, owner, signer) })
 	t.Run("rest delete container session v2", func(t *testing.T) { restContainerDeleteSessionV2(ctx, t, clientPool, owner, signer, sessionV2Signer) })
-	t.Run("rest put container eacl", func(t *testing.T) { restContainerEACLPut(ctx, t, clientPool, owner, signer) })
 	t.Run("rest put container eacl session v2", func(t *testing.T) { restContainerEACLPutSessionV2(ctx, t, clientPool, owner, signer, sessionV2Signer) })
 	t.Run("rest get container eacl", func(t *testing.T) { restContainerEACLGet(ctx, t, clientPool, cnrID) })
 	t.Run("rest list containers", func(t *testing.T) { restContainerList(ctx, t, clientPool, owner, cnrID) })
@@ -176,8 +170,6 @@ func runTests(ctx context.Context, t *testing.T, key *keys.PrivateKey, node stri
 	})
 	t.Run("rest search objects v2 cursor and limit", func(t *testing.T) { restObjectsSearchV2CursorAndLimit(ctx, t, clientPool, &owner, signer) })
 	t.Run("rest search objects v2 filters", func(t *testing.T) { restObjectsSearchV2Filters(ctx, t, clientPool, &owner, signer) })
-
-	t.Run("rest check mix tokens up", func(t *testing.T) { mixTokens(ctx, t, cnrID) })
 
 	t.Run("rest balance", func(t *testing.T) { restBalance(ctx, t) })
 
@@ -294,13 +286,13 @@ func getPool(ctx context.Context, t *testing.T, key *keys.PrivateKey, node strin
 
 func getRestrictBearerRecords() []apiserver.Record {
 	return []apiserver.Record{
-		formRestrictRecord(apiserver.OperationGET),
-		formRestrictRecord(apiserver.OperationHEAD),
-		formRestrictRecord(apiserver.OperationPUT),
-		formRestrictRecord(apiserver.OperationDELETE),
-		formRestrictRecord(apiserver.OperationSEARCH),
-		formRestrictRecord(apiserver.OperationRANGE),
-		formRestrictRecord(apiserver.OperationRANGEHASH),
+		formRestrictRecord(apiserver.GET),
+		formRestrictRecord(apiserver.HEAD),
+		formRestrictRecord(apiserver.PUT),
+		formRestrictRecord(apiserver.DELETE),
+		formRestrictRecord(apiserver.SEARCH),
+		formRestrictRecord(apiserver.RANGE),
+		formRestrictRecord(apiserver.RANGEHASH),
 	}
 }
 
@@ -331,7 +323,7 @@ func authTokens(ctx context.Context, t *testing.T) {
 		{
 			Name: "all-object",
 			Object: []apiserver.Record{{
-				Operation: apiserver.OperationPUT,
+				Operation: apiserver.PUT,
 				Action:    apiserver.ALLOW,
 				Filters:   []apiserver.Filter{},
 				Targets: []apiserver.Target{{
@@ -339,24 +331,6 @@ func authTokens(ctx context.Context, t *testing.T) {
 					Keys: []string{},
 				}},
 			}},
-		},
-		{
-			Name: "put-container",
-			Container: &apiserver.Rule{
-				Verb: apiserver.VerbPUT,
-			},
-		},
-		{
-			Name: "seteacl-container",
-			Container: &apiserver.Rule{
-				Verb: apiserver.VerbSETEACL,
-			},
-		},
-		{
-			Name: "delete-container",
-			Container: &apiserver.Rule{
-				Verb: apiserver.VerbDELETE,
-			},
 		},
 	}
 
@@ -364,59 +338,12 @@ func authTokens(ctx context.Context, t *testing.T) {
 	makeAuthTokenRequest(ctx, t, bearers, httpClient, false)
 }
 
-func mixTokens(ctx context.Context, t *testing.T, cnrID cid.ID) {
-	bearers := []apiserver.Bearer{
-		{
-			Name: "all-object",
-			Object: []apiserver.Record{{
-				Operation: apiserver.OperationPUT,
-				Action:    apiserver.ALLOW,
-				Filters:   []apiserver.Filter{},
-				Targets: []apiserver.Target{{
-					Role: apiserver.OTHERS,
-					Keys: []string{},
-				}},
-			}},
-		},
-		{
-			Name: "put-container",
-			Container: &apiserver.Rule{
-				Verb: apiserver.VerbPUT,
-			},
-		},
-		{
-			Name: "seteacl-container",
-			Container: &apiserver.Rule{
-				Verb: apiserver.VerbSETEACL,
-			},
-		},
-	}
-
-	httpClient := defaultHTTPClient()
-	tokens := makeAuthTokenRequest(ctx, t, bearers, httpClient, false)
-	objectToken := tokens[0]
-	containerPutToken := tokens[1]
-	containerSetEACLToken := tokens[2]
-
-	// check reject object token when container tokens is required
-	checkPostContainerWithError(t, httpClient, objectToken)
-
-	// check reject wrong verb container token
-	checkPostContainerWithError(t, httpClient, containerSetEACLToken)
-
-	// check reject wrong verb container token
-	checkDeleteContainerWithError(t, httpClient, cnrID, containerSetEACLToken)
-
-	// check reject wrong verb container token
-	checkSetEACLContainerWithError(t, httpClient, cnrID, containerPutToken)
-}
-
 func formFullBinaryBearer(ctx context.Context, t *testing.T) {
 	bearers := []apiserver.Bearer{
 		{
 			Name: "all-object",
 			Object: []apiserver.Record{{
-				Operation: apiserver.OperationPUT,
+				Operation: apiserver.PUT,
 				Action:    apiserver.ALLOW,
 				Filters:   []apiserver.Filter{},
 				Targets: []apiserver.Target{{
@@ -425,30 +352,17 @@ func formFullBinaryBearer(ctx context.Context, t *testing.T) {
 				}},
 			}},
 		},
-		{
-			Name: "put-container",
-			Container: &apiserver.Rule{
-				Verb: apiserver.VerbPUT,
-			},
-		},
 	}
 
 	httpClient := defaultHTTPClient()
 	tokens := makeAuthTokenRequest(ctx, t, bearers, httpClient, false)
 	objectToken := tokens[0]
-	containerPutToken := tokens[1]
 
 	query := make(url.Values)
 	query.Add(walletConnectQuery, strconv.FormatBool(useWalletConnect))
 
-	// check that container token isn't valid
-	request, err := http.NewRequest(http.MethodGet, testHost+"/v1/auth/bearer?"+query.Encode(), nil)
-	require.NoError(t, err)
-	prepareCommonHeaders(request.Header, containerPutToken)
-	checkGWErrorResponse(t, httpClient, request)
-
 	// check that object bearer token is valid
-	request, err = http.NewRequest(http.MethodGet, testHost+"/v1/auth/bearer?"+query.Encode(), nil)
+	request, err := http.NewRequest(http.MethodGet, testHost+"/v1/auth/bearer?"+query.Encode(), nil)
 	require.NoError(t, err)
 	prepareCommonHeaders(request.Header, objectToken)
 	resp := &apiserver.BinaryBearer{}
@@ -473,52 +387,12 @@ func formFullBinaryBearer(ctx context.Context, t *testing.T) {
 	require.Equal(t, eacl.RoleOthers, actualTarget.Role())
 }
 
-func checkPostContainerWithError(t *testing.T, httpClient *http.Client, token *handlers.BearerToken) {
-	reqURL, err := url.Parse(testHost + "/v1/containers")
-	require.NoError(t, err)
-	body, err := json.Marshal(&apiserver.ContainerPostInfo{ContainerName: "container"})
-	require.NoError(t, err)
-	request, err := http.NewRequest(http.MethodPost, reqURL.String(), bytes.NewReader(body))
-	require.NoError(t, err)
-	prepareCommonHeaders(request.Header, token)
-
-	checkGWErrorResponse(t, httpClient, request)
-}
-
-func checkDeleteContainerWithError(t *testing.T, httpClient *http.Client, cnrID cid.ID, token *handlers.BearerToken) {
-	reqURL, err := url.Parse(testHost + "/v1/containers/" + cnrID.EncodeToString())
-	require.NoError(t, err)
-	request, err := http.NewRequest(http.MethodDelete, reqURL.String(), nil)
-	require.NoError(t, err)
-	prepareCommonHeaders(request.Header, token)
-
-	checkGWErrorResponse(t, httpClient, request)
-}
-
-func checkSetEACLContainerWithError(t *testing.T, httpClient *http.Client, cnrID cid.ID, token *handlers.BearerToken) {
-	req := apiserver.Eacl{Records: []apiserver.Record{}}
-	body, err := json.Marshal(&req)
-	require.NoError(t, err)
-	request, err := http.NewRequest(http.MethodPut, testHost+"/v1/containers/"+cnrID.EncodeToString()+"/eacl", bytes.NewReader(body))
-	require.NoError(t, err)
-	prepareCommonHeaders(request.Header, token)
-
-	checkGWErrorResponse(t, httpClient, request)
-}
-
-func checkGWErrorResponse(t *testing.T, httpClient *http.Client, request *http.Request) {
-	resp := &apiserver.ErrorResponse{}
-	doRequest(t, httpClient, request, http.StatusBadRequest, resp)
-	require.Equal(t, uint32(0), resp.Code)
-	require.Equal(t, apiserver.GW, resp.Type)
-}
-
 func restObjectDelete(ctx context.Context, t *testing.T, p *pool.Pool, owner *user.ID, cnrID cid.ID, signer user.Signer) {
 	objID := createObject(ctx, t, p, owner, cnrID, nil, []byte("some content"), signer)
 
 	bearer := apiserver.Bearer{
 		Object: []apiserver.Record{{
-			Operation: apiserver.OperationDELETE,
+			Operation: apiserver.DELETE,
 			Action:    apiserver.ALLOW,
 			Filters:   []apiserver.Filter{},
 			Targets: []apiserver.Target{{
@@ -526,7 +400,7 @@ func restObjectDelete(ctx context.Context, t *testing.T, p *pool.Pool, owner *us
 				Keys: []string{},
 			}},
 		}, {
-			Operation: apiserver.OperationHEAD,
+			Operation: apiserver.HEAD,
 			Action:    apiserver.ALLOW,
 			Filters:   []apiserver.Filter{},
 			Targets: []apiserver.Target{{
@@ -604,19 +478,19 @@ func restObjectsSearch(ctx context.Context, t *testing.T, p *pool.Pool, owner *u
 	bearer := apiserver.Bearer{
 		Object: []apiserver.Record{
 			{
-				Operation: apiserver.OperationSEARCH,
+				Operation: apiserver.SEARCH,
 				Action:    apiserver.ALLOW,
 				Filters:   []apiserver.Filter{},
 				Targets:   []apiserver.Target{{Role: apiserver.OTHERS, Keys: []string{}}},
 			},
 			{
-				Operation: apiserver.OperationHEAD,
+				Operation: apiserver.HEAD,
 				Action:    apiserver.ALLOW,
 				Filters:   []apiserver.Filter{},
 				Targets:   []apiserver.Target{{Role: apiserver.OTHERS, Keys: []string{}}},
 			},
 			{
-				Operation: apiserver.OperationGET,
+				Operation: apiserver.GET,
 				Action:    apiserver.ALLOW,
 				Filters:   []apiserver.Filter{},
 				Targets:   []apiserver.Target{{Role: apiserver.OTHERS, Keys: []string{}}},
@@ -785,19 +659,19 @@ func restObjectsSearchV2(ctx context.Context, t *testing.T, p *pool.Pool, owner 
 	bearer := apiserver.Bearer{
 		Object: []apiserver.Record{
 			{
-				Operation: apiserver.OperationSEARCH,
+				Operation: apiserver.SEARCH,
 				Action:    apiserver.ALLOW,
 				Filters:   []apiserver.Filter{},
 				Targets:   []apiserver.Target{{Role: apiserver.OTHERS, Keys: []string{}}},
 			},
 			{
-				Operation: apiserver.OperationHEAD,
+				Operation: apiserver.HEAD,
 				Action:    apiserver.ALLOW,
 				Filters:   []apiserver.Filter{},
 				Targets:   []apiserver.Target{{Role: apiserver.OTHERS, Keys: []string{}}},
 			},
 			{
-				Operation: apiserver.OperationGET,
+				Operation: apiserver.GET,
 				Action:    apiserver.ALLOW,
 				Filters:   []apiserver.Filter{},
 				Targets:   []apiserver.Target{{Role: apiserver.OTHERS, Keys: []string{}}},
@@ -1031,19 +905,19 @@ func restObjectsSearchV2CursorAndLimit(ctx context.Context, t *testing.T, p *poo
 	bearer := apiserver.Bearer{
 		Object: []apiserver.Record{
 			{
-				Operation: apiserver.OperationSEARCH,
+				Operation: apiserver.SEARCH,
 				Action:    apiserver.ALLOW,
 				Filters:   []apiserver.Filter{},
 				Targets:   []apiserver.Target{{Role: apiserver.OTHERS, Keys: []string{}}},
 			},
 			{
-				Operation: apiserver.OperationHEAD,
+				Operation: apiserver.HEAD,
 				Action:    apiserver.ALLOW,
 				Filters:   []apiserver.Filter{},
 				Targets:   []apiserver.Target{{Role: apiserver.OTHERS, Keys: []string{}}},
 			},
 			{
-				Operation: apiserver.OperationGET,
+				Operation: apiserver.GET,
 				Action:    apiserver.ALLOW,
 				Filters:   []apiserver.Filter{},
 				Targets:   []apiserver.Target{{Role: apiserver.OTHERS, Keys: []string{}}},
@@ -1172,19 +1046,19 @@ func restObjectsSearchV2Filters(ctx context.Context, t *testing.T, p *pool.Pool,
 	bearer := apiserver.Bearer{
 		Object: []apiserver.Record{
 			{
-				Operation: apiserver.OperationSEARCH,
+				Operation: apiserver.SEARCH,
 				Action:    apiserver.ALLOW,
 				Filters:   []apiserver.Filter{},
 				Targets:   []apiserver.Target{{Role: apiserver.OTHERS, Keys: []string{}}},
 			},
 			{
-				Operation: apiserver.OperationHEAD,
+				Operation: apiserver.HEAD,
 				Action:    apiserver.ALLOW,
 				Filters:   []apiserver.Filter{},
 				Targets:   []apiserver.Target{{Role: apiserver.OTHERS, Keys: []string{}}},
 			},
 			{
-				Operation: apiserver.OperationGET,
+				Operation: apiserver.GET,
 				Action:    apiserver.ALLOW,
 				Filters:   []apiserver.Filter{},
 				Targets:   []apiserver.Target{{Role: apiserver.OTHERS, Keys: []string{}}},
@@ -1457,36 +1331,6 @@ func restContainerGet(ctx context.Context, t *testing.T, owner user.ID, cnrID ci
 	require.NotEmpty(t, cnrInfo.Version)
 }
 
-func restContainerDelete(ctx context.Context, t *testing.T, clientPool *pool.Pool, owner user.ID, signer user.Signer) {
-	cnrID := createContainer(ctx, t, clientPool, owner, "for-delete", signer)
-
-	bearer := apiserver.Bearer{
-		Container: &apiserver.Rule{
-			Verb: apiserver.VerbDELETE,
-		},
-	}
-
-	httpClient := defaultHTTPClient()
-	bearerTokens := makeAuthTokenRequest(ctx, t, []apiserver.Bearer{bearer}, httpClient, false)
-	bearerToken := bearerTokens[0]
-
-	query := make(url.Values)
-	query.Add(walletConnectQuery, strconv.FormatBool(useWalletConnect))
-
-	request, err := http.NewRequest(http.MethodDelete, testHost+"/v1/containers/"+cnrID.EncodeToString()+"?"+query.Encode(), nil)
-	require.NoError(t, err)
-	request = request.WithContext(ctx)
-	prepareCommonHeaders(request.Header, bearerToken)
-
-	resp := &apiserver.SuccessResponse{}
-	doRequest(t, httpClient, request, http.StatusOK, resp)
-	require.True(t, resp.Success)
-
-	_, err = clientPool.ContainerGet(ctx, cnrID, client.PrmContainerGet{})
-	require.Error(t, err)
-	require.Contains(t, err.Error(), "not found")
-}
-
 func restContainerDeleteSessionV2(ctx context.Context, t *testing.T, clientPool *pool.Pool, owner user.ID, signer, signerForToken user.Signer) {
 	var (
 		ownerID    = signer.UserID()
@@ -1517,55 +1361,6 @@ func restContainerDeleteSessionV2(ctx context.Context, t *testing.T, clientPool 
 	require.Contains(t, err.Error(), "not found")
 }
 
-func restContainerEACLPut(ctx context.Context, t *testing.T, clientPool *pool.Pool, owner user.ID, signer user.Signer) {
-	cnrID := createContainer(ctx, t, clientPool, owner, "for-eacl-put", signer)
-	httpClient := &http.Client{Timeout: 60 * time.Second}
-	bearer := apiserver.Bearer{
-		Container: &apiserver.Rule{
-			Verb: apiserver.VerbSETEACL,
-		},
-	}
-	bearerTokens := makeAuthTokenRequest(ctx, t, []apiserver.Bearer{bearer}, httpClient, false)
-	bearerToken := bearerTokens[0]
-
-	req := apiserver.Eacl{
-		Records: []apiserver.Record{{
-			Action:    apiserver.DENY,
-			Filters:   []apiserver.Filter{},
-			Operation: apiserver.OperationDELETE,
-			Targets: []apiserver.Target{{
-				Keys: []string{"031a6c6fbbdf02ca351745fa86b9ba5a9452d785ac4f7fc2b7548ca2a46c4fcf4a"},
-				Role: apiserver.OTHERS,
-			}},
-		}},
-	}
-
-	invalidBody, err := json.Marshal(&req)
-	require.NoError(t, err)
-
-	req.Records[0].Targets[0].Role = apiserver.KEYS
-	body, err := json.Marshal(&req)
-	require.NoError(t, err)
-
-	query := make(url.Values)
-	query.Add(walletConnectQuery, strconv.FormatBool(useWalletConnect))
-
-	doSetEACLRequest(ctx, t, httpClient, cnrID, query, bearerToken, invalidBody, http.StatusBadRequest, nil)
-
-	resp := &apiserver.SuccessResponse{}
-	doSetEACLRequest(ctx, t, httpClient, cnrID, query, bearerToken, body, http.StatusOK, resp)
-	require.True(t, resp.Success)
-
-	table, err := clientPool.ContainerEACL(ctx, cnrID, client.PrmContainerEACL{})
-	require.NoError(t, err)
-
-	expectedTable, err := util.ToNativeTable(req.Records)
-	require.NoError(t, err)
-	expectedTable.SetCID(cnrID)
-
-	require.Equal(t, expectedTable.Marshal(), table.Marshal())
-}
-
 func restContainerEACLPutSessionV2(ctx context.Context, t *testing.T, clientPool *pool.Pool, owner user.ID, signer, signerForToken user.Signer) {
 	cnrID := createContainer(ctx, t, clientPool, owner, randomString(), signer)
 	var (
@@ -1587,7 +1382,7 @@ func restContainerEACLPutSessionV2(ctx context.Context, t *testing.T, clientPool
 			Records: []apiserver.Record{{
 				Action:    apiserver.DENY,
 				Filters:   []apiserver.Filter{},
-				Operation: apiserver.OperationDELETE,
+				Operation: apiserver.DELETE,
 				Targets: []apiserver.Target{{
 					Keys: []string{"031a6c6fbbdf02ca351745fa86b9ba5a9452d785ac4f7fc2b7548ca2a46c4fcf4a"},
 					Role: apiserver.OTHERS,
@@ -1606,7 +1401,7 @@ func restContainerEACLPutSessionV2(ctx context.Context, t *testing.T, clientPool
 					Filters: []apiserver.Filter{
 						{HeaderType: "OBJECT", Key: "MyKey", MatchType: apiserver.STRINGEQUAL, Value: "MyValue"},
 					},
-					Operation: apiserver.OperationDELETE,
+					Operation: apiserver.DELETE,
 					Targets: []apiserver.Target{{
 						Keys: []string{"031a6c6fbbdf02ca351745fa86b9ba5a9452d785ac4f7fc2b7548ca2a46c4fcf4a"},
 						Role: apiserver.OTHERS,
@@ -1624,7 +1419,7 @@ func restContainerEACLPutSessionV2(ctx context.Context, t *testing.T, clientPool
 					Filters: []apiserver.Filter{
 						{HeaderType: "OBJECT", Key: "MyKey", MatchType: apiserver.STRINGNOTEQUAL, Value: "MyValue"},
 					},
-					Operation: apiserver.OperationDELETE,
+					Operation: apiserver.DELETE,
 					Targets: []apiserver.Target{{
 						Keys: []string{"031a6c6fbbdf02ca351745fa86b9ba5a9452d785ac4f7fc2b7548ca2a46c4fcf4a"},
 						Role: apiserver.OTHERS,
@@ -1642,7 +1437,7 @@ func restContainerEACLPutSessionV2(ctx context.Context, t *testing.T, clientPool
 					Filters: []apiserver.Filter{
 						{HeaderType: "OBJECT", Key: "MyKey", MatchType: apiserver.NOTPRESENT},
 					},
-					Operation: apiserver.OperationDELETE,
+					Operation: apiserver.DELETE,
 					Targets: []apiserver.Target{{
 						Keys: []string{"031a6c6fbbdf02ca351745fa86b9ba5a9452d785ac4f7fc2b7548ca2a46c4fcf4a"},
 						Role: apiserver.OTHERS,
@@ -1660,7 +1455,7 @@ func restContainerEACLPutSessionV2(ctx context.Context, t *testing.T, clientPool
 					Filters: []apiserver.Filter{
 						{HeaderType: "OBJECT", Key: "MyKey", MatchType: apiserver.NUMLE, Value: "123"},
 					},
-					Operation: apiserver.OperationDELETE,
+					Operation: apiserver.DELETE,
 					Targets: []apiserver.Target{{
 						Keys: []string{"031a6c6fbbdf02ca351745fa86b9ba5a9452d785ac4f7fc2b7548ca2a46c4fcf4a"},
 						Role: apiserver.OTHERS,
@@ -1678,7 +1473,7 @@ func restContainerEACLPutSessionV2(ctx context.Context, t *testing.T, clientPool
 					Filters: []apiserver.Filter{
 						{HeaderType: "OBJECT", Key: "MyKey", MatchType: apiserver.NUMLT, Value: "123"},
 					},
-					Operation: apiserver.OperationDELETE,
+					Operation: apiserver.DELETE,
 					Targets: []apiserver.Target{{
 						Keys: []string{"031a6c6fbbdf02ca351745fa86b9ba5a9452d785ac4f7fc2b7548ca2a46c4fcf4a"},
 						Role: apiserver.OTHERS,
@@ -1696,7 +1491,7 @@ func restContainerEACLPutSessionV2(ctx context.Context, t *testing.T, clientPool
 					Filters: []apiserver.Filter{
 						{HeaderType: "OBJECT", Key: "MyKey", MatchType: apiserver.NUMGT, Value: "123"},
 					},
-					Operation: apiserver.OperationDELETE,
+					Operation: apiserver.DELETE,
 					Targets: []apiserver.Target{{
 						Keys: []string{"031a6c6fbbdf02ca351745fa86b9ba5a9452d785ac4f7fc2b7548ca2a46c4fcf4a"},
 						Role: apiserver.OTHERS,
@@ -1714,7 +1509,7 @@ func restContainerEACLPutSessionV2(ctx context.Context, t *testing.T, clientPool
 					Filters: []apiserver.Filter{
 						{HeaderType: "OBJECT", Key: "MyKey", MatchType: apiserver.NUMGE, Value: "123"},
 					},
-					Operation: apiserver.OperationDELETE,
+					Operation: apiserver.DELETE,
 					Targets: []apiserver.Target{{
 						Keys: []string{"031a6c6fbbdf02ca351745fa86b9ba5a9452d785ac4f7fc2b7548ca2a46c4fcf4a"},
 						Role: apiserver.OTHERS,
@@ -1732,7 +1527,7 @@ func restContainerEACLPutSessionV2(ctx context.Context, t *testing.T, clientPool
 					Filters: []apiserver.Filter{
 						{HeaderType: "OBJECT", Key: "MyKey", MatchType: "INVALID", Value: "123"},
 					},
-					Operation: apiserver.OperationDELETE,
+					Operation: apiserver.DELETE,
 					Targets: []apiserver.Target{{
 						Keys: []string{"031a6c6fbbdf02ca351745fa86b9ba5a9452d785ac4f7fc2b7548ca2a46c4fcf4a"},
 						Role: apiserver.KEYS,
@@ -1750,7 +1545,7 @@ func restContainerEACLPutSessionV2(ctx context.Context, t *testing.T, clientPool
 					Filters: []apiserver.Filter{
 						{HeaderType: "OBJECT", Key: "", MatchType: apiserver.NUMGE, Value: "123"},
 					},
-					Operation: apiserver.OperationDELETE,
+					Operation: apiserver.DELETE,
 					Targets: []apiserver.Target{{
 						Keys: []string{"031a6c6fbbdf02ca351745fa86b9ba5a9452d785ac4f7fc2b7548ca2a46c4fcf4a"},
 						Role: apiserver.KEYS,
@@ -1768,7 +1563,7 @@ func restContainerEACLPutSessionV2(ctx context.Context, t *testing.T, clientPool
 					Filters: []apiserver.Filter{
 						{HeaderType: "OBJECT", Key: "MyKey", MatchType: apiserver.NUMGE, Value: "123a"},
 					},
-					Operation: apiserver.OperationDELETE,
+					Operation: apiserver.DELETE,
 					Targets: []apiserver.Target{{
 						Keys: []string{"031a6c6fbbdf02ca351745fa86b9ba5a9452d785ac4f7fc2b7548ca2a46c4fcf4a"},
 						Role: apiserver.KEYS,
@@ -1814,15 +1609,6 @@ func setAndCheckEACL(ctx context.Context, t *testing.T, clientPool *pool.Pool, r
 	expectedTable.SetCID(cnrID)
 
 	require.Equal(t, expectedTable.Marshal(), table.Marshal())
-}
-
-func doSetEACLRequest(ctx context.Context, t *testing.T, httpClient *http.Client, cnrID cid.ID, query url.Values, bearerToken *handlers.BearerToken, body []byte, status int, model any) {
-	request, err := http.NewRequest(http.MethodPut, testHost+"/v1/containers/"+cnrID.EncodeToString()+"/eacl?"+query.Encode(), bytes.NewReader(body))
-	require.NoError(t, err)
-	request = request.WithContext(ctx)
-	prepareCommonHeaders(request.Header, bearerToken)
-
-	doRequest(t, httpClient, request, status, model)
 }
 
 func doSetEACLRequestSessionV2(ctx context.Context, t *testing.T, httpClient *http.Client, cnrID cid.ID, signedToken string, body []byte, status int, model any) errorResponse {
@@ -1925,16 +1711,8 @@ func makeAuthTokenRequest(ctx context.Context, t *testing.T, bearers []apiserver
 
 	respTokens := make([]*handlers.BearerToken, len(stokenResp))
 	for i, tok := range stokenResp {
-		isObject, err := handlers.IsObjectToken(bearers[i])
-		require.NoError(t, err)
-
 		require.Equal(t, bearers[i].Name, *tok.Name)
-
-		if isObject {
-			require.Equal(t, apiserver.Object, tok.Type)
-		} else {
-			require.Equal(t, apiserver.Container, tok.Type)
-		}
+		require.Equal(t, apiserver.Object, tok.Type)
 
 		binaryData, err := base64.StdEncoding.DecodeString(tok.Token)
 		require.NoError(t, err)
@@ -1974,137 +1752,6 @@ func signTokenWalletConnect(t *testing.T, key *keys.PrivateKey, data []byte) *ha
 		Token:     base64.StdEncoding.EncodeToString(data),
 		Signature: hex.EncodeToString(signature),
 		Key:       hex.EncodeToString(key.PublicKey().Bytes()),
-	}
-}
-
-func restContainerPutInvalid(ctx context.Context, t *testing.T) {
-	bearer := apiserver.Bearer{
-		Container: &apiserver.Rule{
-			Verb: apiserver.VerbPUT,
-		},
-	}
-
-	httpClient := &http.Client{Timeout: 30 * time.Second}
-	bearerTokens := makeAuthTokenRequest(ctx, t, []apiserver.Bearer{bearer}, httpClient, false)
-	bearerToken := bearerTokens[0]
-
-	reqURL, err := url.Parse(testHost + "/v1/containers")
-	require.NoError(t, err)
-	query := reqURL.Query()
-	query.Add("name-scope-global", "true")
-	query.Add(walletConnectQuery, strconv.FormatBool(useWalletConnect))
-	reqURL.RawQuery = query.Encode()
-
-	body, err := json.Marshal(&apiserver.ContainerPostInfo{ContainerName: "nameWithCapitalLetters"})
-	require.NoError(t, err)
-	request, err := http.NewRequest(http.MethodPut, reqURL.String(), bytes.NewReader(body))
-	require.NoError(t, err)
-	prepareCommonHeaders(request.Header, bearerToken)
-
-	resp := &apiserver.ErrorResponse{}
-	doRequest(t, httpClient, request, http.StatusInternalServerError, resp)
-	require.Equal(t, uint32(0), resp.Code)
-	require.Equal(t, apiserver.GW, resp.Type)
-}
-
-func restContainerPostInvalid(ctx context.Context, t *testing.T) {
-	bearer := apiserver.Bearer{
-		Container: &apiserver.Rule{
-			Verb: apiserver.VerbPUT,
-		},
-	}
-
-	httpClient := &http.Client{Timeout: 30 * time.Second}
-	bearerTokens := makeAuthTokenRequest(ctx, t, []apiserver.Bearer{bearer}, httpClient, false)
-	bearerToken := bearerTokens[0]
-
-	reqURL, err := url.Parse(testHost + "/v1/containers")
-	require.NoError(t, err)
-	query := reqURL.Query()
-	query.Add("name-scope-global", "true")
-	query.Add(walletConnectQuery, strconv.FormatBool(useWalletConnect))
-	reqURL.RawQuery = query.Encode()
-
-	body, err := json.Marshal(&apiserver.ContainerPostInfo{ContainerName: "nameWithCapitalLetters"})
-	require.NoError(t, err)
-	request, err := http.NewRequest(http.MethodPost, reqURL.String(), bytes.NewReader(body))
-	require.NoError(t, err)
-	prepareCommonHeaders(request.Header, bearerToken)
-
-	resp := &apiserver.ErrorResponse{}
-	doRequest(t, httpClient, request, http.StatusInternalServerError, resp)
-	require.Equal(t, uint32(0), resp.Code)
-	require.Equal(t, apiserver.GW, resp.Type)
-}
-
-func restContainerPut(ctx context.Context, t *testing.T, clientPool *pool.Pool) {
-	bearer := apiserver.Bearer{
-		Container: &apiserver.Rule{
-			Verb: apiserver.VerbPUT,
-		},
-	}
-
-	httpClient := &http.Client{Timeout: 30 * time.Second}
-	bearerTokens := makeAuthTokenRequest(ctx, t, []apiserver.Bearer{bearer}, httpClient, false)
-	bearerToken := bearerTokens[0]
-
-	attrKey, attrValue := "User-Attribute", "user value"
-	userAttributes := map[string]string{
-		attrKey: attrValue,
-	}
-
-	// try to create container without name but with name-scope-global
-	body, err := json.Marshal(&apiserver.ContainerPostInfo{})
-	require.NoError(t, err)
-
-	reqURL, err := url.Parse(testHost + "/v1/containers")
-	require.NoError(t, err)
-	query := reqURL.Query()
-	query.Add("name-scope-global", "true")
-	query.Add(walletConnectQuery, strconv.FormatBool(useWalletConnect))
-	reqURL.RawQuery = query.Encode()
-
-	request, err := http.NewRequest(http.MethodPut, reqURL.String(), bytes.NewReader(body))
-	require.NoError(t, err)
-	prepareCommonHeaders(request.Header, bearerToken)
-
-	doRequest(t, httpClient, request, http.StatusInternalServerError, nil)
-
-	// create container with name in local scope
-	containerPutInfo := &apiserver.ContainerPostInfo{
-		Attributes: []apiserver.Attribute{{
-			Key:   attrKey,
-			Value: attrValue,
-		}},
-	}
-	body, err = json.Marshal(containerPutInfo)
-	require.NoError(t, err)
-
-	reqURL, err = url.Parse(testHost + "/v1/containers")
-	require.NoError(t, err)
-	query = reqURL.Query()
-	query.Add(walletConnectQuery, strconv.FormatBool(useWalletConnect))
-	reqURL.RawQuery = query.Encode()
-
-	request, err = http.NewRequest(http.MethodPut, reqURL.String(), bytes.NewReader(body))
-	require.NoError(t, err)
-	prepareCommonHeaders(request.Header, bearerToken)
-
-	addr := &apiserver.PostContainerOK{}
-	doRequest(t, httpClient, request, http.StatusOK, addr)
-
-	var CID cid.ID
-	err = CID.DecodeString(addr.ContainerId)
-	require.NoError(t, err)
-	fmt.Println(CID.String())
-
-	cnr, err := clientPool.ContainerGet(ctx, CID, client.PrmContainerGet{})
-	require.NoError(t, err)
-
-	cnrAttr := maps.Collect(cnr.Attributes())
-
-	for key, val := range userAttributes {
-		require.Equal(t, val, cnrAttr[key])
 	}
 }
 
@@ -2170,78 +1817,6 @@ func restContainerPutSessionTokenV2(ctx context.Context, t *testing.T, clientPoo
 	err = CID.DecodeString(addr.ContainerId)
 	require.NoError(t, err)
 	t.Logf("created container: %s", CID.String())
-
-	cnr, err := clientPool.ContainerGet(ctx, CID, client.PrmContainerGet{})
-	require.NoError(t, err)
-
-	cnrAttr := maps.Collect(cnr.Attributes())
-
-	for key, val := range userAttributes {
-		require.Equal(t, val, cnrAttr[key])
-	}
-}
-
-func restContainerPost(ctx context.Context, t *testing.T, clientPool *pool.Pool) {
-	bearer := apiserver.Bearer{
-		Container: &apiserver.Rule{
-			Verb: apiserver.VerbPUT,
-		},
-	}
-
-	httpClient := &http.Client{Timeout: 30 * time.Second}
-	bearerTokens := makeAuthTokenRequest(ctx, t, []apiserver.Bearer{bearer}, httpClient, false)
-	bearerToken := bearerTokens[0]
-
-	attrKey, attrValue := "User-Attribute", "user value"
-	userAttributes := map[string]string{
-		attrKey: attrValue,
-	}
-
-	// try to create container without name but with name-scope-global
-	body, err := json.Marshal(&apiserver.ContainerPostInfo{})
-	require.NoError(t, err)
-
-	reqURL, err := url.Parse(testHost + "/v1/containers")
-	require.NoError(t, err)
-	query := reqURL.Query()
-	query.Add("name-scope-global", "true")
-	query.Add(walletConnectQuery, strconv.FormatBool(useWalletConnect))
-	reqURL.RawQuery = query.Encode()
-
-	request, err := http.NewRequest(http.MethodPost, reqURL.String(), bytes.NewReader(body))
-	require.NoError(t, err)
-	prepareCommonHeaders(request.Header, bearerToken)
-
-	doRequest(t, httpClient, request, http.StatusInternalServerError, nil)
-
-	// create container with name in local scope
-	containerPutInfo := &apiserver.ContainerPostInfo{
-		Attributes: []apiserver.Attribute{{
-			Key:   attrKey,
-			Value: attrValue,
-		}},
-	}
-	body, err = json.Marshal(containerPutInfo)
-	require.NoError(t, err)
-
-	reqURL, err = url.Parse(testHost + "/v1/containers")
-	require.NoError(t, err)
-	query = reqURL.Query()
-	query.Add(walletConnectQuery, strconv.FormatBool(useWalletConnect))
-	reqURL.RawQuery = query.Encode()
-
-	request, err = http.NewRequest(http.MethodPost, reqURL.String(), bytes.NewReader(body))
-	require.NoError(t, err)
-	prepareCommonHeaders(request.Header, bearerToken)
-
-	addr := &apiserver.PostContainerOK{}
-	responseHeaders, _ := doRequest(t, httpClient, request, http.StatusCreated, addr)
-
-	var CID cid.ID
-	err = CID.DecodeString(addr.ContainerId)
-	require.NoError(t, err)
-	fmt.Println(CID.String())
-	require.Equal(t, handlers.LocationHeader(CID), responseHeaders.Get("Location"))
 
 	cnr, err := clientPool.ContainerGet(ctx, CID, client.PrmContainerGet{})
 	require.NoError(t, err)
@@ -2443,7 +2018,7 @@ func restNewObjectUploadWC(ctx context.Context, t *testing.T, clientPool *pool.P
 func restNewObjectUploadInt(ctx context.Context, t *testing.T, clientPool *pool.Pool, cnrID cid.ID, signer user.Signer, cookie bool, walletConnect bool) {
 	bt := apiserver.Bearer{
 		Object: []apiserver.Record{
-			formAllowRecord(apiserver.OperationPUT),
+			formAllowRecord(apiserver.PUT),
 		},
 	}
 	bt.Object = append(bt.Object, getRestrictBearerRecords()...)
@@ -2556,7 +2131,7 @@ func restNewObjectUploadSessionTokenV2(ctx context.Context, t *testing.T, client
 	if useBearer {
 		bt := apiserver.Bearer{
 			Object: []apiserver.Record{
-				formAllowRecord(apiserver.OperationPUT),
+				formAllowRecord(apiserver.PUT),
 			},
 		}
 		bt.Object = append(bt.Object, getRestrictBearerRecords()...)
@@ -2599,8 +2174,8 @@ func restNewObjectUploadSessionTokenV2(ctx context.Context, t *testing.T, client
 func restNewObjectHead(ctx context.Context, t *testing.T, p *pool.Pool, ownerID *user.ID, cnrID cid.ID, signer user.Signer, walletConnect bool) {
 	bearer := apiserver.Bearer{
 		Object: []apiserver.Record{
-			formAllowRecord(apiserver.OperationHEAD),
-			formAllowRecord(apiserver.OperationRANGE),
+			formAllowRecord(apiserver.HEAD),
+			formAllowRecord(apiserver.RANGE),
 		},
 	}
 	bearer.Object = append(bearer.Object, getRestrictBearerRecords()...)
@@ -2886,9 +2461,9 @@ func restNewObjectHeadSessionV2(ctx context.Context, t *testing.T, p *pool.Pool,
 func restNewObjectHeadByAttribute(ctx context.Context, t *testing.T, p *pool.Pool, ownerID *user.ID, cnrID cid.ID, signer user.Signer, walletConnect bool) {
 	bearer := apiserver.Bearer{
 		Object: []apiserver.Record{
-			formAllowRecord(apiserver.OperationHEAD),
-			formAllowRecord(apiserver.OperationRANGE),
-			formAllowRecord(apiserver.OperationSEARCH),
+			formAllowRecord(apiserver.HEAD),
+			formAllowRecord(apiserver.RANGE),
+			formAllowRecord(apiserver.SEARCH),
 		},
 	}
 	bearer.Object = append(bearer.Object, getRestrictBearerRecords()...)
@@ -3171,10 +2746,10 @@ func restNewObjectHeadByAttributeSessionV2(ctx context.Context, t *testing.T, p 
 func restNewObjectGetByAttribute(ctx context.Context, t *testing.T, p *pool.Pool, ownerID *user.ID, cnrID cid.ID, signer user.Signer, walletConnect, addRange bool) {
 	bearer := apiserver.Bearer{
 		Object: []apiserver.Record{
-			formAllowRecord(apiserver.OperationGET),
-			formAllowRecord(apiserver.OperationSEARCH),
-			formAllowRecord(apiserver.OperationHEAD),
-			formAllowRecord(apiserver.OperationRANGE),
+			formAllowRecord(apiserver.GET),
+			formAllowRecord(apiserver.SEARCH),
+			formAllowRecord(apiserver.HEAD),
+			formAllowRecord(apiserver.RANGE),
 		},
 	}
 	bearer.Object = append(bearer.Object, getRestrictBearerRecords()...)

@@ -23,7 +23,6 @@ import (
 	"github.com/nspcc-dev/neofs-sdk-go/container/acl"
 	"github.com/nspcc-dev/neofs-sdk-go/object"
 	oid "github.com/nspcc-dev/neofs-sdk-go/object/id"
-	"github.com/nspcc-dev/neofs-sdk-go/session"
 	sessionv2 "github.com/nspcc-dev/neofs-sdk-go/session/v2"
 	"go.uber.org/zap"
 )
@@ -144,37 +143,6 @@ func updateExpirationHeader(headers map[string]string, durations *epochDurations
 	}
 
 	headers[object.AttributeExpirationEpoch] = strconv.FormatUint(expirationEpoch, 10)
-}
-
-// IsObjectToken check that provided token is for object.
-func IsObjectToken(token apiserver.Bearer) (bool, error) {
-	isObject := len(token.Object) != 0
-	isContainer := token.Container != nil
-
-	if !isObject && !isContainer {
-		return false, fmt.Errorf("token '%s': rules must not be empty", token.Name)
-	}
-
-	if isObject && isContainer {
-		return false, fmt.Errorf("token '%s': only one type rules can be provided: object or container, not both", token.Name)
-	}
-
-	return isObject, nil
-}
-
-func formSessionTokenFromHeaders(principal string, signature, key *string, verb session.ContainerVerb) (*SessionToken, error) {
-	if signature == nil || key == nil {
-		return nil, errors.New("missed signature or key header")
-	}
-
-	return &SessionToken{
-		BearerToken: BearerToken{
-			Token:     principal,
-			Signature: *signature,
-			Key:       *key,
-		},
-		Verb: verb,
-	}, nil
 }
 
 // decodeBasicACL is the same as DecodeString on acl.Basic but

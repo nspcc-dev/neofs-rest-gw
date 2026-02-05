@@ -18,7 +18,6 @@ import (
 	cid "github.com/nspcc-dev/neofs-sdk-go/container/id"
 	"github.com/nspcc-dev/neofs-sdk-go/netmap"
 	"github.com/nspcc-dev/neofs-sdk-go/pool"
-	"github.com/nspcc-dev/neofs-sdk-go/session"
 	sessionv2 "github.com/nspcc-dev/neofs-sdk-go/session/v2"
 	"github.com/nspcc-dev/neofs-sdk-go/user"
 	"github.com/nspcc-dev/neofs-sdk-go/waiter"
@@ -48,11 +47,6 @@ type BearerToken struct {
 	Token     string
 	Signature string
 	Key       string
-}
-
-type SessionToken struct {
-	BearerToken
-	Verb session.ContainerVerb
 }
 
 type networkInfoGetter interface {
@@ -251,67 +245,30 @@ func getBearerAndSession(ctx echo.Context, signature *apiserver.SignatureParam, 
 	return btoken, sessionTokenV2, nil
 }
 
-func getSessionTokens(ctx echo.Context, signature *apiserver.SignatureParam, key *apiserver.SignatureKeyParam, isWalletConnect bool, v1Verb session.ContainerVerb, cnrID cid.ID) (*session.Container, *sessionv2.Token, error) {
-	v, err := getNeoFSBearerFromCookie(ctx)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	if v == "" {
-		return sessionTokensFromAuthHeader(ctx, signature, key, isWalletConnect, v1Verb, cnrID)
-	}
-
-	st, err := formSessionTokenFromHeaders(v, signature, key, v1Verb)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	sessionTokenV1, err := prepareSessionToken(st, isWalletConnect)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	return sessionTokenV1, nil, err
-}
-
-func sessionTokensFromAuthHeader(ctx echo.Context, signature *apiserver.SignatureParam, key *apiserver.SignatureKeyParam, isWalletConnect bool, v1Verb session.ContainerVerb, cnrID cid.ID) (*session.Container, *sessionv2.Token, error) {
+func sessionTokensFromAuthHeader(ctx echo.Context, v2Verb sessionv2.Verb, cnrID cid.ID) (*sessionv2.Token, error) {
 	headerValue, err := getAuthorizationHeaderValue(ctx)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
 	if headerValue == "" {
-		return nil, nil, errors.New("empty auth header")
-	}
-
-	st, err := formSessionTokenFromHeaders(headerValue, signature, key, v1Verb)
-	if err == nil {
-		sessionTokenV1, err := prepareSessionToken(st, isWalletConnect)
-		if err == nil {
-			return sessionTokenV1, nil, nil
-		}
+		return nil, errors.New("empty auth header")
 	}
 
 	sessionTokenV2, err := getSessionTokenV2(headerValue)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
-	var verb2 sessionv2.Verb
-	switch v1Verb {
-	case session.VerbContainerDelete:
-		verb2 = sessionv2.VerbContainerDelete
-	case session.VerbContainerPut:
-		verb2 = sessionv2.VerbContainerPut
-	case session.VerbContainerSetEACL:
-		verb2 = sessionv2.VerbContainerSetEACL
+	switch v2Verb {
+	case sessionv2.VerbContainerDelete, sessionv2.VerbContainerPut, sessionv2.VerbContainerSetEACL:
 	default:
-		return nil, nil, fmt.Errorf("invalid verb: %d", v1Verb)
+		return nil, fmt.Errorf("invalid verb: %d", v2Verb)
 	}
 
-	if err = prepareSessionTokenV2(sessionTokenV2, cnrID, verb2); err != nil {
-		return nil, nil, err
+	if err = prepareSessionTokenV2(sessionTokenV2, cnrID, v2Verb); err != nil {
+		return nil, err
 	}
 
-	return nil, sessionTokenV2, nil
+	return sessionTokenV2, nil
 }

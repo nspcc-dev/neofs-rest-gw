@@ -589,9 +589,6 @@ paths:
       summary: Create new container in NeoFS. Use POST method to create a container.
       operationId: putContainer
       parameters:
-        - $ref: '#/components/parameters/signatureParam'
-        - $ref: '#/components/parameters/signatureKeyParam'
-        - $ref: '#/components/parameters/signatureScheme'
         - name: name-scope-global
           in: query
           description: Provide this parameter to register container name in NNS service.
@@ -651,9 +648,6 @@ paths:
       summary: Create new container in NeoFS
       operationId: postContainer
       parameters:
-        - $ref: '#/components/parameters/signatureParam'
-        - $ref: '#/components/parameters/signatureKeyParam'
-        - $ref: '#/components/parameters/signatureScheme'
         - name: name-scope-global
           in: query
           description: Provide this parameter to register container name in NNS service.
@@ -758,9 +752,6 @@ paths:
       operationId: deleteContainer
       parameters:
         - $ref: '#/components/parameters/containerId'
-        - $ref: '#/components/parameters/signatureParam'
-        - $ref: '#/components/parameters/signatureKeyParam'
-        - $ref: '#/components/parameters/signatureScheme'
       responses:
         "200":
           description: Successful deletion.
@@ -850,9 +841,6 @@ paths:
       operationId: putContainerEACL
       parameters:
         - $ref: '#/components/parameters/containerId'
-        - $ref: '#/components/parameters/signatureParam'
-        - $ref: '#/components/parameters/signatureKeyParam'
-        - $ref: '#/components/parameters/signatureScheme'
       requestBody:
         description: EACL for container.
         content:
@@ -1519,25 +1507,14 @@ components:
         - OTHERS
         - KEYS
     Rule:
-      required:
-        - verb
       type: object
       properties:
-        verb:
-          $ref: '#/components/schemas/Verb'
         containerId:
           type: string
       description: Container session token rule.
       example:
         verb: DELETE
         containerId: 6jvKJCQr6e47Yx8SsbSN3fNgzroUJVkY66Q9wqxYcAjc
-    Verb:
-      type: string
-      description: Verb that describes the allowed container operation for token.
-      enum:
-        - PUT
-        - DELETE
-        - SETEACL
     TokenResponse:
       required:
         - token
