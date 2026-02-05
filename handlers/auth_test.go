@@ -22,7 +22,7 @@ func TestSign(t *testing.T) {
 	pubKeyHex := hex.EncodeToString(key.PublicKey().Bytes())
 
 	records := []apiserver.Record{{
-		Operation: apiserver.OperationPUT,
+		Operation: apiserver.PUT,
 		Action:    apiserver.ALLOW,
 		Filters:   []apiserver.Filter{},
 		Targets: []apiserver.Target{{

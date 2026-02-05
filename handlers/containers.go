@@ -2,9 +2,6 @@ package handlers
 
 import (
 	"context"
-	"crypto/elliptic"
-	"encoding/base64"
-	"encoding/hex"
 	"errors"
 	"fmt"
 	"net/http"
@@ -12,7 +9,6 @@ import (
 	"time"
 
 	"github.com/labstack/echo/v4"
-	"github.com/nspcc-dev/neo-go/pkg/crypto/keys"
 	"github.com/nspcc-dev/neofs-rest-gw/handlers/apiserver"
 	"github.com/nspcc-dev/neofs-rest-gw/internal/util"
 	"github.com/nspcc-dev/neofs-rest-gw/metrics"
@@ -20,10 +16,8 @@ import (
 	"github.com/nspcc-dev/neofs-sdk-go/container"
 	"github.com/nspcc-dev/neofs-sdk-go/container/acl"
 	cid "github.com/nspcc-dev/neofs-sdk-go/container/id"
-	neofscrypto "github.com/nspcc-dev/neofs-sdk-go/crypto"
 	"github.com/nspcc-dev/neofs-sdk-go/netmap"
 	"github.com/nspcc-dev/neofs-sdk-go/pool"
-	"github.com/nspcc-dev/neofs-sdk-go/session"
 	sessionv2 "github.com/nspcc-dev/neofs-sdk-go/session/v2"
 	"github.com/nspcc-dev/neofs-sdk-go/user"
 	"github.com/nspcc-dev/neofs-sdk-go/waiter"
@@ -54,13 +48,7 @@ func (a *RestAPI) PutContainer(ctx echo.Context, params apiserver.PutContainerPa
 		return ctx.JSON(http.StatusBadRequest, a.logAndGetErrorResponse("bind", err, log))
 	}
 
-	var isWalletConnect bool
-	if params.WalletConnect != nil {
-		isWalletConnect = *params.WalletConnect
-		log = log.With(zap.Bool("walletConnect", isWalletConnect))
-	}
-
-	sessionTokenV1, sessionTokenV2, err := getSessionTokens(ctx, params.XBearerSignature, params.XBearerSignatureKey, isWalletConnect, session.VerbContainerPut, cid.ID{})
+	sessionTokenV2, err := sessionTokensFromAuthHeader(ctx, sessionv2.VerbContainerPut, cid.ID{})
 	if err != nil {
 		resp := a.logAndGetErrorResponse("invalid auth", err, log)
 		return ctx.JSON(http.StatusBadRequest, resp)
@@ -70,7 +58,7 @@ func (a *RestAPI) PutContainer(ctx echo.Context, params apiserver.PutContainerPa
 	defer cancel()
 
 	// PutContainer will be removed in the next release. We may update old method to use new structures.
-	cnrID, err := createContainer(wCtx, a.containerWaiter, sessionTokenV1, sessionTokenV2, body, apiserver.PostContainerParams(params), a.signer, a.networkInfoGetter)
+	cnrID, err := createContainer(wCtx, a.containerWaiter, sessionTokenV2, body, params.NameScopeGlobal, a.signer, a.networkInfoGetter)
 	if err != nil {
 		resp := a.logAndGetErrorResponse("create container", err, log)
 		return ctx.JSON(getResponseCodeFromStatus(err), resp)
@@ -97,13 +85,7 @@ func (a *RestAPI) PostContainer(ctx echo.Context, params apiserver.PostContainer
 		return ctx.JSON(http.StatusBadRequest, a.logAndGetErrorResponse("bind", err, log))
 	}
 
-	var isWalletConnect bool
-	if params.WalletConnect != nil {
-		isWalletConnect = *params.WalletConnect
-		log = log.With(zap.Bool("walletConnect", isWalletConnect))
-	}
-
-	sessionTokenV1, sessionTokenV2, err := getSessionTokens(ctx, params.XBearerSignature, params.XBearerSignatureKey, isWalletConnect, session.VerbContainerPut, cid.ID{})
+	sessionTokenV2, err := sessionTokensFromAuthHeader(ctx, sessionv2.VerbContainerPut, cid.ID{})
 	if err != nil {
 		resp := a.logAndGetErrorResponse("invalid auth", err, log)
 		return ctx.JSON(http.StatusBadRequest, resp)
@@ -112,7 +94,7 @@ func (a *RestAPI) PostContainer(ctx echo.Context, params apiserver.PostContainer
 	wCtx, cancel := context.WithTimeout(ctx.Request().Context(), a.waiterOperationTimeout)
 	defer cancel()
 
-	cnrID, err := createContainer(wCtx, a.containerWaiter, sessionTokenV1, sessionTokenV2, body, params, a.signer, a.networkInfoGetter)
+	cnrID, err := createContainer(wCtx, a.containerWaiter, sessionTokenV2, body, params.NameScopeGlobal, a.signer, a.networkInfoGetter)
 	if err != nil {
 		resp := a.logAndGetErrorResponse("create container", err, log)
 		return ctx.JSON(getResponseCodeFromStatus(err), resp)
@@ -152,7 +134,7 @@ func (a *RestAPI) GetContainer(ctx echo.Context, containerID apiserver.Container
 }
 
 // PutContainerEACL handler that update container eacl.
-func (a *RestAPI) PutContainerEACL(ctx echo.Context, containerID apiserver.ContainerId, params apiserver.PutContainerEACLParams) error {
+func (a *RestAPI) PutContainerEACL(ctx echo.Context, containerID apiserver.ContainerId) error {
 	if a.apiMetric != nil {
 		defer metrics.Elapsed(a.apiMetric.PutContainerEACLDuration)()
 	}
@@ -181,22 +163,14 @@ func (a *RestAPI) PutContainerEACL(ctx echo.Context, containerID apiserver.Conta
 		return ctx.JSON(http.StatusConflict, resp)
 	}
 
-	var isWalletConnect bool
 	var prm client.PrmContainerSetEACL
-	if params.WalletConnect != nil {
-		isWalletConnect = *params.WalletConnect
-		log = log.With(zap.Bool("walletConnect", isWalletConnect))
-	}
 
-	sessionTokenV1, sessionTokenV2, err := getSessionTokens(ctx, params.XBearerSignature, params.XBearerSignatureKey, isWalletConnect, session.VerbContainerSetEACL, cnrID)
+	sessionTokenV2, err := sessionTokensFromAuthHeader(ctx, sessionv2.VerbContainerSetEACL, cnrID)
 	if err != nil {
 		resp := a.logAndGetErrorResponse("invalid auth", err, log)
 		return ctx.JSON(http.StatusBadRequest, resp)
 	}
 
-	if sessionTokenV1 != nil {
-		prm.WithinSession(*sessionTokenV1)
-	}
 	if sessionTokenV2 != nil {
 		prm.WithinSessionV2(*sessionTokenV2)
 	}
@@ -315,7 +289,7 @@ func (a *RestAPI) ListContainers(ctx echo.Context, params apiserver.ListContaine
 }
 
 // DeleteContainer handler that returns container info.
-func (a *RestAPI) DeleteContainer(ctx echo.Context, containerID apiserver.ContainerId, params apiserver.DeleteContainerParams) error {
+func (a *RestAPI) DeleteContainer(ctx echo.Context, containerID apiserver.ContainerId) error {
 	if a.apiMetric != nil {
 		defer metrics.Elapsed(a.apiMetric.DeleteContainerDuration)()
 	}
@@ -328,21 +302,13 @@ func (a *RestAPI) DeleteContainer(ctx echo.Context, containerID apiserver.Contai
 		return ctx.JSON(http.StatusBadRequest, resp)
 	}
 	var prm client.PrmContainerDelete
-	var isWalletConnect bool
-	if params.WalletConnect != nil {
-		isWalletConnect = *params.WalletConnect
-		log = log.With(zap.Bool("walletConnect", isWalletConnect))
-	}
 
-	sessionTokenV1, sessionTokenV2, err := getSessionTokens(ctx, params.XBearerSignature, params.XBearerSignatureKey, isWalletConnect, session.VerbContainerDelete, cnrID)
+	sessionTokenV2, err := sessionTokensFromAuthHeader(ctx, sessionv2.VerbContainerDelete, cnrID)
 	if err != nil {
 		resp := a.logAndGetErrorResponse("invalid auth", err, log)
 		return ctx.JSON(http.StatusBadRequest, resp)
 	}
 
-	if sessionTokenV1 != nil {
-		prm.WithinSession(*sessionTokenV1)
-	}
 	if sessionTokenV2 != nil {
 		prm.WithinSessionV2(*sessionTokenV2)
 	}
@@ -448,7 +414,7 @@ func getContainerEACL(ctx context.Context, p *pool.Pool, cnrID cid.ID) (*apiserv
 	return tableResp, nil
 }
 
-func createContainer(ctx context.Context, p *waiter.Waiter, stoken *session.Container, sessionTokenV2 *sessionv2.Token, request apiserver.ContainerPostInfo, params apiserver.PostContainerParams, signer user.Signer, networkInfoGetter networkInfoGetter) (cid.ID, error) {
+func createContainer(ctx context.Context, p *waiter.Waiter, sessionTokenV2 *sessionv2.Token, request apiserver.ContainerPostInfo, nameScopeGlobal *bool, signer user.Signer, networkInfoGetter networkInfoGetter) (cid.ID, error) {
 	if request.PlacementPolicy == "" {
 		request.PlacementPolicy = defaultPlacementPolicy
 	}
@@ -472,9 +438,7 @@ func createContainer(ctx context.Context, p *waiter.Waiter, stoken *session.Cont
 	cnr.SetPlacementPolicy(policy)
 	cnr.SetBasicACL(basicACL)
 
-	if stoken != nil {
-		cnr.SetOwner(stoken.Issuer())
-	} else if sessionTokenV2 != nil {
+	if sessionTokenV2 != nil {
 		cnr.SetOwner(sessionTokenV2.Issuer())
 	}
 
@@ -502,7 +466,7 @@ func createContainer(ctx context.Context, p *waiter.Waiter, stoken *session.Cont
 		}
 	}
 
-	if params.NameScopeGlobal != nil && *params.NameScopeGlobal {
+	if nameScopeGlobal != nil && *nameScopeGlobal {
 		if err = checkNNSContainerName(request.ContainerName); err != nil {
 			return cid.ID{}, fmt.Errorf("invalid container name: %w", err)
 		}
@@ -513,9 +477,6 @@ func createContainer(ctx context.Context, p *waiter.Waiter, stoken *session.Cont
 	}
 
 	var prm client.PrmContainerPut
-	if stoken != nil {
-		prm.WithinSession(*stoken)
-	}
 	if sessionTokenV2 != nil {
 		prm.WithinSessionV2(*sessionTokenV2)
 	}
@@ -558,30 +519,6 @@ func isAlNum(c uint8) bool {
 	return c >= 'a' && c <= 'z' || c >= '0' && c <= '9'
 }
 
-func prepareSessionToken(st *SessionToken, isWalletConnect bool) (*session.Container, error) {
-	data, signature, err := sessionTokenDataAndSignature(st, isWalletConnect)
-	if err != nil {
-		return nil, fmt.Errorf("session token parts: %w", err)
-	}
-
-	var stoken session.Container
-	if err = stoken.UnmarshalSignedData(data); err != nil {
-		return nil, fmt.Errorf("can't unmarshal session token: %w", err)
-	}
-
-	if !stoken.AssertVerb(st.Verb) {
-		return nil, errors.New("wrong container session verb")
-	}
-
-	stoken.AttachSignature(signature)
-
-	if !stoken.VerifySignature() {
-		return nil, errors.New("invalid signature")
-	}
-
-	return &stoken, err
-}
-
 func prepareSessionTokenV2(token *sessionv2.Token, cnrID cid.ID, verb sessionv2.Verb) error {
 	if token == nil {
 		return nil
@@ -598,33 +535,4 @@ func prepareSessionTokenV2(token *sessionv2.Token, cnrID cid.ID, verb sessionv2.
 	}
 
 	return nil
-}
-
-func sessionTokenDataAndSignature(st *SessionToken, isWalletConnect bool) ([]byte, neofscrypto.Signature, error) {
-	data, err := base64.StdEncoding.DecodeString(st.Token)
-	if err != nil {
-		return nil, neofscrypto.Signature{}, fmt.Errorf("can't base64-decode session token: %w", err)
-	}
-
-	signature, err := hex.DecodeString(st.Signature)
-	if err != nil {
-		return nil, neofscrypto.Signature{}, fmt.Errorf("couldn't decode signature: %w", err)
-	}
-
-	pub, err := hex.DecodeString(st.Key)
-	if err != nil {
-		return nil, neofscrypto.Signature{}, fmt.Errorf("couldn't fetch session token owner key: %w", err)
-	}
-	if _, err = keys.NewPublicKeyFromBytes(pub, elliptic.P256()); err != nil {
-		return nil, neofscrypto.Signature{}, fmt.Errorf("couldn't fetch session token owner key: %w", err)
-	}
-
-	var scheme neofscrypto.Scheme
-	if isWalletConnect {
-		scheme = neofscrypto.ECDSA_WALLETCONNECT
-	} else {
-		scheme = neofscrypto.ECDSA_SHA512
-	}
-
-	return data, neofscrypto.NewSignatureFromRawKey(scheme, pub, signature), nil
 }

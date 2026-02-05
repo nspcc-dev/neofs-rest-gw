@@ -589,9 +589,6 @@ paths:
       summary: Create new container in NeoFS. Use POST method to create a container.
       operationId: putContainer
       parameters:
-        - $ref: '#/components/parameters/signatureParam'
-        - $ref: '#/components/parameters/signatureKeyParam'
-        - $ref: '#/components/parameters/signatureScheme'
         - name: name-scope-global
           in: query
           description: Provide this parameter to register container name in NNS service.
@@ -651,9 +648,6 @@ paths:
       summary: Create new container in NeoFS
       operationId: postContainer
       parameters:
-        - $ref: '#/components/parameters/signatureParam'
-        - $ref: '#/components/parameters/signatureKeyParam'
-        - $ref: '#/components/parameters/signatureScheme'
         - name: name-scope-global
           in: query
           description: Provide this parameter to register container name in NNS service.
@@ -758,9 +752,6 @@ paths:
       operationId: deleteContainer
       parameters:
         - $ref: '#/components/parameters/containerId'
-        - $ref: '#/components/parameters/signatureParam'
-        - $ref: '#/components/parameters/signatureKeyParam'
-        - $ref: '#/components/parameters/signatureScheme'
       responses:
         "200":
           description: Successful deletion.
@@ -850,9 +841,6 @@ paths:
       operationId: putContainerEACL
       parameters:
         - $ref: '#/components/parameters/containerId'
-        - $ref: '#/components/parameters/signatureParam'
-        - $ref: '#/components/parameters/signatureKeyParam'
-        - $ref: '#/components/parameters/signatureScheme'
       requestBody:
         description: EACL for container.
         content:
@@ -1374,8 +1362,6 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/Record'
-        container:
-          $ref: '#/components/schemas/Rule'
     FormBearerRequest:
       type: object
       required:
@@ -1518,26 +1504,6 @@ components:
         - SYSTEM
         - OTHERS
         - KEYS
-    Rule:
-      required:
-        - verb
-      type: object
-      properties:
-        verb:
-          $ref: '#/components/schemas/Verb'
-        containerId:
-          type: string
-      description: Container session token rule.
-      example:
-        verb: DELETE
-        containerId: 6jvKJCQr6e47Yx8SsbSN3fNgzroUJVkY66Q9wqxYcAjc
-    Verb:
-      type: string
-      description: Verb that describes the allowed container operation for token.
-      enum:
-        - PUT
-        - DELETE
-        - SETEACL
     TokenResponse:
       required:
         - token
@@ -1554,14 +1520,11 @@ components:
       example:
         - type: object
           token: ClYKBAgCEA0aCAgDEAEiAggDGggIARACIgIIAxoICAIQAiICCAMaCAgDEAIiAggDGggIBBACIgIIAxoICAUQAiICCAMaCAgGEAIiAggDGggIBxACIgIIAxIbChk182WEDFuAqq3nssrGOaH0NK0ZhzF8bu+YGgQIaBgE
-        - type: container
-          token: ChCpanIBJCpJuJz42KOmGMSnEhsKGTWquaX2Lq6GhhO4faOYkLD0f9WkXuYJlq4aBAhnGAMiIQJgFcIEghQB5lq3AJZOVswInwc1IGhlQ7NCUh4DFO3UATIECAEQAQ==
     TokenType:
       type: string
       description: Type of token.
       enum:
         - object
-        - container
     ContainerPostInfo:
       type: object
       properties:
@@ -2205,6 +2168,7 @@ components:
         - key
         - value
         - scheme
+        - lock
       properties:
         token:
           description: Base64 encoded unsigned session v2 token.
@@ -2221,6 +2185,9 @@ components:
         scheme:
           description: Use wallet connect signature scheme or native NeoFS signature.
           $ref: '#/components/schemas/SchemaType'
+        lock:
+          type: string
+          description: Session token lock data. It prevents unauthorized usage of session token.
     TokenContext:
       type: object
       properties:
@@ -2262,10 +2229,14 @@ components:
       type: object
       required:
         - token
+        - lock
       properties:
         token:
           type: string
           description: Base64 encoded unsigned token, what should be signed.
+        lock:
+          type: string
+          description: Session token lock data. It prevent unauthorized usage of session token.
     GatewayMetadataResponse:
       required:
         - address

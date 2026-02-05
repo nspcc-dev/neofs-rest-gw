@@ -1,8 +1,11 @@
 package handlers
 
 import (
+	"bytes"
 	"context"
 	"crypto/elliptic"
+	"crypto/rand"
+	"crypto/sha256"
 	"encoding/base64"
 	"encoding/hex"
 	"errors"
@@ -12,7 +15,6 @@ import (
 	"slices"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
 	"github.com/nspcc-dev/neo-go/pkg/crypto/keys"
 	"github.com/nspcc-dev/neofs-rest-gw/handlers/apiserver"
@@ -29,6 +31,8 @@ const (
 	defaultTokenExpDuration = 100 // in epoch
 
 	defaultSessionTokenExpiration = 24 * time.Hour
+
+	sessionLockSize = 32
 )
 
 type headersParams struct {
@@ -41,12 +45,6 @@ type objectTokenParams struct {
 	headersParams
 	Records []apiserver.Record
 	Name    string
-}
-
-type containerTokenParams struct {
-	headersParams
-	Rule *apiserver.Rule
-	Name string
 }
 
 func newHeaderParams(params apiserver.AuthParams) headersParams {
@@ -75,14 +73,6 @@ func newObjectParams(common headersParams, token apiserver.Bearer) objectTokenPa
 	}
 }
 
-func newContainerParams(common headersParams, token apiserver.Bearer) containerTokenParams {
-	return containerTokenParams{
-		headersParams: common,
-		Rule:          token.Container,
-		Name:          token.Name,
-	}
-}
-
 // Auth handler that forms bearer token to sign.
 func (a *RestAPI) Auth(ctx echo.Context, params apiserver.AuthParams) error {
 	if a.apiMetric != nil {
@@ -97,6 +87,7 @@ func (a *RestAPI) Auth(ctx echo.Context, params apiserver.AuthParams) error {
 	}
 
 	commonPrm := newHeaderParams(params)
+	var err error
 
 	tokenNames := make(map[string]struct{})
 	response := make([]*apiserver.TokenResponse, len(tokens))
@@ -107,18 +98,8 @@ func (a *RestAPI) Auth(ctx echo.Context, params apiserver.AuthParams) error {
 		}
 		tokenNames[token.Name] = struct{}{}
 
-		isObject, err := IsObjectToken(token)
-		if err != nil {
-			return ctx.JSON(http.StatusBadRequest, util.NewErrorResponse(err))
-		}
-
-		if isObject {
-			prm := newObjectParams(commonPrm, token)
-			response[i], err = prepareObjectToken(ctx.Request().Context(), prm, a.networkInfoGetter, a.signer.UserID())
-		} else {
-			prm := newContainerParams(commonPrm, token)
-			response[i], err = prepareContainerTokens(ctx.Request().Context(), prm, a.networkInfoGetter, a.signer.Public())
-		}
+		prm := newObjectParams(commonPrm, token)
+		response[i], err = prepareObjectToken(ctx.Request().Context(), prm, a.networkInfoGetter, a.signer.UserID())
 
 		if err != nil {
 			return ctx.JSON(http.StatusBadRequest, util.NewErrorResponse(err))
@@ -194,42 +175,6 @@ func prepareObjectToken(ctx context.Context, params objectTokenParams, networkIn
 		Name:  &params.Name,
 		Type:  apiserver.Object,
 		Token: base64.StdEncoding.EncodeToString(binaryBearer),
-	}, nil
-}
-
-func prepareContainerTokens(ctx context.Context, params containerTokenParams, networkInfoGetter networkInfoGetter, pubKey neofscrypto.PublicKey) (*apiserver.TokenResponse, error) {
-	iat, exp, err := getTokenLifetime(ctx, networkInfoGetter, params.XBearerLifetime)
-	if err != nil {
-		return nil, fmt.Errorf("couldn't get lifetime: %w", err)
-	}
-
-	var ownerID user.ID
-	if err = ownerID.DecodeString(params.XBearerIssuerID); err != nil {
-		return nil, fmt.Errorf("invalid bearer issuer: %w", err)
-	}
-
-	if params.Rule == nil {
-		return nil, errors.New("rule is empty")
-	}
-
-	stoken, err := util.ToNativeContainerToken(*params.Rule)
-	if err != nil {
-		return nil, fmt.Errorf("couldn't transform rule to native session token: %w", err)
-	}
-
-	stoken.SetID(uuid.New())
-	stoken.SetIat(iat)
-	stoken.SetExp(exp)
-
-	stoken.SetAuthKey(pubKey)
-	stoken.SetIssuer(ownerID)
-
-	binaryToken := stoken.SignedData()
-
-	return &apiserver.TokenResponse{
-		Name:  &params.Name,
-		Type:  apiserver.Container,
-		Token: base64.StdEncoding.EncodeToString(binaryToken),
 	}, nil
 }
 
@@ -407,14 +352,22 @@ func (a *RestAPI) V2AuthSessionToken(ctx echo.Context) error {
 	tokenV2.SetFinal(apiParams.Final)
 	tokenV2.SetIssuer(owner)
 	tokenV2.SetVersion(session.TokenCurrentVersion)
-	tokenV2.SetNonce(session.RandomNonce())
 
 	if originToken != nil {
 		tokenV2.SetOrigin(originToken)
 	}
 
+	lock := make([]byte, sessionLockSize)
+	_, _ = rand.Read(lock)
+	lockHash := sha256.Sum256(lock)
+
+	if err := tokenV2.SetAppData(lockHash[:]); err != nil {
+		return ctx.JSON(http.StatusInternalServerError, a.logAndGetErrorResponse("lock generation", err, log))
+	}
+
 	var resp = apiserver.SessionTokenv2Response{
 		Token: base64.StdEncoding.EncodeToString(tokenV2.SignedData()),
+		Lock:  base64.StdEncoding.EncodeToString(lock),
 	}
 
 	ctx.Response().Header().Set(accessControlAllowOriginHeader, "*")
@@ -490,6 +443,24 @@ func (a *RestAPI) V2CompleteAuthSessionToken(ctx echo.Context) error {
 		return ctx.JSON(http.StatusBadRequest, a.logAndGetErrorResponse("malformed session token", err, log))
 	}
 
+	if len(apiParams.Lock) == 0 {
+		return ctx.JSON(http.StatusBadRequest, a.logAndGetErrorResponse("empty lock", err, log))
+	}
+
+	lock, err := base64.StdEncoding.DecodeString(apiParams.Lock)
+	if err != nil {
+		return ctx.JSON(http.StatusBadRequest, a.logAndGetErrorResponse("malformed lock", err, log))
+	}
+
+	if len(lock) != sessionLockSize {
+		return ctx.JSON(http.StatusBadRequest, a.logAndGetErrorResponse("wrong lock size", err, log))
+	}
+
+	lockHash := sha256.Sum256(lock)
+	if !bytes.Equal(sessionToken.AppData(), lockHash[:]) {
+		return ctx.JSON(http.StatusBadRequest, a.logAndGetErrorResponse("invalid lock", err, log))
+	}
+
 	signatureValue, err := base64.StdEncoding.DecodeString(apiParams.Value)
 	if err != nil {
 		return ctx.JSON(http.StatusBadRequest, a.logAndGetErrorResponse("couldn't decode session token signature", err, log))
@@ -520,8 +491,9 @@ func (a *RestAPI) V2CompleteAuthSessionToken(ctx echo.Context) error {
 		}
 	}
 
+	tokenWithLock := append(lock, sessionToken.Marshal()...)
 	var resp = apiserver.BinarySessionV2{
-		Token: base64.StdEncoding.EncodeToString(sessionToken.Marshal()),
+		Token: base64.StdEncoding.EncodeToString(tokenWithLock),
 	}
 
 	ctx.Response().Header().Set(accessControlAllowOriginHeader, "*")

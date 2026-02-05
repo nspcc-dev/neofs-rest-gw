@@ -9,10 +9,8 @@ import (
 	"github.com/nspcc-dev/neofs-rest-gw/handlers/apiserver"
 	"github.com/nspcc-dev/neofs-sdk-go/bearer"
 	apistatus "github.com/nspcc-dev/neofs-sdk-go/client/status"
-	cid "github.com/nspcc-dev/neofs-sdk-go/container/id"
 	"github.com/nspcc-dev/neofs-sdk-go/eacl"
 	"github.com/nspcc-dev/neofs-sdk-go/object"
-	"github.com/nspcc-dev/neofs-sdk-go/session"
 )
 
 var (
@@ -49,19 +47,19 @@ func FromNativeAction(a eacl.Action) (apiserver.Action, error) {
 // ToNativeOperation converts [apiserver.Operation] to appropriate [eacl.Operation].
 func ToNativeOperation(o apiserver.Operation) (eacl.Operation, error) {
 	switch o {
-	case apiserver.OperationGET:
+	case apiserver.GET:
 		return eacl.OperationGet, nil
-	case apiserver.OperationHEAD:
+	case apiserver.HEAD:
 		return eacl.OperationHead, nil
-	case apiserver.OperationPUT:
+	case apiserver.PUT:
 		return eacl.OperationPut, nil
-	case apiserver.OperationDELETE:
+	case apiserver.DELETE:
 		return eacl.OperationDelete, nil
-	case apiserver.OperationSEARCH:
+	case apiserver.SEARCH:
 		return eacl.OperationSearch, nil
-	case apiserver.OperationRANGE:
+	case apiserver.RANGE:
 		return eacl.OperationRange, nil
-	case apiserver.OperationRANGEHASH:
+	case apiserver.RANGEHASH:
 		return eacl.OperationRangeHash, nil
 	default:
 		return 0, fmt.Errorf("unsupported operation type: '%s'", o)
@@ -72,19 +70,19 @@ func ToNativeOperation(o apiserver.Operation) (eacl.Operation, error) {
 func FromNativeOperation(o eacl.Operation) (apiserver.Operation, error) {
 	switch o {
 	case eacl.OperationGet:
-		return apiserver.OperationGET, nil
+		return apiserver.GET, nil
 	case eacl.OperationHead:
-		return apiserver.OperationHEAD, nil
+		return apiserver.HEAD, nil
 	case eacl.OperationPut:
-		return apiserver.OperationPUT, nil
+		return apiserver.PUT, nil
 	case eacl.OperationDelete:
-		return apiserver.OperationDELETE, nil
+		return apiserver.DELETE, nil
 	case eacl.OperationSearch:
-		return apiserver.OperationSEARCH, nil
+		return apiserver.SEARCH, nil
 	case eacl.OperationRange:
-		return apiserver.OperationRANGE, nil
+		return apiserver.RANGE, nil
 	case eacl.OperationRangeHash:
-		return apiserver.OperationRANGEHASH, nil
+		return apiserver.RANGEHASH, nil
 	default:
 		return "", fmt.Errorf("unsupported operation type: '%s'", o)
 	}
@@ -192,41 +190,6 @@ func FromNativeRole(r eacl.Role) (apiserver.Role, error) {
 	default:
 		return "", fmt.Errorf("unsupported role type: '%s'", r)
 	}
-}
-
-// ToNativeVerb converts [apiserver.Verb] to appropriate [session.ContainerVerb].
-func ToNativeVerb(r apiserver.Verb) (session.ContainerVerb, error) {
-	switch r {
-	case apiserver.VerbPUT:
-		return session.VerbContainerPut, nil
-	case apiserver.VerbDELETE:
-		return session.VerbContainerDelete, nil
-	case apiserver.VerbSETEACL:
-		return session.VerbContainerSetEACL, nil
-	default:
-		return 0, fmt.Errorf("unsupported verb type: '%s'", r)
-	}
-}
-
-// ToNativeContainerToken converts [apiserver.Rule] to appropriate [session.Container].
-func ToNativeContainerToken(tokenRule apiserver.Rule) (session.Container, error) {
-	var tok session.Container
-
-	if tokenRule.ContainerId != nil && *tokenRule.ContainerId != "" {
-		var cnrID cid.ID
-		if err := cnrID.DecodeString(*tokenRule.ContainerId); err != nil {
-			return session.Container{}, fmt.Errorf("couldn't parse container id: %w", err)
-		}
-		tok.ApplyOnlyTo(cnrID)
-	}
-
-	verb, err := ToNativeVerb(tokenRule.Verb)
-	if err != nil {
-		return session.Container{}, err
-	}
-	tok.ForVerb(verb)
-
-	return tok, nil
 }
 
 // ToNativeRecord converts [apiserver.Record] to appropriate [eacl.Record].
@@ -479,11 +442,6 @@ func ToNativeFilters(searchFilters []apiserver.SearchFilter) (object.SearchFilte
 
 // NewString returns pointer to provided string.
 func NewString(val string) *string {
-	return &val
-}
-
-// NewInteger returns pointer to provided int.
-func NewInteger(val int64) *int64 {
 	return &val
 }
 

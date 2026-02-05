@@ -6,8 +6,8 @@ require (
 	github.com/getkin/kin-openapi v0.131.0
 	github.com/google/uuid v1.6.0
 	github.com/labstack/echo/v4 v4.13.4
-	github.com/nspcc-dev/neo-go v0.114.0
-	github.com/nspcc-dev/neofs-sdk-go v1.0.0-rc.16.0.20260130135659-48d746d584cf
+	github.com/nspcc-dev/neo-go v0.116.0
+	github.com/nspcc-dev/neofs-sdk-go v1.0.0-rc.17
 	github.com/oapi-codegen/echo-middleware v1.0.2
 	github.com/oapi-codegen/runtime v1.1.1
 	github.com/spf13/pflag v1.0.10
@@ -50,7 +50,6 @@ require (
 	github.com/moby/sys/userns v0.1.0 // indirect
 	github.com/mohae/deepcopy v0.0.0-20170929034955-c48cc78d4826 // indirect
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
-	github.com/nspcc-dev/go-ordered-json v0.0.0-20250911084817-6fb4472993d1 // indirect
 	github.com/nspcc-dev/hrw/v2 v2.0.4 // indirect
 	github.com/oasdiff/yaml v0.0.0-20250309154309-f31be36b4037 // indirect
 	github.com/oasdiff/yaml3 v0.0.0-20250309153720-d2182401db90 // indirect
