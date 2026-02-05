@@ -407,7 +407,6 @@ func (a *RestAPI) V2AuthSessionToken(ctx echo.Context) error {
 	tokenV2.SetFinal(apiParams.Final)
 	tokenV2.SetIssuer(owner)
 	tokenV2.SetVersion(session.TokenCurrentVersion)
-	tokenV2.SetNonce(session.RandomNonce())
 
 	if originToken != nil {
 		tokenV2.SetOrigin(originToken)

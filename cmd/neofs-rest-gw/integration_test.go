@@ -3403,7 +3403,6 @@ func v2AuthSessionToken(ctx context.Context, t *testing.T) {
 		originToken.SetExp(now.Add(24 * time.Hour))
 		originToken.SetIssuer(ownerID)
 		originToken.SetVersion(session.TokenCurrentVersion)
-		originToken.SetNonce(session.RandomNonce())
 
 		c, err := session.NewContext(cnrID, []session.Verb{session.VerbContainerPut})
 		require.NoError(t, err)
