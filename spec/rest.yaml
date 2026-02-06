@@ -2236,7 +2236,7 @@ components:
           description: Base64 encoded unsigned token, what should be signed.
         lock:
           type: string
-          description: Session token lock data. It prevent unauthorized usage of session token.
+          description: Session token lock data. It prevents unauthorized usage of session token.
     GatewayMetadataResponse:
       required:
         - address
