@@ -1066,7 +1066,7 @@ paths:
             type: string
         - name: X-Neofs-Expiration-Duration
           in: header
-          description: | 
+          description: |
             Specifies the duration until object expiration in Go's duration format. Examples:
             - "300s" represents 5 minutes.
             - "2h45m" represents 2 hours and 45 minutes. \
@@ -1853,7 +1853,7 @@ components:
       properties:
         objectId:
           type: string
-          example: 
+          example:
         attributes:
           type: object
           additionalProperties: true
@@ -2236,7 +2236,7 @@ components:
           description: Base64 encoded unsigned token, what should be signed.
         lock:
           type: string
-          description: Session token lock data. It prevent unauthorized usage of session token.
+          description: Session token lock data. It prevents unauthorized usage of session token.
     GatewayMetadataResponse:
       required:
         - address
@@ -2358,9 +2358,9 @@ components:
           schema:
             type: string
         Content-Range:
-            schema:
-              type: string
-            description: Indicates the range of bytes being returned in the response.
+          schema:
+            type: string
+          description: Indicates the range of bytes being returned in the response.
         Accept-Ranges:
           schema:
             type: string
