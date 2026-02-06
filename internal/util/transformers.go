@@ -170,27 +170,29 @@ func ToNativeRole(r apiserver.Role) (eacl.Role, error) {
 		return eacl.RoleSystem, nil
 	case apiserver.OTHERS:
 		return eacl.RoleOthers, nil
-	case apiserver.KEYS:
-		return eacl.RoleUnspecified, nil
 	default:
 		return 0, fmt.Errorf("unsupported role type: '%s'", r)
 	}
 }
 
 // FromNativeRole converts [eacl.Role] to appropriate [apiserver.Role].
-func FromNativeRole(r eacl.Role) (apiserver.Role, error) {
+func FromNativeRole(r eacl.Role) (*apiserver.Role, error) {
+	var apiRole apiserver.Role
+
 	switch r {
 	case eacl.RoleUser:
-		return apiserver.USER, nil
+		apiRole = apiserver.USER
 	case eacl.RoleSystem:
-		return apiserver.SYSTEM, nil
+		apiRole = apiserver.SYSTEM
 	case eacl.RoleOthers:
-		return apiserver.OTHERS, nil
+		apiRole = apiserver.OTHERS
 	case eacl.RoleUnspecified:
-		return apiserver.KEYS, nil
+		return nil, nil
 	default:
-		return "", fmt.Errorf("unsupported role type: '%s'", r)
+		return nil, fmt.Errorf("unsupported role type: '%s'", r)
 	}
+
+	return &apiRole, nil
 }
 
 // ToNativeRecord converts [apiserver.Record] to appropriate [eacl.Record].
@@ -317,10 +319,6 @@ func ToNativeTarget(t apiserver.Target) (*eacl.Target, error) {
 		return &target, nil
 	}
 
-	if len(t.Keys) > 0 && *t.Role != apiserver.KEYS {
-		return nil, fmt.Errorf("you cannot set binary keys with role other than '%s'", apiserver.KEYS)
-	}
-
 	keys := make([][]byte, len(t.Keys))
 	for i, key := range t.Keys {
 		binaryKey, err := hex.DecodeString(key)
@@ -372,7 +370,7 @@ func FromNativeTarget(t eacl.Target) (apiserver.Target, error) {
 		return target, err
 	}
 
-	target.Role = &role
+	target.Role = role
 
 	return target, nil
 }

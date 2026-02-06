@@ -1394,7 +1394,6 @@ func restContainerEACLPutSessionV2(ctx context.Context, t *testing.T, clientPool
 	httpClient := defaultHTTPClient()
 	signedToken := getSignedSessionToken(ctx, t, tokenRequest, httpClient, signerForToken)
 	oth := apiserver.OTHERS
-	rolKeys := apiserver.KEYS
 
 	t.Run("eacl", func(t *testing.T) {
 		req := apiserver.Eacl{
@@ -1612,7 +1611,6 @@ func restContainerEACLPutSessionV2(ctx context.Context, t *testing.T, clientPool
 					Operation: apiserver.DELETE,
 					Targets: []apiserver.Target{{
 						Keys: []string{"031a6c6fbbdf02ca351745fa86b9ba5a9452d785ac4f7fc2b7548ca2a46c4fcf4a"},
-						Role: &rolKeys,
 					}},
 				}},
 			}
@@ -1630,7 +1628,6 @@ func restContainerEACLPutSessionV2(ctx context.Context, t *testing.T, clientPool
 					Operation: apiserver.DELETE,
 					Targets: []apiserver.Target{{
 						Keys: []string{"031a6c6fbbdf02ca351745fa86b9ba5a9452d785ac4f7fc2b7548ca2a46c4fcf4a"},
-						Role: &rolKeys,
 					}},
 				}},
 			}
@@ -1648,7 +1645,6 @@ func restContainerEACLPutSessionV2(ctx context.Context, t *testing.T, clientPool
 					Operation: apiserver.DELETE,
 					Targets: []apiserver.Target{{
 						Keys: []string{"031a6c6fbbdf02ca351745fa86b9ba5a9452d785ac4f7fc2b7548ca2a46c4fcf4a"},
-						Role: &rolKeys,
 					}},
 				}},
 			}
@@ -1670,15 +1666,8 @@ func setAndCheckEACLError(ctx context.Context, t *testing.T, statusCode int, err
 }
 
 func setAndCheckEACL(ctx context.Context, t *testing.T, clientPool *pool.Pool, req apiserver.Eacl, httpClient *http.Client, cnrID cid.ID, signedToken string) {
-	invalidBody, err := json.Marshal(&req)
-	require.NoError(t, err)
-	roleKeys := apiserver.KEYS
-
-	req.Records[0].Targets[0].Role = &roleKeys
 	body, err := json.Marshal(&req)
 	require.NoError(t, err)
-
-	doSetEACLRequestSessionV2(ctx, t, httpClient, cnrID, signedToken, invalidBody, http.StatusBadRequest, nil)
 
 	resp := &apiserver.SuccessResponse{}
 	doSetEACLRequestSessionV2(ctx, t, httpClient, cnrID, signedToken, body, http.StatusOK, resp)

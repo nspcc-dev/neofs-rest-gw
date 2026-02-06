@@ -1498,8 +1498,7 @@ components:
             type: string
           x-go-type-skip-optional-pointer: true
       example:
-        - role: KEYS
-          keys:
+        - keys:
             - 021dc56fc6d81d581ae7605a8e00e0e0bab6cbad566a924a527339475a97a8e38e
         - role: OTHERS
         - accounts:
@@ -1512,7 +1511,6 @@ components:
         - USER
         - SYSTEM
         - OTHERS
-        - KEYS
     TokenResponse:
       required:
         - token
