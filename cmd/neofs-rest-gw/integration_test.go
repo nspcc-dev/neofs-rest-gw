@@ -297,28 +297,34 @@ func getRestrictBearerRecords() []apiserver.Record {
 }
 
 func formRestrictRecord(op apiserver.Operation) apiserver.Record {
+	oth := apiserver.OTHERS
+
 	return apiserver.Record{
 		Operation: op,
 		Action:    apiserver.DENY,
 		Filters:   []apiserver.Filter{},
 		Targets: []apiserver.Target{{
-			Role: apiserver.OTHERS,
+			Role: &oth,
 			Keys: []string{},
 		}}}
 }
 
 func formAllowRecord(op apiserver.Operation) apiserver.Record {
+	oth := apiserver.OTHERS
+
 	return apiserver.Record{
 		Operation: op,
 		Action:    apiserver.ALLOW,
 		Filters:   []apiserver.Filter{},
 		Targets: []apiserver.Target{{
-			Role: apiserver.OTHERS,
+			Role: &oth,
 			Keys: []string{},
 		}}}
 }
 
 func authTokens(ctx context.Context, t *testing.T) {
+	oth := apiserver.OTHERS
+
 	bearers := []apiserver.Bearer{
 		{
 			Name: "all-object",
@@ -327,7 +333,7 @@ func authTokens(ctx context.Context, t *testing.T) {
 				Action:    apiserver.ALLOW,
 				Filters:   []apiserver.Filter{},
 				Targets: []apiserver.Target{{
-					Role: apiserver.OTHERS,
+					Role: &oth,
 					Keys: []string{},
 				}},
 			}},
@@ -339,6 +345,8 @@ func authTokens(ctx context.Context, t *testing.T) {
 }
 
 func formFullBinaryBearer(ctx context.Context, t *testing.T) {
+	oth := apiserver.OTHERS
+
 	bearers := []apiserver.Bearer{
 		{
 			Name: "all-object",
@@ -347,7 +355,7 @@ func formFullBinaryBearer(ctx context.Context, t *testing.T) {
 				Action:    apiserver.ALLOW,
 				Filters:   []apiserver.Filter{},
 				Targets: []apiserver.Target{{
-					Role: apiserver.OTHERS,
+					Role: &oth,
 					Keys: []string{},
 				}},
 			}},
@@ -389,6 +397,7 @@ func formFullBinaryBearer(ctx context.Context, t *testing.T) {
 
 func restObjectDelete(ctx context.Context, t *testing.T, p *pool.Pool, owner *user.ID, cnrID cid.ID, signer user.Signer) {
 	objID := createObject(ctx, t, p, owner, cnrID, nil, []byte("some content"), signer)
+	oth := apiserver.OTHERS
 
 	bearer := apiserver.Bearer{
 		Object: []apiserver.Record{{
@@ -396,7 +405,7 @@ func restObjectDelete(ctx context.Context, t *testing.T, p *pool.Pool, owner *us
 			Action:    apiserver.ALLOW,
 			Filters:   []apiserver.Filter{},
 			Targets: []apiserver.Target{{
-				Role: apiserver.OTHERS,
+				Role: &oth,
 				Keys: []string{},
 			}},
 		}, {
@@ -404,7 +413,7 @@ func restObjectDelete(ctx context.Context, t *testing.T, p *pool.Pool, owner *us
 			Action:    apiserver.ALLOW,
 			Filters:   []apiserver.Filter{},
 			Targets: []apiserver.Target{{
-				Role: apiserver.OTHERS,
+				Role: &oth,
 				Keys: []string{},
 			}},
 		}},
@@ -475,25 +484,27 @@ func restObjectsSearch(ctx context.Context, t *testing.T, p *pool.Pool, owner *u
 	headers[userKey] = "dummy"
 	_ = createObject(ctx, t, p, owner, cnrID, headers, []byte("some content"), signer)
 
+	oth := apiserver.OTHERS
+
 	bearer := apiserver.Bearer{
 		Object: []apiserver.Record{
 			{
 				Operation: apiserver.SEARCH,
 				Action:    apiserver.ALLOW,
 				Filters:   []apiserver.Filter{},
-				Targets:   []apiserver.Target{{Role: apiserver.OTHERS, Keys: []string{}}},
+				Targets:   []apiserver.Target{{Role: &oth, Keys: []string{}}},
 			},
 			{
 				Operation: apiserver.HEAD,
 				Action:    apiserver.ALLOW,
 				Filters:   []apiserver.Filter{},
-				Targets:   []apiserver.Target{{Role: apiserver.OTHERS, Keys: []string{}}},
+				Targets:   []apiserver.Target{{Role: &oth, Keys: []string{}}},
 			},
 			{
 				Operation: apiserver.GET,
 				Action:    apiserver.ALLOW,
 				Filters:   []apiserver.Filter{},
-				Targets:   []apiserver.Target{{Role: apiserver.OTHERS, Keys: []string{}}},
+				Targets:   []apiserver.Target{{Role: &oth, Keys: []string{}}},
 			},
 		},
 	}
@@ -656,25 +667,27 @@ func restObjectsSearchV2(ctx context.Context, t *testing.T, p *pool.Pool, owner 
 	headers[userKey] = "dummy"
 	_ = createObject(ctx, t, p, owner, cnrID, headers, []byte("some content"), signer)
 
+	oth := apiserver.OTHERS
+
 	bearer := apiserver.Bearer{
 		Object: []apiserver.Record{
 			{
 				Operation: apiserver.SEARCH,
 				Action:    apiserver.ALLOW,
 				Filters:   []apiserver.Filter{},
-				Targets:   []apiserver.Target{{Role: apiserver.OTHERS, Keys: []string{}}},
+				Targets:   []apiserver.Target{{Role: &oth, Keys: []string{}}},
 			},
 			{
 				Operation: apiserver.HEAD,
 				Action:    apiserver.ALLOW,
 				Filters:   []apiserver.Filter{},
-				Targets:   []apiserver.Target{{Role: apiserver.OTHERS, Keys: []string{}}},
+				Targets:   []apiserver.Target{{Role: &oth, Keys: []string{}}},
 			},
 			{
 				Operation: apiserver.GET,
 				Action:    apiserver.ALLOW,
 				Filters:   []apiserver.Filter{},
-				Targets:   []apiserver.Target{{Role: apiserver.OTHERS, Keys: []string{}}},
+				Targets:   []apiserver.Target{{Role: &oth, Keys: []string{}}},
 			},
 		},
 	}
@@ -902,25 +915,27 @@ func restObjectsSearchV2CursorAndLimit(ctx context.Context, t *testing.T, p *poo
 		createObject(ctx, t, p, owner, cnrID, headers, []byte("some content"), signer)
 	}
 
+	oth := apiserver.OTHERS
+
 	bearer := apiserver.Bearer{
 		Object: []apiserver.Record{
 			{
 				Operation: apiserver.SEARCH,
 				Action:    apiserver.ALLOW,
 				Filters:   []apiserver.Filter{},
-				Targets:   []apiserver.Target{{Role: apiserver.OTHERS, Keys: []string{}}},
+				Targets:   []apiserver.Target{{Role: &oth, Keys: []string{}}},
 			},
 			{
 				Operation: apiserver.HEAD,
 				Action:    apiserver.ALLOW,
 				Filters:   []apiserver.Filter{},
-				Targets:   []apiserver.Target{{Role: apiserver.OTHERS, Keys: []string{}}},
+				Targets:   []apiserver.Target{{Role: &oth, Keys: []string{}}},
 			},
 			{
 				Operation: apiserver.GET,
 				Action:    apiserver.ALLOW,
 				Filters:   []apiserver.Filter{},
-				Targets:   []apiserver.Target{{Role: apiserver.OTHERS, Keys: []string{}}},
+				Targets:   []apiserver.Target{{Role: &oth, Keys: []string{}}},
 			},
 		},
 	}
@@ -1043,25 +1058,27 @@ func restObjectsSearchV2Filters(ctx context.Context, t *testing.T, p *pool.Pool,
 		createObject(ctx, t, p, owner, cnrID, headers, []byte("some content"), signer)
 	}
 
+	oth := apiserver.OTHERS
+
 	bearer := apiserver.Bearer{
 		Object: []apiserver.Record{
 			{
 				Operation: apiserver.SEARCH,
 				Action:    apiserver.ALLOW,
 				Filters:   []apiserver.Filter{},
-				Targets:   []apiserver.Target{{Role: apiserver.OTHERS, Keys: []string{}}},
+				Targets:   []apiserver.Target{{Role: &oth, Keys: []string{}}},
 			},
 			{
 				Operation: apiserver.HEAD,
 				Action:    apiserver.ALLOW,
 				Filters:   []apiserver.Filter{},
-				Targets:   []apiserver.Target{{Role: apiserver.OTHERS, Keys: []string{}}},
+				Targets:   []apiserver.Target{{Role: &oth, Keys: []string{}}},
 			},
 			{
 				Operation: apiserver.GET,
 				Action:    apiserver.ALLOW,
 				Filters:   []apiserver.Filter{},
-				Targets:   []apiserver.Target{{Role: apiserver.OTHERS, Keys: []string{}}},
+				Targets:   []apiserver.Target{{Role: &oth, Keys: []string{}}},
 			},
 		},
 	}
@@ -1376,8 +1393,9 @@ func restContainerEACLPutSessionV2(ctx context.Context, t *testing.T, clientPool
 
 	httpClient := defaultHTTPClient()
 	signedToken := getSignedSessionToken(ctx, t, tokenRequest, httpClient, signerForToken)
+	oth := apiserver.OTHERS
 
-	t.Run("set EACL", func(t *testing.T) {
+	t.Run("eacl", func(t *testing.T) {
 		req := apiserver.Eacl{
 			Records: []apiserver.Record{{
 				Action:    apiserver.DENY,
@@ -1385,12 +1403,75 @@ func restContainerEACLPutSessionV2(ctx context.Context, t *testing.T, clientPool
 				Operation: apiserver.DELETE,
 				Targets: []apiserver.Target{{
 					Keys: []string{"031a6c6fbbdf02ca351745fa86b9ba5a9452d785ac4f7fc2b7548ca2a46c4fcf4a"},
-					Role: apiserver.OTHERS,
+					Role: &oth,
 				}},
 			}},
 		}
 
 		setAndCheckEACL(ctx, t, clientPool, req, httpClient, cnrID, signedToken)
+	})
+
+	t.Run("target accounts", func(t *testing.T) {
+		newKey, err := keys.NewPrivateKey()
+		require.NoError(t, err)
+
+		s := user.NewAutoIDSignerRFC6979(newKey.PrivateKey)
+
+		req := apiserver.Eacl{
+			Records: []apiserver.Record{{
+				Action:    apiserver.ALLOW,
+				Filters:   []apiserver.Filter{},
+				Operation: apiserver.DELETE,
+				Targets: []apiserver.Target{{
+					Accounts: []string{s.UserID().String()},
+				}},
+			}},
+		}
+
+		body, err := json.Marshal(&req)
+		require.NoError(t, err)
+
+		resp := &apiserver.SuccessResponse{}
+		doSetEACLRequestSessionV2(ctx, t, httpClient, cnrID, signedToken, body, http.StatusOK, resp)
+		require.True(t, resp.Success)
+
+		table, err := clientPool.ContainerEACL(ctx, cnrID, client.PrmContainerEACL{})
+		require.NoError(t, err)
+
+		expectedTable, err := util.ToNativeTable(req.Records)
+		require.NoError(t, err)
+		expectedTable.SetCID(cnrID)
+
+		require.Equal(t, expectedTable.Marshal(), table.Marshal())
+	})
+
+	t.Run("target role others", func(t *testing.T) {
+		req := apiserver.Eacl{
+			Records: []apiserver.Record{{
+				Action:    apiserver.ALLOW,
+				Filters:   []apiserver.Filter{},
+				Operation: apiserver.DELETE,
+				Targets: []apiserver.Target{{
+					Role: &oth,
+				}},
+			}},
+		}
+
+		body, err := json.Marshal(&req)
+		require.NoError(t, err)
+
+		resp := &apiserver.SuccessResponse{}
+		doSetEACLRequestSessionV2(ctx, t, httpClient, cnrID, signedToken, body, http.StatusOK, resp)
+		require.True(t, resp.Success)
+
+		table, err := clientPool.ContainerEACL(ctx, cnrID, client.PrmContainerEACL{})
+		require.NoError(t, err)
+
+		expectedTable, err := util.ToNativeTable(req.Records)
+		require.NoError(t, err)
+		expectedTable.SetCID(cnrID)
+
+		require.Equal(t, expectedTable.Marshal(), table.Marshal())
 	})
 
 	t.Run("filters", func(t *testing.T) {
@@ -1404,7 +1485,7 @@ func restContainerEACLPutSessionV2(ctx context.Context, t *testing.T, clientPool
 					Operation: apiserver.DELETE,
 					Targets: []apiserver.Target{{
 						Keys: []string{"031a6c6fbbdf02ca351745fa86b9ba5a9452d785ac4f7fc2b7548ca2a46c4fcf4a"},
-						Role: apiserver.OTHERS,
+						Role: &oth,
 					}},
 				}},
 			}
@@ -1422,7 +1503,7 @@ func restContainerEACLPutSessionV2(ctx context.Context, t *testing.T, clientPool
 					Operation: apiserver.DELETE,
 					Targets: []apiserver.Target{{
 						Keys: []string{"031a6c6fbbdf02ca351745fa86b9ba5a9452d785ac4f7fc2b7548ca2a46c4fcf4a"},
-						Role: apiserver.OTHERS,
+						Role: &oth,
 					}},
 				}},
 			}
@@ -1440,7 +1521,7 @@ func restContainerEACLPutSessionV2(ctx context.Context, t *testing.T, clientPool
 					Operation: apiserver.DELETE,
 					Targets: []apiserver.Target{{
 						Keys: []string{"031a6c6fbbdf02ca351745fa86b9ba5a9452d785ac4f7fc2b7548ca2a46c4fcf4a"},
-						Role: apiserver.OTHERS,
+						Role: &oth,
 					}},
 				}},
 			}
@@ -1458,7 +1539,7 @@ func restContainerEACLPutSessionV2(ctx context.Context, t *testing.T, clientPool
 					Operation: apiserver.DELETE,
 					Targets: []apiserver.Target{{
 						Keys: []string{"031a6c6fbbdf02ca351745fa86b9ba5a9452d785ac4f7fc2b7548ca2a46c4fcf4a"},
-						Role: apiserver.OTHERS,
+						Role: &oth,
 					}},
 				}},
 			}
@@ -1476,7 +1557,7 @@ func restContainerEACLPutSessionV2(ctx context.Context, t *testing.T, clientPool
 					Operation: apiserver.DELETE,
 					Targets: []apiserver.Target{{
 						Keys: []string{"031a6c6fbbdf02ca351745fa86b9ba5a9452d785ac4f7fc2b7548ca2a46c4fcf4a"},
-						Role: apiserver.OTHERS,
+						Role: &oth,
 					}},
 				}},
 			}
@@ -1494,7 +1575,7 @@ func restContainerEACLPutSessionV2(ctx context.Context, t *testing.T, clientPool
 					Operation: apiserver.DELETE,
 					Targets: []apiserver.Target{{
 						Keys: []string{"031a6c6fbbdf02ca351745fa86b9ba5a9452d785ac4f7fc2b7548ca2a46c4fcf4a"},
-						Role: apiserver.OTHERS,
+						Role: &oth,
 					}},
 				}},
 			}
@@ -1512,7 +1593,7 @@ func restContainerEACLPutSessionV2(ctx context.Context, t *testing.T, clientPool
 					Operation: apiserver.DELETE,
 					Targets: []apiserver.Target{{
 						Keys: []string{"031a6c6fbbdf02ca351745fa86b9ba5a9452d785ac4f7fc2b7548ca2a46c4fcf4a"},
-						Role: apiserver.OTHERS,
+						Role: &oth,
 					}},
 				}},
 			}
@@ -1530,7 +1611,6 @@ func restContainerEACLPutSessionV2(ctx context.Context, t *testing.T, clientPool
 					Operation: apiserver.DELETE,
 					Targets: []apiserver.Target{{
 						Keys: []string{"031a6c6fbbdf02ca351745fa86b9ba5a9452d785ac4f7fc2b7548ca2a46c4fcf4a"},
-						Role: apiserver.KEYS,
 					}},
 				}},
 			}
@@ -1548,7 +1628,6 @@ func restContainerEACLPutSessionV2(ctx context.Context, t *testing.T, clientPool
 					Operation: apiserver.DELETE,
 					Targets: []apiserver.Target{{
 						Keys: []string{"031a6c6fbbdf02ca351745fa86b9ba5a9452d785ac4f7fc2b7548ca2a46c4fcf4a"},
-						Role: apiserver.KEYS,
 					}},
 				}},
 			}
@@ -1566,7 +1645,6 @@ func restContainerEACLPutSessionV2(ctx context.Context, t *testing.T, clientPool
 					Operation: apiserver.DELETE,
 					Targets: []apiserver.Target{{
 						Keys: []string{"031a6c6fbbdf02ca351745fa86b9ba5a9452d785ac4f7fc2b7548ca2a46c4fcf4a"},
-						Role: apiserver.KEYS,
 					}},
 				}},
 			}
@@ -1588,14 +1666,8 @@ func setAndCheckEACLError(ctx context.Context, t *testing.T, statusCode int, err
 }
 
 func setAndCheckEACL(ctx context.Context, t *testing.T, clientPool *pool.Pool, req apiserver.Eacl, httpClient *http.Client, cnrID cid.ID, signedToken string) {
-	invalidBody, err := json.Marshal(&req)
-	require.NoError(t, err)
-
-	req.Records[0].Targets[0].Role = apiserver.KEYS
 	body, err := json.Marshal(&req)
 	require.NoError(t, err)
-
-	doSetEACLRequestSessionV2(ctx, t, httpClient, cnrID, signedToken, invalidBody, http.StatusBadRequest, nil)
 
 	resp := &apiserver.SuccessResponse{}
 	doSetEACLRequestSessionV2(ctx, t, httpClient, cnrID, signedToken, body, http.StatusOK, resp)

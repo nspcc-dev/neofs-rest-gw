@@ -1479,10 +1479,9 @@ components:
         - NUM_LT
         - NUM_LE
     Target:
-      required:
-        - keys
-        - role
       type: object
+      description: |
+        Fields are evaluated in the following priority order: Accounts, Keys, Role. If a field is populated, the subsequent fields are not evaluated.
       properties:
         role:
           $ref: '#/components/schemas/Role'
@@ -1490,12 +1489,21 @@ components:
           type: array
           items:
             type: string
-      description: Target to apply the ACL rule. Can be a subject's role class or
-        a list of public keys to match (KEYS role).
+          description: Target to apply the ACL rule. It is a list of public keys to match.
+          x-go-type-skip-optional-pointer: true
+        accounts:
+          type: array
+          description: Target to apply the ACL rule with NeoFS accounts.
+          items:
+            type: string
+          x-go-type-skip-optional-pointer: true
       example:
-        role: KEYS
-        keys:
-          - 021dc56fc6d81d581ae7605a8e00e0e0bab6cbad566a924a527339475a97a8e38e
+        - keys:
+            - 021dc56fc6d81d581ae7605a8e00e0e0bab6cbad566a924a527339475a97a8e38e
+        - role: OTHERS
+        - accounts:
+            - NVjU7S7VM1uEf6f6u8p6S7VWruLirEYC1c
+            - NdH6sxboyaDesB6dPFAd5jCVFN1EhCxUgh
     Role:
       type: string
       description: Role for target in EACL.
@@ -1503,7 +1511,6 @@ components:
         - USER
         - SYSTEM
         - OTHERS
-        - KEYS
     TokenResponse:
       required:
         - token
