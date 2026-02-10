@@ -446,6 +446,24 @@ func getSessionTokenV2(v string) (*sessionv2.Token, error) {
 	return &st, nil
 }
 
+func getOriginalSessionTokenV2(v string) (*sessionv2.Token, error) {
+	tokenBts, err := base64.StdEncoding.DecodeString(v)
+	if err != nil {
+		return nil, fmt.Errorf("base64 encoding: %w", err)
+	}
+
+	var st sessionv2.Token
+	if err = st.Unmarshal(tokenBts); err != nil {
+		return nil, fmt.Errorf("token unmarshal: %w", err)
+	}
+
+	if !st.VerifySignature() {
+		return nil, errors.New("invalid signature")
+	}
+
+	return &st, nil
+}
+
 func prepareSessionTokenV2Expiration(tokenIssueTime time.Time, apiParams apiserver.SessionTokenV2Request) (time.Time, error) {
 	var expireAt = tokenIssueTime.Add(defaultSessionTokenExpiration)
 

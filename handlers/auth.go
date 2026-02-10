@@ -319,6 +319,13 @@ func (a *RestAPI) V2AuthSessionToken(ctx echo.Context) error {
 	tokenV2.SetIssuer(owner)
 	tokenV2.SetVersion(session.TokenCurrentVersion)
 
+	if apiParams.Origin != "" {
+		originToken, err = getOriginalSessionTokenV2(apiParams.Origin)
+		if err != nil {
+			return ctx.JSON(http.StatusBadRequest, a.logAndGetErrorResponse("invalid origin token", err, log))
+		}
+	}
+
 	if originToken != nil {
 		tokenV2.SetOrigin(originToken)
 	}
