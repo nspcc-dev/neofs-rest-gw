@@ -445,3 +445,58 @@ func getSessionTokenV2(v string) (*sessionv2.Token, error) {
 
 	return &st, nil
 }
+
+func getOriginalSessionTokenV2(v string) (*sessionv2.Token, error) {
+	tokenBts, err := base64.StdEncoding.DecodeString(v)
+	if err != nil {
+		return nil, fmt.Errorf("base64 encoding: %w", err)
+	}
+
+	var st sessionv2.Token
+	if err = st.Unmarshal(tokenBts); err != nil {
+		return nil, fmt.Errorf("token unmarshal: %w", err)
+	}
+
+	if !st.VerifySignature() {
+		return nil, errors.New("invalid signature")
+	}
+
+	return &st, nil
+}
+
+func prepareSessionTokenV2Expiration(tokenIssueTime time.Time, apiParams apiserver.SessionTokenV2Request) (time.Time, error) {
+	var expireAt = tokenIssueTime.Add(defaultSessionTokenExpiration)
+
+	if apiParams.ExpirationRfc3339 != nil && *apiParams.ExpirationRfc3339 != "" {
+		exp, err := time.Parse(time.RFC3339, *apiParams.ExpirationRfc3339)
+		if err != nil {
+			return time.Time{}, errors.New("format must be in RFC3339")
+		}
+
+		if tokenIssueTime.After(exp) {
+			return time.Time{}, errors.New("must be in the future")
+		}
+
+		expireAt = exp
+	}
+
+	if apiParams.ExpirationTimestamp != nil && *apiParams.ExpirationTimestamp > 0 {
+		exp := time.Unix(int64(*apiParams.ExpirationTimestamp), 0)
+		if tokenIssueTime.After(exp) {
+			return time.Time{}, errors.New("must be in the future")
+		}
+
+		expireAt = exp
+	}
+
+	if apiParams.ExpirationDuration != nil && *apiParams.ExpirationDuration != "" {
+		exp, err := time.ParseDuration(*apiParams.ExpirationDuration)
+		if err != nil {
+			return time.Time{}, errors.New("format must be in RFC3339")
+		}
+
+		expireAt = tokenIssueTime.Add(exp)
+	}
+
+	return expireAt, nil
+}

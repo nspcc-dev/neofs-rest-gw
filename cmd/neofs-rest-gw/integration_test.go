@@ -209,7 +209,6 @@ func createDockerContainer(ctx context.Context, t *testing.T, image, version str
 		Image:      image,
 		WaitingFor: wait.NewLogStrategy("aio container started").WithStartupTimeout(2 * time.Minute),
 		Name:       "restgw-aio-test-" + version,
-		Hostname:   "aio",
 		HostConfigModifier: func(hostConfig *dockerContainer.HostConfig) {
 			hostConfig.NetworkMode = "host"
 		},
@@ -3068,10 +3067,11 @@ func v2AuthSessionToken(ctx context.Context, t *testing.T) {
 		require.NoError(t, err)
 
 		exp := now.Add(48 * time.Hour).Truncate(time.Second)
+		expRfc := exp.Format(time.RFC3339)
 
 		request := apiserver.SessionTokenV2Request{
 			Contexts:          []apiserver.TokenContext{{Verbs: []apiserver.TokenVerb{"OBJECT_PUT"}}},
-			ExpirationRfc3339: exp.Format(time.RFC3339),
+			ExpirationRfc3339: &expRfc,
 			Owner:             ownerID.String(),
 			Targets:           []string{targetID.String()},
 			Origin:            base64.StdEncoding.EncodeToString(originToken.Marshal()),
@@ -3099,9 +3099,57 @@ func v2AuthSessionToken(ctx context.Context, t *testing.T) {
 			sessionToken := extractSessionV2Token(t, sessionTokenResponse)
 
 			require.Equal(t, exp, sessionToken.Exp())
-			// require.False(t, sessionToken.Exp().After(time.Now().Add(48*time.Hour)))
 			require.True(t, sessionToken.VerifySignature())
 		})
+	})
+
+	t.Run("expiration timestamp", func(t *testing.T) {
+		var (
+			now   = time.Now()
+			expTs = int(now.Unix() + 3600)
+		)
+
+		request := apiserver.SessionTokenV2Request{
+			Contexts:            []apiserver.TokenContext{{Verbs: []apiserver.TokenVerb{"OBJECT_PUT"}}},
+			ExpirationTimestamp: &expTs,
+			Owner:               ownerID.String(),
+			Targets:             []string{targetID.String()},
+		}
+
+		httpClient := defaultHTTPClient()
+		response := makeV2AuthSessionTokenRequest(ctx, t, request, httpClient, http.StatusOK, "")
+
+		bts, err := base64.StdEncoding.DecodeString(response.Token)
+		require.NoError(t, err)
+
+		var st session.Token
+		require.NoError(t, st.UnmarshalSignedData(bts))
+		require.Equal(t, st.Exp().Unix(), int64(expTs))
+	})
+
+	t.Run("expiration duration", func(t *testing.T) {
+		var (
+			now   = time.Now()
+			expTs = "1h"
+		)
+
+		request := apiserver.SessionTokenV2Request{
+			Contexts:           []apiserver.TokenContext{{Verbs: []apiserver.TokenVerb{"OBJECT_PUT"}}},
+			ExpirationDuration: &expTs,
+			Owner:              ownerID.String(),
+			Targets:            []string{targetID.String()},
+		}
+
+		httpClient := defaultHTTPClient()
+		response := makeV2AuthSessionTokenRequest(ctx, t, request, httpClient, http.StatusOK, "")
+
+		bts, err := base64.StdEncoding.DecodeString(response.Token)
+		require.NoError(t, err)
+
+		var st session.Token
+		require.NoError(t, st.UnmarshalSignedData(bts))
+		// -10 seconds from https://github.com/nspcc-dev/neofs-node/pull/3671#discussion_r2709969518.
+		require.GreaterOrEqual(t, st.Exp().Unix(), now.Add(time.Hour).Unix()-10)
 	})
 
 	t.Run("invalid owner", func(t *testing.T) {
@@ -3166,11 +3214,12 @@ func v2AuthSessionToken(ctx context.Context, t *testing.T) {
 	})
 
 	t.Run("invalid expiration", func(t *testing.T) {
+		exp := time.Now().Add(-time.Hour).Format(time.RFC3339)
 		request := apiserver.SessionTokenV2Request{
 			Owner:             ownerID.String(),
 			Targets:           []string{targetID.String()},
 			Contexts:          []apiserver.TokenContext{{Verbs: []apiserver.TokenVerb{"OBJECT_PUT"}}},
-			ExpirationRfc3339: time.Now().Add(-time.Hour).Format(time.RFC3339),
+			ExpirationRfc3339: &exp,
 		}
 
 		httpClient := defaultHTTPClient()

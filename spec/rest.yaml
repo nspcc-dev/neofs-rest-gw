@@ -1046,6 +1046,8 @@ paths:
             This attribute should be used if you are familiar with the NeoFS epoch system. 
             More information can be found here: [NeoFS Specifications](https://github.com/nspcc-dev/neofs-spec/blob/master/01-arch/01-netmap.md).
             Instead of this attribute you can use one of `X-Neofs-Expiration-*` headers below.
+            Expiration fields are evaluated in order, and later values override earlier ones. The last specified value takes precedence.
+            The order is: X-Neofs-Expiration-RFC3339, X-Neofs-Expiration-Timestamp, X-Neofs-Expiration-Duration.
           schema:
             type: string
         - name: X-Neofs-Expiration-RFC3339
@@ -2060,7 +2062,9 @@ components:
           items:
             type: string
             description: Target entity that can use the token, an N3 address or an NNS name.
-            example: NejLbQpojKJWec4NQRMBhzsrmCyhXfGJJe, entity.domain
+          example:
+            - NejLbQpojKJWec4NQRMBhzsrmCyhXfGJJe
+            - entity.domain
         contexts:
           type: array
           description: The session token contexts.
@@ -2077,19 +2081,23 @@ components:
             Specifies the expiration time in RFC3339 format. Examples:
             - "2024-12-31T23:59:59Z" represents the last moment of 2024 in UTC.
             - "2024-12-31T15:59:59-08:00" represents 3:59 PM on December 31, 2024, Pacific Time.
-          x-go-type-skip-optional-pointer: true
         expiration-duration:
           type: string
           description: |
-            Specifies the duration until object expiration in Go's duration format. Examples:
+            Specifies the duration until session expiration in Go's duration format. Examples:
               - "300s" represents 5 minutes.
               - "2h45m" represents 2 hours and 45 minutes.
-          x-go-type-skip-optional-pointer: true
+        expiration-timestamp:
+          type: integer
+          description: Specifies the exact timestamp of token expiration. If set, should be positive.
         origin:
           description: If passed, sets the origin token for delegation chain. Base64 encoded.
           type: string
           x-go-type-skip-optional-pointer: true
-      description: Session token v2 that is expected to be formed.
+      description: |
+        Session token v2 that is expected to be formed. Expiration fields are evaluated in order, and later values override earlier ones.
+        The last specified value takes precedence. The order is: expiration-rfc3339, expiration-timestamp, expiration-duration.
+        If no expiration is set, the default is 24 hours.
     CompleteSessionTokenV2Request:
       type: object
       description: The unsigned Session Token v2, its associated signature, and the public component of the signing key.
