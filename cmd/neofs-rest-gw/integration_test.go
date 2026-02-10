@@ -209,7 +209,6 @@ func createDockerContainer(ctx context.Context, t *testing.T, image, version str
 		Image:      image,
 		WaitingFor: wait.NewLogStrategy("aio container started").WithStartupTimeout(2 * time.Minute),
 		Name:       "restgw-aio-test-" + version,
-		Hostname:   "aio",
 		HostConfigModifier: func(hostConfig *dockerContainer.HostConfig) {
 			hostConfig.NetworkMode = "host"
 		},
