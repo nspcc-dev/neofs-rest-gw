@@ -141,6 +141,7 @@ func runTests(ctx context.Context, t *testing.T, key *keys.PrivateKey, node stri
 
 	t.Run("rest gate metadata", func(t *testing.T) { gateMetadata(ctx, t) })
 	t.Run("rest auth several tokens", func(t *testing.T) { authTokens(ctx, t) })
+	t.Run("rest auth bearer v2", func(t *testing.T) { v2AuthBearer(ctx, t) })
 	t.Run("rest auth session token v2", func(t *testing.T) { v2AuthSessionToken(ctx, t) })
 	t.Run("rest form full binary bearer", func(t *testing.T) { formFullBinaryBearer(ctx, t) })
 
@@ -341,6 +342,29 @@ func authTokens(ctx context.Context, t *testing.T) {
 
 	httpClient := defaultHTTPClient()
 	makeAuthTokenRequest(ctx, t, bearers, httpClient, false)
+}
+
+func v2AuthBearer(ctx context.Context, t *testing.T) {
+	var (
+		gateUserID = gateMetadataID(ctx, t)
+		owner      = gateUserID.String()
+		oth        = apiserver.OTHERS
+	)
+
+	r := apiserver.FormBearerRequest{
+		Owner: &owner,
+		Records: []apiserver.Record{{
+			Operation: apiserver.PUT,
+			Action:    apiserver.ALLOW,
+			Filters:   []apiserver.Filter{},
+			Targets: []apiserver.Target{{
+				Role: &oth,
+			}},
+		}},
+	}
+
+	httpClient := defaultHTTPClient()
+	makeV2AuthBearerRequest(ctx, t, r, httpClient)
 }
 
 func formFullBinaryBearer(ctx context.Context, t *testing.T) {
@@ -1800,6 +1824,30 @@ func makeAuthTokenRequest(ctx context.Context, t *testing.T, bearers []apiserver
 	}
 
 	return respTokens
+}
+
+func makeV2AuthBearerRequest(ctx context.Context, t *testing.T, req apiserver.FormBearerRequest, httpClient *http.Client) *handlers.BearerToken {
+	key, err := keys.NewPrivateKeyFromHex(devenvPrivateKey)
+	require.NoError(t, err)
+
+	signer := user.NewAutoIDSignerRFC6979(key.PrivateKey)
+	req.Issuer = signer.UserID().String()
+
+	data, err := json.Marshal(req)
+	require.NoError(t, err)
+
+	request, err := http.NewRequest(http.MethodPost, testHost+"/v2/auth/bearer", bytes.NewReader(data))
+	require.NoError(t, err)
+	request = request.WithContext(ctx)
+	request.Header.Add("Content-Type", "application/json")
+
+	var stokenResp *apiserver.FormBearerResponse
+	doRequest(t, httpClient, request, http.StatusOK, &stokenResp)
+
+	binaryData, err := base64.StdEncoding.DecodeString(stokenResp.Token)
+	require.NoError(t, err)
+
+	return signTokenWalletConnect(t, key, binaryData)
 }
 
 func signToken(t *testing.T, key *keys.PrivateKey, data []byte) *handlers.BearerToken {

@@ -130,25 +130,6 @@ paths:
     post:
       summary: Form bearer token to subsequent requests.
       operationId: unsignedBearerToken
-      parameters:
-        - name: X-Bearer-Issuer-Id
-          in: header
-          description: Issuer Id (wallet address) that will sign the token.
-          required: true
-          schema:
-            type: string
-        - name: X-Bearer-Lifetime
-          in: header
-          description: Token lifetime in epoch.
-          schema:
-            type: integer
-            default: 100
-        - name: X-Bearer-Owner-Id
-          in: header
-          description: If set, the account authorized by this token.
-          schema:
-            type: string
-            example: NfgHwwTi3wHAS8aFAN243C5vGbkYDpqLHP
       requestBody:
         description: Bearer token parameters to form.
         content:
@@ -1367,8 +1348,19 @@ components:
     FormBearerRequest:
       type: object
       required:
+        - issuer
         - records
       properties:
+        issuer:
+          description: Issuer Id (wallet address) that will sign the token.
+          type: string
+        lifetime:
+          description: Token lifetime in epoch. Default is 100.
+          type: integer
+        owner:
+          description: If set, the account authorized by this token.
+          type: string
+          example: NfgHwwTi3wHAS8aFAN243C5vGbkYDpqLHP
         records:
           type: array
           items:

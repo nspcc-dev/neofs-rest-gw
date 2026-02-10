@@ -14,7 +14,6 @@ const (
 	headerXBearerLifetime           = "X-Bearer-Lifetime"
 	headerXBearerSignature          = "X-Bearer-Signature"
 	headerXBearerSignatureKey       = "X-Bearer-Signature-Key"
-	headerXBearerIssuerID           = "X-Bearer-Issuer-Id"
 	headerXNeofsBearerToken         = "NeoFS-Bearer-Token"
 	headerRange                     = "Range"
 	headerXAttributes               = "X-Attributes"
@@ -109,7 +108,6 @@ var (
 
 	optionsUnsignedBearerToken = strings.Join(
 		append(allowHeaders,
-			headerXBearerIssuerID,
 			headerXBearerLifetime,
 			headerXBearerOwnerID,
 		),

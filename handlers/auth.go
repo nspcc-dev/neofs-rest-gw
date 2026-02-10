@@ -474,7 +474,7 @@ func (a *RestAPI) V2CompleteAuthSessionToken(ctx echo.Context) error {
 }
 
 // UnsignedBearerToken handler that forms bearer token to sign.
-func (a *RestAPI) UnsignedBearerToken(ctx echo.Context, params apiserver.UnsignedBearerTokenParams) error {
+func (a *RestAPI) UnsignedBearerToken(ctx echo.Context) error {
 	if a.apiMetric != nil {
 		defer metrics.Elapsed(a.apiMetric.UnsignedBearerTokenDuration)()
 	}
@@ -487,18 +487,18 @@ func (a *RestAPI) UnsignedBearerToken(ctx echo.Context, params apiserver.Unsigne
 	}
 
 	var tokenOwner user.ID
-	if params.XBearerOwnerId != nil {
-		if err := tokenOwner.DecodeString(*params.XBearerOwnerId); err != nil {
+	if request.Owner != nil {
+		if err := tokenOwner.DecodeString(*request.Owner); err != nil {
 			return ctx.JSON(http.StatusBadRequest, a.logAndGetErrorResponse("invalid bearer owner", err, log))
 		}
 	}
 
 	prm := headersParams{
-		XBearerIssuerID: params.XBearerIssuerId,
+		XBearerIssuerID: request.Issuer,
 	}
 
-	if params.XBearerLifetime != nil && *params.XBearerLifetime > 0 {
-		prm.XBearerLifetime = uint64(*params.XBearerLifetime)
+	if request.Lifetime != nil && *request.Lifetime > 0 {
+		prm.XBearerLifetime = uint64(*request.Lifetime)
 	}
 
 	tokenParams := objectTokenParams{
