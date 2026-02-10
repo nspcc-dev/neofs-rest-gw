@@ -1869,81 +1869,6 @@ components:
         name: name.txt
         filePath: /my/object/name.txt
         objectId: 8N3o7Dtr6T1xteCt6eRwhpmJ7JhME58Hyu1dvaswuTDd
-    ObjectUpload:
-      required:
-        - containerId
-        - fileName
-      type: object
-      properties:
-        containerId:
-          type: string
-        fileName:
-          type: string
-        payload:
-          type: string
-        attributes:
-          type: array
-          x-go-type-skip-optional-pointer: true
-          items:
-            $ref: '#/components/schemas/Attribute'
-      description: "<p>Request body to create object.</p>\n<p>To create an object\
-        \ you must provide <code>containerId</code> and <code>fileName</code>.\nAdditionally,\
-        \ you can provide <code>payload</code> (base64 encoded data) and <code>attributes</code>.</p>\n\
-        \                          \n<p>Attribute is key-value data that is stored\
-        \ with the object. Key and value must be in UTF-8 format and must not be empty.</p>\n\
-        \                        \n<p>Valid attribute:</p>\n<ul>\n  <li><code>MyAttribute:\
-        \ 'some value'</code></li>\n</ul>\n                          \n<p>Invalid\
-        \ attribute:</p>\n<ul>\n  <li><code>MyAttribute: ''</code></li>\n</ul>\n \
-        \                         \n<p>Also, you can use this attribute to further\
-        \ object searching.</p>\n"
-      example:
-        containerId: 5HZTn5qkRnmgSz9gSrw22CEdPPk6nQhkwf2Mgzyvkikv
-        fileName: myFile.txt
-        payload: Y29udGVudCBvZiBmaWxl
-        attributes:
-          - key: User-Attribute
-            value: some-value
-    ObjectInfo:
-      required:
-        - attributes
-        - containerId
-        - objectId
-        - objectSize
-        - ownerId
-        - payloadSize
-      type: object
-      properties:
-        containerId:
-          type: string
-        objectId:
-          type: string
-        ownerId:
-          type: string
-        attributes:
-          type: array
-          items:
-            $ref: '#/components/schemas/Attribute'
-        objectSize:
-          type: integer
-          description: Object full payload size
-          format: uint64
-        payloadSize:
-          type: integer
-          description: Payload size in response
-          format: int64
-        payload:
-          type: string
-          description: Base64 encoded object payload
-      description: Object information.
-      example:
-        containerId: 5HZTn5qkRnmgSz9gSrw22CEdPPk6nQhkwf2Mgzyvkikv
-        objectId: 8N3o7Dtr6T1xteCt6eRwhpmJ7JhME58Hyu1dvaswuTDd
-        ownerId: NbUgTSFvPmsRxmGeWpuuGeJUoRoi6PErcM
-        attribute:
-          - key: Timestamp
-            value: "1648810072"
-          - key: Name
-            value: object
     Address:
       required:
         - containerId
@@ -1998,8 +1923,6 @@ components:
       example:
         key: User-Defined-Tag
         value: tag value
-    Principal:
-      type: string
     Balance:
       required:
         - address
@@ -2254,44 +2177,6 @@ components:
         nns_name:
           type: string
   responses:
-    ObjectContentOK:
-      description: Object.
-      headers:
-        Access-Control-Allow-Origin:
-          schema:
-            type: string
-        X-Attribute-FileName:
-          schema:
-            type: string
-        Content-Disposition:
-          schema:
-            type: string
-        X-Attribute-Timestamp:
-          schema:
-            type: integer
-        X-Object-Id:
-          schema:
-            type: string
-        Last-Modified:
-          schema:
-            type: string
-        X-Owner-Id:
-          schema:
-            type: string
-        X-Container-Id:
-          schema:
-            type: string
-        Content-Length:
-          schema:
-            type: string
-        Content-Type:
-          schema:
-            type: string
-      content:
-        '*/*':
-          schema:
-            type: string
-            format: binary
     NewObjectContentOK:
       description: Object.
       headers:
@@ -2376,44 +2261,6 @@ components:
           schema:
             type: string
             format: binary
-    ObjectHeadOK:
-      description: Object info.
-      headers:
-        Access-Control-Allow-Origin:
-          schema:
-            type: string
-        X-Attribute-FileName:
-          schema:
-            type: string
-        Content-Disposition:
-          schema:
-            type: string
-        X-Attribute-Timestamp:
-          schema:
-            type: integer
-        X-Object-Id:
-          schema:
-            type: string
-        Last-Modified:
-          schema:
-            type: string
-        X-Owner-Id:
-          schema:
-            type: string
-        X-Container-Id:
-          schema:
-            type: string
-        Content-Length:
-          schema:
-            type: string
-        Content-Type:
-          schema:
-            type: string
-      content:
-        '*/*':
-          schema:
-            type: string
-            format: binary
     NewObjectHeadOK:
       description: Object info.
       headers:
@@ -2454,18 +2301,6 @@ components:
           schema:
             type: string
             format: binary
-    BadRequest:
-      description: Bad request.
-      content:
-        '*/*':
-          schema:
-            $ref: '#/components/schemas/ErrorResponse'
-    NotFound:
-      description: Not found.
-      content:
-        '*/*':
-          schema:
-            $ref: '#/components/schemas/ErrorResponse'
   parameters:
     bearerToken:
       name: NeoFS-Bearer-Token
