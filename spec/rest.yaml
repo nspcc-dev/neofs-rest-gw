@@ -200,6 +200,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+      security: [ ]
     options:
       operationId: optionsCompleteUnsignedBearerToken
       responses:
@@ -290,6 +291,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+      security: [ ]
     options:
       operationId: optionsV2FormAuthSessionToken
       responses:
