@@ -222,7 +222,6 @@ func (a *RestAPI) V2AuthSessionToken(ctx echo.Context) error {
 		originToken *session.Token
 		tokenV2     session.Token
 		owner       user.ID
-		expiration  = time.Now().Add(defaultSessionTokenExpiration)
 		subjects    = make([]session.Target, 0, len(apiParams.Targets))
 		contexts    = make([]session.Context, 0, len(apiParams.Contexts))
 	)
@@ -308,42 +307,9 @@ func (a *RestAPI) V2AuthSessionToken(ctx echo.Context) error {
 		return ctx.JSON(http.StatusBadRequest, a.logAndGetErrorResponse("invalid contexts", err, log))
 	}
 
-	if apiParams.ExpirationRfc3339 != "" {
-		expireAt, err := time.Parse(time.RFC3339, apiParams.ExpirationRfc3339)
-		if err != nil {
-			return ctx.JSON(http.StatusBadRequest, a.logAndGetErrorResponse("invalid expiration", errors.New("format must be in RFC3339"), log))
-		}
-
-		if tokenIssueTime.After(expireAt) {
-			return ctx.JSON(http.StatusBadRequest, a.logAndGetErrorResponse("invalid expiration", errors.New("must be in the future"), log))
-		}
-
-		expiration = expireAt
-	} else if apiParams.ExpirationDuration != "" {
-		expDuration, err := time.ParseDuration(apiParams.ExpirationDuration)
-		if err != nil {
-			return ctx.JSON(http.StatusBadRequest, a.logAndGetErrorResponse("invalid expiration duration", err, log))
-		}
-
-		if expDuration <= 0 {
-			return ctx.JSON(http.StatusBadRequest, a.logAndGetErrorResponse("invalid expiration duration", errors.New("must be positive"), log))
-		}
-
-		expiration = tokenIssueTime.Add(expDuration)
-	}
-
-	if apiParams.Origin != "" {
-		originTokenBts, err := base64.StdEncoding.DecodeString(apiParams.Origin)
-		if err != nil {
-			return ctx.JSON(http.StatusBadRequest, a.logAndGetErrorResponse("origin token base64 decode failed", err, log))
-		}
-
-		var ot session.Token
-		if err = ot.Unmarshal(originTokenBts); err != nil {
-			return ctx.JSON(http.StatusBadRequest, a.logAndGetErrorResponse("origin token decode failed", err, log))
-		}
-
-		originToken = &ot
+	expiration, err := prepareSessionTokenV2Expiration(tokenIssueTime, apiParams)
+	if err != nil {
+		return ctx.JSON(http.StatusBadRequest, a.logAndGetErrorResponse("invalid expiration", err, log))
 	}
 
 	tokenV2.SetNbf(tokenIssueTime)
