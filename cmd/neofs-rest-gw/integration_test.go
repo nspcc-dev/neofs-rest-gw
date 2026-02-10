@@ -497,7 +497,7 @@ func restObjectDeleteSessionV2(ctx context.Context, t *testing.T, p *pool.Pool, 
 
 	tokenRequest := apiserver.SessionTokenV2Request{
 		Contexts: []apiserver.TokenContext{{ContainerID: cnrID.String(), Verbs: []apiserver.TokenVerb{"OBJECT_DELETE"}}},
-		Owner:    ownerID.String(),
+		Issuer:   ownerID.String(),
 		Targets:  []string{gateUserID.String()},
 	}
 
@@ -635,7 +635,7 @@ func restObjectsSearchSessionV2(ctx context.Context, t *testing.T, p *pool.Pool,
 
 	tokenRequest := apiserver.SessionTokenV2Request{
 		Contexts: []apiserver.TokenContext{{ContainerID: cnrID.String(), Verbs: []apiserver.TokenVerb{"OBJECT_SEARCH"}}},
-		Owner:    ownerID.String(),
+		Issuer:   ownerID.String(),
 		Targets:  []string{gateUserID.String()},
 	}
 
@@ -857,7 +857,7 @@ func restObjectsSearchV2SessionV2(ctx context.Context, t *testing.T, p *pool.Poo
 
 	tokenRequest := apiserver.SessionTokenV2Request{
 		Contexts: []apiserver.TokenContext{{ContainerID: cnrID.String(), Verbs: []apiserver.TokenVerb{"OBJECT_SEARCH"}}},
-		Owner:    ownerID.String(),
+		Issuer:   ownerID.String(),
 		Targets:  []string{gateUserID.String()},
 	}
 
@@ -1404,7 +1404,7 @@ func restContainerDeleteSessionV2(ctx context.Context, t *testing.T, clientPool 
 
 	tokenRequest := apiserver.SessionTokenV2Request{
 		Contexts: []apiserver.TokenContext{{Verbs: []apiserver.TokenVerb{"CONTAINER_DELETE"}}},
-		Owner:    ownerID.String(),
+		Issuer:   ownerID.String(),
 		Targets:  []string{gateUserID.String()},
 	}
 
@@ -1434,7 +1434,7 @@ func restContainerEACLPutSessionV2(ctx context.Context, t *testing.T, clientPool
 
 	tokenRequest := apiserver.SessionTokenV2Request{
 		Contexts: []apiserver.TokenContext{{ContainerID: cnrID.String(), Verbs: []apiserver.TokenVerb{"CONTAINER_SET_EACL"}}},
-		Owner:    ownerID.String(),
+		Issuer:   ownerID.String(),
 		Targets:  []string{gateUserID.String()},
 	}
 
@@ -1906,7 +1906,7 @@ func restContainerPutSessionTokenV2(ctx context.Context, t *testing.T, clientPoo
 
 	tokenRequest := apiserver.SessionTokenV2Request{
 		Contexts: []apiserver.TokenContext{{Verbs: []apiserver.TokenVerb{"CONTAINER_PUT"}}},
-		Owner:    ownerID.String(),
+		Issuer:   ownerID.String(),
 		Targets:  []string{gateUserID.String()},
 	}
 
@@ -1979,7 +1979,7 @@ func restContainerPostSessionTokenV2(ctx context.Context, t *testing.T, clientPo
 
 	tokenRequest := apiserver.SessionTokenV2Request{
 		Contexts: []apiserver.TokenContext{{Verbs: []apiserver.TokenVerb{"CONTAINER_PUT"}}},
-		Owner:    ownerID.String(),
+		Issuer:   ownerID.String(),
 		Targets:  []string{gateUserID.String()},
 	}
 
@@ -2247,7 +2247,7 @@ func restNewObjectUploadSessionTokenV2(ctx context.Context, t *testing.T, client
 
 	tokenRequest := apiserver.SessionTokenV2Request{
 		Contexts: []apiserver.TokenContext{{ContainerID: cnrID.EncodeToString(), Verbs: []apiserver.TokenVerb{"OBJECT_PUT"}}},
-		Owner:    ownerID.String(),
+		Issuer:   ownerID.String(),
 		Targets:  []string{gateUserID.String()},
 	}
 
@@ -2477,7 +2477,7 @@ func restNewObjectHeadSessionV2(ctx context.Context, t *testing.T, p *pool.Pool,
 
 	tokenRequest := apiserver.SessionTokenV2Request{
 		Contexts: []apiserver.TokenContext{{ContainerID: cnrID.String(), Verbs: []apiserver.TokenVerb{"OBJECT_HEAD", "OBJECT_SEARCH", "OBJECT_RANGE"}}},
-		Owner:    ownerID.String(),
+		Issuer:   ownerID.String(),
 		Targets:  []string{gateUserID.String()},
 	}
 
@@ -2763,7 +2763,7 @@ func restNewObjectHeadByAttributeSessionV2(ctx context.Context, t *testing.T, p 
 
 	tokenRequest := apiserver.SessionTokenV2Request{
 		Contexts: []apiserver.TokenContext{{ContainerID: cnrID.String(), Verbs: []apiserver.TokenVerb{"OBJECT_HEAD", "OBJECT_SEARCH", "OBJECT_RANGE"}}},
-		Owner:    ownerID.String(),
+		Issuer:   ownerID.String(),
 		Targets:  []string{gateUserID.String()},
 	}
 
@@ -3010,7 +3010,7 @@ func restNewObjectGetByAttributeSessionV2(ctx context.Context, t *testing.T, p *
 
 	tokenRequest := apiserver.SessionTokenV2Request{
 		Contexts: []apiserver.TokenContext{{ContainerID: cnrID.String(), Verbs: []apiserver.TokenVerb{"OBJECT_GET", "OBJECT_HEAD", "OBJECT_SEARCH", "OBJECT_RANGE"}}},
-		Owner:    ownerID.String(),
+		Issuer:   ownerID.String(),
 		Targets:  []string{gateUserID.String()},
 	}
 
@@ -3144,7 +3144,7 @@ func v2AuthSessionToken(ctx context.Context, t *testing.T) {
 		request := apiserver.SessionTokenV2Request{
 			Contexts:          []apiserver.TokenContext{{Verbs: []apiserver.TokenVerb{"OBJECT_PUT"}}},
 			ExpirationRfc3339: &expRfc,
-			Owner:             ownerID.String(),
+			Issuer:            ownerID.String(),
 			Targets:           []string{targetID.String()},
 			Origin:            base64.StdEncoding.EncodeToString(originToken.Marshal()),
 		}
@@ -3184,7 +3184,7 @@ func v2AuthSessionToken(ctx context.Context, t *testing.T) {
 		request := apiserver.SessionTokenV2Request{
 			Contexts:            []apiserver.TokenContext{{Verbs: []apiserver.TokenVerb{"OBJECT_PUT"}}},
 			ExpirationTimestamp: &expTs,
-			Owner:               ownerID.String(),
+			Issuer:              ownerID.String(),
 			Targets:             []string{targetID.String()},
 		}
 
@@ -3208,7 +3208,7 @@ func v2AuthSessionToken(ctx context.Context, t *testing.T) {
 		request := apiserver.SessionTokenV2Request{
 			Contexts:           []apiserver.TokenContext{{Verbs: []apiserver.TokenVerb{"OBJECT_PUT"}}},
 			ExpirationDuration: &expTs,
-			Owner:              ownerID.String(),
+			Issuer:             ownerID.String(),
 			Targets:            []string{targetID.String()},
 		}
 
@@ -3226,7 +3226,7 @@ func v2AuthSessionToken(ctx context.Context, t *testing.T) {
 
 	t.Run("invalid owner", func(t *testing.T) {
 		request := apiserver.SessionTokenV2Request{
-			Owner: "invalid owner",
+			Issuer: "invalid owner",
 		}
 
 		httpClient := defaultHTTPClient()
@@ -3235,7 +3235,7 @@ func v2AuthSessionToken(ctx context.Context, t *testing.T) {
 
 	t.Run("zero targets", func(t *testing.T) {
 		request := apiserver.SessionTokenV2Request{
-			Owner: ownerID.String(),
+			Issuer: ownerID.String(),
 		}
 
 		httpClient := defaultHTTPClient()
@@ -3244,7 +3244,7 @@ func v2AuthSessionToken(ctx context.Context, t *testing.T) {
 
 	t.Run("both targets empty", func(t *testing.T) {
 		request := apiserver.SessionTokenV2Request{
-			Owner:   ownerID.String(),
+			Issuer:  ownerID.String(),
 			Targets: []string{""},
 		}
 
@@ -3254,7 +3254,7 @@ func v2AuthSessionToken(ctx context.Context, t *testing.T) {
 
 	t.Run("zero contexts", func(t *testing.T) {
 		request := apiserver.SessionTokenV2Request{
-			Owner:    ownerID.String(),
+			Issuer:   ownerID.String(),
 			Targets:  []string{targetID.String()},
 			Contexts: []apiserver.TokenContext{},
 		}
@@ -3265,7 +3265,7 @@ func v2AuthSessionToken(ctx context.Context, t *testing.T) {
 
 	t.Run("zero verbs", func(t *testing.T) {
 		request := apiserver.SessionTokenV2Request{
-			Owner:    ownerID.String(),
+			Issuer:   ownerID.String(),
 			Targets:  []string{targetID.String()},
 			Contexts: []apiserver.TokenContext{{ContainerID: cnrIDStr}},
 		}
@@ -3276,7 +3276,7 @@ func v2AuthSessionToken(ctx context.Context, t *testing.T) {
 
 	t.Run("invalid verb", func(t *testing.T) {
 		request := apiserver.SessionTokenV2Request{
-			Owner:    ownerID.String(),
+			Issuer:   ownerID.String(),
 			Targets:  []string{targetID.String()},
 			Contexts: []apiserver.TokenContext{{Verbs: []apiserver.TokenVerb{"invalid"}}},
 		}
@@ -3288,7 +3288,7 @@ func v2AuthSessionToken(ctx context.Context, t *testing.T) {
 	t.Run("invalid expiration", func(t *testing.T) {
 		exp := time.Now().Add(-time.Hour).Format(time.RFC3339)
 		request := apiserver.SessionTokenV2Request{
-			Owner:             ownerID.String(),
+			Issuer:            ownerID.String(),
 			Targets:           []string{targetID.String()},
 			Contexts:          []apiserver.TokenContext{{Verbs: []apiserver.TokenVerb{"OBJECT_PUT"}}},
 			ExpirationRfc3339: &exp,
@@ -3300,7 +3300,7 @@ func v2AuthSessionToken(ctx context.Context, t *testing.T) {
 
 	t.Run("different contexts with one container", func(t *testing.T) {
 		request := apiserver.SessionTokenV2Request{
-			Owner:   ownerID.String(),
+			Issuer:  ownerID.String(),
 			Targets: []string{targetID.String()},
 			Contexts: []apiserver.TokenContext{
 				{ContainerID: cnrIDStr, Verbs: []apiserver.TokenVerb{"OBJECT_PUT"}},

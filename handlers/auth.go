@@ -226,7 +226,7 @@ func (a *RestAPI) V2AuthSessionToken(ctx echo.Context) error {
 		contexts    = make([]session.Context, 0, len(apiParams.Contexts))
 	)
 
-	if err := owner.DecodeString(apiParams.Owner); err != nil {
+	if err := owner.DecodeString(apiParams.Issuer); err != nil {
 		return ctx.JSON(http.StatusBadRequest, a.logAndGetErrorResponse("invalid owner", err, log))
 	}
 

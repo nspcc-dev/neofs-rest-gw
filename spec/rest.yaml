@@ -2109,11 +2109,11 @@ components:
     SessionTokenV2Request:
       type: object
       required:
-        - owner
+        - issuer
         - targets
         - contexts
       properties:
-        owner:
+        issuer:
           description: Token issuer ID (account address).
           type: string
           example: NfgHwwTi3wHAS8aFAN243C5vGbkYDpqLHP
