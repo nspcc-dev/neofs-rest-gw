@@ -2062,7 +2062,9 @@ components:
           items:
             type: string
             description: Target entity that can use the token, an N3 address or an NNS name.
-            example: NejLbQpojKJWec4NQRMBhzsrmCyhXfGJJe, entity.domain
+          example:
+            - NejLbQpojKJWec4NQRMBhzsrmCyhXfGJJe
+            - entity.domain
         contexts:
           type: array
           description: The session token contexts.
