@@ -1046,6 +1046,8 @@ paths:
             This attribute should be used if you are familiar with the NeoFS epoch system. 
             More information can be found here: [NeoFS Specifications](https://github.com/nspcc-dev/neofs-spec/blob/master/01-arch/01-netmap.md).
             Instead of this attribute you can use one of `X-Neofs-Expiration-*` headers below.
+            Expiration fields are evaluated in order, and later values override earlier ones. The last specified value takes precedence.
+            The order is: X-Neofs-Expiration-RFC3339, X-Neofs-Expiration-Timestamp, X-Neofs-Expiration-Duration.
           schema:
             type: string
         - name: X-Neofs-Expiration-RFC3339
