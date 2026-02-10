@@ -518,3 +518,50 @@ func (a *RestAPI) UnsignedBearerToken(ctx echo.Context) error {
 	ctx.Response().Header().Set(accessControlAllowOriginHeader, "*")
 	return ctx.JSON(http.StatusOK, resp)
 }
+
+// CompleteUnsignedBearerToken handler that forms binary bearer token.
+func (a *RestAPI) CompleteUnsignedBearerToken(ctx echo.Context) error {
+	if a.apiMetric != nil {
+		defer metrics.Elapsed(a.apiMetric.CompleteUnsignedBearerToken)()
+	}
+
+	var (
+		apiParams apiserver.CompleteUnsignedBearerTokenRequest
+		log       = a.log.With(zap.String(handlerFieldName, "CompleteUnsignedBearerToken"))
+	)
+
+	if err := ctx.Bind(&apiParams); err != nil {
+		return ctx.JSON(http.StatusBadRequest, a.logAndGetErrorResponse("bind", err, log))
+	}
+
+	var scheme neofscrypto.Scheme
+	switch apiParams.Scheme {
+	case apiserver.WALLETCONNECT:
+		scheme = neofscrypto.ECDSA_WALLETCONNECT
+	case apiserver.SHA512:
+		scheme = neofscrypto.ECDSA_SHA512
+	case apiserver.DETERMINISTICSHA256:
+		scheme = neofscrypto.ECDSA_DETERMINISTIC_SHA256
+	case apiserver.N3:
+		scheme = neofscrypto.N3
+	default:
+		return ctx.JSON(http.StatusBadRequest, a.logAndGetErrorResponse("unknown scheme", fmt.Errorf("scheme: %s", apiParams.Scheme), log))
+	}
+
+	btoken, err := assembleBearerTokenV2(apiParams.Token, apiParams.Signature, apiParams.Key, scheme)
+	if err != nil {
+		resp := a.logAndGetErrorResponse("invalid bearer token", err, log)
+		return ctx.JSON(http.StatusBadRequest, resp)
+	}
+
+	if btoken == nil {
+		return ctx.JSON(http.StatusBadRequest, util.NewErrorResponse(errors.New("empty bearer token")))
+	}
+
+	resp := &apiserver.BinaryBearer{
+		Token: base64.StdEncoding.EncodeToString(btoken.Marshal()),
+	}
+
+	ctx.Response().Header().Set(accessControlAllowOriginHeader, "*")
+	return ctx.JSON(http.StatusOK, resp)
+}

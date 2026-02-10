@@ -364,7 +364,31 @@ func v2AuthBearer(ctx context.Context, t *testing.T) {
 	}
 
 	httpClient := defaultHTTPClient()
-	makeV2AuthBearerRequest(ctx, t, r, httpClient)
+	bt := makeV2AuthBearerRequest(ctx, t, r, httpClient)
+
+	r2 := apiserver.CompleteUnsignedBearerTokenRequest{
+		Key:       bt.Key,
+		Signature: bt.Signature,
+		Token:     bt.Token,
+		Scheme:    apiserver.SHA512,
+	}
+
+	bts, err := json.Marshal(r2)
+	require.NoError(t, err)
+
+	request, err := http.NewRequest(http.MethodPost, testHost+"/v2/auth/bearer/complete", bytes.NewReader(bts))
+	require.NoError(t, err)
+	request.Header.Add("Content-Type", "application/json")
+
+	var resp apiserver.BinaryBearer
+	doRequest(t, httpClient, request, http.StatusOK, &resp)
+
+	tokenBts, err := base64.StdEncoding.DecodeString(resp.Token)
+	require.NoError(t, err)
+
+	var bToken bearer.Token
+	require.NoError(t, bToken.Unmarshal(tokenBts))
+	require.True(t, bToken.VerifySignature())
 }
 
 func formFullBinaryBearer(ctx context.Context, t *testing.T) {
@@ -1847,7 +1871,7 @@ func makeV2AuthBearerRequest(ctx context.Context, t *testing.T, req apiserver.Fo
 	binaryData, err := base64.StdEncoding.DecodeString(stokenResp.Token)
 	require.NoError(t, err)
 
-	return signTokenWalletConnect(t, key, binaryData)
+	return signToken(t, key, binaryData)
 }
 
 func signToken(t *testing.T, key *keys.PrivateKey, data []byte) *handlers.BearerToken {
