@@ -145,6 +145,10 @@ See [docs/migration-from-http.md](./docs/migration-from-http.md).
 
 See [docs/migration-to-search-v2](./docs/migration-to-search-v2.md).
 
+### Migrating to V2 authentication API
+
+See [docs/migration-to-auth-v2.md](./docs/migration-to-auth-v2.md).
+
 ## Contributing
 
 Feel free to contribute to this project after reading the [contributing guidelines](CONTRIBUTING.md).

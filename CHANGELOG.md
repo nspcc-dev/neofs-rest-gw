@@ -14,7 +14,34 @@ This document outlines major changes between releases.
 
 ### Updated
 
+### Upgrading from 0.16.0
+
+## [0.16.0] - 2026-02-11
+
+### Added
+- Session token v2 support with new auth/token model (#341, #344, #351, #353, #355)
+- Gateway metadata (#341)
+- Support for numeric EACL filters (#347)
+- Support for account-based EACL targets (#350)
+
+### Fixed
+- Excessive CORS headers pushed to users via OPTIONS (#354)
+
+### Removed
+- Support for session token v1 in container operations (#351)
+- Redundant KEYS role for EACL targets (#350)
+- Unused data types (#354)
+
+### Updated
+- NeoFS SDK dependency to RC17 (#339, #341, #351)
+
 ### Upgrading from 0.15.1
+Applications using REST gateway for container operations must migrate to the new
+authentication scheme immediately, this version in incompatible with container
+operation tokens used by 0.15.1. Migration to new tokens for object operations is
+also recommended since old authentication scheme is deprecated and eventually
+will be deleted. See [docs/migration-to-auth-v2.md](./docs/migration-to-auth-v2.md)
+for migration details.
 
 ## [0.15.1] - 2025-11-21
 
@@ -443,4 +470,5 @@ Please refer to [GitHub releases](https://github.com/nspcc-dev/neofs-rest-gw/rel
 [0.14.2]: https://github.com/nspcc-dev/neofs-rest-gw/compare/v0.14.1...v0.14.2
 [0.15.0]: https://github.com/nspcc-dev/neofs-rest-gw/compare/v0.14.2...v0.15.0
 [0.15.1]: https://github.com/nspcc-dev/neofs-rest-gw/compare/v0.15.0...v0.15.1
-[Unreleased]: https://github.com/nspcc-dev/neofs-rest-gw/compare/v0.15.1...master
+[0.16.0]: https://github.com/nspcc-dev/neofs-rest-gw/compare/v0.15.1...v0.16.0
+[Unreleased]: https://github.com/nspcc-dev/neofs-rest-gw/compare/v0.16.0...master
