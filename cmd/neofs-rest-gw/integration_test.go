@@ -3160,11 +3160,11 @@ func v2AuthSessionToken(ctx context.Context, t *testing.T) {
 			require.NoError(t, err)
 
 			req := apiserver.CompleteSessionTokenV2Request{
-				Key:    hex.EncodeToString(key.PublicKey().Bytes()),
-				Value:  base64.StdEncoding.EncodeToString(signed),
-				Token:  response.Token,
-				Scheme: apiserver.SHA512,
-				Lock:   response.Lock,
+				Key:       hex.EncodeToString(key.PublicKey().Bytes()),
+				Signature: base64.StdEncoding.EncodeToString(signed),
+				Token:     response.Token,
+				Scheme:    apiserver.SHA512,
+				Lock:      response.Lock,
 			}
 
 			sessionTokenResponse := completeV2AuthSessionTokenRequest(ctx, t, req, httpClient, http.StatusOK, "")
@@ -3412,11 +3412,11 @@ func getSignedSessionToken(ctx context.Context, t *testing.T, req apiserver.Sess
 	signer.Public().Encode(pubKeyBts)
 
 	req2 := apiserver.CompleteSessionTokenV2Request{
-		Key:    hex.EncodeToString(pubKeyBts),
-		Value:  base64.StdEncoding.EncodeToString(signed),
-		Token:  response.Token,
-		Scheme: apiserver.SHA512,
-		Lock:   response.Lock,
+		Key:       hex.EncodeToString(pubKeyBts),
+		Signature: base64.StdEncoding.EncodeToString(signed),
+		Token:     response.Token,
+		Scheme:    apiserver.SHA512,
+		Lock:      response.Lock,
 	}
 
 	sessionTokenResponse := completeV2AuthSessionTokenRequest(ctx, t, req2, httpClient, http.StatusOK, "")

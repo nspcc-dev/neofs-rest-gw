@@ -2168,7 +2168,7 @@ components:
       required:
         - token
         - key
-        - value
+        - signature
         - scheme
         - lock
       properties:
@@ -2180,7 +2180,7 @@ components:
             If scheme N3, Base64 encoded verifScript.
           type: string
           x-go-type-skip-optional-pointer: true
-        value:
+        signature:
           description: If scheme is not N3, Base64 encoded signature for session v2 token.
             If scheme N3, Base64 encoded invocScript.
           type: string

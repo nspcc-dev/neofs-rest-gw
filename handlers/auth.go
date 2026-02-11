@@ -434,7 +434,7 @@ func (a *RestAPI) V2CompleteAuthSessionToken(ctx echo.Context) error {
 		return ctx.JSON(http.StatusBadRequest, a.logAndGetErrorResponse("invalid lock", err, log))
 	}
 
-	signatureValue, err := base64.StdEncoding.DecodeString(apiParams.Value)
+	signatureValue, err := base64.StdEncoding.DecodeString(apiParams.Signature)
 	if err != nil {
 		return ctx.JSON(http.StatusBadRequest, a.logAndGetErrorResponse("couldn't decode session token signature", err, log))
 	}
