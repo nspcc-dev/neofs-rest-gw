@@ -15,7 +15,7 @@ security:
 paths:
   /v1/auth:
     post:
-      summary: Form bearer token to further requests
+      summary: Form bearer token for subsequent requests
       operationId: auth
       deprecated: true
       parameters:
@@ -129,7 +129,7 @@ paths:
       security: [ ]
   /v2/auth/bearer:
     post:
-      summary: Form bearer token to subsequent requests.
+      summary: Form bearer token for subsequent requests.
       operationId: unsignedBearerToken
       requestBody:
         description: Bearer token parameters to form.
@@ -220,7 +220,7 @@ paths:
       security: [ ]
   /v2/auth/session:
     post:
-      summary: Form v2 session token to subsequent requests.
+      summary: Form v2 session token for subsequent requests.
       operationId: v2AuthSessionToken
       requestBody:
         description: V2 session token parameters.
@@ -391,7 +391,7 @@ paths:
             type: integer
             default: 100
       requestBody:
-        description: Filters to search objects.
+        description: A set of filters to use for search operation.
         content:
           '*/*':
             schema:
@@ -468,7 +468,7 @@ paths:
             type: integer
             default: 100
       requestBody:
-        description: Filters to search objects.
+        description: A set of filters for search operation.
         content:
           '*/*':
             schema:
@@ -1802,7 +1802,7 @@ components:
           description: Numeric filters MatchNumGT, MatchNumGE, MatchNumLT, MatchNumLE can be in range [-2^255, 2^255 -1].
         match:
           $ref: '#/components/schemas/SearchMatch'
-      description: Search filter to find objects.
+      description: Filter for object search operation.
       example:
         key: FileName
         value: object-name
