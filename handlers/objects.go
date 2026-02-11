@@ -733,6 +733,48 @@ func prepareBearerToken(bt *BearerToken, isWalletConnect, isFullToken bool) (*be
 	return &btoken, nil
 }
 
+func assembleBearerTokenV2(token string, signature, key string, scheme neofscrypto.Scheme) (*bearer.Token, error) {
+	data, err := base64.StdEncoding.DecodeString(token)
+	if err != nil {
+		return nil, fmt.Errorf("can't base64-decode bearer token: %w", err)
+	}
+
+	var btoken bearer.Token
+	if err = btoken.UnmarshalSignedData(data); err != nil {
+		return nil, fmt.Errorf("can't unmarshal bearer token body: %w", err)
+	}
+
+	signatureValue, err := hex.DecodeString(signature)
+	if err != nil {
+		return nil, fmt.Errorf("couldn't decode bearer signature: %w", err)
+	}
+
+	var signatureKey []byte
+	if scheme == neofscrypto.N3 {
+		signatureKey, err = base64.StdEncoding.DecodeString(key)
+		if err != nil {
+			return nil, fmt.Errorf("couldn't base64-decode bearer signature key: %w", err)
+		}
+
+		btoken.AttachSignature(neofscrypto.NewN3Signature(signatureValue, signatureKey))
+	} else {
+		signatureKey, err = hex.DecodeString(key)
+		if err != nil {
+			return nil, fmt.Errorf("couldn't hex decode bearer token owner key: %w", err)
+		}
+		if _, err = keys.NewPublicKeyFromBytes(signatureKey, elliptic.P256()); err != nil {
+			return nil, fmt.Errorf("couldn't init owner key: %w", err)
+		}
+
+		btoken.AttachSignature(neofscrypto.NewSignatureFromRawKey(scheme, signatureKey, signatureValue))
+		if !btoken.VerifySignature() {
+			return nil, errors.New("invalid signature")
+		}
+	}
+
+	return &btoken, nil
+}
+
 type prmWithBearer interface {
 	WithBearerToken(t bearer.Token)
 }

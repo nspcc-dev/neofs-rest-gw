@@ -226,7 +226,7 @@ func (a *RestAPI) V2AuthSessionToken(ctx echo.Context) error {
 		contexts    = make([]session.Context, 0, len(apiParams.Contexts))
 	)
 
-	if err := owner.DecodeString(apiParams.Owner); err != nil {
+	if err := owner.DecodeString(apiParams.Issuer); err != nil {
 		return ctx.JSON(http.StatusBadRequest, a.logAndGetErrorResponse("invalid owner", err, log))
 	}
 
@@ -434,7 +434,7 @@ func (a *RestAPI) V2CompleteAuthSessionToken(ctx echo.Context) error {
 		return ctx.JSON(http.StatusBadRequest, a.logAndGetErrorResponse("invalid lock", err, log))
 	}
 
-	signatureValue, err := base64.StdEncoding.DecodeString(apiParams.Value)
+	signatureValue, err := base64.StdEncoding.DecodeString(apiParams.Signature)
 	if err != nil {
 		return ctx.JSON(http.StatusBadRequest, a.logAndGetErrorResponse("couldn't decode session token signature", err, log))
 	}
@@ -474,7 +474,7 @@ func (a *RestAPI) V2CompleteAuthSessionToken(ctx echo.Context) error {
 }
 
 // UnsignedBearerToken handler that forms bearer token to sign.
-func (a *RestAPI) UnsignedBearerToken(ctx echo.Context, params apiserver.UnsignedBearerTokenParams) error {
+func (a *RestAPI) UnsignedBearerToken(ctx echo.Context) error {
 	if a.apiMetric != nil {
 		defer metrics.Elapsed(a.apiMetric.UnsignedBearerTokenDuration)()
 	}
@@ -487,18 +487,18 @@ func (a *RestAPI) UnsignedBearerToken(ctx echo.Context, params apiserver.Unsigne
 	}
 
 	var tokenOwner user.ID
-	if params.XBearerOwnerId != nil {
-		if err := tokenOwner.DecodeString(*params.XBearerOwnerId); err != nil {
+	if request.Owner != nil {
+		if err := tokenOwner.DecodeString(*request.Owner); err != nil {
 			return ctx.JSON(http.StatusBadRequest, a.logAndGetErrorResponse("invalid bearer owner", err, log))
 		}
 	}
 
 	prm := headersParams{
-		XBearerIssuerID: params.XBearerIssuerId,
+		XBearerIssuerID: request.Issuer,
 	}
 
-	if params.XBearerLifetime != nil && *params.XBearerLifetime > 0 {
-		prm.XBearerLifetime = uint64(*params.XBearerLifetime)
+	if request.Lifetime != nil && *request.Lifetime > 0 {
+		prm.XBearerLifetime = uint64(*request.Lifetime)
 	}
 
 	tokenParams := objectTokenParams{
@@ -513,6 +513,53 @@ func (a *RestAPI) UnsignedBearerToken(ctx echo.Context, params apiserver.Unsigne
 
 	resp := apiserver.FormBearerResponse{
 		Token: preparedTokenData.Token,
+	}
+
+	ctx.Response().Header().Set(accessControlAllowOriginHeader, "*")
+	return ctx.JSON(http.StatusOK, resp)
+}
+
+// CompleteUnsignedBearerToken handler that forms binary bearer token.
+func (a *RestAPI) CompleteUnsignedBearerToken(ctx echo.Context) error {
+	if a.apiMetric != nil {
+		defer metrics.Elapsed(a.apiMetric.CompleteUnsignedBearerToken)()
+	}
+
+	var (
+		apiParams apiserver.CompleteUnsignedBearerTokenRequest
+		log       = a.log.With(zap.String(handlerFieldName, "CompleteUnsignedBearerToken"))
+	)
+
+	if err := ctx.Bind(&apiParams); err != nil {
+		return ctx.JSON(http.StatusBadRequest, a.logAndGetErrorResponse("bind", err, log))
+	}
+
+	var scheme neofscrypto.Scheme
+	switch apiParams.Scheme {
+	case apiserver.WALLETCONNECT:
+		scheme = neofscrypto.ECDSA_WALLETCONNECT
+	case apiserver.SHA512:
+		scheme = neofscrypto.ECDSA_SHA512
+	case apiserver.DETERMINISTICSHA256:
+		scheme = neofscrypto.ECDSA_DETERMINISTIC_SHA256
+	case apiserver.N3:
+		scheme = neofscrypto.N3
+	default:
+		return ctx.JSON(http.StatusBadRequest, a.logAndGetErrorResponse("unknown scheme", fmt.Errorf("scheme: %s", apiParams.Scheme), log))
+	}
+
+	btoken, err := assembleBearerTokenV2(apiParams.Token, apiParams.Signature, apiParams.Key, scheme)
+	if err != nil {
+		resp := a.logAndGetErrorResponse("invalid bearer token", err, log)
+		return ctx.JSON(http.StatusBadRequest, resp)
+	}
+
+	if btoken == nil {
+		return ctx.JSON(http.StatusBadRequest, util.NewErrorResponse(errors.New("empty bearer token")))
+	}
+
+	resp := &apiserver.BinaryBearer{
+		Token: base64.StdEncoding.EncodeToString(btoken.Marshal()),
 	}
 
 	ctx.Response().Header().Set(accessControlAllowOriginHeader, "*")

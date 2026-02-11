@@ -88,6 +88,7 @@ paths:
     get:
       summary: Form binary bearer token
       operationId: formBinaryBearer
+      deprecated: true
       parameters:
         - $ref: '#/components/parameters/signatureParam'
         - $ref: '#/components/parameters/signatureKeyParam'
@@ -130,25 +131,6 @@ paths:
     post:
       summary: Form bearer token to subsequent requests.
       operationId: unsignedBearerToken
-      parameters:
-        - name: X-Bearer-Issuer-Id
-          in: header
-          description: Issuer Id (wallet address) that will sign the token.
-          required: true
-          schema:
-            type: string
-        - name: X-Bearer-Lifetime
-          in: header
-          description: Token lifetime in epoch.
-          schema:
-            type: integer
-            default: 100
-        - name: X-Bearer-Owner-Id
-          in: header
-          description: If set, the account authorized by this token.
-          schema:
-            type: string
-            example: NfgHwwTi3wHAS8aFAN243C5vGbkYDpqLHP
       requestBody:
         description: Bearer token parameters to form.
         content:
@@ -176,6 +158,51 @@ paths:
       x-codegen-request-body-name: tokens
     options:
       operationId: optionsUnsignedBearerToken
+      responses:
+        "200":
+          description: CORS
+          headers:
+            Access-Control-Allow-Origin:
+              schema:
+                type: string
+            Access-Control-Allow-Methods:
+              schema:
+                type: string
+            Access-Control-Allow-Headers:
+              schema:
+                type: string
+          content: { }
+      security: [ ]
+  /v2/auth/bearer/complete:
+    post:
+      summary: Joining the binary NeoFS bearer token along with its signature to prepare the bearer token for use.
+      operationId: completeUnsignedBearerToken
+      description: Bearer token parameters to form.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CompleteUnsignedBearerTokenRequest'
+      responses:
+        "200":
+          description: Base64 encoded stable binary marshaled bearer token.
+          headers:
+            Access-Control-Allow-Origin:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BinaryBearer'
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      security: [ ]
+    options:
+      operationId: optionsCompleteUnsignedBearerToken
       responses:
         "200":
           description: CORS
@@ -264,6 +291,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+      security: [ ]
     options:
       operationId: optionsV2FormAuthSessionToken
       responses:
@@ -1352,6 +1380,31 @@ components:
         form.
       example:
         token: ChIKDAoAGggIARABIgIIAxoCCGQSZgohA+J5jFWFMiOpyvMZBu9wwPTKsWsG0q206kVe63iuWP/wEkEE4SIV0QngnKppDf54QezUKmar7UQby6HzufT5yVIOvj7QEqZnOavrKW0chCeCwP0khda/j9k00ct6NMEDxQFW+g==
+    CompleteUnsignedBearerTokenRequest:
+      required:
+        - token
+        - signature
+        - key
+        - scheme
+      type: object
+      properties:
+        token:
+          description: Base64 encoded bearer token.
+          type: string
+        signature:
+          description: If scheme is not N3, Base64 encoded signature for bearer token.
+            If scheme N3, Base64 encoded invocScript.
+          type: string
+        key:
+          description: If scheme is not N3, Hex encoded public part of the key that signed the bearer token.
+            If scheme N3, Base64 encoded verifScript.
+          type: string
+        scheme:
+          description: Use wallet connect signature scheme or native NeoFS signature.
+          $ref: '#/components/schemas/SchemaType'
+      description: Bearer token for object operations that is represented in binary form.
+      example:
+        token: ChIKDAoAGggIARABIgIIAxoCCGQSZgohA+J5jFWFMiOpyvMZBu9wwPTKsWsG0q206kVe63iuWP/wEkEE4SIV0QngnKppDf54QezUKmar7UQby6HzufT5yVIOvj7QEqZnOavrKW0chCeCwP0khda/j9k00ct6NMEDxQFW+g==
     Bearer:
       type: object
       required:
@@ -1367,8 +1420,19 @@ components:
     FormBearerRequest:
       type: object
       required:
+        - issuer
         - records
       properties:
+        issuer:
+          description: Issuer Id (wallet address) that will sign the token.
+          type: string
+        lifetime:
+          description: Token lifetime in epoch. Default is 100.
+          type: integer
+        owner:
+          description: If set, the account authorized by this token.
+          type: string
+          example: NfgHwwTi3wHAS8aFAN243C5vGbkYDpqLHP
         records:
           type: array
           items:
@@ -2047,11 +2111,11 @@ components:
     SessionTokenV2Request:
       type: object
       required:
-        - owner
+        - issuer
         - targets
         - contexts
       properties:
-        owner:
+        issuer:
           description: Token issuer ID (account address).
           type: string
           example: NfgHwwTi3wHAS8aFAN243C5vGbkYDpqLHP
@@ -2104,7 +2168,7 @@ components:
       required:
         - token
         - key
-        - value
+        - signature
         - scheme
         - lock
       properties:
@@ -2116,7 +2180,7 @@ components:
             If scheme N3, Base64 encoded verifScript.
           type: string
           x-go-type-skip-optional-pointer: true
-        value:
+        signature:
           description: If scheme is not N3, Base64 encoded signature for session v2 token.
             If scheme N3, Base64 encoded invocScript.
           type: string

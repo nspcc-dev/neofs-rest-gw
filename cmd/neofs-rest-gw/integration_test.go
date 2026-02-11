@@ -141,6 +141,7 @@ func runTests(ctx context.Context, t *testing.T, key *keys.PrivateKey, node stri
 
 	t.Run("rest gate metadata", func(t *testing.T) { gateMetadata(ctx, t) })
 	t.Run("rest auth several tokens", func(t *testing.T) { authTokens(ctx, t) })
+	t.Run("rest auth bearer v2", func(t *testing.T) { v2AuthBearer(ctx, t) })
 	t.Run("rest auth session token v2", func(t *testing.T) { v2AuthSessionToken(ctx, t) })
 	t.Run("rest form full binary bearer", func(t *testing.T) { formFullBinaryBearer(ctx, t) })
 
@@ -343,6 +344,53 @@ func authTokens(ctx context.Context, t *testing.T) {
 	makeAuthTokenRequest(ctx, t, bearers, httpClient, false)
 }
 
+func v2AuthBearer(ctx context.Context, t *testing.T) {
+	var (
+		gateUserID = gateMetadataID(ctx, t)
+		owner      = gateUserID.String()
+		oth        = apiserver.OTHERS
+	)
+
+	r := apiserver.FormBearerRequest{
+		Owner: &owner,
+		Records: []apiserver.Record{{
+			Operation: apiserver.PUT,
+			Action:    apiserver.ALLOW,
+			Filters:   []apiserver.Filter{},
+			Targets: []apiserver.Target{{
+				Role: &oth,
+			}},
+		}},
+	}
+
+	httpClient := defaultHTTPClient()
+	bt := makeV2AuthBearerRequest(ctx, t, r, httpClient)
+
+	r2 := apiserver.CompleteUnsignedBearerTokenRequest{
+		Key:       bt.Key,
+		Signature: bt.Signature,
+		Token:     bt.Token,
+		Scheme:    apiserver.SHA512,
+	}
+
+	bts, err := json.Marshal(r2)
+	require.NoError(t, err)
+
+	request, err := http.NewRequest(http.MethodPost, testHost+"/v2/auth/bearer/complete", bytes.NewReader(bts))
+	require.NoError(t, err)
+	request.Header.Add("Content-Type", "application/json")
+
+	var resp apiserver.BinaryBearer
+	doRequest(t, httpClient, request, http.StatusOK, &resp)
+
+	tokenBts, err := base64.StdEncoding.DecodeString(resp.Token)
+	require.NoError(t, err)
+
+	var bToken bearer.Token
+	require.NoError(t, bToken.Unmarshal(tokenBts))
+	require.True(t, bToken.VerifySignature())
+}
+
 func formFullBinaryBearer(ctx context.Context, t *testing.T) {
 	oth := apiserver.OTHERS
 
@@ -449,7 +497,7 @@ func restObjectDeleteSessionV2(ctx context.Context, t *testing.T, p *pool.Pool, 
 
 	tokenRequest := apiserver.SessionTokenV2Request{
 		Contexts: []apiserver.TokenContext{{ContainerID: cnrID.String(), Verbs: []apiserver.TokenVerb{"OBJECT_DELETE"}}},
-		Owner:    ownerID.String(),
+		Issuer:   ownerID.String(),
 		Targets:  []string{gateUserID.String()},
 	}
 
@@ -587,7 +635,7 @@ func restObjectsSearchSessionV2(ctx context.Context, t *testing.T, p *pool.Pool,
 
 	tokenRequest := apiserver.SessionTokenV2Request{
 		Contexts: []apiserver.TokenContext{{ContainerID: cnrID.String(), Verbs: []apiserver.TokenVerb{"OBJECT_SEARCH"}}},
-		Owner:    ownerID.String(),
+		Issuer:   ownerID.String(),
 		Targets:  []string{gateUserID.String()},
 	}
 
@@ -809,7 +857,7 @@ func restObjectsSearchV2SessionV2(ctx context.Context, t *testing.T, p *pool.Poo
 
 	tokenRequest := apiserver.SessionTokenV2Request{
 		Contexts: []apiserver.TokenContext{{ContainerID: cnrID.String(), Verbs: []apiserver.TokenVerb{"OBJECT_SEARCH"}}},
-		Owner:    ownerID.String(),
+		Issuer:   ownerID.String(),
 		Targets:  []string{gateUserID.String()},
 	}
 
@@ -1356,7 +1404,7 @@ func restContainerDeleteSessionV2(ctx context.Context, t *testing.T, clientPool 
 
 	tokenRequest := apiserver.SessionTokenV2Request{
 		Contexts: []apiserver.TokenContext{{Verbs: []apiserver.TokenVerb{"CONTAINER_DELETE"}}},
-		Owner:    ownerID.String(),
+		Issuer:   ownerID.String(),
 		Targets:  []string{gateUserID.String()},
 	}
 
@@ -1386,7 +1434,7 @@ func restContainerEACLPutSessionV2(ctx context.Context, t *testing.T, clientPool
 
 	tokenRequest := apiserver.SessionTokenV2Request{
 		Contexts: []apiserver.TokenContext{{ContainerID: cnrID.String(), Verbs: []apiserver.TokenVerb{"CONTAINER_SET_EACL"}}},
-		Owner:    ownerID.String(),
+		Issuer:   ownerID.String(),
 		Targets:  []string{gateUserID.String()},
 	}
 
@@ -1802,6 +1850,30 @@ func makeAuthTokenRequest(ctx context.Context, t *testing.T, bearers []apiserver
 	return respTokens
 }
 
+func makeV2AuthBearerRequest(ctx context.Context, t *testing.T, req apiserver.FormBearerRequest, httpClient *http.Client) *handlers.BearerToken {
+	key, err := keys.NewPrivateKeyFromHex(devenvPrivateKey)
+	require.NoError(t, err)
+
+	signer := user.NewAutoIDSignerRFC6979(key.PrivateKey)
+	req.Issuer = signer.UserID().String()
+
+	data, err := json.Marshal(req)
+	require.NoError(t, err)
+
+	request, err := http.NewRequest(http.MethodPost, testHost+"/v2/auth/bearer", bytes.NewReader(data))
+	require.NoError(t, err)
+	request = request.WithContext(ctx)
+	request.Header.Add("Content-Type", "application/json")
+
+	var stokenResp *apiserver.FormBearerResponse
+	doRequest(t, httpClient, request, http.StatusOK, &stokenResp)
+
+	binaryData, err := base64.StdEncoding.DecodeString(stokenResp.Token)
+	require.NoError(t, err)
+
+	return signToken(t, key, binaryData)
+}
+
 func signToken(t *testing.T, key *keys.PrivateKey, data []byte) *handlers.BearerToken {
 	signer := neofsecdsa.Signer(key.PrivateKey)
 	sign, err := signer.Sign(data)
@@ -1834,7 +1906,7 @@ func restContainerPutSessionTokenV2(ctx context.Context, t *testing.T, clientPoo
 
 	tokenRequest := apiserver.SessionTokenV2Request{
 		Contexts: []apiserver.TokenContext{{Verbs: []apiserver.TokenVerb{"CONTAINER_PUT"}}},
-		Owner:    ownerID.String(),
+		Issuer:   ownerID.String(),
 		Targets:  []string{gateUserID.String()},
 	}
 
@@ -1907,7 +1979,7 @@ func restContainerPostSessionTokenV2(ctx context.Context, t *testing.T, clientPo
 
 	tokenRequest := apiserver.SessionTokenV2Request{
 		Contexts: []apiserver.TokenContext{{Verbs: []apiserver.TokenVerb{"CONTAINER_PUT"}}},
-		Owner:    ownerID.String(),
+		Issuer:   ownerID.String(),
 		Targets:  []string{gateUserID.String()},
 	}
 
@@ -2175,7 +2247,7 @@ func restNewObjectUploadSessionTokenV2(ctx context.Context, t *testing.T, client
 
 	tokenRequest := apiserver.SessionTokenV2Request{
 		Contexts: []apiserver.TokenContext{{ContainerID: cnrID.EncodeToString(), Verbs: []apiserver.TokenVerb{"OBJECT_PUT"}}},
-		Owner:    ownerID.String(),
+		Issuer:   ownerID.String(),
 		Targets:  []string{gateUserID.String()},
 	}
 
@@ -2405,7 +2477,7 @@ func restNewObjectHeadSessionV2(ctx context.Context, t *testing.T, p *pool.Pool,
 
 	tokenRequest := apiserver.SessionTokenV2Request{
 		Contexts: []apiserver.TokenContext{{ContainerID: cnrID.String(), Verbs: []apiserver.TokenVerb{"OBJECT_HEAD", "OBJECT_SEARCH", "OBJECT_RANGE"}}},
-		Owner:    ownerID.String(),
+		Issuer:   ownerID.String(),
 		Targets:  []string{gateUserID.String()},
 	}
 
@@ -2691,7 +2763,7 @@ func restNewObjectHeadByAttributeSessionV2(ctx context.Context, t *testing.T, p 
 
 	tokenRequest := apiserver.SessionTokenV2Request{
 		Contexts: []apiserver.TokenContext{{ContainerID: cnrID.String(), Verbs: []apiserver.TokenVerb{"OBJECT_HEAD", "OBJECT_SEARCH", "OBJECT_RANGE"}}},
-		Owner:    ownerID.String(),
+		Issuer:   ownerID.String(),
 		Targets:  []string{gateUserID.String()},
 	}
 
@@ -2938,7 +3010,7 @@ func restNewObjectGetByAttributeSessionV2(ctx context.Context, t *testing.T, p *
 
 	tokenRequest := apiserver.SessionTokenV2Request{
 		Contexts: []apiserver.TokenContext{{ContainerID: cnrID.String(), Verbs: []apiserver.TokenVerb{"OBJECT_GET", "OBJECT_HEAD", "OBJECT_SEARCH", "OBJECT_RANGE"}}},
-		Owner:    ownerID.String(),
+		Issuer:   ownerID.String(),
 		Targets:  []string{gateUserID.String()},
 	}
 
@@ -3072,7 +3144,7 @@ func v2AuthSessionToken(ctx context.Context, t *testing.T) {
 		request := apiserver.SessionTokenV2Request{
 			Contexts:          []apiserver.TokenContext{{Verbs: []apiserver.TokenVerb{"OBJECT_PUT"}}},
 			ExpirationRfc3339: &expRfc,
-			Owner:             ownerID.String(),
+			Issuer:            ownerID.String(),
 			Targets:           []string{targetID.String()},
 			Origin:            base64.StdEncoding.EncodeToString(originToken.Marshal()),
 		}
@@ -3088,11 +3160,11 @@ func v2AuthSessionToken(ctx context.Context, t *testing.T) {
 			require.NoError(t, err)
 
 			req := apiserver.CompleteSessionTokenV2Request{
-				Key:    hex.EncodeToString(key.PublicKey().Bytes()),
-				Value:  base64.StdEncoding.EncodeToString(signed),
-				Token:  response.Token,
-				Scheme: apiserver.SHA512,
-				Lock:   response.Lock,
+				Key:       hex.EncodeToString(key.PublicKey().Bytes()),
+				Signature: base64.StdEncoding.EncodeToString(signed),
+				Token:     response.Token,
+				Scheme:    apiserver.SHA512,
+				Lock:      response.Lock,
 			}
 
 			sessionTokenResponse := completeV2AuthSessionTokenRequest(ctx, t, req, httpClient, http.StatusOK, "")
@@ -3112,7 +3184,7 @@ func v2AuthSessionToken(ctx context.Context, t *testing.T) {
 		request := apiserver.SessionTokenV2Request{
 			Contexts:            []apiserver.TokenContext{{Verbs: []apiserver.TokenVerb{"OBJECT_PUT"}}},
 			ExpirationTimestamp: &expTs,
-			Owner:               ownerID.String(),
+			Issuer:              ownerID.String(),
 			Targets:             []string{targetID.String()},
 		}
 
@@ -3136,7 +3208,7 @@ func v2AuthSessionToken(ctx context.Context, t *testing.T) {
 		request := apiserver.SessionTokenV2Request{
 			Contexts:           []apiserver.TokenContext{{Verbs: []apiserver.TokenVerb{"OBJECT_PUT"}}},
 			ExpirationDuration: &expTs,
-			Owner:              ownerID.String(),
+			Issuer:             ownerID.String(),
 			Targets:            []string{targetID.String()},
 		}
 
@@ -3154,7 +3226,7 @@ func v2AuthSessionToken(ctx context.Context, t *testing.T) {
 
 	t.Run("invalid owner", func(t *testing.T) {
 		request := apiserver.SessionTokenV2Request{
-			Owner: "invalid owner",
+			Issuer: "invalid owner",
 		}
 
 		httpClient := defaultHTTPClient()
@@ -3163,7 +3235,7 @@ func v2AuthSessionToken(ctx context.Context, t *testing.T) {
 
 	t.Run("zero targets", func(t *testing.T) {
 		request := apiserver.SessionTokenV2Request{
-			Owner: ownerID.String(),
+			Issuer: ownerID.String(),
 		}
 
 		httpClient := defaultHTTPClient()
@@ -3172,7 +3244,7 @@ func v2AuthSessionToken(ctx context.Context, t *testing.T) {
 
 	t.Run("both targets empty", func(t *testing.T) {
 		request := apiserver.SessionTokenV2Request{
-			Owner:   ownerID.String(),
+			Issuer:  ownerID.String(),
 			Targets: []string{""},
 		}
 
@@ -3182,7 +3254,7 @@ func v2AuthSessionToken(ctx context.Context, t *testing.T) {
 
 	t.Run("zero contexts", func(t *testing.T) {
 		request := apiserver.SessionTokenV2Request{
-			Owner:    ownerID.String(),
+			Issuer:   ownerID.String(),
 			Targets:  []string{targetID.String()},
 			Contexts: []apiserver.TokenContext{},
 		}
@@ -3193,7 +3265,7 @@ func v2AuthSessionToken(ctx context.Context, t *testing.T) {
 
 	t.Run("zero verbs", func(t *testing.T) {
 		request := apiserver.SessionTokenV2Request{
-			Owner:    ownerID.String(),
+			Issuer:   ownerID.String(),
 			Targets:  []string{targetID.String()},
 			Contexts: []apiserver.TokenContext{{ContainerID: cnrIDStr}},
 		}
@@ -3204,7 +3276,7 @@ func v2AuthSessionToken(ctx context.Context, t *testing.T) {
 
 	t.Run("invalid verb", func(t *testing.T) {
 		request := apiserver.SessionTokenV2Request{
-			Owner:    ownerID.String(),
+			Issuer:   ownerID.String(),
 			Targets:  []string{targetID.String()},
 			Contexts: []apiserver.TokenContext{{Verbs: []apiserver.TokenVerb{"invalid"}}},
 		}
@@ -3216,7 +3288,7 @@ func v2AuthSessionToken(ctx context.Context, t *testing.T) {
 	t.Run("invalid expiration", func(t *testing.T) {
 		exp := time.Now().Add(-time.Hour).Format(time.RFC3339)
 		request := apiserver.SessionTokenV2Request{
-			Owner:             ownerID.String(),
+			Issuer:            ownerID.String(),
 			Targets:           []string{targetID.String()},
 			Contexts:          []apiserver.TokenContext{{Verbs: []apiserver.TokenVerb{"OBJECT_PUT"}}},
 			ExpirationRfc3339: &exp,
@@ -3228,7 +3300,7 @@ func v2AuthSessionToken(ctx context.Context, t *testing.T) {
 
 	t.Run("different contexts with one container", func(t *testing.T) {
 		request := apiserver.SessionTokenV2Request{
-			Owner:   ownerID.String(),
+			Issuer:  ownerID.String(),
 			Targets: []string{targetID.String()},
 			Contexts: []apiserver.TokenContext{
 				{ContainerID: cnrIDStr, Verbs: []apiserver.TokenVerb{"OBJECT_PUT"}},
@@ -3340,11 +3412,11 @@ func getSignedSessionToken(ctx context.Context, t *testing.T, req apiserver.Sess
 	signer.Public().Encode(pubKeyBts)
 
 	req2 := apiserver.CompleteSessionTokenV2Request{
-		Key:    hex.EncodeToString(pubKeyBts),
-		Value:  base64.StdEncoding.EncodeToString(signed),
-		Token:  response.Token,
-		Scheme: apiserver.SHA512,
-		Lock:   response.Lock,
+		Key:       hex.EncodeToString(pubKeyBts),
+		Signature: base64.StdEncoding.EncodeToString(signed),
+		Token:     response.Token,
+		Scheme:    apiserver.SHA512,
+		Lock:      response.Lock,
 	}
 
 	sessionTokenResponse := completeV2AuthSessionTokenRequest(ctx, t, req2, httpClient, http.StatusOK, "")

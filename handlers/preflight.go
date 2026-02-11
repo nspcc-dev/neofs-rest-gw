@@ -14,7 +14,6 @@ const (
 	headerXBearerLifetime           = "X-Bearer-Lifetime"
 	headerXBearerSignature          = "X-Bearer-Signature"
 	headerXBearerSignatureKey       = "X-Bearer-Signature-Key"
-	headerXBearerIssuerID           = "X-Bearer-Issuer-Id"
 	headerXNeofsBearerToken         = "NeoFS-Bearer-Token"
 	headerRange                     = "Range"
 	headerXAttributes               = "X-Attributes"
@@ -109,7 +108,6 @@ var (
 
 	optionsUnsignedBearerToken = strings.Join(
 		append(allowHeaders,
-			headerXBearerIssuerID,
 			headerXBearerLifetime,
 			headerXBearerOwnerID,
 		),
@@ -255,6 +253,14 @@ func (a *RestAPI) OptionsGatewayMetadata(ctx echo.Context) error {
 func (a *RestAPI) OptionsUnsignedBearerToken(ctx echo.Context) error {
 	ctx.Response().Header().Set(accessControlAllowOriginHeader, allOrigins)
 	ctx.Response().Header().Set(accessControlAllowHeadersHeader, optionsUnsignedBearerToken)
+	ctx.Response().Header().Set(accessControlAllowMethodsHeader, allowMethods(methodPost))
+	return ctx.NoContent(http.StatusOK)
+}
+
+// OptionsCompleteUnsignedBearerToken handler for the form unsigned bearer token options request.
+func (a *RestAPI) OptionsCompleteUnsignedBearerToken(ctx echo.Context) error {
+	ctx.Response().Header().Set(accessControlAllowOriginHeader, allOrigins)
+	ctx.Response().Header().Set(accessControlAllowHeadersHeader, allowHeadersStr)
 	ctx.Response().Header().Set(accessControlAllowMethodsHeader, allowMethods(methodPost))
 	return ctx.NoContent(http.StatusOK)
 }
