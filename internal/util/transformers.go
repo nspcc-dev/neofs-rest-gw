@@ -48,19 +48,19 @@ func FromNativeAction(a eacl.Action) (apiserver.Action, error) {
 // ToNativeOperation converts [apiserver.Operation] to appropriate [eacl.Operation].
 func ToNativeOperation(o apiserver.Operation) (eacl.Operation, error) {
 	switch o {
-	case apiserver.GET:
+	case apiserver.OperationGET:
 		return eacl.OperationGet, nil
-	case apiserver.HEAD:
+	case apiserver.OperationHEAD:
 		return eacl.OperationHead, nil
-	case apiserver.PUT:
+	case apiserver.OperationPUT:
 		return eacl.OperationPut, nil
-	case apiserver.DELETE:
+	case apiserver.OperationDELETE:
 		return eacl.OperationDelete, nil
-	case apiserver.SEARCH:
+	case apiserver.OperationSEARCH:
 		return eacl.OperationSearch, nil
-	case apiserver.RANGE:
+	case apiserver.OperationRANGE:
 		return eacl.OperationRange, nil
-	case apiserver.RANGEHASH:
+	case apiserver.OperationRANGEHASH:
 		return eacl.OperationRangeHash, nil
 	default:
 		return 0, fmt.Errorf("unsupported operation type: '%s'", o)
@@ -71,19 +71,19 @@ func ToNativeOperation(o apiserver.Operation) (eacl.Operation, error) {
 func FromNativeOperation(o eacl.Operation) (apiserver.Operation, error) {
 	switch o {
 	case eacl.OperationGet:
-		return apiserver.GET, nil
+		return apiserver.OperationGET, nil
 	case eacl.OperationHead:
-		return apiserver.HEAD, nil
+		return apiserver.OperationHEAD, nil
 	case eacl.OperationPut:
-		return apiserver.PUT, nil
+		return apiserver.OperationPUT, nil
 	case eacl.OperationDelete:
-		return apiserver.DELETE, nil
+		return apiserver.OperationDELETE, nil
 	case eacl.OperationSearch:
-		return apiserver.SEARCH, nil
+		return apiserver.OperationSEARCH, nil
 	case eacl.OperationRange:
-		return apiserver.RANGE, nil
+		return apiserver.OperationRANGE, nil
 	case eacl.OperationRangeHash:
-		return apiserver.RANGEHASH, nil
+		return apiserver.OperationRANGEHASH, nil
 	default:
 		return "", fmt.Errorf("unsupported operation type: '%s'", o)
 	}

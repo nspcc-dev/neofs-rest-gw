@@ -75,6 +75,11 @@ const (
 	useLocalEnvironment = false
 
 	sessionLockSize = 32
+
+	accessControlAllowOriginHeader  = "Access-Control-Allow-Origin"
+	accessControlMaxAge             = "Access-Control-Max-Age"
+	accessControlAllowMethodsHeader = "Access-Control-Allow-Methods"
+	accessControlAllowHeadersHeader = "Access-Control-Allow-Headers"
 )
 
 type (
@@ -203,6 +208,9 @@ func runTests(ctx context.Context, t *testing.T, key *keys.PrivateKey, node stri
 	t.Run("rest new get by attribute with range", func(t *testing.T) {
 		restNewObjectGetByAttribute(ctx, t, clientPool, &owner, cnrID, signer, false, true)
 	})
+	t.Run("rest set CORF", func(t *testing.T) {
+		setContainerCORS(ctx, t, clientPool, signer, sessionV2Signer)
+	})
 }
 
 func createDockerContainer(ctx context.Context, t *testing.T, image, version string) testcontainers.Container {
@@ -286,13 +294,13 @@ func getPool(ctx context.Context, t *testing.T, key *keys.PrivateKey, node strin
 
 func getRestrictBearerRecords() []apiserver.Record {
 	return []apiserver.Record{
-		formRestrictRecord(apiserver.GET),
-		formRestrictRecord(apiserver.HEAD),
-		formRestrictRecord(apiserver.PUT),
-		formRestrictRecord(apiserver.DELETE),
-		formRestrictRecord(apiserver.SEARCH),
-		formRestrictRecord(apiserver.RANGE),
-		formRestrictRecord(apiserver.RANGEHASH),
+		formRestrictRecord(apiserver.OperationGET),
+		formRestrictRecord(apiserver.OperationHEAD),
+		formRestrictRecord(apiserver.OperationPUT),
+		formRestrictRecord(apiserver.OperationDELETE),
+		formRestrictRecord(apiserver.OperationSEARCH),
+		formRestrictRecord(apiserver.OperationRANGE),
+		formRestrictRecord(apiserver.OperationRANGEHASH),
 	}
 }
 
@@ -329,7 +337,7 @@ func authTokens(ctx context.Context, t *testing.T) {
 		{
 			Name: "all-object",
 			Object: []apiserver.Record{{
-				Operation: apiserver.PUT,
+				Operation: apiserver.OperationPUT,
 				Action:    apiserver.ALLOW,
 				Filters:   []apiserver.Filter{},
 				Targets: []apiserver.Target{{
@@ -354,7 +362,7 @@ func v2AuthBearer(ctx context.Context, t *testing.T) {
 	r := apiserver.FormBearerRequest{
 		Owner: &owner,
 		Records: []apiserver.Record{{
-			Operation: apiserver.PUT,
+			Operation: apiserver.OperationPUT,
 			Action:    apiserver.ALLOW,
 			Filters:   []apiserver.Filter{},
 			Targets: []apiserver.Target{{
@@ -398,7 +406,7 @@ func formFullBinaryBearer(ctx context.Context, t *testing.T) {
 		{
 			Name: "all-object",
 			Object: []apiserver.Record{{
-				Operation: apiserver.PUT,
+				Operation: apiserver.OperationPUT,
 				Action:    apiserver.ALLOW,
 				Filters:   []apiserver.Filter{},
 				Targets: []apiserver.Target{{
@@ -448,7 +456,7 @@ func restObjectDelete(ctx context.Context, t *testing.T, p *pool.Pool, owner *us
 
 	bearer := apiserver.Bearer{
 		Object: []apiserver.Record{{
-			Operation: apiserver.DELETE,
+			Operation: apiserver.OperationDELETE,
 			Action:    apiserver.ALLOW,
 			Filters:   []apiserver.Filter{},
 			Targets: []apiserver.Target{{
@@ -456,7 +464,7 @@ func restObjectDelete(ctx context.Context, t *testing.T, p *pool.Pool, owner *us
 				Keys: []string{},
 			}},
 		}, {
-			Operation: apiserver.HEAD,
+			Operation: apiserver.OperationHEAD,
 			Action:    apiserver.ALLOW,
 			Filters:   []apiserver.Filter{},
 			Targets: []apiserver.Target{{
@@ -536,19 +544,19 @@ func restObjectsSearch(ctx context.Context, t *testing.T, p *pool.Pool, owner *u
 	bearer := apiserver.Bearer{
 		Object: []apiserver.Record{
 			{
-				Operation: apiserver.SEARCH,
+				Operation: apiserver.OperationSEARCH,
 				Action:    apiserver.ALLOW,
 				Filters:   []apiserver.Filter{},
 				Targets:   []apiserver.Target{{Role: &oth, Keys: []string{}}},
 			},
 			{
-				Operation: apiserver.HEAD,
+				Operation: apiserver.OperationHEAD,
 				Action:    apiserver.ALLOW,
 				Filters:   []apiserver.Filter{},
 				Targets:   []apiserver.Target{{Role: &oth, Keys: []string{}}},
 			},
 			{
-				Operation: apiserver.GET,
+				Operation: apiserver.OperationGET,
 				Action:    apiserver.ALLOW,
 				Filters:   []apiserver.Filter{},
 				Targets:   []apiserver.Target{{Role: &oth, Keys: []string{}}},
@@ -719,19 +727,19 @@ func restObjectsSearchV2(ctx context.Context, t *testing.T, p *pool.Pool, owner 
 	bearer := apiserver.Bearer{
 		Object: []apiserver.Record{
 			{
-				Operation: apiserver.SEARCH,
+				Operation: apiserver.OperationSEARCH,
 				Action:    apiserver.ALLOW,
 				Filters:   []apiserver.Filter{},
 				Targets:   []apiserver.Target{{Role: &oth, Keys: []string{}}},
 			},
 			{
-				Operation: apiserver.HEAD,
+				Operation: apiserver.OperationHEAD,
 				Action:    apiserver.ALLOW,
 				Filters:   []apiserver.Filter{},
 				Targets:   []apiserver.Target{{Role: &oth, Keys: []string{}}},
 			},
 			{
-				Operation: apiserver.GET,
+				Operation: apiserver.OperationGET,
 				Action:    apiserver.ALLOW,
 				Filters:   []apiserver.Filter{},
 				Targets:   []apiserver.Target{{Role: &oth, Keys: []string{}}},
@@ -967,19 +975,19 @@ func restObjectsSearchV2CursorAndLimit(ctx context.Context, t *testing.T, p *poo
 	bearer := apiserver.Bearer{
 		Object: []apiserver.Record{
 			{
-				Operation: apiserver.SEARCH,
+				Operation: apiserver.OperationSEARCH,
 				Action:    apiserver.ALLOW,
 				Filters:   []apiserver.Filter{},
 				Targets:   []apiserver.Target{{Role: &oth, Keys: []string{}}},
 			},
 			{
-				Operation: apiserver.HEAD,
+				Operation: apiserver.OperationHEAD,
 				Action:    apiserver.ALLOW,
 				Filters:   []apiserver.Filter{},
 				Targets:   []apiserver.Target{{Role: &oth, Keys: []string{}}},
 			},
 			{
-				Operation: apiserver.GET,
+				Operation: apiserver.OperationGET,
 				Action:    apiserver.ALLOW,
 				Filters:   []apiserver.Filter{},
 				Targets:   []apiserver.Target{{Role: &oth, Keys: []string{}}},
@@ -1110,19 +1118,19 @@ func restObjectsSearchV2Filters(ctx context.Context, t *testing.T, p *pool.Pool,
 	bearer := apiserver.Bearer{
 		Object: []apiserver.Record{
 			{
-				Operation: apiserver.SEARCH,
+				Operation: apiserver.OperationSEARCH,
 				Action:    apiserver.ALLOW,
 				Filters:   []apiserver.Filter{},
 				Targets:   []apiserver.Target{{Role: &oth, Keys: []string{}}},
 			},
 			{
-				Operation: apiserver.HEAD,
+				Operation: apiserver.OperationHEAD,
 				Action:    apiserver.ALLOW,
 				Filters:   []apiserver.Filter{},
 				Targets:   []apiserver.Target{{Role: &oth, Keys: []string{}}},
 			},
 			{
-				Operation: apiserver.GET,
+				Operation: apiserver.OperationGET,
 				Action:    apiserver.ALLOW,
 				Filters:   []apiserver.Filter{},
 				Targets:   []apiserver.Target{{Role: &oth, Keys: []string{}}},
@@ -1447,7 +1455,7 @@ func restContainerEACLPutSessionV2(ctx context.Context, t *testing.T, clientPool
 			Records: []apiserver.Record{{
 				Action:    apiserver.DENY,
 				Filters:   []apiserver.Filter{},
-				Operation: apiserver.DELETE,
+				Operation: apiserver.OperationDELETE,
 				Targets: []apiserver.Target{{
 					Keys: []string{"031a6c6fbbdf02ca351745fa86b9ba5a9452d785ac4f7fc2b7548ca2a46c4fcf4a"},
 					Role: &oth,
@@ -1468,7 +1476,7 @@ func restContainerEACLPutSessionV2(ctx context.Context, t *testing.T, clientPool
 			Records: []apiserver.Record{{
 				Action:    apiserver.ALLOW,
 				Filters:   []apiserver.Filter{},
-				Operation: apiserver.DELETE,
+				Operation: apiserver.OperationDELETE,
 				Targets: []apiserver.Target{{
 					Accounts: []string{s.UserID().String()},
 				}},
@@ -1497,7 +1505,7 @@ func restContainerEACLPutSessionV2(ctx context.Context, t *testing.T, clientPool
 			Records: []apiserver.Record{{
 				Action:    apiserver.ALLOW,
 				Filters:   []apiserver.Filter{},
-				Operation: apiserver.DELETE,
+				Operation: apiserver.OperationDELETE,
 				Targets: []apiserver.Target{{
 					Role: &oth,
 				}},
@@ -1529,7 +1537,7 @@ func restContainerEACLPutSessionV2(ctx context.Context, t *testing.T, clientPool
 					Filters: []apiserver.Filter{
 						{HeaderType: "OBJECT", Key: "MyKey", MatchType: apiserver.STRINGEQUAL, Value: "MyValue"},
 					},
-					Operation: apiserver.DELETE,
+					Operation: apiserver.OperationDELETE,
 					Targets: []apiserver.Target{{
 						Keys: []string{"031a6c6fbbdf02ca351745fa86b9ba5a9452d785ac4f7fc2b7548ca2a46c4fcf4a"},
 						Role: &oth,
@@ -1547,7 +1555,7 @@ func restContainerEACLPutSessionV2(ctx context.Context, t *testing.T, clientPool
 					Filters: []apiserver.Filter{
 						{HeaderType: "OBJECT", Key: "MyKey", MatchType: apiserver.STRINGNOTEQUAL, Value: "MyValue"},
 					},
-					Operation: apiserver.DELETE,
+					Operation: apiserver.OperationDELETE,
 					Targets: []apiserver.Target{{
 						Keys: []string{"031a6c6fbbdf02ca351745fa86b9ba5a9452d785ac4f7fc2b7548ca2a46c4fcf4a"},
 						Role: &oth,
@@ -1565,7 +1573,7 @@ func restContainerEACLPutSessionV2(ctx context.Context, t *testing.T, clientPool
 					Filters: []apiserver.Filter{
 						{HeaderType: "OBJECT", Key: "MyKey", MatchType: apiserver.NOTPRESENT},
 					},
-					Operation: apiserver.DELETE,
+					Operation: apiserver.OperationDELETE,
 					Targets: []apiserver.Target{{
 						Keys: []string{"031a6c6fbbdf02ca351745fa86b9ba5a9452d785ac4f7fc2b7548ca2a46c4fcf4a"},
 						Role: &oth,
@@ -1583,7 +1591,7 @@ func restContainerEACLPutSessionV2(ctx context.Context, t *testing.T, clientPool
 					Filters: []apiserver.Filter{
 						{HeaderType: "OBJECT", Key: "MyKey", MatchType: apiserver.NUMLE, Value: "123"},
 					},
-					Operation: apiserver.DELETE,
+					Operation: apiserver.OperationDELETE,
 					Targets: []apiserver.Target{{
 						Keys: []string{"031a6c6fbbdf02ca351745fa86b9ba5a9452d785ac4f7fc2b7548ca2a46c4fcf4a"},
 						Role: &oth,
@@ -1601,7 +1609,7 @@ func restContainerEACLPutSessionV2(ctx context.Context, t *testing.T, clientPool
 					Filters: []apiserver.Filter{
 						{HeaderType: "OBJECT", Key: "MyKey", MatchType: apiserver.NUMLT, Value: "123"},
 					},
-					Operation: apiserver.DELETE,
+					Operation: apiserver.OperationDELETE,
 					Targets: []apiserver.Target{{
 						Keys: []string{"031a6c6fbbdf02ca351745fa86b9ba5a9452d785ac4f7fc2b7548ca2a46c4fcf4a"},
 						Role: &oth,
@@ -1619,7 +1627,7 @@ func restContainerEACLPutSessionV2(ctx context.Context, t *testing.T, clientPool
 					Filters: []apiserver.Filter{
 						{HeaderType: "OBJECT", Key: "MyKey", MatchType: apiserver.NUMGT, Value: "123"},
 					},
-					Operation: apiserver.DELETE,
+					Operation: apiserver.OperationDELETE,
 					Targets: []apiserver.Target{{
 						Keys: []string{"031a6c6fbbdf02ca351745fa86b9ba5a9452d785ac4f7fc2b7548ca2a46c4fcf4a"},
 						Role: &oth,
@@ -1637,7 +1645,7 @@ func restContainerEACLPutSessionV2(ctx context.Context, t *testing.T, clientPool
 					Filters: []apiserver.Filter{
 						{HeaderType: "OBJECT", Key: "MyKey", MatchType: apiserver.NUMGE, Value: "123"},
 					},
-					Operation: apiserver.DELETE,
+					Operation: apiserver.OperationDELETE,
 					Targets: []apiserver.Target{{
 						Keys: []string{"031a6c6fbbdf02ca351745fa86b9ba5a9452d785ac4f7fc2b7548ca2a46c4fcf4a"},
 						Role: &oth,
@@ -1655,7 +1663,7 @@ func restContainerEACLPutSessionV2(ctx context.Context, t *testing.T, clientPool
 					Filters: []apiserver.Filter{
 						{HeaderType: "OBJECT", Key: "MyKey", MatchType: "INVALID", Value: "123"},
 					},
-					Operation: apiserver.DELETE,
+					Operation: apiserver.OperationDELETE,
 					Targets: []apiserver.Target{{
 						Keys: []string{"031a6c6fbbdf02ca351745fa86b9ba5a9452d785ac4f7fc2b7548ca2a46c4fcf4a"},
 					}},
@@ -1672,7 +1680,7 @@ func restContainerEACLPutSessionV2(ctx context.Context, t *testing.T, clientPool
 					Filters: []apiserver.Filter{
 						{HeaderType: "OBJECT", Key: "", MatchType: apiserver.NUMGE, Value: "123"},
 					},
-					Operation: apiserver.DELETE,
+					Operation: apiserver.OperationDELETE,
 					Targets: []apiserver.Target{{
 						Keys: []string{"031a6c6fbbdf02ca351745fa86b9ba5a9452d785ac4f7fc2b7548ca2a46c4fcf4a"},
 					}},
@@ -1689,7 +1697,7 @@ func restContainerEACLPutSessionV2(ctx context.Context, t *testing.T, clientPool
 					Filters: []apiserver.Filter{
 						{HeaderType: "OBJECT", Key: "MyKey", MatchType: apiserver.NUMGE, Value: "123a"},
 					},
-					Operation: apiserver.DELETE,
+					Operation: apiserver.OperationDELETE,
 					Targets: []apiserver.Target{{
 						Keys: []string{"031a6c6fbbdf02ca351745fa86b9ba5a9452d785ac4f7fc2b7548ca2a46c4fcf4a"},
 					}},
@@ -2161,7 +2169,7 @@ func restNewObjectUploadWC(ctx context.Context, t *testing.T, clientPool *pool.P
 func restNewObjectUploadInt(ctx context.Context, t *testing.T, clientPool *pool.Pool, cnrID cid.ID, signer user.Signer, cookie bool, walletConnect bool) {
 	bt := apiserver.Bearer{
 		Object: []apiserver.Record{
-			formAllowRecord(apiserver.PUT),
+			formAllowRecord(apiserver.OperationPUT),
 		},
 	}
 	bt.Object = append(bt.Object, getRestrictBearerRecords()...)
@@ -2274,7 +2282,7 @@ func restNewObjectUploadSessionTokenV2(ctx context.Context, t *testing.T, client
 	if useBearer {
 		bt := apiserver.Bearer{
 			Object: []apiserver.Record{
-				formAllowRecord(apiserver.PUT),
+				formAllowRecord(apiserver.OperationPUT),
 			},
 		}
 		bt.Object = append(bt.Object, getRestrictBearerRecords()...)
@@ -2317,8 +2325,8 @@ func restNewObjectUploadSessionTokenV2(ctx context.Context, t *testing.T, client
 func restNewObjectHead(ctx context.Context, t *testing.T, p *pool.Pool, ownerID *user.ID, cnrID cid.ID, signer user.Signer, walletConnect bool) {
 	bearer := apiserver.Bearer{
 		Object: []apiserver.Record{
-			formAllowRecord(apiserver.HEAD),
-			formAllowRecord(apiserver.RANGE),
+			formAllowRecord(apiserver.OperationHEAD),
+			formAllowRecord(apiserver.OperationRANGE),
 		},
 	}
 	bearer.Object = append(bearer.Object, getRestrictBearerRecords()...)
@@ -2604,9 +2612,9 @@ func restNewObjectHeadSessionV2(ctx context.Context, t *testing.T, p *pool.Pool,
 func restNewObjectHeadByAttribute(ctx context.Context, t *testing.T, p *pool.Pool, ownerID *user.ID, cnrID cid.ID, signer user.Signer, walletConnect bool) {
 	bearer := apiserver.Bearer{
 		Object: []apiserver.Record{
-			formAllowRecord(apiserver.HEAD),
-			formAllowRecord(apiserver.RANGE),
-			formAllowRecord(apiserver.SEARCH),
+			formAllowRecord(apiserver.OperationHEAD),
+			formAllowRecord(apiserver.OperationRANGE),
+			formAllowRecord(apiserver.OperationSEARCH),
 		},
 	}
 	bearer.Object = append(bearer.Object, getRestrictBearerRecords()...)
@@ -2889,10 +2897,10 @@ func restNewObjectHeadByAttributeSessionV2(ctx context.Context, t *testing.T, p 
 func restNewObjectGetByAttribute(ctx context.Context, t *testing.T, p *pool.Pool, ownerID *user.ID, cnrID cid.ID, signer user.Signer, walletConnect, addRange bool) {
 	bearer := apiserver.Bearer{
 		Object: []apiserver.Record{
-			formAllowRecord(apiserver.GET),
-			formAllowRecord(apiserver.SEARCH),
-			formAllowRecord(apiserver.HEAD),
-			formAllowRecord(apiserver.RANGE),
+			formAllowRecord(apiserver.OperationGET),
+			formAllowRecord(apiserver.OperationSEARCH),
+			formAllowRecord(apiserver.OperationHEAD),
+			formAllowRecord(apiserver.OperationRANGE),
 		},
 	}
 	bearer.Object = append(bearer.Object, getRestrictBearerRecords()...)
@@ -3430,4 +3438,173 @@ func getSignedSessionToken(ctx context.Context, t *testing.T, req apiserver.Sess
 
 func randomString() string {
 	return strconv.FormatInt(time.Now().UnixNano(), 16)
+}
+
+func checkSetCorsFail(t *testing.T, signedToken string, cnrID cid.ID, prm apiserver.PutContainerCORSRequest) {
+	body, err := json.Marshal(prm)
+	require.NoError(t, err)
+
+	request, err := http.NewRequest(http.MethodPost, testHost+"/v1/containers/"+cnrID.EncodeToString()+"/cors", bytes.NewReader(body))
+	require.NoError(t, err)
+
+	httpClient := defaultHTTPClient()
+	prepareSessionV2Headers(request.Header, signedToken)
+
+	doRequest(t, httpClient, request, http.StatusBadRequest, nil)
+}
+
+func setContainerCORS(ctx context.Context, t *testing.T, p *pool.Pool, signer, signerForToken user.Signer) {
+	var (
+		ownerID    = signer.UserID()
+		gateUserID = gateMetadataID(ctx, t)
+		cnrID      = createContainer(ctx, t, p, ownerID, containerName, signer)
+
+		tokenRequest = apiserver.SessionTokenV2Request{
+			Contexts: []apiserver.TokenContext{
+				{
+					ContainerID: cnrID.String(),
+					Verbs:       []apiserver.TokenVerb{"CONTAINER_SET_ATTRIBUTE", "OBJECT_HEAD", "OBJECT_SEARCH", "OBJECT_RANGE"},
+				},
+			},
+			Issuer:  ownerID.String(),
+			Targets: []string{gateUserID.String()},
+		}
+
+		httpClient  = defaultHTTPClient()
+		signedToken = getSignedSessionToken(ctx, t, tokenRequest, httpClient, signerForToken)
+
+		origin            = "https://my-origin.com"
+		alternativeOrigin = "https://another-origin.com"
+		content           = []byte(randomString())
+		attrKey           = randomString()
+		attrValue         = randomString()
+		maxAge            = 123456
+
+		allowedMethods    = []apiserver.CORSRuleAllowedMethods{apiserver.CORSRuleAllowedMethodsGET, apiserver.CORSRuleAllowedMethodsHEAD}
+		allowedMethodsStr = make([]string, 0, len(allowedMethods))
+
+		attributes = map[string]string{
+			object.AttributeFileName:  randomString(),
+			object.AttributeTimestamp: strconv.FormatInt(time.Now().Unix(), 10),
+			attrKey:                   attrValue,
+		}
+	)
+
+	for _, am := range allowedMethods {
+		allowedMethodsStr = append(allowedMethodsStr, string(am))
+	}
+
+	objID := createObject(ctx, t, p, &ownerID, cnrID, attributes, content, signer)
+
+	t.Run("check CORS, before setup", func(t *testing.T) {
+		request, err := http.NewRequest(http.MethodOptions, testHost+"/v1/objects/"+cnrID.EncodeToString()+"/by_id/"+objID.EncodeToString(), nil)
+		require.NoError(t, err)
+
+		prepareSessionV2Headers(request.Header, signedToken)
+
+		headers, _ := doRequest(t, httpClient, request, http.StatusOK, nil)
+		require.NotEmpty(t, headers)
+
+		require.Equal(t, "*", headers.Get(accessControlAllowOriginHeader))
+		require.Equal(t, "GET, HEAD", headers.Get(accessControlAllowMethodsHeader))
+		require.Equal(t, "Content-Type, Authorization, X-Bearer-Signature, X-Bearer-Signature-Key, NeoFS-Bearer-Token, Range", headers.Get(accessControlAllowHeadersHeader))
+	})
+
+	t.Run("set CORS failed", func(t *testing.T) {
+		t.Run("empty origin", func(t *testing.T) {
+			var (
+				prm = apiserver.PutContainerCORSRequest{
+					Rules: []apiserver.CORSRule{
+						{
+							AllowedMethods: []apiserver.CORSRuleAllowedMethods{apiserver.CORSRuleAllowedMethodsGET},
+							AllowedOrigins: []string{""},
+							MaxAgeSeconds:  maxAge,
+						},
+					},
+				}
+			)
+
+			checkSetCorsFail(t, signedToken, cnrID, prm)
+		})
+
+		t.Run("invalid format", func(t *testing.T) {
+			var (
+				prm = apiserver.PutContainerCORSRequest{
+					Rules: []apiserver.CORSRule{
+						{
+							AllowedMethods: []apiserver.CORSRuleAllowedMethods{apiserver.CORSRuleAllowedMethodsGET},
+							AllowedOrigins: []string{"my-domain.com"},
+							MaxAgeSeconds:  maxAge,
+						},
+					},
+				}
+			)
+
+			checkSetCorsFail(t, signedToken, cnrID, prm)
+		})
+	})
+
+	t.Run("set CORS", func(t *testing.T) {
+		var (
+			prm = apiserver.PutContainerCORSRequest{
+				Rules: []apiserver.CORSRule{
+					{
+						AllowedMethods: []apiserver.CORSRuleAllowedMethods{apiserver.CORSRuleAllowedMethodsGET, apiserver.CORSRuleAllowedMethodsHEAD},
+						AllowedOrigins: []string{origin, alternativeOrigin},
+						MaxAgeSeconds:  maxAge,
+					},
+				},
+			}
+		)
+
+		body, err := json.Marshal(prm)
+		require.NoError(t, err)
+
+		request, err := http.NewRequest(http.MethodPost, testHost+"/v1/containers/"+cnrID.EncodeToString()+"/cors", bytes.NewReader(body))
+		require.NoError(t, err)
+
+		prepareSessionV2Headers(request.Header, signedToken)
+
+		headers, _ := doRequest(t, httpClient, request, http.StatusOK, nil)
+		require.NotEmpty(t, headers)
+		require.Equal(t, "*", headers.Get(accessControlAllowOriginHeader))
+	})
+
+	t.Run("check CORS, after setup", func(t *testing.T) {
+		request, err := http.NewRequest(http.MethodOptions, testHost+"/v1/objects/"+cnrID.EncodeToString()+"/by_id/"+objID.EncodeToString(), nil)
+		require.NoError(t, err)
+
+		prepareSessionV2Headers(request.Header, signedToken)
+
+		headers, _ := doRequest(t, httpClient, request, http.StatusOK, nil)
+		require.NotEmpty(t, headers)
+
+		require.Equal(t, origin, headers.Get(accessControlAllowOriginHeader))
+		require.Equal(t, fmt.Sprintf("%d", maxAge), headers.Get(accessControlMaxAge))
+		require.Equal(t, strings.Join(allowedMethodsStr, ", "), headers.Get(accessControlAllowMethodsHeader))
+	})
+
+	t.Run("check CORS, send origin header", func(t *testing.T) {
+		request, err := http.NewRequest(http.MethodOptions, testHost+"/v1/objects/"+cnrID.EncodeToString()+"/by_id/"+objID.EncodeToString(), nil)
+		require.NoError(t, err)
+		prepareSessionV2Headers(request.Header, signedToken)
+
+		t.Run("default origin", func(t *testing.T) {
+			request.Header.Set(echo.HeaderOrigin, origin)
+			headers, _ := doRequest(t, httpClient, request, http.StatusOK, nil)
+			require.NotEmpty(t, headers)
+			require.Equal(t, origin, headers.Get(accessControlAllowOriginHeader))
+			require.Equal(t, fmt.Sprintf("%d", maxAge), headers.Get(accessControlMaxAge))
+			require.Equal(t, strings.Join(allowedMethodsStr, ", "), headers.Get(accessControlAllowMethodsHeader))
+		})
+
+		t.Run("alternative origin", func(t *testing.T) {
+			request.Header.Set(echo.HeaderOrigin, alternativeOrigin)
+			headers, _ := doRequest(t, httpClient, request, http.StatusOK, nil)
+			require.NotEmpty(t, headers)
+			require.Equal(t, alternativeOrigin, headers.Get(accessControlAllowOriginHeader))
+			require.Equal(t, fmt.Sprintf("%d", maxAge), headers.Get(accessControlMaxAge))
+			require.Equal(t, strings.Join(allowedMethodsStr, ", "), headers.Get(accessControlAllowMethodsHeader))
+		})
+	})
 }

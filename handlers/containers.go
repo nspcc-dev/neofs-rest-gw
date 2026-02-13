@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -25,10 +26,12 @@ import (
 )
 
 const (
-	defaultPlacementPolicy = "REP 3"
-	defaultBasicACL        = acl.NamePrivate
-	attributeName          = "Name"
-	attributeTimestamp     = "Timestamp"
+	defaultPlacementPolicy       = "REP 3"
+	defaultBasicACL              = acl.NamePrivate
+	attributeName                = "Name"
+	attributeTimestamp           = "Timestamp"
+	attributeCORS                = "CORS"
+	attributesValidUntilDuration = 10 * time.Second
 )
 
 var (
@@ -68,7 +71,12 @@ func (a *RestAPI) PutContainer(ctx echo.Context, params apiserver.PutContainerPa
 		ContainerId: cnrID.EncodeToString(),
 	}
 
-	ctx.Response().Header().Set(accessControlAllowOriginHeader, "*")
+	allowedOrigin, err := a.getContainerCORSOrigin(ctx.Request().Context(), ctx.Request().Header.Get(echo.HeaderOrigin), cnrID)
+	if err != nil {
+		return ctx.JSON(getResponseCodeFromStatus(err), a.logAndGetErrorResponse("check cors", err, log))
+	}
+
+	setCORSResponseHeaders(ctx, allowedOrigin)
 	return ctx.JSON(http.StatusOK, resp)
 }
 
@@ -104,7 +112,12 @@ func (a *RestAPI) PostContainer(ctx echo.Context, params apiserver.PostContainer
 		ContainerId: cnrID.EncodeToString(),
 	}
 
-	ctx.Response().Header().Set(accessControlAllowOriginHeader, "*")
+	allowedOrigin, err := a.getContainerCORSOrigin(ctx.Request().Context(), ctx.Request().Header.Get(echo.HeaderOrigin), cnrID)
+	if err != nil {
+		return ctx.JSON(getResponseCodeFromStatus(err), a.logAndGetErrorResponse("check cors", err, log))
+	}
+
+	setCORSResponseHeaders(ctx, allowedOrigin)
 	ctx.Response().Header().Set(locationHeader, LocationHeader(cnrID))
 	return ctx.JSON(http.StatusCreated, resp)
 }
@@ -129,7 +142,12 @@ func (a *RestAPI) GetContainer(ctx echo.Context, containerID apiserver.Container
 		return ctx.JSON(getResponseCodeFromStatus(err), resp)
 	}
 
-	ctx.Response().Header().Set(accessControlAllowOriginHeader, "*")
+	allowedOrigin, err := a.getContainerCORSOrigin(ctx.Request().Context(), ctx.Request().Header.Get(echo.HeaderOrigin), cnrID)
+	if err != nil {
+		return ctx.JSON(getResponseCodeFromStatus(err), a.logAndGetErrorResponse("check cors", err, log))
+	}
+
+	setCORSResponseHeaders(ctx, allowedOrigin)
 	return ctx.JSON(http.StatusOK, cnrInfo)
 }
 
@@ -192,7 +210,12 @@ func (a *RestAPI) PutContainerEACL(ctx echo.Context, containerID apiserver.Conta
 		return ctx.JSON(getResponseCodeFromStatus(err), resp)
 	}
 
-	ctx.Response().Header().Set(accessControlAllowOriginHeader, "*")
+	allowedOrigin, err := a.getContainerCORSOrigin(ctx.Request().Context(), ctx.Request().Header.Get(echo.HeaderOrigin), cnrID)
+	if err != nil {
+		return ctx.JSON(getResponseCodeFromStatus(err), a.logAndGetErrorResponse("check cors", err, log))
+	}
+
+	setCORSResponseHeaders(ctx, allowedOrigin)
 	return ctx.JSON(http.StatusOK, util.NewSuccessResponse())
 }
 
@@ -220,7 +243,12 @@ func (a *RestAPI) GetContainerEACL(ctx echo.Context, containerID apiserver.Conta
 		return ctx.JSON(http.StatusInternalServerError, errResp)
 	}
 
-	ctx.Response().Header().Set(accessControlAllowOriginHeader, "*")
+	allowedOrigin, err := a.getContainerCORSOrigin(ctx.Request().Context(), ctx.Request().Header.Get(echo.HeaderOrigin), cnrID)
+	if err != nil {
+		return ctx.JSON(getResponseCodeFromStatus(err), a.logAndGetErrorResponse("check cors", err, log))
+	}
+
+	setCORSResponseHeaders(ctx, allowedOrigin)
 	return ctx.JSON(http.StatusOK, resp)
 }
 
@@ -321,6 +349,120 @@ func (a *RestAPI) DeleteContainer(ctx echo.Context, containerID apiserver.Contai
 		return ctx.JSON(getResponseCodeFromStatus(err), resp)
 	}
 
+	allowedOrigin, err := a.getContainerCORSOrigin(ctx.Request().Context(), ctx.Request().Header.Get(echo.HeaderOrigin), cnrID)
+	if err != nil {
+		return ctx.JSON(getResponseCodeFromStatus(err), a.logAndGetErrorResponse("check cors", err, log))
+	}
+
+	setCORSResponseHeaders(ctx, allowedOrigin)
+	return ctx.JSON(http.StatusOK, util.NewSuccessResponse())
+}
+
+func (a *RestAPI) PutContainerCORS(ctx echo.Context, containerID apiserver.ContainerId) error {
+	if a.apiMetric != nil {
+		defer metrics.Elapsed(a.apiMetric.PutContainerCORSDuration)()
+	}
+
+	log := a.log.With(zap.String(handlerFieldName, "PutContainerCORS"), zap.String("containerID", containerID))
+
+	cnrID, err := parseContainerID(containerID)
+	if err != nil {
+		resp := a.logAndGetErrorResponse("invalid container id", err, log)
+		return ctx.JSON(http.StatusBadRequest, resp)
+	}
+
+	var body apiserver.PutContainerCORSRequest
+	if err = ctx.Bind(&body); err != nil {
+		return ctx.JSON(http.StatusBadRequest, a.logAndGetErrorResponse("bind", err, log))
+	}
+
+	var payload = make([]CORSRule, 0, len(body.Rules))
+
+	for _, rule := range body.Rules {
+		if len(rule.AllowedOrigins) == 0 {
+			return ctx.JSON(http.StatusBadRequest, a.logAndGetErrorResponse("allowed origins", errors.New("must be set"), log))
+		}
+
+		for _, o := range rule.AllowedOrigins {
+			if err = checkOrigin(o); err != nil {
+				return ctx.JSON(http.StatusBadRequest, a.logAndGetErrorResponse("invalid origin", err, log))
+			}
+		}
+
+		if len(rule.AllowedMethods) == 0 {
+			return ctx.JSON(http.StatusBadRequest, a.logAndGetErrorResponse("allowed methods", errors.New("must be set"), log))
+		}
+
+		var (
+			method         string
+			allowedMethods = make([]string, 0, len(rule.AllowedMethods))
+		)
+
+		for _, am := range rule.AllowedMethods {
+			switch am {
+			case apiserver.CORSRuleAllowedMethodsDELETE:
+				method = http.MethodDelete
+			case apiserver.CORSRuleAllowedMethodsPUT:
+				method = http.MethodPut
+			case apiserver.CORSRuleAllowedMethodsHEAD:
+				method = http.MethodHead
+			case apiserver.CORSRuleAllowedMethodsPOST:
+				method = http.MethodPost
+			case apiserver.CORSRuleAllowedMethodsGET:
+				method = http.MethodGet
+			default:
+				return ctx.JSON(http.StatusBadRequest, a.logAndGetErrorResponse("invalid method", fmt.Errorf("%s", am), log))
+			}
+
+			allowedMethods = append(allowedMethods, method)
+		}
+
+		payload = append(payload, CORSRule{
+			AllowedMethods: allowedMethods,
+			AllowedOrigins: rule.AllowedOrigins,
+			MaxAgeSeconds:  rule.MaxAgeSeconds,
+			AllowedHeaders: rule.AllowedHeaders,
+		})
+	}
+
+	pl, err := json.Marshal(payload)
+	if err != nil {
+		return fmt.Errorf("marshal: %w", err)
+	}
+
+	var (
+		prm = client.SetContainerAttributeParameters{
+			ID:         cnrID,
+			Attribute:  attributeCORS,
+			Value:      string(pl),
+			ValidUntil: time.Now().Add(attributesValidUntilDuration),
+		}
+		o client.SetContainerAttributeOptions
+	)
+
+	sessionTokenV2, err := sessionTokensFromAuthHeader(ctx, sessionv2.VerbContainerSetAttribute, cnrID)
+	if err != nil {
+		resp := a.logAndGetErrorResponse("invalid auth", err, log)
+		return ctx.JSON(http.StatusBadRequest, resp)
+	}
+
+	if sessionTokenV2 != nil {
+		o.AttachSessionToken(*sessionTokenV2)
+	}
+
+	wCtx, cancel := context.WithTimeout(ctx.Request().Context(), a.waiterOperationTimeout)
+	defer cancel()
+
+	sig, err := client.SignSetContainerAttributeParameters(a.signer, prm)
+	if err != nil {
+		return fmt.Errorf("sign set container attribute: %w", err)
+	}
+
+	if err = a.pool.SetContainerAttribute(wCtx, prm, sig, o); err != nil {
+		return fmt.Errorf("set container attribute: %w", err)
+	}
+
+	// We leave it a wildcard to avoid a situation where the user cuts off their own access.
 	ctx.Response().Header().Set(accessControlAllowOriginHeader, "*")
 	return ctx.JSON(http.StatusOK, util.NewSuccessResponse())
 }

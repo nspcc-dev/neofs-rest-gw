@@ -141,7 +141,12 @@ func (a *RestAPI) NewUploadContainerObject(ctx echo.Context, containerID apiserv
 	resp.ContainerId = containerID
 	resp.ObjectId = idObj.String()
 
-	ctx.Response().Header().Set(accessControlAllowOriginHeader, "*")
+	allowedOrigin, err := a.getContainerCORSOrigin(ctx.Request().Context(), ctx.Request().Header.Get(echo.HeaderOrigin), idCnr)
+	if err != nil {
+		return ctx.JSON(getResponseCodeFromStatus(err), a.logAndGetErrorResponse("check cors", err, log))
+	}
+
+	setCORSResponseHeaders(ctx, allowedOrigin)
 	return ctx.JSON(http.StatusOK, resp)
 }
 
@@ -198,7 +203,12 @@ func (a *RestAPI) NewHeadContainerObject(ctx echo.Context, containerID apiserver
 		return ctx.JSON(http.StatusBadRequest, resp)
 	}
 
-	ctx.Response().Header().Set(accessControlAllowOriginHeader, "*")
+	allowedOrigin, err := a.getContainerCORSOrigin(ctx.Request().Context(), ctx.Request().Header.Get(echo.HeaderOrigin), addr.Container())
+	if err != nil {
+		return ctx.JSON(getResponseCodeFromStatus(err), a.logAndGetErrorResponse("check cors", err, log))
+	}
+
+	setCORSResponseHeaders(ctx, allowedOrigin)
 
 	var walletConnect apiserver.SignatureScheme
 	if params.WalletConnect != nil {
@@ -308,7 +318,12 @@ func (a *RestAPI) NewHeadByAttribute(ctx echo.Context, containerID apiserver.Con
 	addrObj.SetContainer(cnrID)
 	addrObj.SetObject(objectID)
 
-	ctx.Response().Header().Set(accessControlAllowOriginHeader, "*")
+	allowedOrigin, err := a.getContainerCORSOrigin(ctx.Request().Context(), ctx.Request().Header.Get(echo.HeaderOrigin), cnrID)
+	if err != nil {
+		return ctx.JSON(getResponseCodeFromStatus(err), a.logAndGetErrorResponse("check cors", err, log))
+	}
+
+	setCORSResponseHeaders(ctx, allowedOrigin)
 
 	return a.headByAddress(ctx, addrObj, params.Download, btoken, sessionTokenV2, true, log)
 }
@@ -434,8 +449,13 @@ func (a *RestAPI) getRange(ctx echo.Context, addr oid.Address, rangeParam string
 		}
 	}
 
+	allowedOrigin, err := a.getContainerCORSOrigin(ctx.Request().Context(), ctx.Request().Header.Get(echo.HeaderOrigin), addr.Container())
+	if err != nil {
+		return ctx.JSON(getResponseCodeFromStatus(err), a.logAndGetErrorResponse("check cors", err, log))
+	}
+
 	ctx.Response().Header().Set("Content-Type", contentType)
-	ctx.Response().Header().Set(accessControlAllowOriginHeader, "*")
+	setCORSResponseHeaders(ctx, allowedOrigin)
 	ctx.Response().Header().Set("Content-Range", fmt.Sprintf("bytes %d-%d/%d", start, end, payloadSize))
 	ctx.Response().Header().Set("Content-Length", strconv.FormatUint(end-start+1, 10))
 	ctx.Response().Header().Set("Accept-Ranges", "bytes")

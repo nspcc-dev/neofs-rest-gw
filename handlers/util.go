@@ -12,6 +12,7 @@ import (
 	"math"
 	"net"
 	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
 	"time"
@@ -20,7 +21,9 @@ import (
 	"github.com/nspcc-dev/neofs-rest-gw/handlers/apiserver"
 	"github.com/nspcc-dev/neofs-sdk-go/bearer"
 	"github.com/nspcc-dev/neofs-sdk-go/client"
+	apistatus "github.com/nspcc-dev/neofs-sdk-go/client/status"
 	"github.com/nspcc-dev/neofs-sdk-go/container/acl"
+	cid "github.com/nspcc-dev/neofs-sdk-go/container/id"
 	"github.com/nspcc-dev/neofs-sdk-go/object"
 	oid "github.com/nspcc-dev/neofs-sdk-go/object/id"
 	sessionv2 "github.com/nspcc-dev/neofs-sdk-go/session/v2"
@@ -36,6 +39,14 @@ type PrmAttributes struct {
 type epochDurations struct {
 	currentEpoch    uint64
 	secondsPerEpoch uint64
+}
+
+type originDetails struct {
+	IsDefault      bool
+	Origin         string
+	MaxAgeSeconds  int
+	AllowedMethods []string
+	AllowedHeaders []string
 }
 
 const (
@@ -57,6 +68,15 @@ const (
 	limitDefault = 100
 
 	handlerFieldName = "handler"
+)
+
+var (
+	defaultOriginDetails = originDetails{
+		IsDefault:      true,
+		Origin:         "*",
+		MaxAgeSeconds:  86400,
+		AllowedMethods: []string{"GET", "PUT", "POST", "DELETE", "HEAD"},
+	}
 )
 
 func getEpochDurations(ctx context.Context, networkInfoGetter networkInfoGetter) (*epochDurations, error) {
@@ -499,4 +519,110 @@ func prepareSessionTokenV2Expiration(tokenIssueTime time.Time, apiParams apiserv
 	}
 
 	return expireAt, nil
+}
+
+func (a *RestAPI) getContainerCORSOrigin(ctx context.Context, origin string, containerID cid.ID) (originDetails, error) {
+	cnrInfo, err := getContainerInfo(ctx, a.pool, containerID)
+	if err != nil {
+		if errors.Is(err, &apistatus.ContainerNotFound{}) {
+			return defaultOriginDetails, nil
+		}
+
+		return originDetails{}, fmt.Errorf("get container info: %w", err)
+	}
+
+	var corsAttribute string
+	for _, attr := range cnrInfo.Attributes {
+		if attr.Key == attributeCORS {
+			corsAttribute = attr.Value
+			break
+		}
+	}
+
+	// Attribute is not set.
+	if corsAttribute == "" {
+		return defaultOriginDetails, nil
+	}
+
+	var rules []CORSRule
+	if err = json.Unmarshal([]byte(corsAttribute), &rules); err != nil {
+		return originDetails{}, fmt.Errorf("unmarshal cors: %w", err)
+	}
+
+	return getAllowerOrigin(origin, rules), nil
+}
+
+func getAllowerOrigin(origin string, rules []CORSRule) originDetails {
+	// Attribute is set, but for some reason there are no rules.
+	if len(rules) == 0 {
+		return defaultOriginDetails
+	}
+
+	// If the request origin is empty, we may return any available origin. For non-browser request it doesn't matter.
+	// For browser request it is something wrong if origin is empty.
+	if origin == "" {
+		var od = originDetails{
+			Origin:         "",
+			MaxAgeSeconds:  rules[0].MaxAgeSeconds,
+			AllowedMethods: rules[0].AllowedMethods,
+			AllowedHeaders: rules[0].AllowedHeaders,
+		}
+
+		if len(rules[0].AllowedOrigins) > 0 {
+			od.Origin = rules[0].AllowedOrigins[0]
+		}
+
+		return od
+	}
+
+	// Try to find origin in rules.
+	for _, rule := range rules {
+		for _, o := range rule.AllowedOrigins {
+			if o == origin {
+				return originDetails{
+					Origin:         o, // Only one origin is allowed in header response.
+					MaxAgeSeconds:  rule.MaxAgeSeconds,
+					AllowedMethods: rule.AllowedMethods,
+					AllowedHeaders: rule.AllowedHeaders,
+				}
+			}
+		}
+	}
+
+	return defaultOriginDetails
+}
+
+func setCORSResponseHeaders(ctx echo.Context, details originDetails) {
+	ctx.Response().Header().Set(accessControlAllowOriginHeader, details.Origin)
+	ctx.Response().Header().Set(accessControlAllowMethodsHeader, strings.Join(details.AllowedMethods, ", "))
+	ctx.Response().Header().Set(accessControlAllowHeadersHeader, strings.Join(details.AllowedHeaders, ", "))
+
+	if details.MaxAgeSeconds > 0 {
+		ctx.Response().Header().Set(accessControlMaxAge, strconv.FormatInt(int64(details.MaxAgeSeconds), 10))
+	}
+}
+
+func checkOrigin(origin string) error {
+	if origin == "" {
+		return errors.New("empty origin")
+	}
+
+	u, err := url.Parse(origin)
+	if err != nil {
+		return err
+	}
+
+	if u.Scheme == "" {
+		return errors.New("empty scheme")
+	}
+
+	if u.Host == "" {
+		return errors.New("empty host")
+	}
+
+	if u.Path != "" && u.Path != "/" || u.RawQuery != "" || u.Fragment != "" {
+		return errors.New("origin must not contain a path")
+	}
+
+	return nil
 }

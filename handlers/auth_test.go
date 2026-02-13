@@ -23,7 +23,7 @@ func TestSign(t *testing.T) {
 	oth := apiserver.OTHERS
 
 	records := []apiserver.Record{{
-		Operation: apiserver.PUT,
+		Operation: apiserver.OperationPUT,
 		Action:    apiserver.ALLOW,
 		Filters:   []apiserver.Filter{},
 		Targets: []apiserver.Target{{
