@@ -943,6 +943,79 @@ paths:
                 type: string
           content: { }
       security: [ ]
+  /v1/containers/{containerId}/cors:
+    post:
+      summary: Set container CORS.
+      operationId: putContainerCORS
+      parameters:
+        - $ref: '#/components/parameters/containerId'
+      requestBody:
+        description: CORS settings for container.
+        content:
+          '*/*':
+            schema:
+              $ref: '#/components/schemas/PutContainerCORSRequest'
+        required: true
+      responses:
+        "200":
+          description: Successful CORS updating.
+          headers:
+            Access-Control-Allow-Origin:
+              schema:
+                type: string
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        "400":
+          description: Bad request.
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        "403":
+          description: Access denied
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        "404":
+          description: Not found.
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        "502":
+          description: Bad gateway.
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        "504":
+          description: Gateway timeout
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    options:
+      operationId: optionsContainerCORS
+      parameters:
+        - $ref: '#/components/parameters/containerId'
+      responses:
+        "200":
+          description: CORS
+          headers:
+            Access-Control-Allow-Origin:
+              schema:
+                type: string
+            Access-Control-Allow-Methods:
+              schema:
+                type: string
+            Access-Control-Allow-Headers:
+              schema:
+                type: string
+          content: { }
+      security: [ ]
   /v1/objects/{containerId}/by_id/{objectId}:
     get:
       summary: "Get object by container ID and object ID. Also, returns custom users'\
@@ -1974,6 +2047,14 @@ components:
                 value: myfile
             targets:
               - role: OTHERS
+    PutContainerCORSRequest:
+      required:
+        - rules
+      properties:
+        rules:
+          type: array
+          items:
+            $ref: '#/components/schemas/CORSRule'
     Attribute:
       required:
         - key
@@ -2248,6 +2329,45 @@ components:
           type: string
         nns_name:
           type: string
+    CORSRule:
+      required:
+        - allowedOrigins
+        - allowedMethods
+      type: object
+      properties:
+        allowedOrigins:
+          type: array
+          items:
+            type: string
+          example:
+            - <scheme>://<hostname>. https://example.com
+            - <scheme>://<hostname>:<port> https://example.com:9090
+        allowedMethods:
+          type: array
+          items:
+            type: string
+            enum:
+              - GET
+              - PUT
+              - POST
+              - DELETE
+              - HEAD
+        allowedHeaders:
+          type: array
+          items:
+            type: string
+          x-go-type-skip-optional-pointer: true
+        maxAgeSeconds:
+          type: integer
+          x-go-type-skip-optional-pointer: true
+      description: A single NeoFS EACL rule.
+      example:
+        operation: GET
+        action: ALLOW
+        filters: [ ]
+        targets:
+          - role: OTHERS
+            keys: [ ]
   responses:
     NewObjectContentOK:
       description: Object.

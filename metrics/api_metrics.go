@@ -43,6 +43,7 @@ type ApiMetrics struct {
 	GatewayMetadataDuration          prometheus.Histogram
 	UnsignedBearerTokenDuration      prometheus.Histogram
 	CompleteUnsignedBearerToken      prometheus.Histogram
+	PutContainerCORSDuration         prometheus.Histogram
 }
 
 // Elapsed calculates and store method execution time for corresponding histogram.
@@ -244,6 +245,12 @@ func NewApiMetrics() *ApiMetrics {
 			Name:      "complete_unsigned_bearer_token_duration",
 			Help:      "Complete unsigned bearer token request handling time",
 		}),
+		PutContainerCORSDuration: prometheus.NewHistogram(prometheus.HistogramOpts{
+			Namespace: namespace,
+			Subsystem: apiSubsystem,
+			Name:      "put_container_cors_duration",
+			Help:      "Put container CORS duration request handling time",
+		}),
 	}
 
 	m.register()
@@ -283,4 +290,5 @@ func (m ApiMetrics) register() {
 	prometheus.MustRegister(m.GatewayMetadataDuration)
 	prometheus.MustRegister(m.UnsignedBearerTokenDuration)
 	prometheus.MustRegister(m.CompleteUnsignedBearerToken)
+	prometheus.MustRegister(m.PutContainerCORSDuration)
 }

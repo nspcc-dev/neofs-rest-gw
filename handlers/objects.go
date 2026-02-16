@@ -109,7 +109,12 @@ func (a *RestAPI) DeleteObject(ctx echo.Context, containerID apiserver.Container
 		return ctx.JSON(getResponseCodeFromStatus(err), resp)
 	}
 
-	ctx.Response().Header().Set(accessControlAllowOriginHeader, "*")
+	allowedOrigin, err := a.getContainerCORSOrigin(ctx.Request().Context(), ctx.Request().Header.Get(echo.HeaderOrigin), addr.Container())
+	if err != nil {
+		return ctx.JSON(getResponseCodeFromStatus(err), a.logAndGetErrorResponse("check cors", err, log))
+	}
+
+	setCORSResponseHeaders(ctx, allowedOrigin)
 	return ctx.JSON(http.StatusOK, util.NewSuccessResponse())
 }
 
@@ -236,7 +241,12 @@ func (a *RestAPI) SearchObjects(ctx echo.Context, containerID apiserver.Containe
 		Objects: objects,
 	}
 
-	ctx.Response().Header().Set(accessControlAllowOriginHeader, "*")
+	allowedOrigin, err := a.getContainerCORSOrigin(ctx.Request().Context(), ctx.Request().Header.Get(echo.HeaderOrigin), cnrID)
+	if err != nil {
+		return ctx.JSON(getResponseCodeFromStatus(err), a.logAndGetErrorResponse("check cors", err, log))
+	}
+
+	setCORSResponseHeaders(ctx, allowedOrigin)
 	return ctx.JSON(http.StatusOK, list)
 }
 
@@ -355,7 +365,12 @@ func (a *RestAPI) V2SearchObjects(ctx echo.Context, containerID apiserver.Contai
 		list.Incomplete = &incomplete
 	}
 
-	ctx.Response().Header().Set(accessControlAllowOriginHeader, "*")
+	allowedOrigin, err := a.getContainerCORSOrigin(ctx.Request().Context(), ctx.Request().Header.Get(echo.HeaderOrigin), cnrID)
+	if err != nil {
+		return ctx.JSON(getResponseCodeFromStatus(err), a.logAndGetErrorResponse("check cors", err, log))
+	}
+
+	setCORSResponseHeaders(ctx, allowedOrigin)
 	return ctx.JSON(http.StatusOK, list)
 }
 
@@ -417,7 +432,12 @@ func (a *RestAPI) getByAddress(ctx echo.Context, addr oid.Address, downloadParam
 		}
 	}
 	ctx.Response().Header().Set("Content-Type", contentType)
-	ctx.Response().Header().Set(accessControlAllowOriginHeader, "*")
+	allowedOrigin, err := a.getContainerCORSOrigin(ctx.Request().Context(), ctx.Request().Header.Get(echo.HeaderOrigin), addr.Container())
+	if err != nil {
+		return ctx.JSON(getResponseCodeFromStatus(err), a.logAndGetErrorResponse("check cors", err, log))
+	}
+
+	setCORSResponseHeaders(ctx, allowedOrigin)
 	ctx.Response().Header().Set("Accept-Ranges", "bytes")
 
 	return ctx.Stream(http.StatusOK, contentType, payload)

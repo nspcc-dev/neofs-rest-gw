@@ -390,3 +390,23 @@ func TestIsDomainName(t *testing.T) {
 		})
 	}
 }
+
+func Test_checkOrigin(t *testing.T) {
+	tests := []struct {
+		name    string
+		origin  string
+		wantErr bool
+	}{
+		{name: "valid", origin: "https://example.com", wantErr: false},
+		{name: "with port", origin: "http://localhost:8080", wantErr: false},
+		{name: "with path", origin: "https://example.com/path", wantErr: true},
+		{name: "no scheme", origin: "example.com", wantErr: true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if err := checkOrigin(tt.origin); (err != nil) != tt.wantErr {
+				t.Errorf("checkOrigin() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}

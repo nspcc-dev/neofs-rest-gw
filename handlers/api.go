@@ -61,6 +61,7 @@ const (
 	bearerPrefix = bearerCookieName + " "
 
 	accessControlAllowOriginHeader = "Access-Control-Allow-Origin"
+	accessControlMaxAge            = "Access-Control-Max-Age"
 	authorizationHeader            = "Authorization"
 	locationHeader                 = "Location"
 
@@ -261,7 +262,10 @@ func sessionTokensFromAuthHeader(ctx echo.Context, v2Verb sessionv2.Verb, cnrID 
 	}
 
 	switch v2Verb {
-	case sessionv2.VerbContainerDelete, sessionv2.VerbContainerPut, sessionv2.VerbContainerSetEACL:
+	case sessionv2.VerbContainerDelete,
+		sessionv2.VerbContainerPut,
+		sessionv2.VerbContainerSetEACL,
+		sessionv2.VerbContainerSetAttribute:
 	default:
 		return nil, fmt.Errorf("invalid verb: %d", v2Verb)
 	}
