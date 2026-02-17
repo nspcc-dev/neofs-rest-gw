@@ -4,7 +4,6 @@ go 1.24.0
 
 require (
 	github.com/getkin/kin-openapi v0.131.0
-	github.com/google/uuid v1.6.0
 	github.com/labstack/echo/v4 v4.13.4
 	github.com/nspcc-dev/neo-go v0.116.0
 	github.com/nspcc-dev/neofs-sdk-go v1.0.0-rc.17
@@ -34,6 +33,7 @@ require (
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/go-ole/go-ole v1.3.0 // indirect
 	github.com/go-openapi/swag v0.23.0 // indirect
+	github.com/google/uuid v1.6.0 // indirect
 	github.com/gorilla/mux v1.8.1 // indirect
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.16.0 // indirect
 	github.com/hashicorp/golang-lru/v2 v2.0.7 // indirect
