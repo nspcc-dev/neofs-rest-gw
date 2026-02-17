@@ -840,6 +840,115 @@ paths:
                 type: string
           content: { }
       security: [ ]
+  /v1/containers/{containerId}/attributes/{attributeName}:
+    put:
+      summary: Set container attribute.
+      operationId: putContainerAttribute
+      parameters:
+        - $ref: '#/components/parameters/containerId'
+        - $ref: '#/components/parameters/attributeName'
+      requestBody:
+        content:
+          '*/*':
+            schema:
+              type: string
+        required: true
+      responses:
+        "200":
+          description: Attribute successfully set.
+          headers:
+            Access-Control-Allow-Origin:
+              schema:
+                type: string
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        "400":
+          description: Bad request.
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        "403":
+          description: Access denied
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        "404":
+          description: Not found.
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        "502":
+          description: Bad gateway.
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        "504":
+          description: Gateway timeout
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    delete:
+      summary: Delete container attribute.
+      operationId: deleteContainerAttribute
+      parameters:
+        - $ref: '#/components/parameters/containerId'
+        - $ref: '#/components/parameters/attributeName'
+      responses:
+        "200":
+          description: Successful deletion.
+          headers:
+            Access-Control-Allow-Origin:
+              schema:
+                type: string
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        "400":
+          description: Bad request.
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        "403":
+          description: Access denied
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        "504":
+          description: Gateway timeout
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    options:
+      operationId: optionsContainerAttribute
+      parameters:
+        - $ref: '#/components/parameters/containerId'
+        - $ref: '#/components/parameters/attributeName'
+      responses:
+        "200":
+          description: CORS
+          headers:
+            Access-Control-Allow-Origin:
+              schema:
+                type: string
+            Access-Control-Allow-Methods:
+              schema:
+                type: string
+            Access-Control-Allow-Headers:
+              schema:
+                type: string
+          content: { }
+      security: [ ]
   /v1/containers/{containerId}/eacl:
     get:
       summary: Get container EACL by id
@@ -2248,6 +2357,13 @@ components:
           type: string
         nns_name:
           type: string
+    PutContainerAttributeRequest:
+      required:
+        - value
+      type: object
+      properties:
+        value:
+          type: string
   responses:
     NewObjectContentOK:
       description: Object.
@@ -2410,6 +2526,25 @@ components:
       name: containerId
       in: path
       description: Base58 encoded container id.
+      required: true
+      schema:
+        type: string
+    attributeName:
+      name: attributeName
+      in: path
+      description: |
+        The attribute name can be anything from the next list:
+        
+        * __NEOFS__LOCK_UNTIL - Timestamp until which the container cannot be deleted in Unix Timestamp format
+        
+        * S3_TAGS - It is used to store S3 gate-specific container tags. The value is controlled by the S3 gate itself. 
+          Despite it, the value must be valid JSON object.
+        
+        * S3_SETTINGS - It is used to store S3 gate-specific container settings. The value is controlled by the S3 gate itself. 
+          Despite it, the value must be valid JSON object.
+        
+        * S3_NOTIFICATIONS - It is used to store S3 gate-specific container notification settings.
+          The value is controlled by the S3 gate itself. Despite it, the value must be valid JSON object.
       required: true
       schema:
         type: string

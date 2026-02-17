@@ -203,6 +203,9 @@ func runTests(ctx context.Context, t *testing.T, key *keys.PrivateKey, node stri
 	t.Run("rest new get by attribute with range", func(t *testing.T) {
 		restNewObjectGetByAttribute(ctx, t, clientPool, &owner, cnrID, signer, false, true)
 	})
+	t.Run("rest set container attribute", func(t *testing.T) {
+		restSetContainerAttribute(ctx, t, clientPool, signer, sessionV2Signer)
+	})
 }
 
 func createDockerContainer(ctx context.Context, t *testing.T, image, version string) testcontainers.Container {
@@ -3079,6 +3082,116 @@ func restNewObjectGetByAttributeSessionV2(ctx context.Context, t *testing.T, p *
 
 		require.Equal(t, content, rawPayload)
 	})
+}
+
+func restSetContainerAttribute(ctx context.Context, t *testing.T, p *pool.Pool, signer, signerForToken user.Signer) {
+	var (
+		ownerID    = signer.UserID()
+		gateUserID = gateMetadataID(ctx, t)
+		cnrID      = createContainer(ctx, t, p, ownerID, containerName, signer)
+
+		tokenRequest = apiserver.SessionTokenV2Request{
+			Contexts: []apiserver.TokenContext{
+				{
+					ContainerID: cnrID.String(),
+					Verbs:       []apiserver.TokenVerb{"CONTAINER_SET_ATTRIBUTE", "CONTAINER_REMOVE_ATTRIBUTE"},
+				},
+			},
+			Issuer:  ownerID.String(),
+			Targets: []string{gateUserID.String()},
+		}
+
+		httpClient  = defaultHTTPClient()
+		signedToken = getSignedSessionToken(ctx, t, tokenRequest, httpClient, signerForToken)
+	)
+
+	t.Run("set attribute failed", func(t *testing.T) {
+		t.Run("empty value", func(t *testing.T) {
+			requestSetContainerAttribute(t, signedToken, cnrID, "attributeName", nil, http.StatusBadRequest)
+		})
+		t.Run("__NEOFS__LOCK_UNTIL, non int", func(t *testing.T) {
+			requestSetContainerAttribute(t, signedToken, cnrID, "__NEOFS__LOCK_UNTIL", []byte("abc"), http.StatusBadRequest)
+		})
+		t.Run("S3_TAGS, non json", func(t *testing.T) {
+			requestSetContainerAttribute(t, signedToken, cnrID, "S3_TAGS", []byte("abc"), http.StatusBadRequest)
+		})
+		t.Run("S3_SETTINGS, non json", func(t *testing.T) {
+			requestSetContainerAttribute(t, signedToken, cnrID, "S3_SETTINGS", []byte("abc"), http.StatusBadRequest)
+		})
+		t.Run("S3_NOTIFICATIONS, non json", func(t *testing.T) {
+			requestSetContainerAttribute(t, signedToken, cnrID, "S3_NOTIFICATIONS", []byte("abc"), http.StatusBadRequest)
+		})
+	})
+
+	t.Run("__NEOFS__LOCK_UNTIL", func(t *testing.T) {
+		var (
+			timeout = 2 * time.Second
+			ts      = time.Now().Add(timeout)
+			v       = strconv.FormatInt(ts.Unix(), 10)
+		)
+
+		requestSetContainerAttribute(t, signedToken, cnrID, "__NEOFS__LOCK_UNTIL", []byte(v), http.StatusOK)
+		cnrInfo := requestGetContainer(ctx, t, cnrID)
+		require.NotNil(t, cnrInfo)
+		require.Contains(t, cnrInfo.Attributes, apiserver.Attribute{Key: "__NEOFS__LOCK_UNTIL", Value: v})
+
+		t.Run("remove", func(t *testing.T) {
+			time.Sleep(timeout + time.Second)
+
+			requestRemoveContainerAttribute(t, signedToken, cnrID, "__NEOFS__LOCK_UNTIL", http.StatusOK)
+			cnrInfo = requestGetContainer(ctx, t, cnrID)
+			require.NotNil(t, cnrInfo)
+			require.NotContains(t, cnrInfo.Attributes, apiserver.Attribute{Key: "__NEOFS__LOCK_UNTIL", Value: v})
+		})
+	})
+
+	for _, attrName := range []string{"S3_TAGS", "S3_SETTINGS", "S3_NOTIFICATIONS"} {
+		t.Run(attrName, func(t *testing.T) {
+			var tags = map[string]string{randomString(): randomString(), randomString(): randomString()}
+
+			tagsBts, err := json.Marshal(tags)
+			require.NoError(t, err)
+
+			t.Run("remove", func(t *testing.T) {
+				requestSetContainerAttribute(t, signedToken, cnrID, attrName, tagsBts, http.StatusOK)
+				cnrInfo := requestGetContainer(ctx, t, cnrID)
+				require.NotNil(t, cnrInfo)
+				require.Contains(t, cnrInfo.Attributes, apiserver.Attribute{Key: attrName, Value: string(tagsBts)})
+			})
+		})
+	}
+}
+
+func requestSetContainerAttribute(t *testing.T, signedToken string, cnrID cid.ID, attrName string, value []byte, expectedCode int) {
+	request, err := http.NewRequest(http.MethodPut, testHost+"/v1/containers/"+cnrID.EncodeToString()+"/attributes/"+attrName, bytes.NewReader(value))
+	require.NoError(t, err)
+
+	httpClient := defaultHTTPClient()
+	prepareSessionV2Headers(request.Header, signedToken)
+
+	doRequest(t, httpClient, request, expectedCode, nil)
+}
+
+func requestRemoveContainerAttribute(t *testing.T, signedToken string, cnrID cid.ID, attrName string, expectedCode int) {
+	request, err := http.NewRequest(http.MethodDelete, testHost+"/v1/containers/"+cnrID.EncodeToString()+"/attributes/"+attrName, nil)
+	require.NoError(t, err)
+
+	httpClient := defaultHTTPClient()
+	prepareSessionV2Headers(request.Header, signedToken)
+
+	doRequest(t, httpClient, request, expectedCode, nil)
+}
+
+func requestGetContainer(ctx context.Context, t *testing.T, cnrID cid.ID) *apiserver.ContainerInfo {
+	httpClient := &http.Client{Timeout: 5 * time.Second}
+	request, err := http.NewRequest(http.MethodGet, testHost+"/v1/containers/"+cnrID.EncodeToString(), nil)
+	require.NoError(t, err)
+	request = request.WithContext(ctx)
+
+	cnrInfo := &apiserver.ContainerInfo{}
+	doRequest(t, httpClient, request, http.StatusOK, cnrInfo)
+
+	return cnrInfo
 }
 
 func getObjectCreateTimestamp(ctx context.Context, t *testing.T, clientPool *pool.Pool, CID cid.ID, id oid.ID, signer user.Signer) string {

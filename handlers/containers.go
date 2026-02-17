@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"strings"
 	"time"
@@ -29,6 +30,10 @@ const (
 	defaultBasicACL        = acl.NamePrivate
 	attributeName          = "Name"
 	attributeTimestamp     = "Timestamp"
+
+	attributesValidUntilDuration = 10 * time.Second
+
+	maxAttributePayloadSize = 65536 // 64kb
 )
 
 var (
@@ -319,6 +324,119 @@ func (a *RestAPI) DeleteContainer(ctx echo.Context, containerID apiserver.Contai
 	if err = a.containerWaiter.ContainerDelete(wCtx, cnrID, a.signer, prm); err != nil {
 		resp := a.logAndGetErrorResponse("delete container", err, log)
 		return ctx.JSON(getResponseCodeFromStatus(err), resp)
+	}
+
+	ctx.Response().Header().Set(accessControlAllowOriginHeader, "*")
+	return ctx.JSON(http.StatusOK, util.NewSuccessResponse())
+}
+
+func (a *RestAPI) PutContainerAttribute(ctx echo.Context, containerId apiserver.ContainerId, attributeName apiserver.AttributeName) error {
+	if a.apiMetric != nil {
+		defer metrics.Elapsed(a.apiMetric.PutContainerAttributeDuration)()
+	}
+
+	log := a.log.With(zap.String(handlerFieldName, "PutContainerAttribute"), zap.String("containerID", containerId))
+
+	cnrID, err := parseContainerID(containerId)
+	if err != nil {
+		resp := a.logAndGetErrorResponse("invalid container id", err, log)
+		return ctx.JSON(http.StatusBadRequest, resp)
+	}
+
+	rdr := io.LimitReader(ctx.Request().Body, maxAttributePayloadSize)
+	bts, err := io.ReadAll(rdr)
+	if err != nil {
+		return ctx.JSON(http.StatusBadRequest, a.logAndGetErrorResponse("read attribute payload", err, log))
+	}
+
+	if len(bts) == 0 {
+		return ctx.JSON(http.StatusBadRequest, a.logAndGetErrorResponse("attribute value must be set", err, log))
+	}
+
+	if err = validateContainerAttribute(attributeName, bts); err != nil {
+		return ctx.JSON(http.StatusBadRequest, a.logAndGetErrorResponse("invalid attribute", err, log))
+	}
+
+	var (
+		prm = client.SetContainerAttributeParameters{
+			ID:         cnrID,
+			Attribute:  attributeName,
+			Value:      string(bts),
+			ValidUntil: time.Now().Add(attributesValidUntilDuration),
+		}
+		o client.SetContainerAttributeOptions
+	)
+
+	sessionTokenV2, err := sessionTokensFromAuthHeader(ctx, sessionv2.VerbContainerSetAttribute, cnrID)
+	if err != nil {
+		return ctx.JSON(http.StatusForbidden, a.logAndGetErrorResponse("invalid auth", err, log))
+	}
+
+	if sessionTokenV2 != nil {
+		o.AttachSessionToken(*sessionTokenV2)
+	}
+
+	wCtx, cancel := context.WithTimeout(ctx.Request().Context(), a.waiterOperationTimeout)
+	defer cancel()
+
+	sig, err := client.SignSetContainerAttributeParameters(a.signer, prm)
+	if err != nil {
+		return ctx.JSON(http.StatusForbidden, a.logAndGetErrorResponse("sign set container attribute", err, log))
+	}
+
+	if err = a.pool.SetContainerAttribute(wCtx, prm, sig, o); err != nil {
+		return ctx.JSON(http.StatusForbidden, a.logAndGetErrorResponse("set container attribute", err, log))
+	}
+
+	ctx.Response().Header().Set(accessControlAllowOriginHeader, "*")
+	return ctx.JSON(http.StatusOK, util.NewSuccessResponse())
+}
+
+func (a *RestAPI) DeleteContainerAttribute(ctx echo.Context, containerId apiserver.ContainerId, attributeName apiserver.AttributeName) error {
+	if a.apiMetric != nil {
+		defer metrics.Elapsed(a.apiMetric.DeleteContainerAttributeDuration)()
+	}
+
+	log := a.log.With(zap.String(handlerFieldName, "DeleteContainerAttribute"), zap.String("containerID", containerId))
+
+	cnrID, err := parseContainerID(containerId)
+	if err != nil {
+		resp := a.logAndGetErrorResponse("invalid container id", err, log)
+		return ctx.JSON(http.StatusBadRequest, resp)
+	}
+
+	if !validateContainerAttributeName(attributeName) {
+		return ctx.JSON(http.StatusBadRequest, a.logAndGetErrorResponse("unknown attribute", fmt.Errorf("%s", attributeName), log))
+	}
+
+	var (
+		prm = client.RemoveContainerAttributeParameters{
+			ID:         cnrID,
+			Attribute:  attributeName,
+			ValidUntil: time.Now().Add(attributesValidUntilDuration),
+		}
+		o client.RemoveContainerAttributeOptions
+	)
+
+	sessionTokenV2, err := sessionTokensFromAuthHeader(ctx, sessionv2.VerbContainerRemoveAttribute, cnrID)
+	if err != nil {
+		return ctx.JSON(http.StatusForbidden, a.logAndGetErrorResponse("invalid auth", err, log))
+	}
+
+	if sessionTokenV2 != nil {
+		o.AttachSessionToken(*sessionTokenV2)
+	}
+
+	wCtx, cancel := context.WithTimeout(ctx.Request().Context(), a.waiterOperationTimeout)
+	defer cancel()
+
+	sig, err := client.SignRemoveContainerAttributeParameters(a.signer, prm)
+	if err != nil {
+		return ctx.JSON(http.StatusInternalServerError, a.logAndGetErrorResponse("sign remove container attribute", err, log))
+	}
+
+	if err = a.pool.RemoveContainerAttribute(wCtx, prm, sig, o); err != nil {
+		return ctx.JSON(http.StatusInternalServerError, a.logAndGetErrorResponse("remove container attribute", err, log))
 	}
 
 	ctx.Response().Header().Set(accessControlAllowOriginHeader, "*")

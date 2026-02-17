@@ -500,3 +500,35 @@ func prepareSessionTokenV2Expiration(tokenIssueTime time.Time, apiParams apiserv
 
 	return expireAt, nil
 }
+
+func validateContainerAttribute(name string, value []byte) error {
+	switch name {
+	case "__NEOFS__LOCK_UNTIL":
+		until, err := strconv.Atoi(string(value))
+		if err != nil {
+			return fmt.Errorf("invalid container attribute %q: %w", name, err)
+		}
+
+		if until <= 0 {
+			return errors.New("attribute value must be a positive integer")
+		}
+	case "S3_TAGS", "S3_SETTINGS", "S3_NOTIFICATIONS":
+		var tags = make(map[string]string)
+		if err := json.Unmarshal(value, &tags); err != nil {
+			return fmt.Errorf("invalid %s format: %w", name, err)
+		}
+	default:
+		return fmt.Errorf("unknown attribute %s", name)
+	}
+
+	return nil
+}
+
+func validateContainerAttributeName(name string) bool {
+	switch name {
+	case "__NEOFS__LOCK_UNTIL", "S3_TAGS", "S3_SETTINGS", "S3_NOTIFICATIONS":
+		return true
+	default:
+		return false
+	}
+}
