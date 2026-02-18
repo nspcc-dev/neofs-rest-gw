@@ -264,3 +264,11 @@ func (a *RestAPI) OptionsCompleteUnsignedBearerToken(ctx echo.Context) error {
 	ctx.Response().Header().Set(accessControlAllowMethodsHeader, allowMethods(methodPost))
 	return ctx.NoContent(http.StatusOK)
 }
+
+// OptionsContainerAttribute handler for the container attribute request.
+func (a *RestAPI) OptionsContainerAttribute(ctx echo.Context, _ apiserver.ContainerId, _ apiserver.AttributeName) error {
+	ctx.Response().Header().Set(accessControlAllowOriginHeader, allOrigins)
+	ctx.Response().Header().Set(accessControlAllowHeadersHeader, allowHeadersStr)
+	ctx.Response().Header().Set(accessControlAllowMethodsHeader, allowMethods(methodPut, methodDelete))
+	return ctx.NoContent(http.StatusOK)
+}
