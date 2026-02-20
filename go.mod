@@ -3,7 +3,7 @@ module github.com/nspcc-dev/neofs-rest-gw
 go 1.25.0
 
 require (
-	github.com/getkin/kin-openapi v0.131.0
+	github.com/getkin/kin-openapi v0.133.0
 	github.com/labstack/echo/v4 v4.15.0
 	github.com/nspcc-dev/neo-go v0.117.0
 	github.com/nspcc-dev/neofs-sdk-go v1.0.0-rc.17.0.20260216123457-7b319a7a44f9
@@ -66,6 +66,7 @@ require (
 	github.com/urfave/cli/v2 v2.27.7 // indirect
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
 	github.com/valyala/fasttemplate v1.2.2 // indirect
+	github.com/woodsbury/decimal128 v1.3.0 // indirect
 	github.com/xrash/smetrics v0.0.0-20240521201337-686a1a2994c1 // indirect
 	github.com/yusufpapurcu/wmi v1.2.4 // indirect
 	go.opentelemetry.io/auto/sdk v1.2.1 // indirect
