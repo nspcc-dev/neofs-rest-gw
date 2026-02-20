@@ -52,6 +52,8 @@ func getResponseCodeFromStatus(err error) int {
 		return http.StatusBadGateway
 	case errors.Is(err, apistatus.ErrNodeUnderMaintenance):
 		return http.StatusBadGateway
+	case errors.Is(err, apistatus.ErrContainerAwaitTimeout):
+		return http.StatusGatewayTimeout
 
 	default:
 		return http.StatusInternalServerError

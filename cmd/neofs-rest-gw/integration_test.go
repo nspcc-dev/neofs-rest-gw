@@ -39,7 +39,6 @@ import (
 	"github.com/nspcc-dev/neofs-sdk-go/pool"
 	"github.com/nspcc-dev/neofs-sdk-go/session/v2"
 	"github.com/nspcc-dev/neofs-sdk-go/user"
-	"github.com/nspcc-dev/neofs-sdk-go/waiter"
 	middleware "github.com/oapi-codegen/echo-middleware"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/require"
@@ -2086,8 +2085,7 @@ func createContainer(ctx context.Context, t *testing.T, clientPool *pool.Pool, o
 
 	var prm client.PrmContainerPut
 
-	w := waiter.NewContainerPutWaiter(clientPool, waiter.DefaultPollInterval)
-	CID, err := w.ContainerPut(ctx, cnr, signer, prm)
+	CID, err := clientPool.ContainerPut(ctx, cnr, signer, prm)
 	require.NoError(t, err)
 
 	return CID
@@ -2129,10 +2127,9 @@ func restrictByEACL(ctx context.Context, t *testing.T, clientPool *pool.Pool, cn
 	}
 
 	var prm client.PrmContainerSetEACL
-	w := waiter.NewContainerSetEACLWaiter(clientPool, waiter.DefaultPollInterval)
 
 	table := eacl.NewTableForContainer(cnrID, records)
-	err := w.ContainerSetEACL(ctx, table, signer, prm)
+	err := clientPool.ContainerSetEACL(ctx, table, signer, prm)
 	require.NoError(t, err)
 
 	return &table

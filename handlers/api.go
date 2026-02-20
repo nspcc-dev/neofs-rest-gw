@@ -20,7 +20,6 @@ import (
 	"github.com/nspcc-dev/neofs-sdk-go/pool"
 	sessionv2 "github.com/nspcc-dev/neofs-sdk-go/session/v2"
 	"github.com/nspcc-dev/neofs-sdk-go/user"
-	"github.com/nspcc-dev/neofs-sdk-go/waiter"
 	"go.uber.org/zap"
 )
 
@@ -40,7 +39,6 @@ type PrmAPI struct {
 	PprofService           *metrics.Service
 	ServiceShutdownTimeout time.Duration
 	WaiterOperationTimeout time.Duration
-	WaiterPollInterval     time.Duration
 }
 
 type BearerToken struct {
@@ -90,8 +88,6 @@ func NewAPI(prm *PrmAPI) (*RestAPI, error) {
 		apiMetric:              prm.ApiMetric,
 		serviceShutdownTimeout: prm.ServiceShutdownTimeout,
 		networkInfoGetter:      cache.NewNetworkInfoCache(prm.Pool),
-		waiterOperationTimeout: prm.WaiterOperationTimeout,
-		containerWaiter:        waiter.NewWaiter(prm.Pool, prm.WaiterPollInterval),
 	}, nil
 }
 
@@ -168,8 +164,6 @@ type RestAPI struct {
 	pprofService           *metrics.Service
 	serviceShutdownTimeout time.Duration
 	networkInfoGetter      networkInfoGetter
-	waiterOperationTimeout time.Duration
-	containerWaiter        *waiter.Waiter
 }
 
 func (a *RestAPI) StartCallback() {

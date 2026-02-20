@@ -79,7 +79,6 @@ pool:
   healthcheck-timeout: 15s
   rebalance-timer: 60s
   error-threshold: 100
-  container-ops-timeout: 10s
 
   # Nodes configuration
   # This configuration makes the gateway use the first node (node1.neofs:8080)
@@ -107,8 +106,6 @@ pool:
 | `rebalance-timer`       | `duration` | `60s`         | Interval to check node health.                                                                          |
 | `error-threshold`       | `uint32`   | `100`         | The number of errors on connection after which node is considered as unhealthy.                         |
 | `default-timestamp`     | `bool`     | `false`       | By default, add a Timestamp to the object upon creation.                                                |
-| `container-ops-timeout` | `duration` | `10s`         | Timeout for operations covered by SDK waiters. (create container, delete container, set container EACL) |
-| `container-ops-poll-interval` | `duration` | dynamic | Polling interval for container operation waiter (half a block, but not less than 50ms by default)       |
 
 ## `peers` section
 

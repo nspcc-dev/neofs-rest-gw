@@ -34,9 +34,6 @@ const (
 
 	defaultShutdownTimeout = 15 * time.Second
 
-	defaultWaiterOperationTimeout = 10 * time.Second
-	minWaiterPollInterval         = 50 * time.Millisecond
-
 	defaultPoolErrorThreshold   uint32 = 100
 	defaultPoolDefaultTimestamp bool   = false
 
@@ -44,21 +41,19 @@ const (
 	defaultMaxObjectPayloadBufferSize = 4 << 20
 
 	// Pool config.
-	cmdNodeDialTimeout        = "node-dial-timeout"
-	cfgNodeDialTimeout        = "pool." + cmdNodeDialTimeout
-	cmdHealthcheckTimeout     = "healthcheck-timeout"
-	cfgHealthcheckTimeout     = "pool." + cmdHealthcheckTimeout
-	cmdRebalance              = "rebalance-timer"
-	cfgRebalance              = "pool." + cmdRebalance
-	cfgPoolErrorThreshold     = "pool.error-threshold"
-	cfgPoolDefaultTimestamp   = "pool.default-timestamp"
-	cmdPeers                  = "peers"
-	cfgPeers                  = "pool." + cmdPeers
-	cfgPeerAddress            = "address"
-	cfgPeerPriority           = "priority"
-	cfgPeerWeight             = "weight"
-	cfgWaiterOperationTimeout = "pool.container-ops-timeout"
-	cfgWaiterPollInterval     = "pool.container-ops-poll-interval"
+	cmdNodeDialTimeout      = "node-dial-timeout"
+	cfgNodeDialTimeout      = "pool." + cmdNodeDialTimeout
+	cmdHealthcheckTimeout   = "healthcheck-timeout"
+	cfgHealthcheckTimeout   = "pool." + cmdHealthcheckTimeout
+	cmdRebalance            = "rebalance-timer"
+	cfgRebalance            = "pool." + cmdRebalance
+	cfgPoolErrorThreshold   = "pool.error-threshold"
+	cfgPoolDefaultTimestamp = "pool.default-timestamp"
+	cmdPeers                = "peers"
+	cfgPeers                = "pool." + cmdPeers
+	cfgPeerAddress          = "address"
+	cfgPeerPriority         = "priority"
+	cfgPeerWeight           = "weight"
 
 	// Metrics / Profiler.
 	cfgPrometheusEnabled = "prometheus.enabled"
@@ -616,14 +611,6 @@ func newNeofsAPI(ctx context.Context, logger *zap.Logger, v *viper.Viper) (*hand
 	}
 
 	apiPrm.DefaultTimestamp = v.GetBool(cfgPoolDefaultTimestamp)
-	apiPrm.WaiterOperationTimeout = v.GetDuration(cfgWaiterOperationTimeout)
-	if apiPrm.WaiterOperationTimeout == 0 {
-		apiPrm.WaiterOperationTimeout = defaultWaiterOperationTimeout
-	}
-	apiPrm.WaiterPollInterval = v.GetDuration(cfgWaiterPollInterval)
-	if apiPrm.WaiterPollInterval == 0 {
-		apiPrm.WaiterPollInterval = max(minWaiterPollInterval, time.Duration(ni.MsPerBlock())*time.Millisecond/2)
-	}
 
 	return handlers.NewAPI(&apiPrm)
 }
