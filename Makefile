@@ -5,7 +5,7 @@ VERSION ?= "$(shell git describe --tags --match "v*" --dirty --always --abbrev=8
 
 BUILD_OS ?= linux
 BUILD_ARCH ?= amd64
-GO_VERSION ?= 1.24
+GO_VERSION ?= 1.25
 
 HUB_IMAGE ?= nspccdev/neofs-rest-gw
 HUB_TAG ?= "$(shell echo ${VERSION} | sed 's/^v//')"
@@ -45,7 +45,7 @@ $(DIRS):
 
 # Install generator
 install-generator:
-	@go install github.com/deepmap/oapi-codegen/v2/cmd/oapi-codegen@v2.1.0
+	@go install github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen@v2.5.1
 
 # Generate server by openapi spec
 generate-server: install-generator
