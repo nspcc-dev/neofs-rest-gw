@@ -21,7 +21,6 @@ import (
 	"github.com/nspcc-dev/neofs-sdk-go/pool"
 	sessionv2 "github.com/nspcc-dev/neofs-sdk-go/session/v2"
 	"github.com/nspcc-dev/neofs-sdk-go/user"
-	"github.com/nspcc-dev/neofs-sdk-go/waiter"
 	"go.uber.org/zap"
 )
 
@@ -59,11 +58,8 @@ func (a *RestAPI) PutContainer(ctx echo.Context, params apiserver.PutContainerPa
 		return ctx.JSON(http.StatusBadRequest, resp)
 	}
 
-	wCtx, cancel := context.WithTimeout(ctx.Request().Context(), a.waiterOperationTimeout)
-	defer cancel()
-
 	// PutContainer will be removed in the next release. We may update old method to use new structures.
-	cnrID, err := createContainer(wCtx, a.containerWaiter, sessionTokenV2, body, params.NameScopeGlobal, a.signer, a.networkInfoGetter)
+	cnrID, err := createContainer(ctx.Request().Context(), a.pool, sessionTokenV2, body, params.NameScopeGlobal, a.signer, a.networkInfoGetter)
 	if err != nil {
 		resp := a.logAndGetErrorResponse("create container", err, log)
 		return ctx.JSON(getResponseCodeFromStatus(err), resp)
@@ -96,10 +92,7 @@ func (a *RestAPI) PostContainer(ctx echo.Context, params apiserver.PostContainer
 		return ctx.JSON(http.StatusBadRequest, resp)
 	}
 
-	wCtx, cancel := context.WithTimeout(ctx.Request().Context(), a.waiterOperationTimeout)
-	defer cancel()
-
-	cnrID, err := createContainer(wCtx, a.containerWaiter, sessionTokenV2, body, params.NameScopeGlobal, a.signer, a.networkInfoGetter)
+	cnrID, err := createContainer(ctx.Request().Context(), a.pool, sessionTokenV2, body, params.NameScopeGlobal, a.signer, a.networkInfoGetter)
 	if err != nil {
 		resp := a.logAndGetErrorResponse("create container", err, log)
 		return ctx.JSON(getResponseCodeFromStatus(err), resp)
@@ -180,9 +173,6 @@ func (a *RestAPI) PutContainerEACL(ctx echo.Context, containerID apiserver.Conta
 		prm.WithinSessionV2(*sessionTokenV2)
 	}
 
-	wCtx, cancel := context.WithTimeout(ctx.Request().Context(), a.waiterOperationTimeout)
-	defer cancel()
-
 	table, err := util.ToNativeTable(body.Records)
 	if err != nil {
 		resp := a.logAndGetErrorResponse("failed to convert EACL", err, log)
@@ -191,7 +181,7 @@ func (a *RestAPI) PutContainerEACL(ctx echo.Context, containerID apiserver.Conta
 
 	table.SetCID(cnrID)
 
-	err = a.containerWaiter.ContainerSetEACL(wCtx, *table, a.signer, prm)
+	err = a.pool.ContainerSetEACL(ctx.Request().Context(), *table, a.signer, prm)
 	if err != nil {
 		resp := a.logAndGetErrorResponse("failed set container eacl", err, log)
 		return ctx.JSON(getResponseCodeFromStatus(err), resp)
@@ -318,10 +308,7 @@ func (a *RestAPI) DeleteContainer(ctx echo.Context, containerID apiserver.Contai
 		prm.WithinSessionV2(*sessionTokenV2)
 	}
 
-	wCtx, cancel := context.WithTimeout(ctx.Request().Context(), a.waiterOperationTimeout)
-	defer cancel()
-
-	if err = a.containerWaiter.ContainerDelete(wCtx, cnrID, a.signer, prm); err != nil {
+	if err = a.pool.ContainerDelete(ctx.Request().Context(), cnrID, a.signer, prm); err != nil {
 		resp := a.logAndGetErrorResponse("delete container", err, log)
 		return ctx.JSON(getResponseCodeFromStatus(err), resp)
 	}
@@ -376,15 +363,12 @@ func (a *RestAPI) PutContainerAttribute(ctx echo.Context, containerId apiserver.
 		o.AttachSessionToken(*sessionTokenV2)
 	}
 
-	wCtx, cancel := context.WithTimeout(ctx.Request().Context(), a.waiterOperationTimeout)
-	defer cancel()
-
 	sig, err := client.SignSetContainerAttributeParameters(a.signer, prm)
 	if err != nil {
 		return ctx.JSON(http.StatusForbidden, a.logAndGetErrorResponse("sign set container attribute", err, log))
 	}
 
-	if err = a.pool.SetContainerAttribute(wCtx, prm, sig, o); err != nil {
+	if err = a.pool.SetContainerAttribute(ctx.Request().Context(), prm, sig, o); err != nil {
 		return ctx.JSON(http.StatusForbidden, a.logAndGetErrorResponse("set container attribute", err, log))
 	}
 
@@ -427,15 +411,12 @@ func (a *RestAPI) DeleteContainerAttribute(ctx echo.Context, containerId apiserv
 		o.AttachSessionToken(*sessionTokenV2)
 	}
 
-	wCtx, cancel := context.WithTimeout(ctx.Request().Context(), a.waiterOperationTimeout)
-	defer cancel()
-
 	sig, err := client.SignRemoveContainerAttributeParameters(a.signer, prm)
 	if err != nil {
 		return ctx.JSON(http.StatusInternalServerError, a.logAndGetErrorResponse("sign remove container attribute", err, log))
 	}
 
-	if err = a.pool.RemoveContainerAttribute(wCtx, prm, sig, o); err != nil {
+	if err = a.pool.RemoveContainerAttribute(ctx.Request().Context(), prm, sig, o); err != nil {
 		return ctx.JSON(http.StatusInternalServerError, a.logAndGetErrorResponse("remove container attribute", err, log))
 	}
 
@@ -532,7 +513,7 @@ func getContainerEACL(ctx context.Context, p *pool.Pool, cnrID cid.ID) (*apiserv
 	return tableResp, nil
 }
 
-func createContainer(ctx context.Context, p *waiter.Waiter, sessionTokenV2 *sessionv2.Token, request apiserver.ContainerPostInfo, nameScopeGlobal *bool, signer user.Signer, networkInfoGetter networkInfoGetter) (cid.ID, error) {
+func createContainer(ctx context.Context, p *pool.Pool, sessionTokenV2 *sessionv2.Token, request apiserver.ContainerPostInfo, nameScopeGlobal *bool, signer user.Signer, networkInfoGetter networkInfoGetter) (cid.ID, error) {
 	if request.PlacementPolicy == "" {
 		request.PlacementPolicy = defaultPlacementPolicy
 	}

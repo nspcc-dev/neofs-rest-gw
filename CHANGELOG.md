@@ -11,6 +11,8 @@ This document outlines major changes between releases.
 ### Changed
 
 ### Removed
+- `pool.container-ops-poll-interval` option (#361)
+- `pool.container-ops-timeoutl` option (#361)
 
 ### Updated
 
