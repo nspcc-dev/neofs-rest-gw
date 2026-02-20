@@ -427,6 +427,10 @@ func getSessionTokenV2(v string) (*sessionv2.Token, error) {
 		return nil, fmt.Errorf("base64 encoding: %w", err)
 	}
 
+	if len(tokenBts) < sessionLockSize {
+		return nil, errors.New("token too short")
+	}
+
 	lock := tokenBts[:sessionLockSize]
 
 	var st sessionv2.Token

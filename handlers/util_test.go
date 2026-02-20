@@ -1,6 +1,9 @@
 package handlers
 
 import (
+	"crypto/rand"
+	"crypto/sha256"
+	"encoding/base64"
 	"math"
 	"net/http"
 	"reflect"
@@ -9,7 +12,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/nspcc-dev/neo-go/pkg/crypto/keys"
+	cid "github.com/nspcc-dev/neofs-sdk-go/container/id"
 	"github.com/nspcc-dev/neofs-sdk-go/object"
+	"github.com/nspcc-dev/neofs-sdk-go/session/v2"
+	"github.com/nspcc-dev/neofs-sdk-go/user"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
 )
@@ -389,4 +396,94 @@ func TestIsDomainName(t *testing.T) {
 			}
 		})
 	}
+}
+
+func createTestSessionToken(t *testing.T, owner user.ID) session.Token {
+	t.Helper()
+
+	var token session.Token
+	token.SetIssuer(owner)
+	token.SetNbf(time.Now())
+	token.SetIat(time.Now())
+	token.SetExp(time.Now().Add(time.Hour))
+	token.SetVersion(session.TokenCurrentVersion)
+
+	ctx, err := session.NewContext(cid.ID{}, []session.Verb{session.VerbObjectPut})
+	require.NoError(t, err)
+	require.NoError(t, token.SetContexts([]session.Context{ctx}))
+
+	return token
+}
+
+func TestGetSessionTokenV2(t *testing.T) {
+	key, err := keys.NewPrivateKey()
+	require.NoError(t, err)
+
+	signer := user.NewAutoIDSigner(key.PrivateKey)
+	owner := signer.UserID()
+
+	t.Run("with lock prefix", func(t *testing.T) {
+		token := createTestSessionToken(t, owner)
+
+		lock := make([]byte, sessionLockSize)
+		_, err = rand.Read(lock)
+		require.NoError(t, err)
+
+		lockHash := sha256.Sum256(lock)
+		require.NoError(t, token.SetAppData(lockHash[:]))
+		require.NoError(t, token.Sign(signer))
+
+		tokenWithLock := append(lock, token.Marshal()...)
+		encoded := base64.StdEncoding.EncodeToString(tokenWithLock)
+
+		result, err := getSessionTokenV2(encoded)
+		require.NoError(t, err)
+		require.NotNil(t, result)
+	})
+
+	t.Run("without lock prefix", func(t *testing.T) {
+		token := createTestSessionToken(t, owner)
+		require.NoError(t, token.Sign(signer))
+
+		tokenData := token.Marshal()
+		encoded := base64.StdEncoding.EncodeToString(tokenData)
+
+		_, err = getSessionTokenV2(encoded)
+		require.Error(t, err)
+		require.ErrorContains(t, err, "cannot parse invalid wire-format data")
+	})
+
+	t.Run("invalid base64", func(t *testing.T) {
+		_, err = getSessionTokenV2("definitely not base64")
+		require.Error(t, err)
+		require.ErrorContains(t, err, "base64 encoding")
+	})
+
+	t.Run("invalid token data", func(t *testing.T) {
+		invalidData := []byte("invalid token data")
+		encoded := base64.StdEncoding.EncodeToString(invalidData)
+
+		_, err = getSessionTokenV2(encoded)
+		require.Error(t, err)
+		require.ErrorContains(t, err, "token too short")
+	})
+
+	t.Run("lock mismatch", func(t *testing.T) {
+		token := createTestSessionToken(t, owner)
+
+		wrongLock := make([]byte, sessionLockSize)
+		_, err = rand.Read(wrongLock)
+		require.NoError(t, err)
+
+		differentHash := sha256.Sum256([]byte("different data"))
+		require.NoError(t, token.SetAppData(differentHash[:]))
+		require.NoError(t, token.Sign(signer))
+
+		tokenWithWrongLock := append(wrongLock, token.Marshal()...)
+		encoded := base64.StdEncoding.EncodeToString(tokenWithWrongLock)
+
+		_, err = getSessionTokenV2(encoded)
+		require.Error(t, err)
+		require.ErrorContains(t, err, "lock mismatch")
+	})
 }
