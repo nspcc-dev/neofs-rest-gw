@@ -184,15 +184,13 @@ func (a *RestAPI) StopServices() {
 	ctx, cancel := context.WithTimeout(context.Background(), a.serviceShutdownTimeout)
 	defer cancel()
 	var wg sync.WaitGroup
-	wg.Add(2)
-	go func() {
-		defer wg.Done()
+
+	wg.Go(func() {
 		a.pprofService.ShutDown(ctx)
-	}()
-	go func() {
-		defer wg.Done()
+	})
+	wg.Go(func() {
 		a.prometheusService.ShutDown(ctx)
-	}()
+	})
 	wg.Wait()
 }
 
