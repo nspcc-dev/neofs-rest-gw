@@ -25,7 +25,7 @@ BINDIR = bin
 DIRS = "$(BINDIR)"
 BINS = "$(BINDIR)/neofs-rest-gw"
 
-.PHONY: help all clean format test cover lint docker/lint
+.PHONY: help all clean format test cover lint docker/lint modernize
 
 # Make all binaries
 all: generate-server $(BINS)
@@ -66,6 +66,11 @@ format:
 	@gofmt -s -w ./
 	@echo "⇒ Processing goimports check"
 	@goimports -w ./
+
+# Prettify code
+modernize:
+	@echo "⇒ Processing modernize check"
+	@go run golang.org/x/tools/go/analysis/passes/modernize/cmd/modernize@latest -fix ./...
 
 # Build clean Docker image
 image:
