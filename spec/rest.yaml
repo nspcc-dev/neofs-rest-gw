@@ -266,7 +266,8 @@ paths:
       security: [ ]
   /v2/auth/session/complete:
     post:
-      summary: Joining the binary Session v2 token along with its signature to prepare the session token for use.
+      summary: Joining the binary Session v2 token along with its signature to prepare the session token for use. \
+        It considers all NNS targets as valid and doesn't raise an error in any case.
       operationId: v2CompleteAuthSessionToken
       requestBody:
         description: V2 session token and signature.

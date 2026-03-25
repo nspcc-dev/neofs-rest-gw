@@ -464,6 +464,10 @@ func (a *RestAPI) V2CompleteAuthSessionToken(ctx echo.Context) error {
 		}
 	}
 
+	if err = sessionToken.Validate(&noopNNSResolver{}); err != nil {
+		return ctx.JSON(http.StatusBadRequest, a.logAndGetErrorResponse("session token v2 validation", err, log))
+	}
+
 	tokenWithLock := append(lock, sessionToken.Marshal()...)
 	var resp = apiserver.BinarySessionV2{
 		Token: base64.StdEncoding.EncodeToString(tokenWithLock),
