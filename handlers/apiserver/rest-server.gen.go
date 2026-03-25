@@ -964,7 +964,7 @@ type ServerInterface interface {
 
 	// (OPTIONS /v2/auth/session/complete)
 	OptionsV2FormAuthSessionToken(ctx echo.Context) error
-	// Joining the binary Session v2 token along with its signature to prepare the session token for use.
+	// Joining the binary Session v2 token along with its signature to prepare the session token for use. \ It considers all NNS targets as valid and doesn't raise an error in any case.
 	// (POST /v2/auth/session/complete)
 	V2CompleteAuthSessionToken(ctx echo.Context) error
 
@@ -2825,11 +2825,11 @@ var swaggerSpec = []string{
 	"6SV9W+MQLuMrr8WNnlrcqLJedaPE1pcziESMVXlPVNtXXrBAT11r86XV2FXYfX4msmTEGFd5eC0O9VPx",
 	"hXcEu6qwbogJFayX4BXQJu5IRQJizkAoMKtSxsiDOjIyw2B8Fua/0pxCF3ovwiFu6kJ16qkPXhlDrpCw",
 	"AEfPv73jQ9zUl8gJN/VUMf+IXT1/kcSiEE/rzyA3BNOa1mPVvH8NyWGaXtSF0kPeZl9LLripixFfd/7q",
-	"nR+cuD+IAwTDPZ4TyGDQ4Ox4WYVByQIa1Jv6U3a9lGYym/9XlAx6aQZYVC7I8o6EYPDU67mb+opbm5/6",
-	"gk5wrcovxLZeb9gK3LDdqLQQRF2hRYHdA8jNsbSLZjzBlA87spEjo8dVSzzUMcpBLhPGkFUBH4gf5P7g",
-	"cILAF9OnjNAvupm0u3oUTTHxWeguJMAZICDZJCfaN4wjhy26PFOd5t+eGTk+PKsu7oLLkue9tfvBl3ZL",
-	"DszMpd0/fFuXf26+3tc97b4uNXAxFyxEpwGD9Klt7Btjzr39atUmJrTHhPH9vdrbmvHw6eH/BQAA//9f",
-	"tdp8NfoAAA==",
+	"nR+cuD+IAwTDPZ4TyGDQ4Ox4WYVByQIa1Jv6U3a9lGYym/9XlAx6aQZYVC7I8g4hGIC7O9CWzikMS4cV",
+	"aNuy3A6HdIQ4A5CBKbSxiv6wCGLubxxQiBmSsZdipjKFgzsHJoxLGk+977upr7gG+qlv/AQbrPxCfPD1",
+	"yq7Ald2NyjNB1J1cFCk+gNwcS0NrxrVMOcUjGzkyHF21xEMd9BwkR2EMWRXwgfhBMhEOJwh8MX3KCP2i",
+	"m0lDrkfRFBOfhf5HApwBApLvcqKdzThy2KLbONVp/nWckeMUtOomMLh9ed5rwB98C7jkBM7cAv7D13/5",
+	"B/HrBeDTLgBTAxfz6UJ0GjBIn9rGvjHm3NuvVm1iQntMGN/fq72tGQ+fHv5fAAAA//+V1Y9ZhvoAAA==",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file

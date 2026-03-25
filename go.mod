@@ -5,8 +5,8 @@ go 1.25.0
 require (
 	github.com/getkin/kin-openapi v0.133.0
 	github.com/labstack/echo/v4 v4.15.0
-	github.com/nspcc-dev/neo-go v0.117.0
-	github.com/nspcc-dev/neofs-sdk-go v1.0.0-rc.17.0.20260227160551-b5052df33fff
+	github.com/nspcc-dev/neo-go v0.118.0
+	github.com/nspcc-dev/neofs-sdk-go v1.0.0-rc.17.0.20260320132435-55419a28ca95
 	github.com/oapi-codegen/echo-middleware v1.0.2
 	github.com/oapi-codegen/runtime v1.1.2
 	github.com/spf13/pflag v1.0.10
@@ -25,7 +25,7 @@ require (
 	github.com/containerd/platforms v0.2.1 // indirect
 	github.com/cpuguy83/dockercfg v0.3.2 // indirect
 	github.com/decred/dcrd/crypto/ripemd160 v1.0.2 // indirect
-	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.4.0 // indirect
+	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.4.1 // indirect
 	github.com/distribution/reference v0.6.0 // indirect
 	github.com/ebitengine/purego v0.9.0 // indirect
 	github.com/felixge/httpsnoop v1.0.4 // indirect
@@ -67,7 +67,7 @@ require (
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
 	github.com/valyala/fasttemplate v1.2.2 // indirect
 	github.com/woodsbury/decimal128 v1.3.0 // indirect
-	github.com/xrash/smetrics v0.0.0-20240521201337-686a1a2994c1 // indirect
+	github.com/xrash/smetrics v0.0.0-20250705151800-55b8f293f342 // indirect
 	github.com/yusufpapurcu/wmi v1.2.4 // indirect
 	go.opentelemetry.io/auto/sdk v1.2.1 // indirect
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.63.0 // indirect
@@ -76,7 +76,7 @@ require (
 	go.opentelemetry.io/otel/trace v1.39.0 // indirect
 	go.yaml.in/yaml/v2 v2.4.2 // indirect
 	golang.org/x/exp v0.0.0-20250911091902-df9299821621 // indirect
-	golang.org/x/net v0.48.0 // indirect
+	golang.org/x/net v0.50.0 // indirect
 	golang.org/x/time v0.14.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20251202230838-ff82c1b0f217 // indirect
 )
@@ -103,7 +103,7 @@ require (
 	github.com/morikuni/aec v1.0.0 // indirect
 	github.com/mr-tron/base58 v1.2.0 // indirect
 	github.com/nspcc-dev/rfc6979 v0.2.4 // indirect
-	github.com/nspcc-dev/tzhash v1.8.3 // indirect
+	github.com/nspcc-dev/tzhash v1.8.4 // indirect
 	github.com/opencontainers/go-digest v1.0.0 // indirect
 	github.com/opencontainers/image-spec v1.1.1 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
@@ -119,12 +119,12 @@ require (
 	github.com/spf13/viper v1.18.2
 	github.com/subosito/gotenv v1.6.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
-	golang.org/x/crypto v0.46.0 // indirect
-	golang.org/x/sys v0.39.0 // indirect
-	golang.org/x/term v0.38.0
-	golang.org/x/text v0.32.0 // indirect
+	golang.org/x/crypto v0.48.0 // indirect
+	golang.org/x/sys v0.41.0 // indirect
+	golang.org/x/term v0.40.0
+	golang.org/x/text v0.34.0 // indirect
 	google.golang.org/grpc v1.79.3 // indirect
-	google.golang.org/protobuf v1.36.10 // indirect
+	google.golang.org/protobuf v1.36.11 // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
