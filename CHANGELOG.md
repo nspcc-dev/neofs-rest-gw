@@ -17,6 +17,7 @@ This document outlines major changes between releases.
 - `pool.container-ops-timeoutl` option (#361)
 
 ### Updated
+- NeoFS SDK dependency to RC18 (#360, #369, #372, #373)
 
 ### Upgrading from 0.16.0
 
