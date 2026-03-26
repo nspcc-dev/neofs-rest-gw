@@ -5,7 +5,7 @@ This document outlines major changes between releases.
 ## [Unreleased]
 
 ### Added
-- Session v2 token validation (#368) 
+- Session v2 token validation (#368)
 
 ### Fixed
 
