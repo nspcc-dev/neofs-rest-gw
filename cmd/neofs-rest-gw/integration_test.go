@@ -2970,7 +2970,8 @@ func restSetContainerAttribute(ctx context.Context, t *testing.T, p *pool.Pool, 
 		require.Contains(t, cnrInfo.Attributes, apiserver.Attribute{Key: "__NEOFS__LOCK_UNTIL", Value: v})
 
 		t.Run("remove", func(t *testing.T) {
-			time.Sleep(timeout + time.Second)
+			// 20 sec => max block time in AIO.
+			time.Sleep(timeout + 20*time.Second)
 
 			requestRemoveContainerAttribute(t, signedToken, cnrID, "__NEOFS__LOCK_UNTIL", http.StatusOK)
 			cnrInfo = requestGetContainer(ctx, t, cnrID)
