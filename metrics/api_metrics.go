@@ -16,7 +16,6 @@ type ApiMetrics struct {
 	AuthDuration                     prometheus.Histogram
 	FormBinaryBearerDuration         prometheus.Histogram
 	ListContainersDuration           prometheus.Histogram
-	PutContainerDuration             prometheus.Histogram
 	PostContainerDuration            prometheus.Histogram
 	DeleteContainerDuration          prometheus.Histogram
 	GetContainerDuration             prometheus.Histogram
@@ -33,7 +32,6 @@ type ApiMetrics struct {
 	NewHeadByAttributeDuration       prometheus.Histogram
 	NewGetContainerObjectDuration    prometheus.Histogram
 	NewHeadContainerObjectDuration   prometheus.Histogram
-	SearchObjectsDuration            prometheus.Histogram
 	DeleteObjectDuration             prometheus.Histogram
 	GetObjectInfoDuration            prometheus.Histogram
 	UploadContainerObjectDuration    prometheus.Histogram
@@ -83,12 +81,6 @@ func NewApiMetrics() *ApiMetrics {
 			Subsystem: apiSubsystem,
 			Name:      "list_containers_duration",
 			Help:      "List containers request handling time",
-		}),
-		PutContainerDuration: prometheus.NewHistogram(prometheus.HistogramOpts{
-			Namespace: namespace,
-			Subsystem: apiSubsystem,
-			Name:      "put_container_duration",
-			Help:      "Put container request handling time",
 		}),
 		PostContainerDuration: prometheus.NewHistogram(prometheus.HistogramOpts{
 			Namespace: namespace,
@@ -186,12 +178,6 @@ func NewApiMetrics() *ApiMetrics {
 			Name:      "new_head_container_object_duration",
 			Help:      "New head container object request handling time",
 		}),
-		SearchObjectsDuration: prometheus.NewHistogram(prometheus.HistogramOpts{
-			Namespace: namespace,
-			Subsystem: apiSubsystem,
-			Name:      "search_objects_duration",
-			Help:      "search objects request handling time",
-		}),
 		DeleteObjectDuration: prometheus.NewHistogram(prometheus.HistogramOpts{
 			Namespace: namespace,
 			Subsystem: apiSubsystem,
@@ -270,7 +256,6 @@ func (m ApiMetrics) register() {
 	prometheus.MustRegister(m.AuthDuration)
 	prometheus.MustRegister(m.FormBinaryBearerDuration)
 	prometheus.MustRegister(m.ListContainersDuration)
-	prometheus.MustRegister(m.PutContainerDuration)
 	prometheus.MustRegister(m.PostContainerDuration)
 	prometheus.MustRegister(m.DeleteContainerDuration)
 	prometheus.MustRegister(m.GetContainerDuration)
@@ -287,7 +272,6 @@ func (m ApiMetrics) register() {
 	prometheus.MustRegister(m.NewHeadByAttributeDuration)
 	prometheus.MustRegister(m.NewGetContainerObjectDuration)
 	prometheus.MustRegister(m.NewHeadContainerObjectDuration)
-	prometheus.MustRegister(m.SearchObjectsDuration)
 	prometheus.MustRegister(m.DeleteObjectDuration)
 	prometheus.MustRegister(m.GetObjectInfoDuration)
 	prometheus.MustRegister(m.UploadContainerObjectDuration)

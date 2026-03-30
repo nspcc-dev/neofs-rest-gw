@@ -364,85 +364,6 @@ paths:
                 type: string
           content: { }
       security: [ ]
-  /v1/objects/{containerId}/search:
-    post:
-      summary: Search objects by filters
-      operationId: searchObjects
-      deprecated: true
-      parameters:
-        - $ref: '#/components/parameters/signatureParam'
-        - $ref: '#/components/parameters/signatureKeyParam'
-        - $ref: '#/components/parameters/signatureScheme'
-        - $ref: '#/components/parameters/containerId'
-        - $ref: '#/components/parameters/bearerToken'
-        - name: offset
-          in: query
-          description: The number of containers to skip before starting to collect the
-            result set.
-          schema:
-            minimum: 0
-            type: integer
-            default: 0
-        - name: limit
-          in: query
-          description: The numbers of containers to return.
-          schema:
-            maximum: 10000
-            minimum: 1
-            type: integer
-            default: 100
-      requestBody:
-        description: A set of filters to use for search operation.
-        content:
-          '*/*':
-            schema:
-              $ref: '#/components/schemas/SearchFilters'
-        required: true
-      responses:
-        "200":
-          description: List of objects
-          headers:
-            Access-Control-Allow-Origin:
-              schema:
-                type: string
-          content:
-            '*/*':
-              schema:
-                $ref: '#/components/schemas/ObjectList'
-        "400":
-          description: Bad request
-          content:
-            '*/*':
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-      security:
-        - { }
-        - BearerAuth: [ ]
-      x-codegen-request-body-name: searchFilters
-    options:
-      operationId: optionsObjectsSearch
-      parameters:
-        - name: containerId
-          in: path
-          description: Base58 encoded container id.
-          required: true
-          schema:
-            type: string
-      responses:
-        "200":
-          description: Base64 encoded stable binary marshaled bearer token.
-          headers:
-            Access-Control-Allow-Origin:
-              schema:
-                type: string
-            Access-Control-Allow-Methods:
-              schema:
-                type: string
-            Access-Control-Allow-Headers:
-              schema:
-                type: string
-          content: { }
-      security: [ ]
   /v2/objects/{containerId}/search:
     post:
       summary: Search objects by filters
@@ -613,66 +534,6 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
       security: [ ]
-    put:
-      deprecated: true
-      summary: Create new container in NeoFS. Use POST method to create a container.
-      operationId: putContainer
-      parameters:
-        - name: name-scope-global
-          in: query
-          description: Provide this parameter to register container name in NNS service.
-          schema:
-            type: boolean
-            default: false
-      requestBody:
-        description: Container info
-        content:
-          '*/*':
-            schema:
-              $ref: '#/components/schemas/ContainerPostInfo'
-        required: true
-      responses:
-        "200":
-          description: Identifier of the created container.
-          headers:
-            Access-Control-Allow-Origin:
-              schema:
-                type: string
-          content:
-            '*/*':
-              schema:
-                $ref: '#/components/schemas/PostContainerOK'
-        "400":
-          description: Bad request.
-          content:
-            '*/*':
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        "403":
-          description: Access denied
-          content:
-            '*/*':
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        "404":
-          description: Not found.
-          content:
-            '*/*':
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        "502":
-          description: Bad gateway.
-          content:
-            '*/*':
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        "504":
-          description: Gateway timeout
-          content:
-            '*/*':
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-      x-codegen-request-body-name: container
     post:
       summary: Create new container in NeoFS
       operationId: postContainer
@@ -736,7 +597,7 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
       x-codegen-request-body-name: container
     options:
-      operationId: optionsContainersPutList
+      operationId: optionsContainersPostList
       responses:
         "200":
           description: CORS
@@ -1878,25 +1739,6 @@ components:
             attribute:
               - key: Name
                 value: container2
-    SearchFilters:
-      required:
-        - filters
-      type: object
-      properties:
-        filters:
-          type: array
-          description: It must contain 7 filters as maximum.
-          items:
-            $ref: '#/components/schemas/SearchFilter'
-      description: List of SearchFilter elements.
-      example:
-        filters:
-          - key: FileName
-            value: some/prefix
-            match: MatchCommonPrefix
-          - key: CustomAttribute
-            value: tag-value
-            match: MatchStringEqual
     SearchFilter:
       required:
         - key
@@ -1958,30 +1800,6 @@ components:
         attributes:
           - FileName
           - FilePath
-    ObjectList:
-      required:
-        - objects
-        - size
-      type: object
-      properties:
-        size:
-          type: integer
-        objects:
-          type: array
-          items:
-            $ref: '#/components/schemas/ObjectBaseInfo'
-      description: List of objects.
-      example:
-        size: 2
-        objects:
-          - name: /my/object/name
-            address:
-              objectId: 8N3o7Dtr6T1xteCt6eRwhpmJ7JhME58Hyu1dvaswuTDd
-              containerId: 5HZTn5qkRnmgSz9gSrw22CEdPPk6nQhkwf2Mgzyvkikv
-          - name: /my/object/some/other/name
-            address:
-              objectId: 3GbmMWusaWgMHokWui2zDunxMTzButuQMVLbtL3cDn8s
-              containerId: 5HZTn5qkRnmgSz9gSrw22CEdPPk6nQhkwf2Mgzyvkikv
     ObjectListV2:
       required:
         - objects
@@ -2010,24 +1828,6 @@ components:
             address:
               objectId: 3GbmMWusaWgMHokWui2zDunxMTzButuQMVLbtL3cDn8s
               containerId: 5HZTn5qkRnmgSz9gSrw22CEdPPk6nQhkwf2Mgzyvkikv
-    ObjectBaseInfo:
-      required:
-        - address
-      type: object
-      properties:
-        address:
-          $ref: '#/components/schemas/Address'
-        name:
-          type: string
-        filePath:
-          type: string
-      description: Basic object information.
-      example:
-        name: name.txt
-        filePath: /my/object/name.txt
-        address:
-          objectId: 8N3o7Dtr6T1xteCt6eRwhpmJ7JhME58Hyu1dvaswuTDd
-          containerId: 5HZTn5qkRnmgSz9gSrw22CEdPPk6nQhkwf2Mgzyvkikv
     ObjectBaseInfoV2:
       required:
         - objectId
@@ -2045,20 +1845,6 @@ components:
         name: name.txt
         filePath: /my/object/name.txt
         objectId: 8N3o7Dtr6T1xteCt6eRwhpmJ7JhME58Hyu1dvaswuTDd
-    Address:
-      required:
-        - containerId
-        - objectId
-      type: object
-      properties:
-        containerId:
-          type: string
-        objectId:
-          type: string
-      description: Address of the object in NeoFS.
-      example:
-        objectId: 8N3o7Dtr6T1xteCt6eRwhpmJ7JhME58Hyu1dvaswuTDd
-        containerId: 5HZTn5qkRnmgSz9gSrw22CEdPPk6nQhkwf2Mgzyvkikv
     Eacl:
       required:
         - records

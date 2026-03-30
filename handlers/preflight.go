@@ -52,14 +52,6 @@ var (
 		),
 		delimiter)
 
-	optionsObjectsSearch = strings.Join(
-		append(allowHeaders,
-			headerXBearerSignature,
-			headerXBearerSignatureKey,
-			headerXNeofsBearerToken,
-		),
-		delimiter)
-
 	optionsObjectsGetDelete = strings.Join(
 		append(allowHeaders,
 			headerXBearerSignature,
@@ -145,14 +137,6 @@ func (a *RestAPI) OptionsBalance(ctx echo.Context, _ string) error {
 	return ctx.NoContent(http.StatusOK)
 }
 
-// OptionsObjectsSearch handler for the objectsSearch options request.
-func (a *RestAPI) OptionsObjectsSearch(ctx echo.Context, _ string) error {
-	ctx.Response().Header().Set(accessControlAllowOriginHeader, allOrigins)
-	ctx.Response().Header().Set(accessControlAllowHeadersHeader, optionsObjectsSearch)
-	ctx.Response().Header().Set(accessControlAllowMethodsHeader, allowMethods(methodPost))
-	return ctx.NoContent(http.StatusOK)
-}
-
 // OptionsObjectsGetDelete handler for the objectsGetDelete options request.
 func (a *RestAPI) OptionsObjectsGetDelete(ctx echo.Context, _ apiserver.ContainerId, _ apiserver.ObjectId) error {
 	ctx.Response().Header().Set(accessControlAllowOriginHeader, allOrigins)
@@ -161,11 +145,11 @@ func (a *RestAPI) OptionsObjectsGetDelete(ctx echo.Context, _ apiserver.Containe
 	return ctx.NoContent(http.StatusOK)
 }
 
-// OptionsContainersPutList handler for the containersPutList options request.
-func (a *RestAPI) OptionsContainersPutList(ctx echo.Context) error {
+// OptionsContainersPostList handler for the containersPostList options request.
+func (a *RestAPI) OptionsContainersPostList(ctx echo.Context) error {
 	ctx.Response().Header().Set(accessControlAllowOriginHeader, allOrigins)
 	ctx.Response().Header().Set(accessControlAllowHeadersHeader, allowHeadersStr)
-	ctx.Response().Header().Set(accessControlAllowMethodsHeader, allowMethods(methodGet, methodPut, methodPost))
+	ctx.Response().Header().Set(accessControlAllowMethodsHeader, allowMethods(methodGet, methodPost))
 	return ctx.NoContent(http.StatusOK)
 }
 

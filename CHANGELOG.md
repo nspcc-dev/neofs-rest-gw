@@ -13,6 +13,7 @@ This document outlines major changes between releases.
 - Go 1.25+ is required to build now (#322)
 
 ### Removed
+- Deprecated search and container put APIs (#332)
 - `pool.container-ops-poll-interval` option (#361)
 - `pool.container-ops-timeoutl` option (#361)
 

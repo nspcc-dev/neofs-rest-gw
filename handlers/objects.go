@@ -61,12 +61,6 @@ type setAttributeParams struct {
 	header      object.Object
 }
 
-type attributeIndexes struct {
-	FileName  int
-	FilePath  int
-	Timestamp int
-}
-
 // DeleteObject handler that removes object from NeoFS.
 func (a *RestAPI) DeleteObject(ctx echo.Context, containerID apiserver.ContainerId, objectID apiserver.ObjectId, params apiserver.DeleteObjectParams) error {
 	if a.apiMetric != nil {
@@ -111,133 +105,6 @@ func (a *RestAPI) DeleteObject(ctx echo.Context, containerID apiserver.Container
 
 	ctx.Response().Header().Set(accessControlAllowOriginHeader, "*")
 	return ctx.JSON(http.StatusOK, util.NewSuccessResponse())
-}
-
-// SearchObjects handler that searches object in NeoFS.
-func (a *RestAPI) SearchObjects(ctx echo.Context, containerID apiserver.ContainerId, params apiserver.SearchObjectsParams) error {
-	if a.apiMetric != nil {
-		defer metrics.Elapsed(a.apiMetric.SearchObjectsDuration)()
-	}
-
-	log := a.log.With(
-		zap.String(handlerFieldName, "SearchObjects"),
-		zap.String("containerID", containerID),
-		zap.Intp("offset", params.Offset),
-		zap.Intp("limit", params.Limit),
-	)
-
-	var cnrID cid.ID
-	if err := cnrID.DecodeString(containerID); err != nil {
-		resp := a.logAndGetErrorResponse("invalid container id", err, log)
-		return ctx.JSON(http.StatusBadRequest, resp)
-	}
-
-	var walletConnect apiserver.SignatureScheme
-	if params.WalletConnect != nil {
-		walletConnect = *params.WalletConnect
-	}
-
-	btoken, sessionTokenV2, err := getBearerAndSession(ctx, params.XBearerSignature, params.XBearerSignatureKey, walletConnect)
-	if err != nil {
-		resp := a.logAndGetErrorResponse("auth failed", err, log)
-		return ctx.JSON(http.StatusBadRequest, resp)
-	}
-
-	var searchFilters apiserver.SearchFilters
-	if err = ctx.Bind(&searchFilters); err != nil {
-		return ctx.JSON(http.StatusBadRequest, a.logAndGetErrorResponse("bind", err, log))
-	}
-
-	filters, err := util.ToNativeFilters(searchFilters.Filters)
-	if err != nil {
-		resp := a.logAndGetErrorResponse("failed to transform to native", err, log)
-		return ctx.JSON(http.StatusBadRequest, resp)
-	}
-
-	var (
-		cursor string
-		opts   client.SearchObjectsOptions
-
-		commonAttributes = []string{
-			object.AttributeFileName,
-			object.AttributeFilePath,
-			object.AttributeTimestamp,
-		}
-		returningAttributes []string
-		indexes             attributeIndexes
-
-		allObjects []client.SearchResultItem
-	)
-
-	if len(filters) > 0 {
-		returningAttributes, indexes = getReturningAttributes(commonAttributes, filters[0].Header())
-	} else {
-		returningAttributes = commonAttributes
-		indexes.FileName = 0
-		indexes.FilePath = 1
-		indexes.Timestamp = 2
-
-		// As minimum one filter must be presented, and it must be equal to the first returning attribute in the search.
-		filters.AddFilter(object.AttributeFileName, "", object.MatchCommonPrefix)
-	}
-
-	if btoken != nil {
-		opts.WithBearerToken(*btoken)
-	}
-	if sessionTokenV2 != nil {
-		opts.WithSessionTokenV2(*sessionTokenV2)
-	}
-
-	offset, limit, err := getOffsetAndLimit(params.Offset, params.Limit)
-	if err != nil {
-		resp := a.logAndGetErrorResponse("invalid offset/limit", err, log)
-		return ctx.JSON(http.StatusBadRequest, resp)
-	}
-
-	for {
-		resSearch, nextCursor, err := a.pool.SearchObjects(ctx.Request().Context(), cnrID, filters, returningAttributes, cursor, a.signer, opts)
-		if err != nil {
-			resp := a.logAndGetErrorResponse("failed to search objects", err, log)
-			return ctx.JSON(getResponseCodeFromStatus(err), resp)
-		}
-
-		allObjects = append(allObjects, resSearch...)
-
-		if nextCursor == "" {
-			break
-		}
-
-		cursor = nextCursor
-	}
-
-	if offset < len(allObjects) {
-		lastIndex := min(len(allObjects), offset+limit)
-		allObjects = allObjects[offset:lastIndex]
-	} else {
-		// offset is out of range
-		allObjects = []client.SearchResultItem{}
-	}
-
-	var objects = make([]apiserver.ObjectBaseInfo, len(allObjects))
-
-	for i, item := range allObjects {
-		objects[i] = apiserver.ObjectBaseInfo{
-			Address: apiserver.Address{
-				ContainerId: cnrID.String(),
-				ObjectId:    item.ID.String(),
-			},
-			Name:     &item.Attributes[indexes.FileName],
-			FilePath: &item.Attributes[indexes.FilePath],
-		}
-	}
-
-	list := &apiserver.ObjectList{
-		Size:    len(objects),
-		Objects: objects,
-	}
-
-	ctx.Response().Header().Set(accessControlAllowOriginHeader, "*")
-	return ctx.JSON(http.StatusOK, list)
 }
 
 // V2SearchObjects handler that searches object in NeoFS.
@@ -834,39 +701,4 @@ func (a *RestAPI) search(ctx context.Context, btoken *bearer.Token, sessionToken
 	}
 
 	return oid.ID{}, nil
-}
-
-func getReturningAttributes(wellKnownAttributes []string, attribute string) ([]string, attributeIndexes) {
-	var returningAttributes []string
-
-	for i, attr := range wellKnownAttributes {
-		if attr == attribute {
-			returningAttributes = append([]string{attr}, wellKnownAttributes[0:i]...)
-
-			if i < len(wellKnownAttributes)-1 {
-				returningAttributes = append(returningAttributes, wellKnownAttributes[i+1:]...)
-			}
-			break
-		}
-	}
-
-	// attribute not in wellKnownAttributes.
-	if len(returningAttributes) == 0 {
-		returningAttributes = append([]string{attribute}, wellKnownAttributes...)
-	}
-
-	var indexes attributeIndexes
-
-	for i, attr := range returningAttributes {
-		switch attr {
-		case object.AttributeTimestamp:
-			indexes.Timestamp = i
-		case object.AttributeFilePath:
-			indexes.FilePath = i
-		case object.AttributeFileName:
-			indexes.FileName = i
-		}
-	}
-
-	return returningAttributes, indexes
 }
