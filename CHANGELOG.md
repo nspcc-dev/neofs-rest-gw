@@ -5,9 +5,26 @@ This document outlines major changes between releases.
 ## [Unreleased]
 
 ### Added
+
+### Fixed
+
+### Changed
+
+### Removed
+
+### Updated
+
+### Upgrading from 0.17.0
+
+## [0.17.0] - 2026-03-30
+
+### Added
+- Container attribute management API (#360)
 - Session v2 token validation (#368)
 
 ### Fixed
+- Panic on invalid HTTP bearer token (#363)
+- Missing session token validation (#372)
 
 ### Changed
 - Go 1.25+ is required to build now (#322)
@@ -19,8 +36,16 @@ This document outlines major changes between releases.
 
 ### Updated
 - NeoFS SDK dependency to RC18 (#360, #369, #372, #373)
+- github.com/nspcc-dev/neo-go dependency from v0.116.0 to v0.118.0 (#365, #372)
+- go.uber.org/zap dependency from v1.27.0 to v1.27.1 (#365)
+- github.com/oapi-codegen/runtime dependency from v1.1.1 to v1.1.2 (#365)
+- github.com/labstack/echo/v4 dependency from v4.13.4 to v4.15.0 (#365)
+- github.com/getkin/kin-openapi dependency from v0.131.0 to v0.133.0 (#365)
+- google.golang.org/grpc dependency from 1.75.1 to 1.79.3 (#371)
 
 ### Upgrading from 0.16.0
+Drop `pool.container-ops-poll-interval` and `pool.container-ops-timeoutl`
+options.
 
 ## [0.16.0] - 2026-02-11
 
@@ -477,4 +502,5 @@ Please refer to [GitHub releases](https://github.com/nspcc-dev/neofs-rest-gw/rel
 [0.15.0]: https://github.com/nspcc-dev/neofs-rest-gw/compare/v0.14.2...v0.15.0
 [0.15.1]: https://github.com/nspcc-dev/neofs-rest-gw/compare/v0.15.0...v0.15.1
 [0.16.0]: https://github.com/nspcc-dev/neofs-rest-gw/compare/v0.15.1...v0.16.0
-[Unreleased]: https://github.com/nspcc-dev/neofs-rest-gw/compare/v0.16.0...master
+[0.17.0]: https://github.com/nspcc-dev/neofs-rest-gw/compare/v0.16.0...v0.17.0
+[Unreleased]: https://github.com/nspcc-dev/neofs-rest-gw/compare/v0.17.0...master
