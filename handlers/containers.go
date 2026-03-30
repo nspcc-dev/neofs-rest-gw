@@ -39,40 +39,6 @@ var (
 	errNeoFSRequestFailed = errors.New("neofs request failed")
 )
 
-// PutContainer handler that creates container in NeoFS.
-func (a *RestAPI) PutContainer(ctx echo.Context, params apiserver.PutContainerParams) error {
-	if a.apiMetric != nil {
-		defer metrics.Elapsed(a.apiMetric.PutContainerDuration)()
-	}
-
-	log := a.log.With(zap.String(handlerFieldName, "PutContainer"))
-
-	var body apiserver.ContainerPostInfo
-	if err := ctx.Bind(&body); err != nil {
-		return ctx.JSON(http.StatusBadRequest, a.logAndGetErrorResponse("bind", err, log))
-	}
-
-	sessionTokenV2, err := sessionTokensFromAuthHeader(ctx, sessionv2.VerbContainerPut, cid.ID{})
-	if err != nil {
-		resp := a.logAndGetErrorResponse("invalid auth", err, log)
-		return ctx.JSON(http.StatusBadRequest, resp)
-	}
-
-	// PutContainer will be removed in the next release. We may update old method to use new structures.
-	cnrID, err := createContainer(ctx.Request().Context(), a.pool, sessionTokenV2, body, params.NameScopeGlobal, a.signer, a.networkInfoGetter)
-	if err != nil {
-		resp := a.logAndGetErrorResponse("create container", err, log)
-		return ctx.JSON(getResponseCodeFromStatus(err), resp)
-	}
-
-	resp := apiserver.PostContainerOK{
-		ContainerId: cnrID.EncodeToString(),
-	}
-
-	ctx.Response().Header().Set(accessControlAllowOriginHeader, "*")
-	return ctx.JSON(http.StatusOK, resp)
-}
-
 // PostContainer handler that creates container in NeoFS.
 func (a *RestAPI) PostContainer(ctx echo.Context, params apiserver.PostContainerParams) error {
 	if a.apiMetric != nil {

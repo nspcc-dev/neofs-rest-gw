@@ -144,9 +144,6 @@ func runTests(ctx context.Context, t *testing.T, key *keys.PrivateKey, node stri
 	t.Run("rest auth session token v2", func(t *testing.T) { v2AuthSessionToken(ctx, t) })
 	t.Run("rest form full binary bearer", func(t *testing.T) { formFullBinaryBearer(ctx, t) })
 
-	t.Run("rest put container session v2", func(t *testing.T) {
-		restContainerPutSessionTokenV2(ctx, t, clientPool, sessionV2Signer)
-	})
 	t.Run("rest post container session v2", func(t *testing.T) {
 		restContainerPostSessionTokenV2(ctx, t, clientPool, sessionV2Signer)
 	})
@@ -159,10 +156,6 @@ func runTests(ctx context.Context, t *testing.T, key *keys.PrivateKey, node stri
 	t.Run("rest delete object", func(t *testing.T) { restObjectDelete(ctx, t, clientPool, &owner, cnrID, signer) })
 	t.Run("rest delete object session v2", func(t *testing.T) {
 		restObjectDeleteSessionV2(ctx, t, clientPool, &owner, cnrID, signer, sessionV2Signer)
-	})
-	t.Run("rest search objects", func(t *testing.T) { restObjectsSearch(ctx, t, clientPool, &owner, cnrID, signer) })
-	t.Run("rest search objects session v2", func(t *testing.T) {
-		restObjectsSearchSessionV2(ctx, t, clientPool, &owner, cnrID, signer, sessionV2Signer)
 	})
 	t.Run("rest search objects v2", func(t *testing.T) { restObjectsSearchV2(ctx, t, clientPool, &owner, cnrID, signer) })
 	t.Run("rest search objects v2 session v2", func(t *testing.T) {
@@ -521,178 +514,6 @@ func restObjectDeleteSessionV2(ctx context.Context, t *testing.T, p *pool.Pool, 
 
 	_, err = p.ObjectHead(ctx, cnrID, objID, signer, prm)
 	require.Error(t, err)
-}
-
-func restObjectsSearch(ctx context.Context, t *testing.T, p *pool.Pool, owner *user.ID, cnrID cid.ID, signer user.Signer) {
-	userKey, userValue := "User-Attribute", "user-attribute-value"
-	objectName := "object-name"
-	filePath := "path/to/object/object-name"
-	headers := map[string]string{
-		object.AttributeFileName: objectName,
-		object.AttributeFilePath: filePath,
-		userKey:                  userValue,
-	}
-	objID := createObject(ctx, t, p, owner, cnrID, headers, []byte("some content"), signer)
-	headers[userKey] = "dummy"
-	_ = createObject(ctx, t, p, owner, cnrID, headers, []byte("some content"), signer)
-
-	oth := apiserver.OTHERS
-
-	bearer := apiserver.Bearer{
-		Object: []apiserver.Record{
-			{
-				Operation: apiserver.SEARCH,
-				Action:    apiserver.ALLOW,
-				Filters:   []apiserver.Filter{},
-				Targets:   []apiserver.Target{{Role: &oth, Keys: []string{}}},
-			},
-			{
-				Operation: apiserver.HEAD,
-				Action:    apiserver.ALLOW,
-				Filters:   []apiserver.Filter{},
-				Targets:   []apiserver.Target{{Role: &oth, Keys: []string{}}},
-			},
-			{
-				Operation: apiserver.GET,
-				Action:    apiserver.ALLOW,
-				Filters:   []apiserver.Filter{},
-				Targets:   []apiserver.Target{{Role: &oth, Keys: []string{}}},
-			},
-		},
-	}
-	bearer.Object = append(bearer.Object, getRestrictBearerRecords()...)
-
-	httpClient := defaultHTTPClient()
-	bearerTokens := makeAuthTokenRequest(ctx, t, []apiserver.Bearer{bearer}, httpClient, false)
-	bearerToken := bearerTokens[0]
-
-	t.Run("with filter", func(t *testing.T) {
-		search := &apiserver.SearchFilters{
-			Filters: []apiserver.SearchFilter{
-				{
-					Key:   userKey,
-					Match: apiserver.MatchStringEqual,
-					Value: userValue,
-				},
-			},
-		}
-
-		body, err := json.Marshal(search)
-		require.NoError(t, err)
-
-		query := make(url.Values)
-		query.Add(walletConnectQuery, strconv.FormatBool(useWalletConnect))
-
-		request, err := http.NewRequest(http.MethodPost, testHost+"/v1/objects/"+cnrID.EncodeToString()+"/search?"+query.Encode(), bytes.NewReader(body))
-		require.NoError(t, err)
-		prepareCommonHeaders(request.Header, bearerToken)
-
-		resp := &apiserver.ObjectList{}
-		doRequest(t, httpClient, request, http.StatusOK, resp)
-
-		require.Equal(t, 1, resp.Size)
-		require.Len(t, resp.Objects, 1)
-
-		objBaseInfo := resp.Objects[0]
-		require.Equal(t, cnrID.EncodeToString(), objBaseInfo.Address.ContainerId)
-		require.Equal(t, objID.EncodeToString(), objBaseInfo.Address.ObjectId)
-		require.Equal(t, objectName, *objBaseInfo.Name)
-		require.Equal(t, filePath, *objBaseInfo.FilePath)
-	})
-
-	t.Run("no filters", func(t *testing.T) {
-		search := &apiserver.SearchFilters{}
-
-		body, err := json.Marshal(search)
-		require.NoError(t, err)
-
-		query := make(url.Values)
-		query.Add(walletConnectQuery, strconv.FormatBool(useWalletConnect))
-
-		request, err := http.NewRequest(http.MethodPost, testHost+"/v1/objects/"+cnrID.EncodeToString()+"/search?"+query.Encode(), bytes.NewReader(body))
-		require.NoError(t, err)
-		prepareCommonHeaders(request.Header, bearerToken)
-
-		resp := &apiserver.ObjectList{}
-		doRequest(t, httpClient, request, http.StatusOK, resp)
-
-		require.Greater(t, len(resp.Objects), 0)
-	})
-}
-
-func restObjectsSearchSessionV2(ctx context.Context, t *testing.T, p *pool.Pool, owner *user.ID, cnrID cid.ID, signer, signerForToken user.Signer) {
-	userKey, userValue := randomString(), randomString()
-	objectName := randomString()
-	filePath := "path/to/object/" + string(randomString())
-	headers := map[string]string{
-		object.AttributeFileName: objectName,
-		object.AttributeFilePath: filePath,
-		userKey:                  userValue,
-	}
-	objID := createObject(ctx, t, p, owner, cnrID, headers, []byte(randomString()), signer)
-	headers[userKey] = "dummy"
-	_ = createObject(ctx, t, p, owner, cnrID, headers, []byte(randomString()), signer)
-
-	var (
-		ownerID    = signer.UserID()
-		gateUserID = gateMetadataID(ctx, t)
-	)
-
-	tokenRequest := apiserver.SessionTokenV2Request{
-		Contexts: []apiserver.TokenContext{{ContainerID: cnrID.String(), Verbs: []apiserver.TokenVerb{"OBJECT_SEARCH"}}},
-		Issuer:   ownerID.String(),
-		Targets:  []string{gateUserID.String()},
-	}
-
-	httpClient := defaultHTTPClient()
-	signedToken := getSignedSessionToken(ctx, t, tokenRequest, httpClient, signerForToken)
-
-	t.Run("with filter", func(t *testing.T) {
-		search := &apiserver.SearchFilters{
-			Filters: []apiserver.SearchFilter{
-				{
-					Key:   userKey,
-					Match: apiserver.MatchStringEqual,
-					Value: userValue,
-				},
-			},
-		}
-
-		body, err := json.Marshal(search)
-		require.NoError(t, err)
-
-		request, err := http.NewRequest(http.MethodPost, testHost+"/v1/objects/"+cnrID.EncodeToString()+"/search", bytes.NewReader(body))
-		require.NoError(t, err)
-		prepareSessionV2Headers(request.Header, signedToken)
-
-		resp := &apiserver.ObjectList{}
-		doRequest(t, httpClient, request, http.StatusOK, resp)
-
-		require.Equal(t, 1, resp.Size)
-		require.Len(t, resp.Objects, 1)
-
-		objBaseInfo := resp.Objects[0]
-		require.Equal(t, cnrID.EncodeToString(), objBaseInfo.Address.ContainerId)
-		require.Equal(t, objID.EncodeToString(), objBaseInfo.Address.ObjectId)
-		require.Equal(t, objectName, *objBaseInfo.Name)
-		require.Equal(t, filePath, *objBaseInfo.FilePath)
-	})
-
-	t.Run("no filters", func(t *testing.T) {
-		search := &apiserver.SearchFilters{}
-
-		body, err := json.Marshal(search)
-		require.NoError(t, err)
-
-		request, err := http.NewRequest(http.MethodPost, testHost+"/v1/objects/"+cnrID.EncodeToString()+"/search", bytes.NewReader(body))
-		require.NoError(t, err)
-		prepareSessionV2Headers(request.Header, signedToken)
-
-		resp := &apiserver.ObjectList{}
-		doRequest(t, httpClient, request, http.StatusOK, resp)
-
-		require.Greater(t, len(resp.Objects), 0)
-	})
 }
 
 func restObjectsSearchV2(ctx context.Context, t *testing.T, p *pool.Pool, owner *user.ID, cnrID cid.ID, signer user.Signer) {
@@ -1144,7 +965,7 @@ func restObjectsSearchV2Filters(ctx context.Context, t *testing.T, p *pool.Pool,
 	query.Add(walletConnectQuery, strconv.FormatBool(useWalletConnect))
 
 	t.Run("search MatchStringEqual", func(t *testing.T) {
-		search := &apiserver.SearchFilters{
+		search := &apiserver.SearchRequest{
 			Filters: []apiserver.SearchFilter{
 				{
 					Key:   object.AttributeFileName,
@@ -1167,7 +988,7 @@ func restObjectsSearchV2Filters(ctx context.Context, t *testing.T, p *pool.Pool,
 	})
 
 	t.Run("search MatchNotPresent", func(t *testing.T) {
-		search := &apiserver.SearchFilters{
+		search := &apiserver.SearchRequest{
 			Filters: []apiserver.SearchFilter{
 				{
 					Key:   object.AttributeFileName,
@@ -1190,7 +1011,7 @@ func restObjectsSearchV2Filters(ctx context.Context, t *testing.T, p *pool.Pool,
 	})
 
 	t.Run("search MatchNotPresent", func(t *testing.T) {
-		search := &apiserver.SearchFilters{
+		search := &apiserver.SearchRequest{
 			Filters: []apiserver.SearchFilter{
 				{
 					Key:   object.AttributeFilePath,
@@ -1212,7 +1033,7 @@ func restObjectsSearchV2Filters(ctx context.Context, t *testing.T, p *pool.Pool,
 	})
 
 	t.Run("search MatchCommonPrefix", func(t *testing.T) {
-		search := &apiserver.SearchFilters{
+		search := &apiserver.SearchRequest{
 			Filters: []apiserver.SearchFilter{
 				{
 					Key:   object.AttributeFileName,
@@ -1235,7 +1056,7 @@ func restObjectsSearchV2Filters(ctx context.Context, t *testing.T, p *pool.Pool,
 	})
 
 	t.Run("search MatchNumGT", func(t *testing.T) {
-		search := &apiserver.SearchFilters{
+		search := &apiserver.SearchRequest{
 			Filters: []apiserver.SearchFilter{
 				{
 					Key:   customAttribute,
@@ -1258,7 +1079,7 @@ func restObjectsSearchV2Filters(ctx context.Context, t *testing.T, p *pool.Pool,
 	})
 
 	t.Run("search MatchNumGE", func(t *testing.T) {
-		search := &apiserver.SearchFilters{
+		search := &apiserver.SearchRequest{
 			Filters: []apiserver.SearchFilter{
 				{
 					Key:   customAttribute,
@@ -1281,7 +1102,7 @@ func restObjectsSearchV2Filters(ctx context.Context, t *testing.T, p *pool.Pool,
 	})
 
 	t.Run("search MatchNumLT", func(t *testing.T) {
-		search := &apiserver.SearchFilters{
+		search := &apiserver.SearchRequest{
 			Filters: []apiserver.SearchFilter{
 				{
 					Key:   customAttribute,
@@ -1304,7 +1125,7 @@ func restObjectsSearchV2Filters(ctx context.Context, t *testing.T, p *pool.Pool,
 	})
 
 	t.Run("search MatchNumLE", func(t *testing.T) {
-		search := &apiserver.SearchFilters{
+		search := &apiserver.SearchRequest{
 			Filters: []apiserver.SearchFilter{
 				{
 					Key:   customAttribute,
@@ -1327,7 +1148,7 @@ func restObjectsSearchV2Filters(ctx context.Context, t *testing.T, p *pool.Pool,
 	})
 
 	t.Run("search MatchNumLE invalid numeric filter", func(t *testing.T) {
-		search := &apiserver.SearchFilters{
+		search := &apiserver.SearchRequest{
 			Filters: []apiserver.SearchFilter{
 				{
 					Key:   customAttribute,
@@ -1349,7 +1170,7 @@ func restObjectsSearchV2Filters(ctx context.Context, t *testing.T, p *pool.Pool,
 	})
 
 	t.Run("search without filters", func(t *testing.T) {
-		var search apiserver.SearchFilters
+		var search apiserver.SearchRequest
 
 		body, err := json.Marshal(search)
 		require.NoError(t, err)
@@ -1900,79 +1721,6 @@ func signTokenWalletConnect(t *testing.T, key *keys.PrivateKey, data []byte) *ha
 		Token:     base64.StdEncoding.EncodeToString(data),
 		Signature: hex.EncodeToString(signature),
 		Key:       hex.EncodeToString(key.PublicKey().Bytes()),
-	}
-}
-
-func restContainerPutSessionTokenV2(ctx context.Context, t *testing.T, clientPool *pool.Pool, signer user.Signer) {
-	var (
-		ownerID    = signer.UserID()
-		gateUserID = gateMetadataID(ctx, t)
-	)
-
-	tokenRequest := apiserver.SessionTokenV2Request{
-		Contexts: []apiserver.TokenContext{{Verbs: []apiserver.TokenVerb{"CONTAINER_PUT"}}},
-		Issuer:   ownerID.String(),
-		Targets:  []string{gateUserID.String()},
-	}
-
-	httpClient := defaultHTTPClient()
-	signedToken := getSignedSessionToken(ctx, t, tokenRequest, httpClient, signer)
-
-	attrKey, attrValue := randomString(), randomString()
-	userAttributes := map[string]string{
-		attrKey: attrValue,
-	}
-
-	// try to create container without name but with name-scope-global
-	body, err := json.Marshal(&apiserver.ContainerPostInfo{})
-	require.NoError(t, err)
-
-	reqURL, err := url.Parse(testHost + "/v1/containers")
-	require.NoError(t, err)
-	query := reqURL.Query()
-	query.Add("name-scope-global", "true")
-	reqURL.RawQuery = query.Encode()
-
-	request, err := http.NewRequest(http.MethodPut, reqURL.String(), bytes.NewReader(body))
-	require.NoError(t, err)
-	prepareSessionV2Headers(request.Header, signedToken)
-
-	doRequest(t, httpClient, request, http.StatusInternalServerError, nil)
-
-	// create container with name in local scope
-	containerPutInfo := &apiserver.ContainerPostInfo{
-		Attributes: []apiserver.Attribute{{
-			Key:   attrKey,
-			Value: attrValue,
-		}},
-	}
-	body, err = json.Marshal(containerPutInfo)
-	require.NoError(t, err)
-
-	reqURL, err = url.Parse(testHost + "/v1/containers")
-	require.NoError(t, err)
-	query = reqURL.Query()
-	reqURL.RawQuery = query.Encode()
-
-	request, err = http.NewRequest(http.MethodPut, reqURL.String(), bytes.NewReader(body))
-	require.NoError(t, err)
-	prepareSessionV2Headers(request.Header, signedToken)
-
-	addr := &apiserver.PostContainerOK{}
-	doRequest(t, httpClient, request, http.StatusOK, addr)
-
-	var CID cid.ID
-	err = CID.DecodeString(addr.ContainerId)
-	require.NoError(t, err)
-	t.Logf("created container: %s", CID.String())
-
-	cnr, err := clientPool.ContainerGet(ctx, CID, client.PrmContainerGet{})
-	require.NoError(t, err)
-
-	cnrAttr := maps.Collect(cnr.Attributes())
-
-	for key, val := range userAttributes {
-		require.Equal(t, val, cnrAttr[key])
 	}
 }
 
