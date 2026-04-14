@@ -18,6 +18,7 @@ import (
 	"github.com/nspcc-dev/neofs-rest-gw/handlers"
 	"github.com/nspcc-dev/neofs-rest-gw/metrics"
 	"github.com/nspcc-dev/neofs-sdk-go/client"
+	"github.com/nspcc-dev/neofs-sdk-go/netmap"
 	"github.com/nspcc-dev/neofs-sdk-go/pool"
 	"github.com/nspcc-dev/neofs-sdk-go/user"
 	"github.com/spf13/pflag"
@@ -562,7 +563,8 @@ func newNeofsAPI(ctx context.Context, logger *zap.Logger, v *viper.Viper) (*hand
 	prm.SetClientRebalanceInterval(v.GetDuration(cfgRebalance))
 	prm.SetErrorThreshold(v.GetUint32(cfgPoolErrorThreshold))
 
-	for _, peer := range fetchPeers(logger, v) {
+	peers := fetchPeers(logger, v)
+	for _, peer := range peers {
 		prm.AddNode(peer)
 	}
 
@@ -581,9 +583,9 @@ func newNeofsAPI(ctx context.Context, logger *zap.Logger, v *viper.Viper) (*hand
 		return nil, err
 	}
 
-	ni, err := p.NetworkInfo(ctx, client.PrmNetworkInfo{})
+	ni, err := getNetworkInfo(ctx, logger, p, len(peers))
 	if err != nil {
-		return nil, fmt.Errorf("networkInfo: %w", err)
+		return nil, err
 	}
 
 	var apiPrm handlers.PrmAPI
@@ -613,6 +615,26 @@ func newNeofsAPI(ctx context.Context, logger *zap.Logger, v *viper.Viper) (*hand
 	apiPrm.DefaultTimestamp = v.GetBool(cfgPoolDefaultTimestamp)
 
 	return handlers.NewAPI(&apiPrm)
+}
+
+func getNetworkInfo(ctx context.Context, logger *zap.Logger, p *pool.Pool, peerCount int) (netmap.NetworkInfo, error) {
+	var retries = max(peerCount, 1)
+
+	for range retries {
+		ni, err := p.NetworkInfo(ctx, client.PrmNetworkInfo{})
+		if err == nil {
+			return ni, nil
+		}
+		logger.Warn("failed to get network info", zap.Error(err))
+
+		select {
+		case <-ctx.Done():
+			return ni, fmt.Errorf("networkInfo: interrupted: %w", err)
+		default:
+		}
+	}
+
+	return netmap.NetworkInfo{}, fmt.Errorf("get networkInfo failed after %d retries", retries)
 }
 
 func fetchPeers(l *zap.Logger, v *viper.Viper) []pool.NodeParam {
