@@ -20,7 +20,6 @@ import (
 	dockerContainer "github.com/docker/docker/api/types/container"
 	"github.com/labstack/echo/v4"
 	"github.com/nspcc-dev/neo-go/pkg/crypto/keys"
-	"github.com/nspcc-dev/neo-go/pkg/wallet"
 	"github.com/nspcc-dev/neofs-rest-gw/handlers"
 	"github.com/nspcc-dev/neofs-rest-gw/handlers/apiserver"
 	"github.com/nspcc-dev/neofs-rest-gw/internal/util"
@@ -3047,24 +3046,25 @@ func getObjectCreateTimestamp(ctx context.Context, t *testing.T, clientPool *poo
 }
 
 func v2AuthSessionToken(ctx context.Context, t *testing.T) {
-	key, err := keys.NewPrivateKeyFromHex(devenvPrivateKey)
+	originKey, err := keys.NewPrivateKeyFromHex(devenvPrivateKey)
 	require.NoError(t, err)
 
-	signer := user.NewAutoIDSigner(key.PrivateKey)
-	ownerID := signer.UserID()
+	originSigner := user.NewAutoIDSigner(originKey.PrivateKey)
+	ownerID := originSigner.UserID()
 
 	cnrIDStr := "9JCbLjeipa75ymzkcyDpocWyFjmsTuYjGw8aSdJKxUn7"
 	cnrID, err := cid.DecodeString(cnrIDStr)
 	require.NoError(t, err)
 
-	acc, err := wallet.NewAccount()
+	key, err := keys.NewPrivateKey()
 	require.NoError(t, err)
-	targetID := user.NewFromScriptHash(acc.ScriptHash())
+	signer := user.NewAutoIDSigner(key.PrivateKey)
+	targetID := user.NewFromScriptHash(signer.UserID().ScriptHash())
 
 	t.Run("ok", func(t *testing.T) {
 		var (
 			originToken session.Token
-			now         = time.Now()
+			now         = time.Now().Add(-10 * time.Second)
 		)
 
 		originToken.SetNbf(now)
@@ -3083,16 +3083,16 @@ func v2AuthSessionToken(ctx context.Context, t *testing.T) {
 		err = originToken.SetSubjects(targets)
 		require.NoError(t, err)
 
-		err = originToken.Sign(signer)
+		err = originToken.Sign(originSigner)
 		require.NoError(t, err)
 
-		exp := now.Add(48 * time.Hour).Truncate(time.Second)
+		exp := now.Add(24 * time.Hour).Truncate(time.Second)
 		expRfc := exp.Format(time.RFC3339)
 
 		request := apiserver.SessionTokenV2Request{
-			Contexts:          []apiserver.TokenContext{{Verbs: []apiserver.TokenVerb{"OBJECT_PUT"}}},
+			Contexts:          []apiserver.TokenContext{{ContainerID: cnrID.String(), Verbs: []apiserver.TokenVerb{"CONTAINER_PUT"}}},
 			ExpirationRfc3339: &expRfc,
-			Issuer:            ownerID.String(),
+			Issuer:            signer.UserID().String(),
 			Targets:           []string{targetID.String()},
 			Origin:            base64.StdEncoding.EncodeToString(originToken.Marshal()),
 		}

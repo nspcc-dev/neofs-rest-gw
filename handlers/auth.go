@@ -35,6 +35,10 @@ const (
 	sessionLockSize = 32
 )
 
+var (
+	fakeSignature = neofscrypto.NewSignatureFromRawKey(neofscrypto.ECDSA_SHA512, []byte{}, []byte{})
+)
+
 type headersParams struct {
 	XBearerLifetime    uint64
 	XBearerIssuerID    string
@@ -341,6 +345,12 @@ func (a *RestAPI) V2AuthSessionToken(ctx echo.Context) error {
 	var resp = apiserver.SessionTokenv2Response{
 		Token: base64.StdEncoding.EncodeToString(tokenV2.SignedData()),
 		Lock:  base64.StdEncoding.EncodeToString(lock),
+	}
+
+	// For validation purposes only.
+	tokenV2.AttachSignature(fakeSignature)
+	if err = tokenV2.Validate(&noopNNSResolver{}); err != nil {
+		return ctx.JSON(http.StatusBadRequest, a.logAndGetErrorResponse("session token v2 validation", err, log))
 	}
 
 	ctx.Response().Header().Set(accessControlAllowOriginHeader, "*")
