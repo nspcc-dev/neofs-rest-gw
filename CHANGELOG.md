@@ -16,6 +16,15 @@ This document outlines major changes between releases.
 
 ### Upgrading from 0.17.0
 
+## [0.17.1] - 2026-04-20
+
+### Fixed
+- Failure to start when initial network info request fails (#380)
+- Incorrect exit code on TERM (#379)
+
+### Changed
+- V2 session tokens are validated at the REST gateway level now in auth APIs, returning errors faster (#381)
+
 ## [0.17.0] - 2026-03-30
 
 ### Added
@@ -503,4 +512,5 @@ Please refer to [GitHub releases](https://github.com/nspcc-dev/neofs-rest-gw/rel
 [0.15.1]: https://github.com/nspcc-dev/neofs-rest-gw/compare/v0.15.0...v0.15.1
 [0.16.0]: https://github.com/nspcc-dev/neofs-rest-gw/compare/v0.15.1...v0.16.0
 [0.17.0]: https://github.com/nspcc-dev/neofs-rest-gw/compare/v0.16.0...v0.17.0
-[Unreleased]: https://github.com/nspcc-dev/neofs-rest-gw/compare/v0.17.0...master
+[0.17.1]: https://github.com/nspcc-dev/neofs-rest-gw/compare/v0.17.0...v0.17.1
+[Unreleased]: https://github.com/nspcc-dev/neofs-rest-gw/compare/v0.17.1...master
