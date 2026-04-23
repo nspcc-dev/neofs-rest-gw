@@ -392,7 +392,7 @@ func (a *RestAPI) getRange(ctx echo.Context, addr oid.Address, rangeParam string
 		return ctx.JSON(getResponseCodeFromStatus(err), util.NewErrorResponse(err))
 	}
 
-	payload := io.ReadCloser(resObj)
+	payload := readCloseWriterTo(resObj)
 
 	if len(contentType) == 0 {
 		if separateContentType {
@@ -429,8 +429,7 @@ func (a *RestAPI) getRange(ctx echo.Context, addr oid.Address, rangeParam string
 				zap.Int("payloadHead length", len(payloadHead)),
 				zap.Uint64("length", length),
 				zap.Uint64("start", start))
-			rangeReader := NewRangeReader(payload, payloadHead, length, start)
-			payload = readCloser{rangeReader, rangeReader}
+			payload = NewRangeReader(payload, payloadHead, length, start)
 		}
 	}
 
