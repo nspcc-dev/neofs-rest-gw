@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"bytes"
 	"cmp"
 	"context"
 	"crypto/elliptic"
@@ -47,9 +46,54 @@ const (
 	searchRequestMaxAttributes = 7
 )
 
-type readCloser struct {
+type readCloseWriterTo interface {
 	io.Reader
 	io.Closer
+	io.WriterTo
+}
+
+type prefixedReadCloser struct {
+	prefix []byte
+	reader readCloseWriterTo
+}
+
+func (r *prefixedReadCloser) Read(p []byte) (int, error) {
+	if len(r.prefix) > 0 {
+		n := copy(p, r.prefix)
+		r.prefix = r.prefix[n:]
+		if n == len(p) {
+			return n, nil
+		}
+
+		m, err := r.reader.Read(p[n:])
+		return n + m, err
+	}
+
+	return r.reader.Read(p)
+}
+
+func (r *prefixedReadCloser) Close() error {
+	return r.reader.Close()
+}
+
+func (r *prefixedReadCloser) WriteTo(w io.Writer) (int64, error) {
+	var written int64
+
+	if len(r.prefix) > 0 {
+		n, err := w.Write(r.prefix)
+		written += int64(n)
+		if err != nil {
+			return written, err
+		}
+		if n != len(r.prefix) {
+			return written, io.ErrShortWrite
+		}
+		r.prefix = nil
+	}
+
+	n, err := r.reader.WriteTo(w)
+	written += n
+	return written, err
 }
 
 type setAttributeParams struct {
@@ -256,7 +300,7 @@ func (a *RestAPI) getByAddress(ctx echo.Context, addr oid.Address, downloadParam
 		header:      header,
 	}
 	contentType := a.setAttributes(ctx, param, log)
-	payload := io.ReadCloser(payloadReader)
+	payload := readCloseWriterTo(payloadReader)
 
 	if len(contentType) == 0 {
 		if payloadSize > 0 {
@@ -272,13 +316,10 @@ func (a *RestAPI) getByAddress(ctx echo.Context, addr oid.Address, downloadParam
 			}
 
 			// reset payload reader since a part of the data has been read
-			var headReader io.Reader = bytes.NewReader(payloadHead)
-
-			if uint64(len(payloadHead)) != payloadSize { // otherwise, we've already read full payload
-				headReader = io.MultiReader(headReader, payload)
+			payload = &prefixedReadCloser{
+				prefix: payloadHead,
+				reader: payload,
 			}
-
-			payload = readCloser{headReader, payload}
 		} else {
 			contentType = http.DetectContentType(nil)
 		}

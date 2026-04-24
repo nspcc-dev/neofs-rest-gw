@@ -32,6 +32,7 @@ func (a *RestAPI) GetNetworkInfo(ctx echo.Context) error {
 	resp.NamedContainerFee = networkInfo.NamedContainerFee()
 	resp.ContainerFee = networkInfo.ContainerFee()
 	resp.EpochDuration = networkInfo.EpochDuration()
+	//nolint:staticcheck // removed after node 0.53.0
 	resp.HomomorphicHashingDisabled = networkInfo.HomomorphicHashingDisabled()
 	resp.MaxObjectSize = networkInfo.MaxObjectSize()
 	resp.WithdrawalFee = networkInfo.WithdrawalFee()

@@ -3,21 +3,22 @@ package handlers
 import (
 	"errors"
 	"io"
+	"math"
 )
 
-// RangeReader allows reading data from both []byte `payloadHead` and io.ReadCloser `payload`
+// RangeReader allows reading data from both []byte `payloadHead` and readCloserWriterTo `payload`
 // starting from position `start`, regardless of where the `start` is. Note that the first
 // part of `payload` was read into `payloadHead`.
-// RangeReader wraps an existing io.ReadCloser `payload` to provide a specific byte range.
+// RangeReader wraps an existing readCloserWriterTo `payload` to provide a specific byte range.
 type RangeReader struct {
-	payload     io.ReadCloser
+	payload     readCloseWriterTo
 	payloadHead []byte
 	totalLength uint64
 	start       uint64
 }
 
 // NewRangeReader creates a new RangeReader for a given byte range.
-func NewRangeReader(payload io.ReadCloser, payloadHead []byte, totalLength uint64, start uint64) *RangeReader {
+func NewRangeReader(payload readCloseWriterTo, payloadHead []byte, totalLength uint64, start uint64) *RangeReader {
 	return &RangeReader{
 		payload:     payload,
 		payloadHead: payloadHead,
@@ -63,6 +64,58 @@ func (r *RangeReader) Read(p []byte) (int, error) {
 		return int(n1) + n2, nil
 	}
 	return int(n1), nil
+}
+
+func (r *RangeReader) WriteTo(w io.Writer) (int64, error) {
+	headLen := uint64(len(r.payloadHead))
+	if r.start >= r.totalLength {
+		return 0, nil
+	}
+
+	var written int64
+	if r.start < headLen {
+		headEnd := min(headLen, r.totalLength)
+		n, err := w.Write(r.payloadHead[r.start:headEnd])
+		written += int64(n)
+		if err != nil {
+			return written, err
+		}
+		if n != int(headEnd-r.start) {
+			return written, io.ErrShortWrite
+		}
+		if headEnd == r.totalLength {
+			return written, nil
+		}
+	} else if skipLen := r.start - headLen; skipLen > 0 {
+		n, err := discard(r.payload, skipLen)
+		if err != nil {
+			return written, err
+		}
+		if n != skipLen {
+			return written, nil
+		}
+	}
+
+	n, err := r.payload.WriteTo(w)
+	written += n
+	return written, err
+}
+
+func discard(r io.Reader, n uint64) (uint64, error) {
+	var discarded uint64
+	for n > 0 {
+		chunk := min(n, uint64(math.MaxInt64))
+		nn, err := io.CopyN(io.Discard, r, int64(chunk))
+		discarded += uint64(nn)
+		n -= uint64(nn)
+		if err != nil {
+			if errors.Is(err, io.EOF) {
+				return discarded, nil
+			}
+			return discarded, err
+		}
+	}
+	return discarded, nil
 }
 
 // Close implements the io.Closer interface.
