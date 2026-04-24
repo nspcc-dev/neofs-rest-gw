@@ -512,7 +512,9 @@ func createContainer(ctx context.Context, p *pool.Pool, sessionTokenV2 *sessionv
 		return cid.ID{}, fmt.Errorf("couldn't get network info: %w", err)
 	}
 
+	//nolint:staticcheck // removed after node 0.53.0
 	if ni.HomomorphicHashingDisabled() {
+		//nolint:staticcheck // removed after node 0.53.0
 		cnr.DisableHomomorphicHashing()
 	}
 

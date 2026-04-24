@@ -1830,8 +1830,14 @@ func createContainer(ctx context.Context, t *testing.T, clientPool *pool.Pool, o
 	cnr.SetName(name)
 	cnr.SetCreationTime(time.Now())
 
-	err = client.SyncContainerWithNetwork(ctx, &cnr, clientPool)
+	networkInfo, err := clientPool.NetworkInfo(ctx, client.PrmNetworkInfo{})
 	require.NoError(t, err)
+
+	//nolint:staticcheck // removed after node 0.53.0
+	if networkInfo.HomomorphicHashingDisabled() {
+		//nolint:staticcheck // removed after node 0.53.0
+		cnr.DisableHomomorphicHashing()
+	}
 
 	var prm client.PrmContainerPut
 
@@ -1859,7 +1865,9 @@ func createObject(ctx context.Context, t *testing.T, p *pool.Pool, ownerID *user
 	require.NoError(t, err)
 
 	var opts slicer.Options
+	//nolint:staticcheck // removed after node 0.53.0
 	if !info.HomomorphicHashingDisabled() {
+		//nolint:staticcheck // removed after node 0.53.0
 		opts.CalculateHomomorphicChecksum()
 	}
 
