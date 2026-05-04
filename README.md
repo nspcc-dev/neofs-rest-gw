@@ -137,10 +137,6 @@ Also, when you run rest-gw, you will see a line similar to:
 ```
 You will find an auto-redirect to the specification page via this link.
 
-### Migrating from HTTP gateway
-
-See [docs/migration-from-http.md](./docs/migration-from-http.md).
-
 ### Migrating  Object search from V1 to V2
 
 See [docs/migration-to-search-v2](./docs/migration-to-search-v2.md).
