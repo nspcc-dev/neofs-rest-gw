@@ -23,7 +23,7 @@ on:
 permissions: write-all
 
 jobs:
-  run_system_tests:
+  run_linux_tests:
     uses: nspcc-dev/neofs-testcases/.github/workflows/system-tests.yml@master
     with:
       neofs_store_objects_cid: ${{ vars.TEST_RESULTS_CID }}
@@ -35,5 +35,21 @@ jobs:
       neofs_rest_gw_commit: ${{ github.event.inputs.neofs_rest_gw_ref }}
       tests_path: 'pytest_tests/tests/services/rest_gate'
       tests_parallel_level: 1
-      os: '[{runner: "ubuntu-latest", binary: "linux-amd64"}, {runner: "macos-latest", binary: "darwin-arm64"}]'
+      os: '[{runner: "ubuntu-latest", binary: "linux-amd64"}]'
+    secrets: inherit
+
+  run_macos_tests:
+    uses: nspcc-dev/neofs-testcases/.github/workflows/system-tests.yml@master
+    if: ${{ github.event_name != 'pull_request' }}
+    with:
+      neofs_store_objects_cid: ${{ vars.TEST_RESULTS_CID }}
+      neofs_pr_expiration_period: ${{ vars.PR_EXPIRATION_PERIOD }}
+      neofs_master_expiration_period: ${{ vars.MASTER_EXPIRATION_PERIOD }}
+      neofs_manual_expiration_period: ${{ vars.MANUAL_RUN_EXPIRATION_PERIOD }}
+      neofs_other_expiration_period: ${{ vars.OTHER_EXPIRATION_PERIOD }}
+      neofs_testcases_commit: 'master'
+      neofs_rest_gw_commit: ${{ github.event.inputs.neofs_rest_gw_ref }}
+      tests_path: 'pytest_tests/tests/services/rest_gate'
+      tests_parallel_level: 1
+      os: '[{runner: "macos-latest", binary: "darwin-arm64"}]'
     secrets: inherit
