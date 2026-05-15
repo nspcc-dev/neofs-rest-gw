@@ -2151,6 +2151,10 @@ components:
       properties:
         value:
           type: string
+    ObjectType:
+      type: string
+      description: The type of the NeoFS object (e.g. REGULAR, TOMBSTONE, LOCK, LINK).
+      enum: [ REGULAR, TOMBSTONE, LOCK, LINK ]
   responses:
     NewObjectContentOK:
       description: Object.
@@ -2180,9 +2184,7 @@ components:
             type: string
         X-Object-Type:
           schema:
-            type: string
-            enum: [ REGULAR, TOMBSTONE, LOCK, LINK ]
-          description: The type of the NeoFS object (e.g. REGULAR, TOMBSTONE, LOCK, LINK).
+            $ref: '#/components/schemas/ObjectType'
         Content-Length:
           schema:
             type: string
@@ -2225,9 +2227,7 @@ components:
             type: string
         X-Object-Type:
           schema:
-            type: string
-            enum: [ REGULAR, TOMBSTONE, LOCK, LINK ]
-          description: The type of the NeoFS object (e.g. REGULAR, TOMBSTONE, LOCK, LINK).
+            $ref: '#/components/schemas/ObjectType'
         Content-Length:
           schema:
             type: string
@@ -2274,9 +2274,7 @@ components:
             type: string
         X-Object-Type:
           schema:
-            type: string
-            enum: [ REGULAR, TOMBSTONE, LOCK, LINK ]
-          description: The type of the NeoFS object (e.g. REGULAR, TOMBSTONE, LOCK, LINK).
+            $ref: '#/components/schemas/ObjectType'
         Content-Length:
           schema:
             type: string
