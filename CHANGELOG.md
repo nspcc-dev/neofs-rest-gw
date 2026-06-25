@@ -14,6 +14,7 @@ This document outlines major changes between releases.
 ### Removed
 
 ### Updated
+- github.com/nspcc-dev/neofs-sdk-go dependency to `v1.0.0-rc.19` (#391)
 
 ### Upgrading from 0.17.0
 
