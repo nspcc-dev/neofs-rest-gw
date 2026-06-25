@@ -2076,7 +2076,7 @@ func restNewObjectHead(ctx context.Context, t *testing.T, p *pool.Pool, ownerID 
 	bearer := apiserver.Bearer{
 		Object: []apiserver.Record{
 			formAllowRecord(apiserver.HEAD),
-			formAllowRecord(apiserver.RANGE),
+			formAllowRecord(apiserver.GET),
 		},
 	}
 	bearer.Object = append(bearer.Object, getRestrictBearerRecords()...)
@@ -2234,7 +2234,7 @@ func restNewObjectHeadSessionV2(ctx context.Context, t *testing.T, p *pool.Pool,
 	)
 
 	tokenRequest := apiserver.SessionTokenV2Request{
-		Contexts: []apiserver.TokenContext{{ContainerID: cnrID.String(), Verbs: []apiserver.TokenVerb{"OBJECT_HEAD", "OBJECT_SEARCH", "OBJECT_RANGE"}}},
+		Contexts: []apiserver.TokenContext{{ContainerID: cnrID.String(), Verbs: []apiserver.TokenVerb{"OBJECT_HEAD", "OBJECT_SEARCH", "OBJECT_GET"}}},
 		Issuer:   ownerID.String(),
 		Targets:  []string{gateUserID.String()},
 	}
@@ -2449,7 +2449,7 @@ func restNewObjectHeadByAttribute(ctx context.Context, t *testing.T, p *pool.Poo
 	bearer := apiserver.Bearer{
 		Object: []apiserver.Record{
 			formAllowRecord(apiserver.HEAD),
-			formAllowRecord(apiserver.RANGE),
+			formAllowRecord(apiserver.GET),
 			formAllowRecord(apiserver.SEARCH),
 		},
 	}
@@ -2606,7 +2606,7 @@ func restNewObjectHeadByAttributeSessionV2(ctx context.Context, t *testing.T, p 
 	)
 
 	tokenRequest := apiserver.SessionTokenV2Request{
-		Contexts: []apiserver.TokenContext{{ContainerID: cnrID.String(), Verbs: []apiserver.TokenVerb{"OBJECT_HEAD", "OBJECT_SEARCH", "OBJECT_RANGE"}}},
+		Contexts: []apiserver.TokenContext{{ContainerID: cnrID.String(), Verbs: []apiserver.TokenVerb{"OBJECT_HEAD", "OBJECT_SEARCH", "OBJECT_GET"}}},
 		Issuer:   ownerID.String(),
 		Targets:  []string{gateUserID.String()},
 	}
@@ -2736,7 +2736,6 @@ func restNewObjectGetByAttribute(ctx context.Context, t *testing.T, p *pool.Pool
 			formAllowRecord(apiserver.GET),
 			formAllowRecord(apiserver.SEARCH),
 			formAllowRecord(apiserver.HEAD),
-			formAllowRecord(apiserver.RANGE),
 		},
 	}
 	bearer.Object = append(bearer.Object, getRestrictBearerRecords()...)
@@ -2853,7 +2852,7 @@ func restNewObjectGetByAttributeSessionV2(ctx context.Context, t *testing.T, p *
 	)
 
 	tokenRequest := apiserver.SessionTokenV2Request{
-		Contexts: []apiserver.TokenContext{{ContainerID: cnrID.String(), Verbs: []apiserver.TokenVerb{"OBJECT_GET", "OBJECT_HEAD", "OBJECT_SEARCH", "OBJECT_RANGE"}}},
+		Contexts: []apiserver.TokenContext{{ContainerID: cnrID.String(), Verbs: []apiserver.TokenVerb{"OBJECT_GET", "OBJECT_HEAD", "OBJECT_SEARCH"}}},
 		Issuer:   ownerID.String(),
 		Targets:  []string{gateUserID.String()},
 	}

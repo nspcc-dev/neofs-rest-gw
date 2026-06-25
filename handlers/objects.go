@@ -365,17 +365,19 @@ func (a *RestAPI) headByAddress(ctx echo.Context, addr oid.Address, downloadPara
 	if len(contentType) == 0 {
 		if payloadSize > 0 {
 			contentType, _, err = readContentType(payloadSize, func(sz uint64) (io.Reader, error) {
-				var prmRange client.PrmObjectRange
-				attachBearer(&prmRange, btoken)
+				var prmGet client.PrmObjectGet
+				attachBearer(&prmGet, btoken)
 				if sessionToken != nil {
-					prmRange.WithinSessionV2(*sessionToken)
+					prmGet.WithinSessionV2(*sessionToken)
 				}
+				prmGet.SetRange(0, sz)
+				prmGet.MarkPayloadOnly()
 
-				resObj, err := a.pool.ObjectRangeInit(ctx.Request().Context(), addr.Container(), addr.Object(), 0, sz, a.signer, prmRange)
+				_, reader, err := a.pool.ObjectGetInit(ctx.Request().Context(), addr.Container(), addr.Object(), a.signer, prmGet)
 				if err != nil {
 					return nil, err
 				}
-				return resObj, nil
+				return reader, nil
 			})
 			if err != nil {
 				resp := a.logAndGetErrorResponse("invalid  ContentType", err, log)
