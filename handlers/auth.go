@@ -371,8 +371,6 @@ func sessionVerbV2(verb apiserver.TokenVerb) (session.Verb, error) {
 		return session.VerbObjectDelete, nil
 	case "OBJECT_RANGE":
 		return session.VerbObjectRange, nil
-	case "OBJECT_RANGE_HASH":
-		return session.VerbObjectRangeHash, nil
 	case "CONTAINER_PUT":
 		return session.VerbContainerPut, nil
 	case "CONTAINER_DELETE":

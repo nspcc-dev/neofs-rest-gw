@@ -12,6 +12,7 @@ This document outlines major changes between releases.
 ### Changed
 
 ### Removed
+* RANGEHASH support (#391)
 
 ### Updated
 - github.com/nspcc-dev/neofs-sdk-go dependency to `v1.0.0-rc.19` (#391)
