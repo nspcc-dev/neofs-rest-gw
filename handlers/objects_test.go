@@ -4,12 +4,17 @@ import (
 	"bytes"
 	"encoding/base64"
 	"encoding/hex"
+	"net/http"
+	"net/http/httptest"
 	"testing"
 
+	"github.com/labstack/echo/v4"
 	bearertest "github.com/nspcc-dev/neofs-sdk-go/bearer/test"
 	neofscrypto "github.com/nspcc-dev/neofs-sdk-go/crypto"
+	"github.com/nspcc-dev/neofs-sdk-go/object"
 	usertest "github.com/nspcc-dev/neofs-sdk-go/user/test"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/zap"
 )
 
 func TestPrepareBearerToken(t *testing.T) {
@@ -166,4 +171,39 @@ func TestPrepareBearerToken(t *testing.T) {
 		}, true, false)
 		require.ErrorContains(t, err, "invalid signature")
 	})
+}
+
+func TestSetAttributes_ObjectTypeHeader(t *testing.T) {
+	e := echo.New()
+	log := zap.NewNop()
+	api := &RestAPI{log: log}
+
+	for _, tc := range []struct {
+		name     string
+		objType  object.Type
+		expected string
+	}{
+		{name: "regular", objType: object.TypeRegular, expected: "REGULAR"},
+		{name: "tombstone", objType: object.TypeTombstone, expected: "TOMBSTONE"},
+		{name: "lock", objType: object.TypeLock, expected: "LOCK"},
+		{name: "link", objType: object.TypeLink, expected: "LINK"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodGet, "/", nil)
+			rec := httptest.NewRecorder()
+			ctx := e.NewContext(req, rec)
+
+			var hdr object.Object
+			hdr.SetType(tc.objType)
+
+			params := setAttributeParams{
+				cid:    "testCID",
+				oid:    "testOID",
+				header: hdr,
+			}
+			api.setAttributes(ctx, params, log)
+
+			require.Equal(t, tc.expected, rec.Header().Get(objectTypeHeader))
+		})
+	}
 }

@@ -39,6 +39,7 @@ const (
 	sizeToDetectType          = 512
 	userAttributeHeaderPrefix = "X-Attribute-"
 	userAttributesHeader      = "X-Attributes"
+	objectTypeHeader          = "X-Object-Type"
 
 	attributeFilepathHTTP = "Filepath"
 	attributeFilenameHTTP = "Filename"
@@ -403,6 +404,7 @@ func (a *RestAPI) setAttributes(ctx echo.Context, params setAttributeParams, log
 	ctx.Response().Header().Set("X-Container-Id", params.cid)
 	ctx.Response().Header().Set("X-Object-Id", params.oid)
 	ctx.Response().Header().Set("X-Owner-Id", params.header.Owner().EncodeToString())
+	ctx.Response().Header().Set(objectTypeHeader, params.header.Type().String())
 
 	var (
 		contentType string
