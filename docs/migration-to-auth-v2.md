@@ -48,7 +48,10 @@ created elsewhere).
    via "signature" field (base64) and there are two more things required:
    public key (or verification script for N3 scheme) in "key" field and
    signature scheme used in "scheme" field. Most users with external wallets
-   will use "WALLETCONNECT" here.
+   will use "WALLETCONNECT" here. If the token was formed with an origin token
+   (delegation chain) via the "origin" field of /v2/auth/session, pass the same
+   base64-encoded origin token via the "origin" field here as well, so it is
+   preserved in the resulting token (origin is not part of the signed data).
 6. The reply contains a single "token" element that represents ready to use
    REST gateway token. Pass this token via Bearer HTTP Authentication for
    requests that need it.
