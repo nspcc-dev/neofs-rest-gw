@@ -2086,6 +2086,10 @@ components:
         lock:
           type: string
           description: Session token lock data. It prevents unauthorized usage of session token.
+        origin:
+          description: If passed, sets the origin token for delegation chain. Base64 encoded.
+          type: string
+          x-go-type-skip-optional-pointer: true
     TokenContext:
       type: object
       properties:

@@ -5,6 +5,7 @@ This document outlines major changes between releases.
 ## [Unreleased]
 
 ### Added
+- Origin token support in /v2/auth/session/complete (#382)
 
 ### Fixed
 

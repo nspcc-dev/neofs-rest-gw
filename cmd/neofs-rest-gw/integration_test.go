@@ -3121,6 +3121,7 @@ func v2AuthSessionToken(ctx context.Context, t *testing.T) {
 				Token:     response.Token,
 				Scheme:    apiserver.SHA512,
 				Lock:      response.Lock,
+				Origin:    base64.StdEncoding.EncodeToString(originToken.Marshal()),
 			}
 
 			sessionTokenResponse := completeV2AuthSessionTokenRequest(ctx, t, req, httpClient, http.StatusOK, "")
@@ -3128,6 +3129,10 @@ func v2AuthSessionToken(ctx context.Context, t *testing.T) {
 
 			require.Equal(t, exp, sessionToken.Exp())
 			require.True(t, sessionToken.VerifySignature())
+
+			gotOrigin := sessionToken.Origin()
+			require.NotNil(t, gotOrigin)
+			require.Equal(t, originToken.Marshal(), gotOrigin.Marshal())
 		})
 	})
 

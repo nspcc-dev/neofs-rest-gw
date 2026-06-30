@@ -474,6 +474,15 @@ func (a *RestAPI) V2CompleteAuthSessionToken(ctx echo.Context) error {
 		}
 	}
 
+	if apiParams.Origin != "" {
+		originToken, err := getOriginalSessionTokenV2(apiParams.Origin)
+		if err != nil {
+			return ctx.JSON(http.StatusBadRequest, a.logAndGetErrorResponse("invalid origin token", err, log))
+		}
+
+		sessionToken.SetOrigin(originToken)
+	}
+
 	if err = sessionToken.Validate(&noopNNSResolver{}); err != nil {
 		return ctx.JSON(http.StatusBadRequest, a.logAndGetErrorResponse("session token v2 validation", err, log))
 	}
