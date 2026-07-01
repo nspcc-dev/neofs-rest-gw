@@ -60,8 +60,6 @@ func ToNativeOperation(o apiserver.Operation) (eacl.Operation, error) {
 		return eacl.OperationSearch, nil
 	case apiserver.RANGE:
 		return eacl.OperationRange, nil
-	case apiserver.RANGEHASH:
-		return eacl.OperationRangeHash, nil
 	default:
 		return 0, fmt.Errorf("unsupported operation type: '%s'", o)
 	}
@@ -82,8 +80,6 @@ func FromNativeOperation(o eacl.Operation) (apiserver.Operation, error) {
 		return apiserver.SEARCH, nil
 	case eacl.OperationRange:
 		return apiserver.RANGE, nil
-	case eacl.OperationRangeHash:
-		return apiserver.RANGEHASH, nil
 	default:
 		return "", fmt.Errorf("unsupported operation type: '%s'", o)
 	}

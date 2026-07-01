@@ -1472,7 +1472,6 @@ components:
         - DELETE
         - SEARCH
         - RANGE
-        - RANGEHASH
     Filter:
       required:
         - headerType
@@ -2113,7 +2112,6 @@ components:
         - OBJECT_SEARCH
         - OBJECT_DELETE
         - OBJECT_RANGE
-        - OBJECT_RANGE_HASH
         - CONTAINER_PUT
         - CONTAINER_DELETE
         - CONTAINER_SET_EACL

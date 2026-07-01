@@ -373,21 +373,23 @@ func (a *RestAPI) getRange(ctx echo.Context, addr oid.Address, rangeParam string
 		}
 	}
 	length := end - offset + 1
-	log.Debug("Params for ObjectRangeInit",
+	log.Debug("Params for ObjectGetInit with range",
 		zap.Bool("separateContentType", separateContentType),
 		zap.Uint64("offset", offset),
 		zap.Uint64("length", length))
 
 	// Get object range.
-	var prmRange client.PrmObjectRange
+	var prmRange client.PrmObjectGet
 	if btoken != nil {
 		attachBearer(&prmRange, btoken)
 	}
 	if sessionToken != nil {
 		prmRange.WithinSessionV2(*sessionToken)
 	}
+	prmRange.SetRange(offset, length)
+	prmRange.MarkPayloadOnly()
 
-	resObj, err := a.pool.ObjectRangeInit(ctx.Request().Context(), addr.Container(), addr.Object(), offset, length, a.signer, prmRange)
+	_, resObj, err := a.pool.ObjectGetInit(ctx.Request().Context(), addr.Container(), addr.Object(), a.signer, prmRange)
 	if err != nil {
 		return ctx.JSON(getResponseCodeFromStatus(err), util.NewErrorResponse(err))
 	}
@@ -397,7 +399,17 @@ func (a *RestAPI) getRange(ctx echo.Context, addr oid.Address, rangeParam string
 	if len(contentType) == 0 {
 		if separateContentType {
 			readerInit := func(sz uint64) (io.Reader, error) {
-				beginObj, err := a.pool.ObjectRangeInit(ctx.Request().Context(), addr.Container(), addr.Object(), 0, sz, a.signer, prmRange)
+				var prmBegin client.PrmObjectGet
+				if btoken != nil {
+					attachBearer(&prmBegin, btoken)
+				}
+				if sessionToken != nil {
+					prmBegin.WithinSessionV2(*sessionToken)
+				}
+				prmBegin.SetRange(0, sz)
+				prmBegin.MarkPayloadOnly()
+
+				_, beginObj, err := a.pool.ObjectGetInit(ctx.Request().Context(), addr.Container(), addr.Object(), a.signer, prmBegin)
 				if err != nil {
 					return nil, err
 				}

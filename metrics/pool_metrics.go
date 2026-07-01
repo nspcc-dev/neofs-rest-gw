@@ -19,7 +19,6 @@ type (
 		ContainerList              prometheus.Histogram
 		NetworkInfo                prometheus.Histogram
 		ObjectHead                 prometheus.Histogram
-		ObjectRangeInit            prometheus.Histogram
 		ObjectDelete               prometheus.Histogram
 		ObjectGetInit              prometheus.Histogram
 		SearchObjects              prometheus.Histogram
@@ -32,7 +31,6 @@ type (
 		AnnounceIntermediateTrust  prometheus.Histogram
 		AnnounceLocalTrust         prometheus.Histogram
 		ObjectGetStream            prometheus.Histogram
-		ObjectRangeStream          prometheus.Histogram
 		ObjectSearchStream         prometheus.Histogram
 		ObjectPutStream            prometheus.Histogram
 		ObjectSearchV2             prometheus.Histogram
@@ -97,13 +95,6 @@ func NewPoolMetrics() *PoolMetrics {
 			Name:      "object_head",
 			Help:      "Object head request handling time",
 		}),
-		ObjectRangeInit: prometheus.NewHistogram(prometheus.HistogramOpts{
-			Namespace: namespace,
-			Subsystem: poolSubsystem,
-			Name:      "object_range_init",
-			Help:      "Object range init request handling time",
-		}),
-
 		ObjectDelete: prometheus.NewHistogram(prometheus.HistogramOpts{
 			Namespace: namespace,
 			Subsystem: poolSubsystem,
@@ -176,12 +167,6 @@ func NewPoolMetrics() *PoolMetrics {
 			Name:      "object_get_stream",
 			Help:      "Object get stream request handling time",
 		}),
-		ObjectRangeStream: prometheus.NewHistogram(prometheus.HistogramOpts{
-			Namespace: namespace,
-			Subsystem: poolSubsystem,
-			Name:      "object_range_stream",
-			Help:      "Object range stream request handling time",
-		}),
 		ObjectSearchStream: prometheus.NewHistogram(prometheus.HistogramOpts{
 			Namespace: namespace,
 			Subsystem: poolSubsystem,
@@ -223,7 +208,6 @@ func (m PoolMetrics) register() {
 	prometheus.MustRegister(m.ContainerList)
 	prometheus.MustRegister(m.NetworkInfo)
 	prometheus.MustRegister(m.ObjectHead)
-	prometheus.MustRegister(m.ObjectRangeInit)
 	prometheus.MustRegister(m.ObjectDelete)
 	prometheus.MustRegister(m.ObjectGetInit)
 	prometheus.MustRegister(m.SearchObjects)
@@ -236,7 +220,6 @@ func (m PoolMetrics) register() {
 	prometheus.MustRegister(m.AnnounceIntermediateTrust)
 	prometheus.MustRegister(m.AnnounceLocalTrust)
 	prometheus.MustRegister(m.ObjectGetStream)
-	prometheus.MustRegister(m.ObjectRangeStream)
 	prometheus.MustRegister(m.ObjectSearchStream)
 	prometheus.MustRegister(m.ObjectPutStream)
 	prometheus.MustRegister(m.ObjectSearchV2)
@@ -275,8 +258,6 @@ func (m *PoolMetrics) OperationCallback(nodeKey []byte, endpoint string, method 
 		m.ObjectGetInit.Observe(duration.Seconds())
 	case stat.MethodObjectHead:
 		m.ObjectHead.Observe(duration.Seconds())
-	case stat.MethodObjectRange:
-		m.ObjectRangeInit.Observe(duration.Seconds())
 	case stat.MethodSessionCreate:
 		m.SessionCreate.Observe(duration.Seconds())
 	case stat.MethodNetMapSnapshot:
@@ -293,8 +274,6 @@ func (m *PoolMetrics) OperationCallback(nodeKey []byte, endpoint string, method 
 		m.AnnounceLocalTrust.Observe(duration.Seconds())
 	case stat.MethodObjectGetStream:
 		m.ObjectGetStream.Observe(duration.Seconds())
-	case stat.MethodObjectRangeStream:
-		m.ObjectRangeStream.Observe(duration.Seconds())
 	case stat.MethodObjectSearchStream:
 		m.ObjectSearchStream.Observe(duration.Seconds())
 	case stat.MethodObjectPutStream:

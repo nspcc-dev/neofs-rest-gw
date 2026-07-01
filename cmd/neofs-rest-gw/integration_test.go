@@ -289,7 +289,6 @@ func getRestrictBearerRecords() []apiserver.Record {
 		formRestrictRecord(apiserver.DELETE),
 		formRestrictRecord(apiserver.SEARCH),
 		formRestrictRecord(apiserver.RANGE),
-		formRestrictRecord(apiserver.RANGEHASH),
 	}
 }
 
@@ -1879,7 +1878,7 @@ func createObject(ctx context.Context, t *testing.T, p *pool.Pool, ownerID *user
 
 func restrictByEACL(ctx context.Context, t *testing.T, clientPool *pool.Pool, cnrID cid.ID, signer user.Signer) *eacl.Table {
 	var records []eacl.Record
-	for op := eacl.OperationGet; op <= eacl.OperationRangeHash; op++ {
+	for op := eacl.OperationGet; op <= eacl.OperationRange; op++ {
 		record := eacl.ConstructRecord(eacl.ActionDeny, op, []eacl.Target{eacl.NewTargetByRole(eacl.RoleOthers)})
 		records = append(records, record)
 	}
@@ -2076,7 +2075,7 @@ func restNewObjectHead(ctx context.Context, t *testing.T, p *pool.Pool, ownerID 
 	bearer := apiserver.Bearer{
 		Object: []apiserver.Record{
 			formAllowRecord(apiserver.HEAD),
-			formAllowRecord(apiserver.RANGE),
+			formAllowRecord(apiserver.GET),
 		},
 	}
 	bearer.Object = append(bearer.Object, getRestrictBearerRecords()...)
@@ -2234,7 +2233,7 @@ func restNewObjectHeadSessionV2(ctx context.Context, t *testing.T, p *pool.Pool,
 	)
 
 	tokenRequest := apiserver.SessionTokenV2Request{
-		Contexts: []apiserver.TokenContext{{ContainerID: cnrID.String(), Verbs: []apiserver.TokenVerb{"OBJECT_HEAD", "OBJECT_SEARCH", "OBJECT_RANGE"}}},
+		Contexts: []apiserver.TokenContext{{ContainerID: cnrID.String(), Verbs: []apiserver.TokenVerb{"OBJECT_HEAD", "OBJECT_SEARCH", "OBJECT_GET"}}},
 		Issuer:   ownerID.String(),
 		Targets:  []string{gateUserID.String()},
 	}
@@ -2449,7 +2448,7 @@ func restNewObjectHeadByAttribute(ctx context.Context, t *testing.T, p *pool.Poo
 	bearer := apiserver.Bearer{
 		Object: []apiserver.Record{
 			formAllowRecord(apiserver.HEAD),
-			formAllowRecord(apiserver.RANGE),
+			formAllowRecord(apiserver.GET),
 			formAllowRecord(apiserver.SEARCH),
 		},
 	}
@@ -2606,7 +2605,7 @@ func restNewObjectHeadByAttributeSessionV2(ctx context.Context, t *testing.T, p 
 	)
 
 	tokenRequest := apiserver.SessionTokenV2Request{
-		Contexts: []apiserver.TokenContext{{ContainerID: cnrID.String(), Verbs: []apiserver.TokenVerb{"OBJECT_HEAD", "OBJECT_SEARCH", "OBJECT_RANGE"}}},
+		Contexts: []apiserver.TokenContext{{ContainerID: cnrID.String(), Verbs: []apiserver.TokenVerb{"OBJECT_HEAD", "OBJECT_SEARCH", "OBJECT_GET"}}},
 		Issuer:   ownerID.String(),
 		Targets:  []string{gateUserID.String()},
 	}
@@ -2736,7 +2735,6 @@ func restNewObjectGetByAttribute(ctx context.Context, t *testing.T, p *pool.Pool
 			formAllowRecord(apiserver.GET),
 			formAllowRecord(apiserver.SEARCH),
 			formAllowRecord(apiserver.HEAD),
-			formAllowRecord(apiserver.RANGE),
 		},
 	}
 	bearer.Object = append(bearer.Object, getRestrictBearerRecords()...)
@@ -2853,7 +2851,7 @@ func restNewObjectGetByAttributeSessionV2(ctx context.Context, t *testing.T, p *
 	)
 
 	tokenRequest := apiserver.SessionTokenV2Request{
-		Contexts: []apiserver.TokenContext{{ContainerID: cnrID.String(), Verbs: []apiserver.TokenVerb{"OBJECT_GET", "OBJECT_HEAD", "OBJECT_SEARCH", "OBJECT_RANGE"}}},
+		Contexts: []apiserver.TokenContext{{ContainerID: cnrID.String(), Verbs: []apiserver.TokenVerb{"OBJECT_GET", "OBJECT_HEAD", "OBJECT_SEARCH"}}},
 		Issuer:   ownerID.String(),
 		Targets:  []string{gateUserID.String()},
 	}
@@ -3404,21 +3402,6 @@ func v2AuthBearer2(ctx context.Context, t *testing.T, issuer user.ID, objID oid.
 			Records: []apiserver.Record{
 				{
 					Operation: apiserver.GET,
-					Action:    apiserver.ALLOW,
-					Filters: []apiserver.Filter{
-						{
-							HeaderType: "OBJECT",
-							Key:        "$Object:objectID",
-							MatchType:  "STRING_EQUAL",
-							Value:      objID.String(),
-						},
-					},
-					Targets: []apiserver.Target{{
-						Accounts: []string{ownerIDstr},
-					}},
-				},
-				{
-					Operation: apiserver.RANGE,
 					Action:    apiserver.ALLOW,
 					Filters: []apiserver.Filter{
 						{
