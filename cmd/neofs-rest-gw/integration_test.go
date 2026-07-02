@@ -230,7 +230,7 @@ func runServer(ctx context.Context, t *testing.T, node string) context.CancelFun
 	neofsAPI, err := newNeofsAPI(cancelCtx, l, v)
 	require.NoError(t, err)
 
-	swagger, err := apiserver.GetSwagger()
+	swagger, err := apiserver.GetSpec()
 	require.NoError(t, err)
 
 	e := echo.New()
