@@ -520,10 +520,16 @@ func restObjectsSearchV2(ctx context.Context, t *testing.T, p *pool.Pool, owner 
 		objectName         = strconv.FormatInt(time.Now().UnixNano(), 16)
 		filePath           = "path/to/object/" + objectName
 
+		// Cyrillic attribute key and value to ensure non-ASCII attributes are stored,
+		// searchable and returned correctly.
+		cyrillicKey   = "Кириллица"
+		cyrillicValue = "Значение-" + strconv.FormatInt(time.Now().UnixNano(), 16)
+
 		headers = map[string]string{
 			object.AttributeFileName: objectName,
 			object.AttributeFilePath: filePath,
 			userKey:                  userValue,
+			cyrillicKey:              cyrillicValue,
 			xNonce:                   strconv.FormatInt(time.Now().UnixNano(), 10),
 		}
 	)
@@ -576,7 +582,7 @@ func restObjectsSearchV2(ctx context.Context, t *testing.T, p *pool.Pool, owner 
 				Value: userValue,
 			},
 		},
-		Attributes: []string{object.AttributeFileName, object.AttributeFilePath},
+		Attributes: []string{object.AttributeFileName, object.AttributeFilePath, cyrillicKey},
 	}
 
 	body, err := json.Marshal(search)
@@ -605,6 +611,7 @@ func restObjectsSearchV2(ctx context.Context, t *testing.T, p *pool.Pool, owner 
 		require.Equal(t, userValue, objBaseInfo.Attributes[userKey])
 		require.Equal(t, objectName, objBaseInfo.Attributes[object.AttributeFileName])
 		require.Equal(t, filePath, objBaseInfo.Attributes[object.AttributeFilePath])
+		require.Equal(t, cyrillicValue, objBaseInfo.Attributes[cyrillicKey])
 	})
 
 	t.Run("check second object", func(t *testing.T) {
@@ -625,6 +632,38 @@ func restObjectsSearchV2(ctx context.Context, t *testing.T, p *pool.Pool, owner 
 		require.Equal(t, userValue, objBaseInfo.Attributes[userKey])
 		require.Equal(t, objectName, objBaseInfo.Attributes[object.AttributeFileName])
 		require.Equal(t, filePath, objBaseInfo.Attributes[object.AttributeFilePath])
+		require.Equal(t, cyrillicValue, objBaseInfo.Attributes[cyrillicKey])
+	})
+
+	t.Run("search by cyrillic attribute", func(t *testing.T) {
+		cyrillicSearch := &apiserver.SearchRequest{
+			Filters: []apiserver.SearchFilter{
+				{
+					Key:   cyrillicKey,
+					Match: apiserver.MatchStringEqual,
+					Value: cyrillicValue,
+				},
+			},
+			Attributes: []string{cyrillicKey},
+		}
+		body, err = json.Marshal(cyrillicSearch)
+		require.NoError(t, err)
+
+		query = make(url.Values)
+		query.Add(walletConnectQuery, strconv.FormatBool(useWalletConnect))
+
+		request, err := http.NewRequest(http.MethodPost, testHost+"/v2/objects/"+cnrID.EncodeToString()+"/search?"+query.Encode(), bytes.NewReader(body))
+		require.NoError(t, err)
+		prepareCommonHeaders(request.Header, bearerToken)
+
+		resp := &apiserver.ObjectListV2{}
+		doRequest(t, httpClient, request, http.StatusOK, resp)
+
+		// All three objects created above carry the same unique Cyrillic value.
+		require.Len(t, resp.Objects, 3)
+		for _, objBaseInfo := range resp.Objects {
+			require.Equal(t, cyrillicValue, objBaseInfo.Attributes[cyrillicKey])
+		}
 	})
 
 	t.Run("returning attribute limit", func(t *testing.T) {
@@ -1202,6 +1241,16 @@ func doRequest(t *testing.T, httpClient *http.Client, request *http.Request, exp
 	err = json.Unmarshal(respBody, model)
 	require.NoError(t, err)
 	return resp.Header, respBody
+}
+
+func decodeXAttributes(t *testing.T, headerValue string) map[string]string {
+	decoded, err := base64.StdEncoding.DecodeString(headerValue)
+	require.NoError(t, err)
+
+	var attrs map[string]string
+	require.NoError(t, json.Unmarshal(decoded, &attrs))
+
+	return attrs
 }
 
 func restContainerGet(ctx context.Context, t *testing.T, owner user.ID, cnrID cid.ID) {
@@ -1946,9 +1995,12 @@ func restNewObjectUploadInt(ctx context.Context, t *testing.T, clientPool *pool.
 		object.AttributeContentType: "application/octet-stream",
 		"User-Attribute":            "user value",
 		"FREE-case-kEy":             "other value",
+		"Cyrillic-Attribute":        "Значение атрибута",
+		"Symbols-Attribute":         "!#$%&*()_+-=[]{}|;:,.<>?/",
 	}
 	attributesJSON, err := json.Marshal(attributes)
 	require.NoError(t, err)
+	attributesBase64 := base64.StdEncoding.EncodeToString(attributesJSON)
 
 	if !walletConnect {
 		// Change the query, we only need the `fullBearer` parameter here.
@@ -1970,7 +2022,7 @@ func restNewObjectUploadInt(ctx context.Context, t *testing.T, clientPool *pool.
 		prepareCommonHeaders(request.Header, bearerToken)
 	}
 
-	request.Header.Set("X-Attributes", string(attributesJSON))
+	request.Header.Set("X-Attributes", attributesBase64)
 	addr := &apiserver.AddressForUpload{}
 	doRequest(t, httpClient, request, http.StatusOK, addr)
 
@@ -2017,10 +2069,13 @@ func restNewObjectUploadSessionTokenV2(ctx context.Context, t *testing.T, client
 		object.AttributeContentType: "application/octet-stream",
 		"User-Attribute":            randomString(),
 		"FREE-case-kEy":             randomString(),
+		"Cyrillic-Attribute":        "Значение атрибута",
+		"Symbols-Attribute":         "!#$%&*()_+-=[]{}|;:,.<>?/",
 	}
 	attributesJSON, err := json.Marshal(attributes)
 	require.NoError(t, err)
 
+	attributesBase64 := base64.StdEncoding.EncodeToString(attributesJSON)
 	query := make(url.Values)
 	query.Add(walletConnectQuery, strconv.FormatBool(useWalletConnect))
 
@@ -2044,7 +2099,7 @@ func restNewObjectUploadSessionTokenV2(ctx context.Context, t *testing.T, client
 
 	request.Header.Add("Authorization", "Bearer "+signedToken)
 	request.Header.Set("Content-Type", "text/plain")
-	request.Header.Set("X-Attributes", string(attributesJSON))
+	request.Header.Set("X-Attributes", attributesBase64)
 
 	addr := &apiserver.AddressForUpload{}
 	doRequest(t, httpClient, request, http.StatusOK, addr)
@@ -2138,9 +2193,7 @@ func restNewObjectHead(ctx context.Context, t *testing.T, p *pool.Pool, ownerID 
 
 			switch key {
 			case "X-Attributes":
-				var customAttr map[string]string
-				err := json.Unmarshal([]byte(vals[0]), &customAttr)
-				require.NoError(t, err)
+				customAttr := decodeXAttributes(t, vals[0])
 				require.Equal(t, fileNameAttr, customAttr[object.AttributeFileName])
 				require.Equal(t, attrValue, customAttr[attrKey])
 				require.Equal(t, strconv.FormatInt(createTS, 10), customAttr[object.AttributeTimestamp])
@@ -2195,9 +2248,7 @@ func restNewObjectHead(ctx context.Context, t *testing.T, p *pool.Pool, ownerID 
 
 			switch key {
 			case "X-Attributes":
-				var customAttr map[string]string
-				err := json.Unmarshal([]byte(vals[0]), &customAttr)
-				require.NoError(t, err)
+				customAttr := decodeXAttributes(t, vals[0])
 				require.Equal(t, fileNameAttr, customAttr[object.AttributeFileName])
 				require.Equal(t, attrValue, customAttr[attrKey])
 				require.Equal(t, strconv.FormatInt(createTS, 10), customAttr[object.AttributeTimestamp])
@@ -2274,9 +2325,7 @@ func restNewObjectHeadSessionV2(ctx context.Context, t *testing.T, p *pool.Pool,
 
 			switch key {
 			case "X-Attributes":
-				var customAttr map[string]string
-				err := json.Unmarshal([]byte(vals[0]), &customAttr)
-				require.NoError(t, err)
+				customAttr := decodeXAttributes(t, vals[0])
 				require.Equal(t, fileNameAttr, customAttr[object.AttributeFileName])
 				require.Equal(t, attrValue, customAttr[attrKey])
 				require.Equal(t, strconv.FormatInt(createTS, 10), customAttr[object.AttributeTimestamp])
@@ -2327,9 +2376,7 @@ func restNewObjectHeadSessionV2(ctx context.Context, t *testing.T, p *pool.Pool,
 
 			switch key {
 			case "X-Attributes":
-				var customAttr map[string]string
-				err := json.Unmarshal([]byte(vals[0]), &customAttr)
-				require.NoError(t, err)
+				customAttr := decodeXAttributes(t, vals[0])
 				require.Equal(t, fileNameAttr, customAttr[object.AttributeFileName])
 				require.Equal(t, attrValue, customAttr[attrKey])
 				require.Equal(t, strconv.FormatInt(createTS, 10), customAttr[object.AttributeTimestamp])
@@ -2413,9 +2460,7 @@ func restShareObjectToAccountWithBearerAndSessionV2(ctx context.Context, t *test
 
 			switch key {
 			case "X-Attributes":
-				var customAttr map[string]string
-				err := json.Unmarshal([]byte(vals[0]), &customAttr)
-				require.NoError(t, err)
+				customAttr := decodeXAttributes(t, vals[0])
 				require.Equal(t, fileNameAttr, customAttr[object.AttributeFileName])
 				require.Equal(t, attrValue, customAttr[attrKey])
 				require.Equal(t, strconv.FormatInt(createTS, 10), customAttr[object.AttributeTimestamp])
@@ -2510,9 +2555,7 @@ func restNewObjectHeadByAttribute(ctx context.Context, t *testing.T, p *pool.Poo
 
 			switch key {
 			case "X-Attributes":
-				var customAttr map[string]string
-				err := json.Unmarshal([]byte(vals[0]), &customAttr)
-				require.NoError(t, err)
+				customAttr := decodeXAttributes(t, vals[0])
 				require.Equal(t, fileNameAttr, customAttr[object.AttributeFileName])
 				require.Equal(t, attrValue, customAttr[attrKey])
 				require.Equal(t, strconv.FormatInt(createTS, 10), customAttr[object.AttributeTimestamp])
@@ -2567,9 +2610,7 @@ func restNewObjectHeadByAttribute(ctx context.Context, t *testing.T, p *pool.Poo
 
 			switch key {
 			case "X-Attributes":
-				var customAttr map[string]string
-				err := json.Unmarshal([]byte(vals[0]), &customAttr)
-				require.NoError(t, err)
+				customAttr := decodeXAttributes(t, vals[0])
 				require.Equal(t, multiSegmentName, customAttr[object.AttributeFileName])
 				require.Equal(t, attrValue, customAttr[attrKey])
 				require.Equal(t, strconv.FormatInt(createTS, 10), customAttr[object.AttributeTimestamp])
@@ -2645,9 +2686,7 @@ func restNewObjectHeadByAttributeSessionV2(ctx context.Context, t *testing.T, p 
 
 			switch key {
 			case "X-Attributes":
-				var customAttr map[string]string
-				err := json.Unmarshal([]byte(vals[0]), &customAttr)
-				require.NoError(t, err)
+				customAttr := decodeXAttributes(t, vals[0])
 				require.Equal(t, fileNameAttr, customAttr[object.AttributeFileName])
 				require.Equal(t, attrValue, customAttr[attrKey])
 				require.Equal(t, strconv.FormatInt(createTS, 10), customAttr[object.AttributeTimestamp])
@@ -2698,9 +2737,7 @@ func restNewObjectHeadByAttributeSessionV2(ctx context.Context, t *testing.T, p 
 
 			switch key {
 			case "X-Attributes":
-				var customAttr map[string]string
-				err := json.Unmarshal([]byte(vals[0]), &customAttr)
-				require.NoError(t, err)
+				customAttr := decodeXAttributes(t, vals[0])
 				require.Equal(t, multiSegmentName, customAttr[object.AttributeFileName])
 				require.Equal(t, attrValue, customAttr[attrKey])
 				require.Equal(t, strconv.FormatInt(createTS, 10), customAttr[object.AttributeTimestamp])
@@ -2801,9 +2838,7 @@ func restNewObjectGetByAttribute(ctx context.Context, t *testing.T, p *pool.Pool
 
 			switch key {
 			case "X-Attributes":
-				var customAttr map[string]string
-				err := json.Unmarshal([]byte(vals[0]), &customAttr)
-				require.NoError(t, err)
+				customAttr := decodeXAttributes(t, vals[0])
 				require.Equal(t, fileNameAttr, customAttr[object.AttributeFileName])
 				require.Equal(t, attrValue, customAttr[attrKey])
 				require.Equal(t, strconv.FormatInt(createTS, 10), customAttr[object.AttributeTimestamp])
@@ -2890,9 +2925,7 @@ func restNewObjectGetByAttributeSessionV2(ctx context.Context, t *testing.T, p *
 
 			switch key {
 			case "X-Attributes":
-				var customAttr map[string]string
-				err := json.Unmarshal([]byte(vals[0]), &customAttr)
-				require.NoError(t, err)
+				customAttr := decodeXAttributes(t, vals[0])
 				require.Equal(t, fileNameAttr, customAttr[object.AttributeFileName])
 				require.Equal(t, attrValue, customAttr[attrKey])
 				require.Equal(t, strconv.FormatInt(createTS, 10), customAttr[object.AttributeTimestamp])

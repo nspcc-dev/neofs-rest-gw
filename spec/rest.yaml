@@ -1038,8 +1038,10 @@ paths:
         - name: X-Attributes
           in: header
           description: |
-            All attributes are in a JSON-formatted map of key-value pairs, where the key is the 
-            attribute name and the value is the attribute value.
+            All attributes are in a JSON-formatted map of key-value pairs, where the key is the
+            attribute name and the value is the attribute value. This JSON map must additionally be
+            base64-encoded so that non-ASCII values, are transported safely in the HTTP header.
+            For backward compatibility a plain, non-base64 JSON map is still accepted.
             You can also use the special attribute:
             - `__NEOFS__EXPIRATION_EPOCH` - specifies the expiration epoch used by NeoFS. 
             This attribute should be used if you are familiar with the NeoFS epoch system. 
@@ -2164,8 +2166,8 @@ components:
         X-Attributes:
           schema:
             type: string
-          description: All object attributes are included here in JSON formatted key-value map,
-            except for `X-Object-Id`, `X-Container-Id`, `X-Owner-Id`.
+          description: All object attributes are included here in a base64-encoded JSON formatted
+            key-value map, except for `X-Object-Id`, `X-Container-Id`, `X-Owner-Id`.
         Access-Control-Allow-Origin:
           schema:
             type: string
@@ -2207,8 +2209,8 @@ components:
         X-Attributes:
           schema:
             type: string
-          description: All object attributes are included here in JSON formatted key-value map,
-            except for `X-Object-Id`, `X-Container-Id`, `X-Owner-Id`.
+          description: All object attributes are included here in a base64-encoded JSON formatted
+            key-value map, except for `X-Object-Id`, `X-Container-Id`, `X-Owner-Id`.
         Access-Control-Allow-Origin:
           schema:
             type: string
@@ -2254,8 +2256,8 @@ components:
         X-Attributes:
           schema:
             type: string
-          description: All object attributes are included here in JSON formatted key-value map,
-            except for `X-Object-Id`, `X-Container-Id`, `X-Owner-Id`.
+          description: All object attributes are included here in a base64-encoded JSON formatted
+            key-value map, except for `X-Object-Id`, `X-Container-Id`, `X-Owner-Id`.
         Access-Control-Allow-Origin:
           schema:
             type: string

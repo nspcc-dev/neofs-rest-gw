@@ -311,7 +311,13 @@ func parseAndFilterAttributes(logger *zap.Logger, jsonAttr *string) (map[string]
 		return parsed, nil
 	}
 
-	if err := json.Unmarshal([]byte(*jsonAttr), &parsed); err != nil {
+	var raw = []byte(*jsonAttr)
+	decoded, err := base64.StdEncoding.DecodeString(*jsonAttr)
+	if err == nil {
+		raw = decoded
+	}
+
+	if err = json.Unmarshal(raw, &parsed); err != nil {
 		return nil, err
 	}
 

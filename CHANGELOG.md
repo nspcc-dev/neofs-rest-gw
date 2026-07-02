@@ -6,10 +6,12 @@ This document outlines major changes between releases.
 
 ### Added
 - Origin token support in /v2/auth/session/complete (#382)
+- Base64 encoding of the `X-Attributes` header to support non-ASCII attribute values (#378)
 
 ### Fixed
 
 ### Changed
+- The `X-Attributes` response header of download/head requests is now a base64-encoded JSON map (#378)
 
 ### Removed
 * RANGEHASH support (#391)

@@ -11,9 +11,11 @@ POST request to `/objects/{containerId}` for uploading objects. This is quite
 similar to `/upload/{containerId}`, but it accepts all custom object attributes
 in the new header `X-Attributes`. All attributes, including well-known ones
 like "FilePath", "FileName", and "Timestamp", can be passed in a JSON-formatted
-key-value map. Thanks to the JSON format of this header, we no longer face
-issues with the case-insensitivity of the gateway and the case-sensitivity of
-NeoFS. All attributes are passed directly to NeoFS. Additionally, 
+key-value map. This JSON map is additionally base64-encoded so that non-ASCII values,
+are transported safely in the HTTP header. For backward compatibility a plain,
+non-base64 JSON map is still accepted on upload (the gateway falls back to it when base64 decoding fails).
+Thanks to the JSON format of this header, we no longer face issues with the case-insensitivity of the gateway
+and the case-sensitivity of NeoFS. All attributes are passed directly to NeoFS. Additionally, 
 `X-Neofs-Expiration-*` headers are available to set object expiration. Learn 
 more in the Swagger documentation (`/v1/docs`).
 
@@ -39,8 +41,9 @@ known, is a GET request to `/objects/{containerId}/by_id/{objectId}`. Another
 approach is searching for an object by attribute with a GET request to
 `/objects/{containerId}/by_attribute/{attrKey}/{attrVal}`. In the responses of
 both requests, all custom object attributes will be placed in the 
-`X-Attributes` header. Additionally, you can send a HEAD request to both paths
-to get object information without the object itself.
+`X-Attributes` header as a base64-encoded JSON key-value map.
+Additionally, you can send a HEAD request to both paths to get object information
+without the object itself.
 
 Compared to the old `/objects/{containerId}/{objectId}` API you now get
 payload in HTTP BODY which is easier to integrate for most applications. You
