@@ -43,7 +43,7 @@ func main() {
 
 	serverCfg := serverConfig(v)
 
-	swagger, err := apiserver.GetSwagger()
+	swagger, err := apiserver.GetSpec()
 	if err != nil {
 		logger.Fatal("get swagger definition", zap.Error(err))
 	}
