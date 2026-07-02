@@ -467,7 +467,6 @@ func (a *RestAPI) setAttributes(ctx echo.Context, params setAttributeParams, log
 	}
 
 	if params.useJSON {
-		// Marshal the map to a JSON string
 		s, err := json.Marshal(attrJSON)
 		if err != nil {
 			log.Info("marshal attributes error",
@@ -475,7 +474,7 @@ func (a *RestAPI) setAttributes(ctx echo.Context, params setAttributeParams, log
 				zap.String("object ID", params.oid),
 				zap.Error(err))
 		}
-		ctx.Response().Header().Set(userAttributesHeader, string(s))
+		ctx.Response().Header().Set(userAttributesHeader, base64.StdEncoding.EncodeToString(s))
 	}
 
 	return contentType

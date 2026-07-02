@@ -4,6 +4,7 @@ import (
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/base64"
+	"encoding/json"
 	"math"
 	"net/http"
 	"reflect"
@@ -325,6 +326,25 @@ func Test_parseAndFilterAttributes(t *testing.T) {
 		"chapter2":                  "war",
 	}
 
+	// base64-encoded JSON with ASCII symbols.
+	asciiMap := map[string]string{
+		"file-N%me": "simple %bj filename",
+		"Chapter1":  "pe@ce",
+		"symbols":   "!#$%&*()_+-=[]{}|;:,.<>?/",
+	}
+	asciiJSON, err := json.Marshal(asciiMap)
+	require.NoError(t, err)
+	asciiBase64 := base64.StdEncoding.EncodeToString(asciiJSON)
+
+	// base64-encoded JSON with Cyrillic values.
+	cyrillicMap := map[string]string{
+		"writer":  "Лев Толстой",
+		"chapter": "Война и мир",
+	}
+	cyrillicJSON, err := json.Marshal(cyrillicMap)
+	require.NoError(t, err)
+	cyrillicBase64 := base64.StdEncoding.EncodeToString(cyrillicJSON)
+
 	tests := []struct {
 		name    string
 		args    args
@@ -343,6 +363,9 @@ func Test_parseAndFilterAttributes(t *testing.T) {
 		{name: "empty result map 4", args: args{l, &emptyStr4}, want: emptyMap, wantErr: false},
 
 		{name: "correct", args: args{l, &str1}, want: map1, wantErr: false},
+
+		{name: "base64 ASCII symbols", args: args{l, &asciiBase64}, want: asciiMap, wantErr: false},
+		{name: "base64 cyrillic", args: args{l, &cyrillicBase64}, want: cyrillicMap, wantErr: false},
 	}
 
 	for _, tt := range tests {
