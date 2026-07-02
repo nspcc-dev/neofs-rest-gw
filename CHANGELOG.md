@@ -12,6 +12,7 @@ This document outlines major changes between releases.
 
 ### Changed
 - The `X-Attributes` response header of download/head requests is now a base64-encoded JSON map (#378)
+- SHA256 check is skipped during object GET (#399)
 
 ### Removed
 * RANGEHASH support (#391)

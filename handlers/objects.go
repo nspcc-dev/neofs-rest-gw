@@ -280,6 +280,7 @@ func (a *RestAPI) getByAddress(ctx echo.Context, addr oid.Address, downloadParam
 	if sessionToken != nil {
 		prm.WithinSessionV2(*sessionToken)
 	}
+	prm.SkipChecksumVerification()
 
 	header, payloadReader, err := a.pool.ObjectGetInit(ctx.Request().Context(), addr.Container(), addr.Object(), a.signer, prm)
 	if err != nil {
@@ -372,6 +373,7 @@ func (a *RestAPI) headByAddress(ctx echo.Context, addr oid.Address, downloadPara
 				}
 				prmGet.SetRange(0, sz)
 				prmGet.MarkPayloadOnly()
+				prmGet.SkipChecksumVerification()
 
 				_, reader, err := a.pool.ObjectGetInit(ctx.Request().Context(), addr.Container(), addr.Object(), a.signer, prmGet)
 				if err != nil {
