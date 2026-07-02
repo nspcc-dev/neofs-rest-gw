@@ -17,7 +17,7 @@ This document outlines major changes between releases.
 * RANGEHASH support (#391)
 
 ### Updated
-- github.com/nspcc-dev/neofs-sdk-go dependency to `v1.0.0-rc.19` (#391)
+- github.com/nspcc-dev/neofs-sdk-go dependency to `v1.0.0-rc.20+` (#391, #399)
 - github.com/nspcc-dev/neo-go dependency to `v0.120.0` (#391)
 - github.com/getkin/kin-openapi to `v0.140.0` (#396)
 
