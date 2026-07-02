@@ -22,6 +22,39 @@ import (
 	"go.uber.org/zap"
 )
 
+func TestDecodeHexOrBase64(t *testing.T) {
+	var raw = make([]byte, 10)
+	_, _ = rand.Read(raw)
+
+	t.Run("base64", func(t *testing.T) {
+		got, err := decodeHexOrBase64(base64.StdEncoding.EncodeToString(raw))
+		require.NoError(t, err)
+		require.Equal(t, raw, got)
+	})
+
+	t.Run("hex", func(t *testing.T) {
+		got, err := decodeHexOrBase64("abcdef")
+		require.NoError(t, err)
+		require.Equal(t, []byte{0xab, 0xcd, 0xef}, got)
+	})
+
+	// Regression: a 64-byte hex signature is 128 chars, which is a valid base64
+	// length too, so base64-first would silently decode it into 96 wrong bytes.
+	// Hex must win here.
+	t.Run("hex signature not mis-decoded as base64", func(t *testing.T) {
+		const sig = "791725c0e086a74a90fcf9d066423650a7838a26f3c9b8f62d3548bd36799bce" +
+			"12ca10e92e8d33534396c0140680d73818184a5ed510275a4ac6e0fb80e5ecd1"
+		got, err := decodeHexOrBase64(sig)
+		require.NoError(t, err)
+		require.Len(t, got, 64)
+	})
+
+	t.Run("invalid in both", func(t *testing.T) {
+		_, err := decodeHexOrBase64("xyz!@#")
+		require.Error(t, err)
+	})
+}
+
 func TestPrepareExpirationHeader(t *testing.T) {
 	tomorrow := time.Now().Add(24 * time.Hour)
 	tomorrowUnix := tomorrow.Unix()

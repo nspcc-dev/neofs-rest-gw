@@ -657,24 +657,19 @@ func assembleBearerTokenV2(token string, signature, key string, scheme neofscryp
 		return nil, fmt.Errorf("can't unmarshal bearer token body: %w", err)
 	}
 
-	signatureValue, err := hex.DecodeString(signature)
+	signatureValue, err := decodeHexOrBase64(signature)
 	if err != nil {
 		return nil, fmt.Errorf("couldn't decode bearer signature: %w", err)
 	}
 
-	var signatureKey []byte
-	if scheme == neofscrypto.N3 {
-		signatureKey, err = base64.StdEncoding.DecodeString(key)
-		if err != nil {
-			return nil, fmt.Errorf("couldn't base64-decode bearer signature key: %w", err)
-		}
+	signatureKey, err := decodeHexOrBase64(key)
+	if err != nil {
+		return nil, fmt.Errorf("couldn't decode bearer signature key: %w", err)
+	}
 
+	if scheme == neofscrypto.N3 {
 		btoken.AttachSignature(neofscrypto.NewN3Signature(signatureValue, signatureKey))
 	} else {
-		signatureKey, err = hex.DecodeString(key)
-		if err != nil {
-			return nil, fmt.Errorf("couldn't hex decode bearer token owner key: %w", err)
-		}
 		if _, err = keys.NewPublicKeyFromBytes(signatureKey, elliptic.P256()); err != nil {
 			return nil, fmt.Errorf("couldn't init owner key: %w", err)
 		}

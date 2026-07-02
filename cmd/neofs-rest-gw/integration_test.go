@@ -1744,7 +1744,19 @@ func makeV2AuthBearerRequest(ctx context.Context, t *testing.T, req apiserver.Fo
 	binaryData, err := base64.StdEncoding.DecodeString(stokenResp.Token)
 	require.NoError(t, err)
 
-	return signToken(t, key, binaryData)
+	return signTokenV2(t, key, binaryData)
+}
+
+func signTokenV2(t *testing.T, key *keys.PrivateKey, data []byte) *handlers.BearerToken {
+	signer := neofsecdsa.Signer(key.PrivateKey)
+	sign, err := signer.Sign(data)
+	require.NoError(t, err)
+
+	return &handlers.BearerToken{
+		Token:     base64.StdEncoding.EncodeToString(data),
+		Signature: base64.StdEncoding.EncodeToString(sign),
+		Key:       base64.StdEncoding.EncodeToString(key.PublicKey().Bytes()),
+	}
 }
 
 func signToken(t *testing.T, key *keys.PrivateKey, data []byte) *handlers.BearerToken {
@@ -3147,7 +3159,7 @@ func v2AuthSessionToken(ctx context.Context, t *testing.T) {
 			require.NoError(t, err)
 
 			req := apiserver.CompleteSessionTokenV2Request{
-				Key:       hex.EncodeToString(key.PublicKey().Bytes()),
+				Key:       base64.StdEncoding.EncodeToString(key.PublicKey().Bytes()),
 				Signature: base64.StdEncoding.EncodeToString(signed),
 				Token:     response.Token,
 				Scheme:    apiserver.SHA512,
@@ -3404,7 +3416,7 @@ func getSignedSessionToken(ctx context.Context, t *testing.T, req apiserver.Sess
 	signer.Public().Encode(pubKeyBts)
 
 	req2 := apiserver.CompleteSessionTokenV2Request{
-		Key:       hex.EncodeToString(pubKeyBts),
+		Key:       base64.StdEncoding.EncodeToString(pubKeyBts),
 		Signature: base64.StdEncoding.EncodeToString(signed),
 		Token:     response.Token,
 		Scheme:    apiserver.SHA512,
