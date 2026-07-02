@@ -17,6 +17,7 @@ This document outlines major changes between releases.
 ### Updated
 - github.com/nspcc-dev/neofs-sdk-go dependency to `v1.0.0-rc.19` (#391)
 - github.com/nspcc-dev/neo-go dependency to `v0.120.0` (#391)
+- github.com/getkin/kin-openapi to `v0.140.0` (#396)
 
 ### Upgrading from 0.17.0
 
