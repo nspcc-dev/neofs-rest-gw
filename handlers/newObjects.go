@@ -388,6 +388,7 @@ func (a *RestAPI) getRange(ctx echo.Context, addr oid.Address, rangeParam string
 	}
 	prmRange.SetRange(offset, length)
 	prmRange.MarkPayloadOnly()
+	prmRange.SkipChecksumVerification()
 
 	_, resObj, err := a.pool.ObjectGetInit(ctx.Request().Context(), addr.Container(), addr.Object(), a.signer, prmRange)
 	if err != nil {
@@ -408,6 +409,7 @@ func (a *RestAPI) getRange(ctx echo.Context, addr oid.Address, rangeParam string
 				}
 				prmBegin.SetRange(0, sz)
 				prmBegin.MarkPayloadOnly()
+				prmBegin.SkipChecksumVerification()
 
 				_, beginObj, err := a.pool.ObjectGetInit(ctx.Request().Context(), addr.Container(), addr.Object(), a.signer, prmBegin)
 				if err != nil {
