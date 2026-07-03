@@ -1365,11 +1365,11 @@ components:
           description: Base64 encoded bearer token.
           type: string
         signature:
-          description: If scheme is not N3, Base64 encoded signature for bearer token.
+          description: If scheme is not N3, hex or Base64 encoded signature for bearer token (decoded as hex first, then Base64).
             If scheme N3, Base64 encoded invocScript.
           type: string
         key:
-          description: If scheme is not N3, Hex encoded public part of the key that signed the bearer token.
+          description: If scheme is not N3, hex or Base64 encoded public part of the key that signed the bearer token (decoded as hex first, then Base64).
             If scheme N3, Base64 encoded verifScript.
           type: string
         scheme:
@@ -2073,12 +2073,12 @@ components:
           description: Base64 encoded unsigned session v2 token.
           type: string
         key:
-          description: If scheme is not N3, Hex encoded public part of the key that signed the session token.
+          description: If scheme is not N3, hex or Base64 encoded public part of the key that signed the session token (decoded as hex first, then Base64).
             If scheme N3, Base64 encoded verifScript.
           type: string
           x-go-type-skip-optional-pointer: true
         signature:
-          description: If scheme is not N3, Base64 encoded signature for session v2 token.
+          description: If scheme is not N3, hex or Base64 encoded signature for session v2 token (decoded as hex first, then Base64).
             If scheme N3, Base64 encoded invocScript.
           type: string
         scheme:

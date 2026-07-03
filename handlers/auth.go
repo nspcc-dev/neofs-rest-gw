@@ -7,7 +7,6 @@ import (
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/base64"
-	"encoding/hex"
 	"errors"
 	"fmt"
 	"maps"
@@ -442,26 +441,19 @@ func (a *RestAPI) V2CompleteAuthSessionToken(ctx echo.Context) error {
 		return ctx.JSON(http.StatusBadRequest, a.logAndGetErrorResponse("invalid lock", err, log))
 	}
 
-	signatureValue, err := base64.StdEncoding.DecodeString(apiParams.Signature)
+	signatureValue, err := decodeHexOrBase64(apiParams.Signature)
 	if err != nil {
 		return ctx.JSON(http.StatusBadRequest, a.logAndGetErrorResponse("couldn't decode session token signature", err, log))
 	}
 
-	var signatureKey []byte
+	signatureKey, err := decodeHexOrBase64(apiParams.Key)
+	if err != nil {
+		return ctx.JSON(http.StatusBadRequest, a.logAndGetErrorResponse("couldn't fetch token owner key", err, log))
+	}
 
 	if scheme == neofscrypto.N3 {
-		signatureKey, err = base64.StdEncoding.DecodeString(apiParams.Key)
-		if err != nil {
-			return ctx.JSON(http.StatusBadRequest, a.logAndGetErrorResponse("couldn't fetch token owner key", err, log))
-		}
-
 		sessionToken.AttachSignature(neofscrypto.NewN3Signature(signatureValue, signatureKey))
 	} else {
-		signatureKey, err = hex.DecodeString(apiParams.Key)
-		if err != nil {
-			return ctx.JSON(http.StatusBadRequest, a.logAndGetErrorResponse("couldn't fetch token owner key", err, log))
-		}
-
 		if _, err = keys.NewPublicKeyFromBytes(signatureKey, elliptic.P256()); err != nil {
 			return ctx.JSON(http.StatusBadRequest, a.logAndGetErrorResponse("couldn't extract token owner key", err, log))
 		}

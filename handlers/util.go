@@ -5,6 +5,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/base64"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -425,6 +426,18 @@ func isDomainName(d string) error {
 	}
 
 	return nil
+}
+
+// decodeHexOrBase64 decodes s as hex first, falling back to base64.
+// Hex is tried first because its alphabet is a subset of base64's:
+// a hex value would otherwise be silently mis-decoded as base64,
+// while real base64 values won't parse as hex.
+func decodeHexOrBase64(s string) ([]byte, error) {
+	if b, err := hex.DecodeString(s); err == nil {
+		return b, nil
+	}
+
+	return base64.StdEncoding.DecodeString(s)
 }
 
 func getSessionTokenV2(v string) (*sessionv2.Token, error) {

@@ -13,6 +13,7 @@ This document outlines major changes between releases.
 ### Changed
 - The `X-Attributes` response header of download/head requests is now a base64-encoded JSON map (#378)
 - SHA256 check is skipped during object GET (#399)
+- `key` and `signature` in /v2/auth/bearer/complete and /v2/auth/session/complete now uniformly accept both hex and Base64 encoding (decoded as hex first, then Base64) (#388)
 
 ### Removed
 * RANGEHASH support (#391)
