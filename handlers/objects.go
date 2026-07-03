@@ -36,10 +36,11 @@ import (
 )
 
 const (
-	sizeToDetectType          = 512
-	userAttributeHeaderPrefix = "X-Attribute-"
-	userAttributesHeader      = "X-Attributes"
-	objectTypeHeader          = "X-Object-Type"
+	sizeToDetectType            = 512
+	userAttributeHeaderPrefix   = "X-Attribute-"
+	userAttributesHeader        = "X-Attributes"
+	userAttributesEncodedHeader = "X-Attributes-Base64"
+	objectTypeHeader            = "X-Object-Type"
 
 	attributeFilepathHTTP = "Filepath"
 	attributeFilenameHTTP = "Filename"
@@ -411,9 +412,10 @@ func (a *RestAPI) setAttributes(ctx echo.Context, params setAttributeParams, log
 	ctx.Response().Header().Set(objectTypeHeader, params.header.Type().String())
 
 	var (
-		contentType string
-		dis         = "inline"
-		attributes  = params.header.Attributes()
+		contentType             string
+		dis                     = "inline"
+		attributes              = params.header.Attributes()
+		unsecureHeaderPresented bool
 	)
 
 	if paramIsPositive(params.download) {
@@ -425,14 +427,25 @@ func (a *RestAPI) setAttributes(ctx echo.Context, params setAttributeParams, log
 		for _, attr := range attributes {
 			key := attr.Key()
 			val := attr.Value()
-			if !isValidToken(key) || !isValidValue(val) {
+
+			// Attributes exposed as individual HTTP headers must be header-safe.
+			// In JSON mode the values are additionally carried by the base64-encoded
+			// X-Attributes-Base64 header.
+			headerSafe := isValidToken(key) && isValidValue(val)
+			if !params.useJSON && !headerSafe {
 				continue
+			}
+
+			if !unsecureHeaderPresented && !headerSafe {
+				unsecureHeaderPresented = true
 			}
 
 			switch key {
 			case object.AttributeFileName:
 				// Add FileName to Content-Disposition
-				ctx.Response().Header().Set("Content-Disposition", ctx.Response().Header().Get("Content-Disposition")+"; filename="+path.Base(val))
+				if headerSafe {
+					ctx.Response().Header().Set("Content-Disposition", ctx.Response().Header().Get("Content-Disposition")+"; filename="+path.Base(val))
+				}
 				if params.useJSON {
 					attrJSON[key] = val
 				} else {
@@ -476,7 +489,16 @@ func (a *RestAPI) setAttributes(ctx echo.Context, params setAttributeParams, log
 				zap.String("object ID", params.oid),
 				zap.Error(err))
 		}
-		ctx.Response().Header().Set(userAttributesHeader, base64.StdEncoding.EncodeToString(s))
+
+		// X-Attributes-Base64 carries the full attribute map as base64-encoded
+		// JSON, so it is safe to transport even for non-ASCII values.
+		ctx.Response().Header().Set(userAttributesEncodedHeader, base64.StdEncoding.EncodeToString(s))
+
+		// The plain-JSON X-Attributes header is kept for backward compatibility;
+		// emit it only when the whole map is safe for a raw HTTP header.
+		if !unsecureHeaderPresented {
+			ctx.Response().Header().Set(userAttributesHeader, string(s))
+		}
 	}
 
 	return contentType

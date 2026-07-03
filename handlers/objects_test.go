@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/base64"
 	"encoding/hex"
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -204,6 +205,73 @@ func TestSetAttributes_ObjectTypeHeader(t *testing.T) {
 			api.setAttributes(ctx, params, log)
 
 			require.Equal(t, tc.expected, rec.Header().Get(objectTypeHeader))
+		})
+	}
+}
+
+func TestSetAttributes_XAttributesASCIIGating(t *testing.T) {
+	e := echo.New()
+	log := zap.NewNop()
+	api := &RestAPI{log: log}
+
+	for _, tc := range []struct {
+		name      string
+		attrs     [][2]string
+		wantPlain bool // whether the plain X-Attributes header must be present
+	}{
+		{
+			name:      "ascii only",
+			attrs:     [][2]string{{"writer", "Leo Tolstoy"}, {"chapter", "War and Peace"}},
+			wantPlain: true,
+		},
+		{
+			name:      "non-ascii value",
+			attrs:     [][2]string{{"writer", "Лев Толстой"}},
+			wantPlain: false,
+		},
+		{
+			name:      "non-ascii key",
+			attrs:     [][2]string{{"автор", "Tolstoy"}},
+			wantPlain: false,
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodGet, "/", nil)
+			rec := httptest.NewRecorder()
+			ctx := e.NewContext(req, rec)
+
+			var hdr object.Object
+			attrs := make([]object.Attribute, 0, len(tc.attrs))
+			for _, kv := range tc.attrs {
+				attrs = append(attrs, object.NewAttribute(kv[0], kv[1]))
+			}
+			hdr.SetAttributes(attrs...)
+
+			params := setAttributeParams{
+				cid:     "testCID",
+				oid:     "testOID",
+				header:  hdr,
+				useJSON: true,
+			}
+			api.setAttributes(ctx, params, log)
+
+			// X-Attributes-Base64 must always be present and decode to the full map.
+			encoded := rec.Header().Get(userAttributesEncodedHeader)
+			require.NotEmpty(t, encoded)
+			decoded, err := base64.StdEncoding.DecodeString(encoded)
+			require.NoError(t, err)
+			var got map[string]string
+			require.NoError(t, json.Unmarshal(decoded, &got))
+			for _, kv := range tc.attrs {
+				require.Equal(t, kv[1], got[kv[0]])
+			}
+
+			plain := rec.Header().Get(userAttributesHeader)
+			if tc.wantPlain {
+				require.Equal(t, string(decoded), plain)
+			} else {
+				require.Empty(t, plain)
+			}
 		})
 	}
 }

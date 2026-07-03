@@ -2034,7 +2034,7 @@ func restNewObjectUploadInt(ctx context.Context, t *testing.T, clientPool *pool.
 		prepareCommonHeaders(request.Header, bearerToken)
 	}
 
-	request.Header.Set("X-Attributes", attributesBase64)
+	request.Header.Set("X-Attributes-Base64", attributesBase64)
 	addr := &apiserver.AddressForUpload{}
 	doRequest(t, httpClient, request, http.StatusOK, addr)
 
@@ -2111,7 +2111,7 @@ func restNewObjectUploadSessionTokenV2(ctx context.Context, t *testing.T, client
 
 	request.Header.Add("Authorization", "Bearer "+signedToken)
 	request.Header.Set("Content-Type", "text/plain")
-	request.Header.Set("X-Attributes", attributesBase64)
+	request.Header.Set("X-Attributes-Base64", attributesBase64)
 
 	addr := &apiserver.AddressForUpload{}
 	doRequest(t, httpClient, request, http.StatusOK, addr)
@@ -2200,15 +2200,27 @@ func restNewObjectHead(ctx context.Context, t *testing.T, p *pool.Pool, ownerID 
 		headers, _ := doRequest(t, httpClient, request, http.StatusOK, nil)
 		require.NotEmpty(t, headers)
 
+		// All attributes here are ASCII, so both the base64 and the plain-JSON
+		// compatibility headers must be present.
+		require.Contains(t, headers, "X-Attributes-Base64")
+		require.Contains(t, headers, "X-Attributes")
+
 		for key, vals := range headers {
 			require.Len(t, vals, 1)
 
 			switch key {
-			case "X-Attributes":
+			case "X-Attributes-Base64":
 				customAttr := decodeXAttributes(t, vals[0])
 				require.Equal(t, fileNameAttr, customAttr[object.AttributeFileName])
 				require.Equal(t, attrValue, customAttr[attrKey])
 				require.Equal(t, strconv.FormatInt(createTS, 10), customAttr[object.AttributeTimestamp])
+			case "X-Attributes":
+				// Plain-JSON header kept for backward compatibility.
+				var plainAttr map[string]string
+				require.NoError(t, json.Unmarshal([]byte(vals[0]), &plainAttr))
+				require.Equal(t, fileNameAttr, plainAttr[object.AttributeFileName])
+				require.Equal(t, attrValue, plainAttr[attrKey])
+				require.Equal(t, strconv.FormatInt(createTS, 10), plainAttr[object.AttributeTimestamp])
 			case "Content-Disposition":
 				require.Equal(t, "inline; filename="+fileNameAttr, vals[0])
 			case "X-Object-Id":
@@ -2259,7 +2271,7 @@ func restNewObjectHead(ctx context.Context, t *testing.T, p *pool.Pool, ownerID 
 			require.Len(t, vals, 1)
 
 			switch key {
-			case "X-Attributes":
+			case "X-Attributes-Base64":
 				customAttr := decodeXAttributes(t, vals[0])
 				require.Equal(t, fileNameAttr, customAttr[object.AttributeFileName])
 				require.Equal(t, attrValue, customAttr[attrKey])
@@ -2336,7 +2348,7 @@ func restNewObjectHeadSessionV2(ctx context.Context, t *testing.T, p *pool.Pool,
 			require.Len(t, vals, 1)
 
 			switch key {
-			case "X-Attributes":
+			case "X-Attributes-Base64":
 				customAttr := decodeXAttributes(t, vals[0])
 				require.Equal(t, fileNameAttr, customAttr[object.AttributeFileName])
 				require.Equal(t, attrValue, customAttr[attrKey])
@@ -2387,7 +2399,7 @@ func restNewObjectHeadSessionV2(ctx context.Context, t *testing.T, p *pool.Pool,
 			require.Len(t, vals, 1)
 
 			switch key {
-			case "X-Attributes":
+			case "X-Attributes-Base64":
 				customAttr := decodeXAttributes(t, vals[0])
 				require.Equal(t, fileNameAttr, customAttr[object.AttributeFileName])
 				require.Equal(t, attrValue, customAttr[attrKey])
@@ -2471,7 +2483,7 @@ func restShareObjectToAccountWithBearerAndSessionV2(ctx context.Context, t *test
 			require.Len(t, vals, 1)
 
 			switch key {
-			case "X-Attributes":
+			case "X-Attributes-Base64":
 				customAttr := decodeXAttributes(t, vals[0])
 				require.Equal(t, fileNameAttr, customAttr[object.AttributeFileName])
 				require.Equal(t, attrValue, customAttr[attrKey])
@@ -2566,7 +2578,7 @@ func restNewObjectHeadByAttribute(ctx context.Context, t *testing.T, p *pool.Poo
 			require.Len(t, vals, 1)
 
 			switch key {
-			case "X-Attributes":
+			case "X-Attributes-Base64":
 				customAttr := decodeXAttributes(t, vals[0])
 				require.Equal(t, fileNameAttr, customAttr[object.AttributeFileName])
 				require.Equal(t, attrValue, customAttr[attrKey])
@@ -2621,7 +2633,7 @@ func restNewObjectHeadByAttribute(ctx context.Context, t *testing.T, p *pool.Poo
 			require.Len(t, vals, 1)
 
 			switch key {
-			case "X-Attributes":
+			case "X-Attributes-Base64":
 				customAttr := decodeXAttributes(t, vals[0])
 				require.Equal(t, multiSegmentName, customAttr[object.AttributeFileName])
 				require.Equal(t, attrValue, customAttr[attrKey])
@@ -2697,7 +2709,7 @@ func restNewObjectHeadByAttributeSessionV2(ctx context.Context, t *testing.T, p 
 			require.Len(t, vals, 1)
 
 			switch key {
-			case "X-Attributes":
+			case "X-Attributes-Base64":
 				customAttr := decodeXAttributes(t, vals[0])
 				require.Equal(t, fileNameAttr, customAttr[object.AttributeFileName])
 				require.Equal(t, attrValue, customAttr[attrKey])
@@ -2748,7 +2760,7 @@ func restNewObjectHeadByAttributeSessionV2(ctx context.Context, t *testing.T, p 
 			require.Len(t, vals, 1)
 
 			switch key {
-			case "X-Attributes":
+			case "X-Attributes-Base64":
 				customAttr := decodeXAttributes(t, vals[0])
 				require.Equal(t, multiSegmentName, customAttr[object.AttributeFileName])
 				require.Equal(t, attrValue, customAttr[attrKey])
@@ -2849,7 +2861,7 @@ func restNewObjectGetByAttribute(ctx context.Context, t *testing.T, p *pool.Pool
 			require.Len(t, vals, 1)
 
 			switch key {
-			case "X-Attributes":
+			case "X-Attributes-Base64":
 				customAttr := decodeXAttributes(t, vals[0])
 				require.Equal(t, fileNameAttr, customAttr[object.AttributeFileName])
 				require.Equal(t, attrValue, customAttr[attrKey])
@@ -2936,7 +2948,7 @@ func restNewObjectGetByAttributeSessionV2(ctx context.Context, t *testing.T, p *
 			require.Len(t, vals, 1)
 
 			switch key {
-			case "X-Attributes":
+			case "X-Attributes-Base64":
 				customAttr := decodeXAttributes(t, vals[0])
 				require.Equal(t, fileNameAttr, customAttr[object.AttributeFileName])
 				require.Equal(t, attrValue, customAttr[attrKey])

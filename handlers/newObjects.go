@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"io"
@@ -55,9 +56,21 @@ func (a *RestAPI) NewUploadContainerObject(ctx echo.Context, containerID apiserv
 		return ctx.JSON(http.StatusBadRequest, resp)
 	}
 
-	filtered, err := parseAndFilterAttributes(log, params.XAttributes)
+	attrHeaderValue, attrHeaderName := params.XAttributes, userAttributesHeader
+	if params.XAttributesBase64 != nil {
+		decoded, err := base64.StdEncoding.DecodeString(*params.XAttributesBase64)
+		if err != nil {
+			resp := a.logAndGetErrorResponse("could not decode header "+userAttributesEncodedHeader, err, log)
+			return ctx.JSON(http.StatusBadRequest, resp)
+		}
+
+		var val = string(decoded)
+		attrHeaderValue, attrHeaderName = &val, userAttributesEncodedHeader
+	}
+
+	filtered, err := parseAndFilterAttributes(log, attrHeaderValue)
 	if err != nil {
-		resp := a.logAndGetErrorResponse("could not process header "+userAttributesHeader, err, log)
+		resp := a.logAndGetErrorResponse("could not process header "+attrHeaderName, err, log)
 		return ctx.JSON(http.StatusBadRequest, resp)
 	}
 
