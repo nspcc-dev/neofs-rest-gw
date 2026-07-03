@@ -1039,9 +1039,9 @@ paths:
           in: header
           description: |
             All attributes are in a JSON-formatted map of key-value pairs, where the key is the
-            attribute name and the value is the attribute value. This JSON map must additionally be
-            base64-encoded so that non-ASCII values, are transported safely in the HTTP header.
-            For backward compatibility a plain, non-base64 JSON map is still accepted.
+            attribute name and the value is the attribute value. Values must be ASCII-only.
+            To pass non-ASCII values use the `X-Attributes-Base64` header instead.
+            If both headers are present, `X-Attributes-Base64` takes precedence.
             You can also use the special attribute:
             - `__NEOFS__EXPIRATION_EPOCH` - specifies the expiration epoch used by NeoFS. 
             This attribute should be used if you are familiar with the NeoFS epoch system. 
@@ -1049,6 +1049,15 @@ paths:
             Instead of this attribute you can use one of `X-Neofs-Expiration-*` headers below.
             Expiration fields are evaluated in order, and later values override earlier ones. The last specified value takes precedence.
             The order is: X-Neofs-Expiration-RFC3339, X-Neofs-Expiration-Timestamp, X-Neofs-Expiration-Duration.
+          schema:
+            type: string
+        - name: X-Attributes-Base64
+          in: header
+          description: |
+            Same as `X-Attributes`, but the JSON-formatted map of key-value pairs is additionally
+            base64-encoded so that non-ASCII attribute values are transported safely in the HTTP
+            header. If both `X-Attributes` and `X-Attributes-Base64` are present, this header takes
+            precedence.
           schema:
             type: string
         - name: X-Neofs-Expiration-RFC3339
@@ -2166,6 +2175,14 @@ components:
         X-Attributes:
           schema:
             type: string
+          description: All object attributes are included here in JSON formatted key-value map,
+            except for `X-Object-Id`, `X-Container-Id`, `X-Owner-Id`. Kept for backward
+            compatibility. This header is only present when all attribute keys and values
+            consist of printable ASCII characters; otherwise (e.g. for non-ASCII values) it
+            is omitted and the attributes are available via `X-Attributes-Base64` only.
+        X-Attributes-Base64:
+          schema:
+            type: string
           description: All object attributes are included here in a base64-encoded JSON formatted
             key-value map, except for `X-Object-Id`, `X-Container-Id`, `X-Owner-Id`.
         Access-Control-Allow-Origin:
@@ -2207,6 +2224,14 @@ components:
       description: Partial Content - Successfully retrieved a partial object based on the Range header.
       headers:
         X-Attributes:
+          schema:
+            type: string
+          description: All object attributes are included here in JSON formatted key-value map,
+            except for `X-Object-Id`, `X-Container-Id`, `X-Owner-Id`. Kept for backward
+            compatibility. This header is only present when all attribute keys and values
+            consist of printable ASCII characters; otherwise (e.g. for non-ASCII values) it
+            is omitted and the attributes are available via `X-Attributes-Base64` only.
+        X-Attributes-Base64:
           schema:
             type: string
           description: All object attributes are included here in a base64-encoded JSON formatted
@@ -2254,6 +2279,14 @@ components:
       description: Object info.
       headers:
         X-Attributes:
+          schema:
+            type: string
+          description: All object attributes are included here in JSON formatted key-value map,
+            except for `X-Object-Id`, `X-Container-Id`, `X-Owner-Id`. Kept for backward
+            compatibility. This header is only present when all attribute keys and values
+            consist of printable ASCII characters; otherwise (e.g. for non-ASCII values) it
+            is omitted and the attributes are available via `X-Attributes-Base64` only.
+        X-Attributes-Base64:
           schema:
             type: string
           description: All object attributes are included here in a base64-encoded JSON formatted

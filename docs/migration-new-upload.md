@@ -11,9 +11,9 @@ POST request to `/objects/{containerId}` for uploading objects. This is quite
 similar to `/upload/{containerId}`, but it accepts all custom object attributes
 in the new header `X-Attributes`. All attributes, including well-known ones
 like "FilePath", "FileName", and "Timestamp", can be passed in a JSON-formatted
-key-value map. This JSON map is additionally base64-encoded so that non-ASCII values,
-are transported safely in the HTTP header. For backward compatibility a plain,
-non-base64 JSON map is still accepted on upload (the gateway falls back to it when base64 decoding fails).
+key-value map. HTTP headers can only carry ASCII safely, so to pass non-ASCII
+attribute values use the `X-Attributes-Base64` header instead.
+If both headers are present, `X-Attributes-Base64` takes precedence.
 Thanks to the JSON format of this header, we no longer face issues with the case-insensitivity of the gateway
 and the case-sensitivity of NeoFS. All attributes are passed directly to NeoFS. Additionally, 
 `X-Neofs-Expiration-*` headers are available to set object expiration. Learn 
@@ -40,8 +40,12 @@ There are two ways to download objects. The first one, if the object ID is
 known, is a GET request to `/objects/{containerId}/by_id/{objectId}`. Another
 approach is searching for an object by attribute with a GET request to
 `/objects/{containerId}/by_attribute/{attrKey}/{attrVal}`. In the responses of
-both requests, all custom object attributes will be placed in the 
-`X-Attributes` header as a base64-encoded JSON key-value map.
+both requests, all custom object attributes will be placed in the `X-Attributes-Base64`
+header as a base64-encoded JSON key-value map. The same map is also exposed as plain
+JSON in the `X-Attributes` header for backward compatibility, but only when every
+attribute key and value is printable ASCII; if any of them is non-ASCII, the plain
+`X-Attributes` header is omitted (it can not be transported safely in an HTTP header).
+Read `X-Attributes-Base64` to get all attributes reliably in every case.
 Additionally, you can send a HEAD request to both paths to get object information
 without the object itself.
 

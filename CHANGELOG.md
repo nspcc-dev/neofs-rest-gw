@@ -6,12 +6,12 @@ This document outlines major changes between releases.
 
 ### Added
 - Origin token support in /v2/auth/session/complete (#382)
-- Base64 encoding of the `X-Attributes` header to support non-ASCII attribute values (#378)
+- `X-Attributes-Base64` header carrying a base64-encoded JSON attribute map to support non-ASCII attribute values, both on upload and in download/head responses (#378, #400)
 
 ### Fixed
 
 ### Changed
-- The `X-Attributes` response header of download/head requests is now a base64-encoded JSON map (#378)
+- The `X-Attributes` header keeps its plain-JSON meaning for backward compatibility and is omitted from download/head responses when any attribute key or value is non-ASCII (use `X-Attributes-Base64` in that case) (#378, #400)
 - SHA256 check is skipped during object GET (#399)
 - `key` and `signature` in /v2/auth/bearer/complete and /v2/auth/session/complete now uniformly accept both hex and Base64 encoding (decoded as hex first, then Base64) (#388)
 

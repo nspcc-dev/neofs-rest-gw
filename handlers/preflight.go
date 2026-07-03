@@ -17,6 +17,7 @@ const (
 	headerXNeofsBearerToken         = "NeoFS-Bearer-Token"
 	headerRange                     = "Range"
 	headerXAttributes               = "X-Attributes"
+	headerXAttributesBase64         = "X-Attributes-Base64"
 	headerXNeofsExpirationRFC3339   = "X-Neofs-Expiration-RFC3339"
 	headerXNeofsExpirationTimestamp = "X-Neofs-Expiration-Timestamp"
 	headerXNeofsExpirationDuration  = "X-Neofs-Expiration-Duration"
@@ -66,6 +67,7 @@ var (
 			headerXBearerSignatureKey,
 			headerXNeofsBearerToken,
 			headerXAttributes,
+			headerXAttributesBase64,
 			headerXNeofsExpirationRFC3339,
 			headerXNeofsExpirationTimestamp,
 			headerXNeofsExpirationDuration,
