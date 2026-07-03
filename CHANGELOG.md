@@ -5,25 +5,38 @@ This document outlines major changes between releases.
 ## [Unreleased]
 
 ### Added
-- Origin token support in /v2/auth/session/complete (#382)
-- `X-Attributes-Base64` header carrying a base64-encoded JSON attribute map to support non-ASCII attribute values, both on upload and in download/head responses (#378, #400)
 
 ### Fixed
 
 ### Changed
+
+### Removed
+
+### Updated
+
+### Upgrading from 0.18.0
+
+## [0.18.0] - 2026-07-03
+
+### Added
+- X-Object-Type header for objects (#390)
+- Origin token support in /v2/auth/session/complete (#382)
+- `X-Attributes-Base64` header carrying a base64-encoded JSON attribute map to support non-ASCII attribute values, both on upload and in download/head responses (#378, #400)
+
+### Changed
+- Improved GET performance (#384, #399)
 - The `X-Attributes` header keeps its plain-JSON meaning for backward compatibility and is omitted from download/head responses when any attribute key or value is non-ASCII (use `X-Attributes-Base64` in that case) (#378, #400)
 - SHA256 check is skipped during object GET (#399)
 - `key` and `signature` in /v2/auth/bearer/complete and /v2/auth/session/complete now uniformly accept both hex and Base64 encoding (decoded as hex first, then Base64) (#388)
 
 ### Removed
-* RANGEHASH support (#391)
+- RANGEHASH support (#391)
 
 ### Updated
-- github.com/nspcc-dev/neofs-sdk-go dependency to `v1.0.0-rc.20+` (#391, #399)
+- github.com/nspcc-dev/neofs-sdk-go dependency to `v1.0.0-rc.20+` (#384, #391, #399)
 - github.com/nspcc-dev/neo-go dependency to `v0.120.0` (#391)
-- github.com/getkin/kin-openapi to `v0.140.0` (#396)
-
-### Upgrading from 0.17.0
+- github.com/getkin/kin-openapi dependency to `v0.140.0` (#396)
+- golang.org/x/net dependency to 0.55.0 (#398)
 
 ## [0.17.1] - 2026-04-20
 
@@ -522,4 +535,5 @@ Please refer to [GitHub releases](https://github.com/nspcc-dev/neofs-rest-gw/rel
 [0.16.0]: https://github.com/nspcc-dev/neofs-rest-gw/compare/v0.15.1...v0.16.0
 [0.17.0]: https://github.com/nspcc-dev/neofs-rest-gw/compare/v0.16.0...v0.17.0
 [0.17.1]: https://github.com/nspcc-dev/neofs-rest-gw/compare/v0.17.0...v0.17.1
-[Unreleased]: https://github.com/nspcc-dev/neofs-rest-gw/compare/v0.17.1...master
+[0.18.0]: https://github.com/nspcc-dev/neofs-rest-gw/compare/v0.17.1...v0.18.0
+[Unreleased]: https://github.com/nspcc-dev/neofs-rest-gw/compare/v0.18.0...master
