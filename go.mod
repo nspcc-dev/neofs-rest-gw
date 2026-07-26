@@ -3,7 +3,7 @@ module github.com/nspcc-dev/neofs-rest-gw
 go 1.25.0
 
 require (
-	github.com/getkin/kin-openapi v0.140.0
+	github.com/getkin/kin-openapi v0.144.0
 	github.com/labstack/echo/v4 v4.15.1
 	github.com/nspcc-dev/neo-go v0.120.0
 	github.com/nspcc-dev/neofs-sdk-go v1.0.0-rc.20.0.20260701132011-c8072a564b1f
@@ -50,8 +50,8 @@ require (
 	github.com/moby/sys/userns v0.1.0 // indirect
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
 	github.com/nspcc-dev/hrw/v2 v2.0.4 // indirect
-	github.com/oasdiff/yaml v0.1.0 // indirect
-	github.com/oasdiff/yaml3 v0.0.13 // indirect
+	github.com/oasdiff/yaml v0.1.1 // indirect
+	github.com/oasdiff/yaml3 v0.0.14 // indirect
 	github.com/pelletier/go-toml/v2 v2.2.2 // indirect
 	github.com/power-devops/perfstat v0.0.0-20240221224432-82ca36839d55 // indirect
 	github.com/sagikazarmark/locafero v0.4.0 // indirect
