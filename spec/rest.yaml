@@ -196,6 +196,98 @@ paths:
                 type: string
           content: { }
       security: [ ]
+  /v2/auth/s3:
+    post:
+      summary: Form unsigned session v2 tokens carrying S3 credentials for the given S3 gateways.
+      operationId: prepareS3Credentials
+      requestBody:
+        description: S3 credentials issuance parameters.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/S3CredentialsRequest'
+        required: true
+      responses:
+        "200":
+          description: Unsigned session v2 token bodies to sign and an opaque state to pass to the complete call.
+          headers:
+            Access-Control-Allow-Origin:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/S3CredentialsResponse'
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      security: [ ]
+    options:
+      operationId: optionsPrepareS3Credentials
+      responses:
+        "200":
+          description: CORS
+          headers:
+            Access-Control-Allow-Origin:
+              schema:
+                type: string
+            Access-Control-Allow-Methods:
+              schema:
+                type: string
+            Access-Control-Allow-Headers:
+              schema:
+                type: string
+          content: { }
+      security: [ ]
+  /v2/auth/s3/complete:
+    post:
+      summary: Complete S3 credentials issuance with the token signatures, store the credential box in NeoFS.
+      operationId: completeS3Credentials
+      requestBody:
+        description: Signed session v2 tokens, state from the prepare call and auth container parameters.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CompleteS3CredentialsRequest'
+        required: true
+      responses:
+        "200":
+          description: Issued S3 credentials.
+          headers:
+            Access-Control-Allow-Origin:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CompleteS3CredentialsResponse'
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      security: [ ]
+    options:
+      operationId: optionsCompleteS3Credentials
+      responses:
+        "200":
+          description: CORS
+          headers:
+            Access-Control-Allow-Origin:
+              schema:
+                type: string
+            Access-Control-Allow-Methods:
+              schema:
+                type: string
+            Access-Control-Allow-Headers:
+              schema:
+                type: string
+          content: { }
+      security: [ ]
   /v1/accounting/balance/{address}:
     get:
       summary: Get balance in NeoFS
@@ -2001,6 +2093,123 @@ components:
         lock:
           type: string
           description: Session token lock data. It prevents unauthorized usage of session token.
+    S3CredentialsRequest:
+      type: object
+      required:
+        - issuer
+        - gates
+        - containerId
+      properties:
+        issuer:
+          description: Token issuer ID (account address), the future owner of the credentials.
+          type: string
+          example: NfgHwwTi3wHAS8aFAN243C5vGbkYDpqLHP
+        gates:
+          type: array
+          description: Hex encoded compressed public keys of the S3 gateways to issue credentials for.
+          x-go-type-skip-optional-pointer: true
+          items:
+            type: string
+        containerId:
+          description: Existing auth container to store the credential box in, must be owned by the issuer.
+            The session token rules are extended so that the S3 gateways can get the box from this container.
+          type: string
+          example: 2fU9HWgoiUoXy9aTHhFnPmx2KPEQZXZiwqXWvdpkhaQe
+        contexts:
+          type: array
+          description: The session token contexts. If omitted, a single wildcard context with all verbs is used.
+            In any case, the auth container context is extended with OBJECT_GET (S3 gateways read the box)
+            and OBJECT_PUT (the REST gateway stores the box) verbs.
+          x-go-type-skip-optional-pointer: true
+          items:
+            $ref: '#/components/schemas/TokenContext'
+        expiration-rfc3339:
+          type: string
+          description: |
+            Specifies the expiration time in RFC3339 format. Examples:
+            - "2024-12-31T23:59:59Z" represents the last moment of 2024 in UTC.
+            - "2024-12-31T15:59:59-08:00" represents 3:59 PM on December 31, 2024, Pacific Time.
+        expiration-duration:
+          type: string
+          description: |
+            Specifies the duration until credentials expiration in Go's duration format. Examples:
+              - "300s" represents 5 minutes.
+              - "2h45m" represents 2 hours and 45 minutes.
+        expiration-timestamp:
+          type: integer
+          description: Specifies the exact timestamp of credentials expiration. If set, should be positive.
+      description: |
+        Parameters of S3 credentials to be issued. Expiration fields are evaluated in order, and later values override
+        earlier ones. The order is: expiration-rfc3339, expiration-timestamp, expiration-duration.
+        If no expiration is set, the default is 24 hours.
+    S3CredentialsResponse:
+      type: object
+      required:
+        - tokens
+        - state
+      properties:
+        tokens:
+          type: array
+          description: Base64 encoded unsigned session v2 token bodies, each must be signed by the issuer.
+          items:
+            type: string
+        state:
+          type: string
+          description: Opaque state to pass unchanged to the complete call.
+    S3SignedToken:
+      type: object
+      description: Unsigned session v2 token from the prepare call with its detached signature.
+      required:
+        - token
+        - key
+        - signature
+        - scheme
+      properties:
+        token:
+          description: Base64 encoded unsigned session v2 token from the prepare call.
+          type: string
+        key:
+          description: If scheme is not N3, hex or Base64 encoded public part of the key that signed the session token (decoded as hex first, then Base64).
+            If scheme N3, Base64 encoded verifScript.
+          type: string
+        signature:
+          description: If scheme is not N3, hex or Base64 encoded signature for session v2 token (decoded as hex first, then Base64).
+            If scheme N3, Base64 encoded invocScript.
+          type: string
+        scheme:
+          description: Use wallet connect signature scheme or native NeoFS signature.
+          $ref: '#/components/schemas/SchemaType'
+    CompleteS3CredentialsRequest:
+      type: object
+      required:
+        - tokens
+        - state
+      properties:
+        tokens:
+          type: array
+          description: Signed session v2 tokens from the prepare call.
+          items:
+            $ref: '#/components/schemas/S3SignedToken'
+        state:
+          type: string
+          description: Opaque state from the prepare call.
+    CompleteS3CredentialsResponse:
+      type: object
+      required:
+        - accessKeyId
+        - secretAccessKey
+        - containerId
+      properties:
+        accessKeyId:
+          description: Access key ID for S3 requests, address of the credential box object.
+          type: string
+        secretAccessKey:
+          description: Secret access key for S3 requests.
+          type: string
+        containerId:
+          description: Auth container holding the credential box object.
+          type: string
+      description: Issued S3 credentials.
     GatewayMetadataResponse:
       required:
         - address

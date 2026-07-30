@@ -196,6 +196,22 @@ func (a *RestAPI) OptionsV2FormAuthSessionToken(ctx echo.Context) error {
 	return ctx.NoContent(http.StatusOK)
 }
 
+// OptionsPrepareS3Credentials handler for the prepare S3 credentials options request.
+func (a *RestAPI) OptionsPrepareS3Credentials(ctx echo.Context) error {
+	ctx.Response().Header().Set(accessControlAllowOriginHeader, allOrigins)
+	ctx.Response().Header().Set(accessControlAllowHeadersHeader, allowHeadersStr)
+	ctx.Response().Header().Set(accessControlAllowMethodsHeader, allowMethods(methodPost))
+	return ctx.NoContent(http.StatusOK)
+}
+
+// OptionsCompleteS3Credentials handler for the complete S3 credentials options request.
+func (a *RestAPI) OptionsCompleteS3Credentials(ctx echo.Context) error {
+	ctx.Response().Header().Set(accessControlAllowOriginHeader, allOrigins)
+	ctx.Response().Header().Set(accessControlAllowHeadersHeader, allowHeadersStr)
+	ctx.Response().Header().Set(accessControlAllowMethodsHeader, allowMethods(methodPost))
+	return ctx.NoContent(http.StatusOK)
+}
+
 // OptionsGatewayMetadata handler for the gateway metadata options request.
 func (a *RestAPI) OptionsGatewayMetadata(ctx echo.Context) error {
 	ctx.Response().Header().Set(accessControlAllowOriginHeader, allOrigins)

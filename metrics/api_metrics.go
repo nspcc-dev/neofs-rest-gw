@@ -36,6 +36,8 @@ type ApiMetrics struct {
 	V2SearchObjectsDuration          prometheus.Histogram
 	V2AuthDuration                   prometheus.Histogram
 	V2AuthFormSessionTokenDuration   prometheus.Histogram
+	PrepareS3CredentialsDuration     prometheus.Histogram
+	CompleteS3CredentialsDuration    prometheus.Histogram
 	GatewayMetadataDuration          prometheus.Histogram
 	UnsignedBearerTokenDuration      prometheus.Histogram
 	CompleteUnsignedBearerToken      prometheus.Histogram
@@ -199,6 +201,18 @@ func NewApiMetrics() *ApiMetrics {
 			Name:      "v2_auth_form_session_token_duration",
 			Help:      "V2 Auth form session token request handling time",
 		}),
+		PrepareS3CredentialsDuration: prometheus.NewHistogram(prometheus.HistogramOpts{
+			Namespace: namespace,
+			Subsystem: apiSubsystem,
+			Name:      "prepare_s3_credentials_duration",
+			Help:      "Prepare S3 credentials request handling time",
+		}),
+		CompleteS3CredentialsDuration: prometheus.NewHistogram(prometheus.HistogramOpts{
+			Namespace: namespace,
+			Subsystem: apiSubsystem,
+			Name:      "complete_s3_credentials_duration",
+			Help:      "Complete S3 credentials request handling time",
+		}),
 		GatewayMetadataDuration: prometheus.NewHistogram(prometheus.HistogramOpts{
 			Namespace: namespace,
 			Subsystem: apiSubsystem,
@@ -261,6 +275,8 @@ func (m ApiMetrics) register() {
 	prometheus.MustRegister(m.V2SearchObjectsDuration)
 	prometheus.MustRegister(m.V2AuthDuration)
 	prometheus.MustRegister(m.V2AuthFormSessionTokenDuration)
+	prometheus.MustRegister(m.PrepareS3CredentialsDuration)
+	prometheus.MustRegister(m.CompleteS3CredentialsDuration)
 	prometheus.MustRegister(m.GatewayMetadataDuration)
 	prometheus.MustRegister(m.UnsignedBearerTokenDuration)
 	prometheus.MustRegister(m.CompleteUnsignedBearerToken)

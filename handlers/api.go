@@ -77,6 +77,7 @@ func NewAPI(prm *PrmAPI) (*RestAPI, error) {
 	return &RestAPI{
 		log:               prm.Logger,
 		pool:              prm.Pool,
+		gatePrivateKey:    prm.Key,
 		signer:            signer,
 		nnsName:           prm.NNSName,
 		defaultTimestamp:  prm.DefaultTimestamp,
@@ -140,6 +141,7 @@ func (a *RestAPI) logAndGetErrorResponse(msg string, err error, log *zap.Logger)
 type RestAPI struct {
 	log               *zap.Logger
 	pool              *pool.Pool
+	gatePrivateKey    *keys.PrivateKey
 	signer            user.Signer
 	defaultTimestamp  bool
 	payloadBufferSize uint64

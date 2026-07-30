@@ -5,6 +5,7 @@ This document outlines major changes between releases.
 ## [Unreleased]
 
 ### Added
+- S3 gateway access tokens generation
 
 ### Fixed
 
