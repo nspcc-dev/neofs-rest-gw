@@ -13,8 +13,6 @@ const (
 // ApiMetrics contains metric definitions for API.
 type ApiMetrics struct {
 	GetBalanceDuration               prometheus.Histogram
-	AuthDuration                     prometheus.Histogram
-	FormBinaryBearerDuration         prometheus.Histogram
 	ListContainersDuration           prometheus.Histogram
 	PostContainerDuration            prometheus.Histogram
 	DeleteContainerDuration          prometheus.Histogram
@@ -62,19 +60,6 @@ func NewApiMetrics() *ApiMetrics {
 			Subsystem: apiSubsystem,
 			Name:      "get_balance_duration",
 			Help:      "Get balance request handling time",
-		}),
-		AuthDuration: prometheus.NewHistogram(prometheus.HistogramOpts{
-			Namespace: namespace,
-			Subsystem: apiSubsystem,
-			Name:      "auth_duration",
-			Help:      "Auth request handling time",
-		}),
-
-		FormBinaryBearerDuration: prometheus.NewHistogram(prometheus.HistogramOpts{
-			Namespace: namespace,
-			Subsystem: apiSubsystem,
-			Name:      "form_binary_bearer_duration",
-			Help:      "Form binary bearer request handling time",
 		}),
 		ListContainersDuration: prometheus.NewHistogram(prometheus.HistogramOpts{
 			Namespace: namespace,
@@ -253,8 +238,6 @@ func NewApiMetrics() *ApiMetrics {
 
 func (m ApiMetrics) register() {
 	prometheus.MustRegister(m.GetBalanceDuration)
-	prometheus.MustRegister(m.AuthDuration)
-	prometheus.MustRegister(m.FormBinaryBearerDuration)
 	prometheus.MustRegister(m.ListContainersDuration)
 	prometheus.MustRegister(m.PostContainerDuration)
 	prometheus.MustRegister(m.DeleteContainerDuration)

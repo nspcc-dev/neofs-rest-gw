@@ -11,10 +11,17 @@ This document outlines major changes between releases.
 ### Changed
 
 ### Removed
+- Deprecated `/v1/auth` and `/v1/auth/bearer` APIs (#403)
 
 ### Updated
 
 ### Upgrading from 0.18.0
+The deprecated `/v1/auth` and `/v1/auth/bearer` endpoints has been removed.
+Use `/v2/auth/bearer` and `/v2/auth/bearer/complete` instead, see
+[docs/migration-to-auth-v2.md](./docs/migration-to-auth-v2.md).
+
+The `auth_duration` and `form_binary_bearer_duration` Prometheus metrics are
+dropped along with these endpoints.
 
 ## [0.18.0] - 2026-07-03
 

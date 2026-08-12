@@ -60,11 +60,7 @@ const (
 	XBearerSignature = "X-Bearer-Signature"
 	// XBearerSignatureKey header contains hex encoded public key that corresponds the signature of the token body.
 	XBearerSignatureKey = "X-Bearer-Signature-Key"
-	// XBearerOwnerID header contains owner id (wallet address) that corresponds the signature of the token body.
-	XBearerOwnerID = "X-Bearer-Owner-Id"
-	// XBearerForAllUsers header specifies if we want all users can use token or only specific gate.
-	XBearerForAllUsers = "X-Bearer-For-All-Users"
-	xNonce             = "nonce"
+	xNonce              = "nonce"
 
 	neofsBearerToken = "NeoFS-Bearer-Token"
 
@@ -138,10 +134,8 @@ func runTests(ctx context.Context, t *testing.T, key *keys.PrivateKey, node stri
 	restrictByEACL(ctx, t, clientPool, cnrID, signer)
 
 	t.Run("rest gate metadata", func(t *testing.T) { gateMetadata(ctx, t) })
-	t.Run("rest auth several tokens", func(t *testing.T) { authTokens(ctx, t) })
 	t.Run("rest auth bearer v2", func(t *testing.T) { v2AuthBearer(ctx, t) })
 	t.Run("rest auth session token v2", func(t *testing.T) { v2AuthSessionToken(ctx, t) })
-	t.Run("rest form full binary bearer", func(t *testing.T) { formFullBinaryBearer(ctx, t) })
 
 	t.Run("rest post container session v2", func(t *testing.T) {
 		restContainerPostSessionTokenV2(ctx, t, clientPool, sessionV2Signer)
@@ -318,28 +312,6 @@ func formAllowRecord(op apiserver.Operation) apiserver.Record {
 		}}}
 }
 
-func authTokens(ctx context.Context, t *testing.T) {
-	oth := apiserver.OTHERS
-
-	bearers := []apiserver.Bearer{
-		{
-			Name: "all-object",
-			Object: []apiserver.Record{{
-				Operation: apiserver.PUT,
-				Action:    apiserver.ALLOW,
-				Filters:   []apiserver.Filter{},
-				Targets: []apiserver.Target{{
-					Role: &oth,
-					Keys: []string{},
-				}},
-			}},
-		},
-	}
-
-	httpClient := defaultHTTPClient()
-	makeAuthTokenRequest(ctx, t, bearers, httpClient, false)
-}
-
 func v2AuthBearer(ctx context.Context, t *testing.T) {
 	var (
 		gateUserID = gateMetadataID(ctx, t)
@@ -385,50 +357,9 @@ func v2AuthBearer(ctx context.Context, t *testing.T) {
 	var bToken bearer.Token
 	require.NoError(t, bToken.Unmarshal(tokenBts))
 	require.True(t, bToken.VerifySignature())
-}
 
-func formFullBinaryBearer(ctx context.Context, t *testing.T) {
-	oth := apiserver.OTHERS
-
-	bearers := []apiserver.Bearer{
-		{
-			Name: "all-object",
-			Object: []apiserver.Record{{
-				Operation: apiserver.PUT,
-				Action:    apiserver.ALLOW,
-				Filters:   []apiserver.Filter{},
-				Targets: []apiserver.Target{{
-					Role: &oth,
-					Keys: []string{},
-				}},
-			}},
-		},
-	}
-
-	httpClient := defaultHTTPClient()
-	tokens := makeAuthTokenRequest(ctx, t, bearers, httpClient, false)
-	objectToken := tokens[0]
-
-	query := make(url.Values)
-	query.Add(walletConnectQuery, strconv.FormatBool(useWalletConnect))
-
-	// check that object bearer token is valid
-	request, err := http.NewRequest(http.MethodGet, testHost+"/v1/auth/bearer?"+query.Encode(), nil)
-	require.NoError(t, err)
-	prepareCommonHeaders(request.Header, objectToken)
-	resp := &apiserver.BinaryBearer{}
-	doRequest(t, httpClient, request, http.StatusOK, resp)
-
-	actualTokenRaw, err := base64.StdEncoding.DecodeString(resp.Token)
-	require.NoError(t, err)
-
-	var actualToken bearer.Token
-	err = actualToken.Unmarshal(actualTokenRaw)
-	require.NoError(t, err)
-
-	require.True(t, actualToken.VerifySignature())
-	require.Len(t, actualToken.EACLTable().Records(), 1)
-	actualRecord := actualToken.EACLTable().Records()[0]
+	require.Len(t, bToken.EACLTable().Records(), 1)
+	actualRecord := bToken.EACLTable().Records()[0]
 	require.Equal(t, eacl.OperationPut, actualRecord.Operation())
 	require.Equal(t, eacl.ActionAllow, actualRecord.Action())
 	require.Empty(t, actualRecord.Filters())
@@ -442,30 +373,27 @@ func restObjectDelete(ctx context.Context, t *testing.T, p *pool.Pool, owner *us
 	objID := createObject(ctx, t, p, owner, cnrID, nil, []byte("some content"), signer)
 	oth := apiserver.OTHERS
 
-	bearer := apiserver.Bearer{
-		Object: []apiserver.Record{{
-			Operation: apiserver.DELETE,
-			Action:    apiserver.ALLOW,
-			Filters:   []apiserver.Filter{},
-			Targets: []apiserver.Target{{
-				Role: &oth,
-				Keys: []string{},
-			}},
-		}, {
-			Operation: apiserver.HEAD,
-			Action:    apiserver.ALLOW,
-			Filters:   []apiserver.Filter{},
-			Targets: []apiserver.Target{{
-				Role: &oth,
-				Keys: []string{},
-			}},
+	records := []apiserver.Record{{
+		Operation: apiserver.DELETE,
+		Action:    apiserver.ALLOW,
+		Filters:   []apiserver.Filter{},
+		Targets: []apiserver.Target{{
+			Role: &oth,
+			Keys: []string{},
 		}},
-	}
-	bearer.Object = append(bearer.Object, getRestrictBearerRecords()...)
+	}, {
+		Operation: apiserver.HEAD,
+		Action:    apiserver.ALLOW,
+		Filters:   []apiserver.Filter{},
+		Targets: []apiserver.Target{{
+			Role: &oth,
+			Keys: []string{},
+		}},
+	}}
+	records = append(records, getRestrictBearerRecords()...)
 
 	httpClient := defaultHTTPClient()
-	bearerTokens := makeAuthTokenRequest(ctx, t, []apiserver.Bearer{bearer}, httpClient, false)
-	bearerToken := bearerTokens[0]
+	bearerToken := makeAuthTokenRequest(ctx, t, records, httpClient, false)
 
 	query := make(url.Values)
 	query.Add(walletConnectQuery, strconv.FormatBool(useWalletConnect))
@@ -546,33 +474,30 @@ func restObjectsSearchV2(ctx context.Context, t *testing.T, p *pool.Pool, owner 
 
 	oth := apiserver.OTHERS
 
-	bearer := apiserver.Bearer{
-		Object: []apiserver.Record{
-			{
-				Operation: apiserver.SEARCH,
-				Action:    apiserver.ALLOW,
-				Filters:   []apiserver.Filter{},
-				Targets:   []apiserver.Target{{Role: &oth, Keys: []string{}}},
-			},
-			{
-				Operation: apiserver.HEAD,
-				Action:    apiserver.ALLOW,
-				Filters:   []apiserver.Filter{},
-				Targets:   []apiserver.Target{{Role: &oth, Keys: []string{}}},
-			},
-			{
-				Operation: apiserver.GET,
-				Action:    apiserver.ALLOW,
-				Filters:   []apiserver.Filter{},
-				Targets:   []apiserver.Target{{Role: &oth, Keys: []string{}}},
-			},
+	records := []apiserver.Record{
+		{
+			Operation: apiserver.SEARCH,
+			Action:    apiserver.ALLOW,
+			Filters:   []apiserver.Filter{},
+			Targets:   []apiserver.Target{{Role: &oth, Keys: []string{}}},
+		},
+		{
+			Operation: apiserver.HEAD,
+			Action:    apiserver.ALLOW,
+			Filters:   []apiserver.Filter{},
+			Targets:   []apiserver.Target{{Role: &oth, Keys: []string{}}},
+		},
+		{
+			Operation: apiserver.GET,
+			Action:    apiserver.ALLOW,
+			Filters:   []apiserver.Filter{},
+			Targets:   []apiserver.Target{{Role: &oth, Keys: []string{}}},
 		},
 	}
-	bearer.Object = append(bearer.Object, getRestrictBearerRecords()...)
+	records = append(records, getRestrictBearerRecords()...)
 
 	httpClient := defaultHTTPClient()
-	bearerTokens := makeAuthTokenRequest(ctx, t, []apiserver.Bearer{bearer}, httpClient, false)
-	bearerToken := bearerTokens[0]
+	bearerToken := makeAuthTokenRequest(ctx, t, records, httpClient, false)
 
 	search := &apiserver.SearchRequest{
 		Filters: []apiserver.SearchFilter{
@@ -827,33 +752,30 @@ func restObjectsSearchV2CursorAndLimit(ctx context.Context, t *testing.T, p *poo
 
 	oth := apiserver.OTHERS
 
-	bearer := apiserver.Bearer{
-		Object: []apiserver.Record{
-			{
-				Operation: apiserver.SEARCH,
-				Action:    apiserver.ALLOW,
-				Filters:   []apiserver.Filter{},
-				Targets:   []apiserver.Target{{Role: &oth, Keys: []string{}}},
-			},
-			{
-				Operation: apiserver.HEAD,
-				Action:    apiserver.ALLOW,
-				Filters:   []apiserver.Filter{},
-				Targets:   []apiserver.Target{{Role: &oth, Keys: []string{}}},
-			},
-			{
-				Operation: apiserver.GET,
-				Action:    apiserver.ALLOW,
-				Filters:   []apiserver.Filter{},
-				Targets:   []apiserver.Target{{Role: &oth, Keys: []string{}}},
-			},
+	records := []apiserver.Record{
+		{
+			Operation: apiserver.SEARCH,
+			Action:    apiserver.ALLOW,
+			Filters:   []apiserver.Filter{},
+			Targets:   []apiserver.Target{{Role: &oth, Keys: []string{}}},
+		},
+		{
+			Operation: apiserver.HEAD,
+			Action:    apiserver.ALLOW,
+			Filters:   []apiserver.Filter{},
+			Targets:   []apiserver.Target{{Role: &oth, Keys: []string{}}},
+		},
+		{
+			Operation: apiserver.GET,
+			Action:    apiserver.ALLOW,
+			Filters:   []apiserver.Filter{},
+			Targets:   []apiserver.Target{{Role: &oth, Keys: []string{}}},
 		},
 	}
-	bearer.Object = append(bearer.Object, getRestrictBearerRecords()...)
+	records = append(records, getRestrictBearerRecords()...)
 
 	httpClient := defaultHTTPClient()
-	bearerTokens := makeAuthTokenRequest(ctx, t, []apiserver.Bearer{bearer}, httpClient, false)
-	bearerToken := bearerTokens[0]
+	bearerToken := makeAuthTokenRequest(ctx, t, records, httpClient, false)
 
 	search := &apiserver.SearchRequest{
 		Filters: []apiserver.SearchFilter{
@@ -970,33 +892,30 @@ func restObjectsSearchV2Filters(ctx context.Context, t *testing.T, p *pool.Pool,
 
 	oth := apiserver.OTHERS
 
-	bearer := apiserver.Bearer{
-		Object: []apiserver.Record{
-			{
-				Operation: apiserver.SEARCH,
-				Action:    apiserver.ALLOW,
-				Filters:   []apiserver.Filter{},
-				Targets:   []apiserver.Target{{Role: &oth, Keys: []string{}}},
-			},
-			{
-				Operation: apiserver.HEAD,
-				Action:    apiserver.ALLOW,
-				Filters:   []apiserver.Filter{},
-				Targets:   []apiserver.Target{{Role: &oth, Keys: []string{}}},
-			},
-			{
-				Operation: apiserver.GET,
-				Action:    apiserver.ALLOW,
-				Filters:   []apiserver.Filter{},
-				Targets:   []apiserver.Target{{Role: &oth, Keys: []string{}}},
-			},
+	records := []apiserver.Record{
+		{
+			Operation: apiserver.SEARCH,
+			Action:    apiserver.ALLOW,
+			Filters:   []apiserver.Filter{},
+			Targets:   []apiserver.Target{{Role: &oth, Keys: []string{}}},
+		},
+		{
+			Operation: apiserver.HEAD,
+			Action:    apiserver.ALLOW,
+			Filters:   []apiserver.Filter{},
+			Targets:   []apiserver.Target{{Role: &oth, Keys: []string{}}},
+		},
+		{
+			Operation: apiserver.GET,
+			Action:    apiserver.ALLOW,
+			Filters:   []apiserver.Filter{},
+			Targets:   []apiserver.Target{{Role: &oth, Keys: []string{}}},
 		},
 	}
-	bearer.Object = append(bearer.Object, getRestrictBearerRecords()...)
+	records = append(records, getRestrictBearerRecords()...)
 
 	httpClient := defaultHTTPClient()
-	bearerTokens := makeAuthTokenRequest(ctx, t, []apiserver.Bearer{bearer}, httpClient, false)
-	bearerToken := bearerTokens[0]
+	bearerToken := makeAuthTokenRequest(ctx, t, records, httpClient, false)
 
 	query := make(url.Values)
 	query.Add(walletConnectQuery, strconv.FormatBool(useWalletConnect))
@@ -1679,48 +1598,69 @@ func containsContainer(containers []apiserver.ContainerInfo, cnrID, cnrName stri
 	return false
 }
 
-func makeAuthTokenRequest(ctx context.Context, t *testing.T, bearers []apiserver.Bearer, httpClient *http.Client, forAllUsers bool) []*handlers.BearerToken {
+func bearerSigScheme() apiserver.SchemaType {
+	if useWalletConnect {
+		return apiserver.WALLETCONNECT
+	}
+
+	return apiserver.SHA512
+}
+
+func makeAuthTokenRequest(ctx context.Context, t *testing.T, records []apiserver.Record, httpClient *http.Client, forAllUsers bool) *handlers.BearerToken {
 	key, err := keys.NewPrivateKeyFromHex(devenvPrivateKey)
 	require.NoError(t, err)
 
 	signer := user.NewAutoIDSignerRFC6979(key.PrivateKey)
-	ownerID := signer.UserID()
 
-	data, err := json.Marshal(bearers)
+	req := apiserver.FormBearerRequest{
+		Issuer:  signer.UserID().String(),
+		Records: records,
+	}
+
+	if !forAllUsers {
+		owner := gateMetadataID(ctx, t).String()
+		req.Owner = &owner
+	}
+
+	data, err := json.Marshal(req)
 	require.NoError(t, err)
 
-	request, err := http.NewRequest(http.MethodPost, testHost+"/v1/auth", bytes.NewReader(data))
+	request, err := http.NewRequest(http.MethodPost, testHost+"/v2/auth/bearer", bytes.NewReader(data))
 	require.NoError(t, err)
 	request = request.WithContext(ctx)
 	request.Header.Add("Content-Type", "application/json")
-	request.Header.Add(XBearerOwnerID, ownerID.String())
-	request.Header.Add(XBearerForAllUsers, strconv.FormatBool(forAllUsers))
 
-	var stokenResp []*apiserver.TokenResponse
+	var stokenResp *apiserver.FormBearerResponse
 	doRequest(t, httpClient, request, http.StatusOK, &stokenResp)
 
-	fmt.Println("resp tokens:")
+	binaryData, err := base64.StdEncoding.DecodeString(stokenResp.Token)
+	require.NoError(t, err)
 
-	respTokens := make([]*handlers.BearerToken, len(stokenResp))
-	for i, tok := range stokenResp {
-		require.Equal(t, bearers[i].Name, *tok.Name)
-		require.Equal(t, apiserver.Object, tok.Type)
-
-		binaryData, err := base64.StdEncoding.DecodeString(tok.Token)
-		require.NoError(t, err)
-
-		var bt *handlers.BearerToken
-		if useWalletConnect {
-			bt = signTokenWalletConnect(t, key, binaryData)
-		} else {
-			bt = signToken(t, key, binaryData)
-		}
-
-		respTokens[i] = bt
-		fmt.Printf("%+v\n", bt)
+	if useWalletConnect {
+		return signTokenWalletConnect(t, key, binaryData)
 	}
 
-	return respTokens
+	return signToken(t, key, binaryData)
+}
+
+func completeBearerToken(ctx context.Context, t *testing.T, httpClient *http.Client, bt *handlers.BearerToken) *apiserver.BinaryBearer {
+	data, err := json.Marshal(apiserver.CompleteUnsignedBearerTokenRequest{
+		Token:     bt.Token,
+		Signature: bt.Signature,
+		Key:       bt.Key,
+		Scheme:    bearerSigScheme(),
+	})
+	require.NoError(t, err)
+
+	request, err := http.NewRequest(http.MethodPost, testHost+"/v2/auth/bearer/complete", bytes.NewReader(data))
+	require.NoError(t, err)
+	request = request.WithContext(ctx)
+	request.Header.Add("Content-Type", "application/json")
+
+	resp := &apiserver.BinaryBearer{}
+	doRequest(t, httpClient, request, http.StatusOK, resp)
+
+	return resp
 }
 
 func makeV2AuthBearerRequest(ctx context.Context, t *testing.T, req apiserver.FormBearerRequest, httpClient *http.Client) *handlers.BearerToken {
@@ -1977,27 +1917,21 @@ func restNewObjectUploadWC(ctx context.Context, t *testing.T, clientPool *pool.P
 	restNewObjectUploadInt(ctx, t, clientPool, cnrID, signer, false, true)
 }
 func restNewObjectUploadInt(ctx context.Context, t *testing.T, clientPool *pool.Pool, cnrID cid.ID, signer user.Signer, cookie bool, walletConnect bool) {
-	bt := apiserver.Bearer{
-		Object: []apiserver.Record{
-			formAllowRecord(apiserver.PUT),
-		},
+	records := []apiserver.Record{
+		formAllowRecord(apiserver.PUT),
 	}
-	bt.Object = append(bt.Object, getRestrictBearerRecords()...)
+	records = append(records, getRestrictBearerRecords()...)
 
 	httpClient := defaultHTTPClient()
-	bearerTokens := makeAuthTokenRequest(ctx, t, []apiserver.Bearer{bt}, httpClient, false)
-	bearerToken := bearerTokens[0]
+	bearerToken := makeAuthTokenRequest(ctx, t, records, httpClient, false)
 
 	query := make(url.Values)
 	query.Add(walletConnectQuery, strconv.FormatBool(useWalletConnect))
 
 	resp := &apiserver.BinaryBearer{}
 	if !walletConnect {
-		request, err := http.NewRequest(http.MethodGet, testHost+"/v1/auth/bearer?"+query.Encode(), nil)
-		require.NoError(t, err)
-		prepareCommonHeaders(request.Header, bearerToken)
-		doRequest(t, httpClient, request, http.StatusOK, resp)
-		_, err = base64.StdEncoding.DecodeString(resp.Token)
+		resp = completeBearerToken(ctx, t, httpClient, bearerToken)
+		_, err := base64.StdEncoding.DecodeString(resp.Token)
 		require.NoError(t, err)
 	}
 
@@ -2096,15 +2030,12 @@ func restNewObjectUploadSessionTokenV2(ctx context.Context, t *testing.T, client
 	require.NoError(t, err)
 
 	if useBearer {
-		bt := apiserver.Bearer{
-			Object: []apiserver.Record{
-				formAllowRecord(apiserver.PUT),
-			},
+		records := []apiserver.Record{
+			formAllowRecord(apiserver.PUT),
 		}
-		bt.Object = append(bt.Object, getRestrictBearerRecords()...)
+		records = append(records, getRestrictBearerRecords()...)
 
-		bearerTokens := makeAuthTokenRequest(ctx, t, []apiserver.Bearer{bt}, httpClient, true)
-		bearerToken := bearerTokens[0]
+		bearerToken := makeAuthTokenRequest(ctx, t, records, httpClient, true)
 
 		prepareCommonHeadersSeparateBearerHeader(request.Header, bearerToken)
 	}
@@ -2139,27 +2070,21 @@ func restNewObjectUploadSessionTokenV2(ctx context.Context, t *testing.T, client
 }
 
 func restNewObjectHead(ctx context.Context, t *testing.T, p *pool.Pool, ownerID *user.ID, cnrID cid.ID, signer user.Signer, walletConnect bool) {
-	bearer := apiserver.Bearer{
-		Object: []apiserver.Record{
-			formAllowRecord(apiserver.HEAD),
-			formAllowRecord(apiserver.GET),
-		},
+	records := []apiserver.Record{
+		formAllowRecord(apiserver.HEAD),
+		formAllowRecord(apiserver.GET),
 	}
-	bearer.Object = append(bearer.Object, getRestrictBearerRecords()...)
+	records = append(records, getRestrictBearerRecords()...)
 
 	httpClient := defaultHTTPClient()
-	bearerTokens := makeAuthTokenRequest(ctx, t, []apiserver.Bearer{bearer}, httpClient, false)
-	bearerToken := bearerTokens[0]
+	bearerToken := makeAuthTokenRequest(ctx, t, records, httpClient, false)
 
 	query := make(url.Values)
 	query.Add(walletConnectQuery, strconv.FormatBool(useWalletConnect))
 
 	resp := &apiserver.BinaryBearer{}
 	if !walletConnect {
-		request, err := http.NewRequest(http.MethodGet, testHost+"/v1/auth/bearer?"+query.Encode(), nil)
-		require.NoError(t, err)
-		prepareCommonHeaders(request.Header, bearerToken)
-		doRequest(t, httpClient, request, http.StatusOK, resp)
+		resp = completeBearerToken(ctx, t, httpClient, bearerToken)
 	}
 
 	var (
@@ -2514,28 +2439,22 @@ func restShareObjectToAccountWithBearerAndSessionV2(ctx context.Context, t *test
 }
 
 func restNewObjectHeadByAttribute(ctx context.Context, t *testing.T, p *pool.Pool, ownerID *user.ID, cnrID cid.ID, signer user.Signer, walletConnect bool) {
-	bearer := apiserver.Bearer{
-		Object: []apiserver.Record{
-			formAllowRecord(apiserver.HEAD),
-			formAllowRecord(apiserver.GET),
-			formAllowRecord(apiserver.SEARCH),
-		},
+	records := []apiserver.Record{
+		formAllowRecord(apiserver.HEAD),
+		formAllowRecord(apiserver.GET),
+		formAllowRecord(apiserver.SEARCH),
 	}
-	bearer.Object = append(bearer.Object, getRestrictBearerRecords()...)
+	records = append(records, getRestrictBearerRecords()...)
 
 	httpClient := defaultHTTPClient()
-	bearerTokens := makeAuthTokenRequest(ctx, t, []apiserver.Bearer{bearer}, httpClient, false)
-	bearerToken := bearerTokens[0]
+	bearerToken := makeAuthTokenRequest(ctx, t, records, httpClient, false)
 
 	query := make(url.Values)
 	query.Add(walletConnectQuery, strconv.FormatBool(useWalletConnect))
 
 	resp := &apiserver.BinaryBearer{}
 	if !walletConnect {
-		request, err := http.NewRequest(http.MethodGet, testHost+"/v1/auth/bearer?"+query.Encode(), nil)
-		require.NoError(t, err)
-		prepareCommonHeaders(request.Header, bearerToken)
-		doRequest(t, httpClient, request, http.StatusOK, resp)
+		resp = completeBearerToken(ctx, t, httpClient, bearerToken)
 	}
 
 	var (
@@ -2791,28 +2710,22 @@ func restNewObjectHeadByAttributeSessionV2(ctx context.Context, t *testing.T, p 
 }
 
 func restNewObjectGetByAttribute(ctx context.Context, t *testing.T, p *pool.Pool, ownerID *user.ID, cnrID cid.ID, signer user.Signer, walletConnect, addRange bool) {
-	bearer := apiserver.Bearer{
-		Object: []apiserver.Record{
-			formAllowRecord(apiserver.GET),
-			formAllowRecord(apiserver.SEARCH),
-			formAllowRecord(apiserver.HEAD),
-		},
+	records := []apiserver.Record{
+		formAllowRecord(apiserver.GET),
+		formAllowRecord(apiserver.SEARCH),
+		formAllowRecord(apiserver.HEAD),
 	}
-	bearer.Object = append(bearer.Object, getRestrictBearerRecords()...)
+	records = append(records, getRestrictBearerRecords()...)
 
 	httpClient := defaultHTTPClient()
-	bearerTokens := makeAuthTokenRequest(ctx, t, []apiserver.Bearer{bearer}, httpClient, false)
-	bearerToken := bearerTokens[0]
+	bearerToken := makeAuthTokenRequest(ctx, t, records, httpClient, false)
 
 	query := make(url.Values)
 	query.Add(walletConnectQuery, strconv.FormatBool(useWalletConnect))
 
 	resp := &apiserver.BinaryBearer{}
 	if !walletConnect {
-		request, err := http.NewRequest(http.MethodGet, testHost+"/v1/auth/bearer?"+query.Encode(), nil)
-		require.NoError(t, err)
-		prepareCommonHeaders(request.Header, bearerToken)
-		doRequest(t, httpClient, request, http.StatusOK, resp)
+		resp = completeBearerToken(ctx, t, httpClient, bearerToken)
 	}
 
 	var (
