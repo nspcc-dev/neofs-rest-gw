@@ -38,147 +38,33 @@ var (
 	fakeSignature = neofscrypto.NewSignatureFromRawKey(neofscrypto.ECDSA_SHA512, []byte{}, []byte{})
 )
 
-type headersParams struct {
-	XBearerLifetime    uint64
-	XBearerIssuerID    string
-	XBearerForAllUsers bool
-}
-
 type objectTokenParams struct {
-	headersParams
-	Records []apiserver.Record
-	Name    string
+	Records  []apiserver.Record
+	Issuer   string
+	Lifetime uint64
 }
 
-func newHeaderParams(params apiserver.AuthParams) headersParams {
-	var bearerForAllUsers bool
-	if params.XBearerForAllUsers != nil {
-		bearerForAllUsers = *params.XBearerForAllUsers
-	}
-
-	prm := headersParams{
-		XBearerIssuerID:    params.XBearerOwnerId,
-		XBearerForAllUsers: bearerForAllUsers,
-	}
-
-	if params.XBearerLifetime != nil && *params.XBearerLifetime > 0 {
-		prm.XBearerLifetime = uint64(*params.XBearerLifetime)
-	}
-
-	return prm
-}
-
-func newObjectParams(common headersParams, token apiserver.Bearer) objectTokenParams {
-	return objectTokenParams{
-		headersParams: common,
-		Records:       token.Object,
-		Name:          token.Name,
-	}
-}
-
-// Auth handler that forms bearer token to sign.
-func (a *RestAPI) Auth(ctx echo.Context, params apiserver.AuthParams) error {
-	if a.apiMetric != nil {
-		defer metrics.Elapsed(a.apiMetric.AuthDuration)()
-	}
-
-	log := a.log.With(zap.String(handlerFieldName, "Auth"))
-
-	var tokens []apiserver.Bearer
-	if err := ctx.Bind(&tokens); err != nil {
-		return ctx.JSON(http.StatusBadRequest, a.logAndGetErrorResponse("bind", err, log))
-	}
-
-	commonPrm := newHeaderParams(params)
-	var err error
-
-	tokenNames := make(map[string]struct{})
-	response := make([]*apiserver.TokenResponse, len(tokens))
-	for i, token := range tokens {
-		if _, ok := tokenNames[token.Name]; ok {
-			err := fmt.Errorf("duplicated token name '%s'", token.Name)
-			return ctx.JSON(http.StatusBadRequest, a.logAndGetErrorResponse("token", err, log))
-		}
-		tokenNames[token.Name] = struct{}{}
-
-		prm := newObjectParams(commonPrm, token)
-		response[i], err = prepareObjectToken(ctx.Request().Context(), prm, a.networkInfoGetter, a.signer.UserID())
-
-		if err != nil {
-			return ctx.JSON(http.StatusBadRequest, util.NewErrorResponse(err))
-		}
-	}
-
-	ctx.Response().Header().Set(accessControlAllowOriginHeader, "*")
-	return ctx.JSON(http.StatusOK, response)
-}
-
-// FormBinaryBearer handler that forms binary bearer token using headers with body and signature.
-func (a *RestAPI) FormBinaryBearer(ctx echo.Context, params apiserver.FormBinaryBearerParams) error {
-	if a.apiMetric != nil {
-		defer metrics.Elapsed(a.apiMetric.FormBinaryBearerDuration)()
-	}
-
-	log := a.log.With(zap.String(handlerFieldName, "FormBinaryBearer"))
-
-	principal, err := getPrincipal(ctx)
-	if err != nil {
-		return ctx.JSON(http.StatusBadRequest, util.NewErrorResponse(err))
-	}
-
-	var walletConnect apiserver.SignatureScheme
-	if params.WalletConnect != nil {
-		walletConnect = *params.WalletConnect
-	}
-
-	btoken, err := assembleBearerToken(principal, params.XBearerSignature, params.XBearerSignatureKey, walletConnect)
-	if err != nil {
-		resp := a.logAndGetErrorResponse("invalid bearer token", err, log)
-		return ctx.JSON(http.StatusBadRequest, resp)
-	}
-
-	if btoken == nil {
-		return ctx.JSON(http.StatusBadRequest, util.NewErrorResponse(errors.New("empty bearer token")))
-	}
-
-	resp := &apiserver.BinaryBearer{
-		Token: base64.StdEncoding.EncodeToString(btoken.Marshal()),
-	}
-
-	ctx.Response().Header().Set(accessControlAllowOriginHeader, "*")
-	return ctx.JSON(http.StatusOK, resp)
-}
-
-func prepareObjectToken(ctx context.Context, params objectTokenParams, networkInfoGetter networkInfoGetter, owner user.ID) (*apiserver.TokenResponse, error) {
+func prepareObjectToken(ctx context.Context, params objectTokenParams, networkInfoGetter networkInfoGetter, owner user.ID) (string, error) {
 	btoken, err := util.ToNativeObjectToken(params.Records)
 	if err != nil {
-		return nil, fmt.Errorf("couldn't transform token to native: %w", err)
+		return "", fmt.Errorf("couldn't transform token to native: %w", err)
 	}
 
 	var issuer user.ID
-	if err = issuer.DecodeString(params.XBearerIssuerID); err != nil {
-		return nil, fmt.Errorf("invalid bearer issuer: %w", err)
+	if err = issuer.DecodeString(params.Issuer); err != nil {
+		return "", fmt.Errorf("invalid bearer issuer: %w", err)
 	}
 	btoken.SetIssuer(issuer)
+	btoken.ForUser(owner)
 
-	if !params.XBearerForAllUsers {
-		btoken.ForUser(owner)
-	}
-
-	iat, exp, err := getTokenLifetime(ctx, networkInfoGetter, params.XBearerLifetime)
+	iat, exp, err := getTokenLifetime(ctx, networkInfoGetter, params.Lifetime)
 	if err != nil {
-		return nil, fmt.Errorf("couldn't get lifetime: %w", err)
+		return "", fmt.Errorf("couldn't get lifetime: %w", err)
 	}
 	btoken.SetIat(iat)
 	btoken.SetExp(exp)
 
-	binaryBearer := btoken.SignedData()
-
-	return &apiserver.TokenResponse{
-		Name:  &params.Name,
-		Type:  apiserver.Object,
-		Token: base64.StdEncoding.EncodeToString(binaryBearer),
-	}, nil
+	return base64.StdEncoding.EncodeToString(btoken.SignedData()), nil
 }
 
 func getCurrentEpoch(ctx context.Context, networkInfoGetter networkInfoGetter) (uint64, error) {
@@ -506,26 +392,22 @@ func (a *RestAPI) UnsignedBearerToken(ctx echo.Context) error {
 		}
 	}
 
-	prm := headersParams{
-		XBearerIssuerID: request.Issuer,
+	tokenParams := objectTokenParams{
+		Records: request.Records,
+		Issuer:  request.Issuer,
 	}
 
 	if request.Lifetime != nil && *request.Lifetime > 0 {
-		prm.XBearerLifetime = uint64(*request.Lifetime)
+		tokenParams.Lifetime = uint64(*request.Lifetime)
 	}
 
-	tokenParams := objectTokenParams{
-		headersParams: prm,
-		Records:       request.Records,
-	}
-
-	preparedTokenData, err := prepareObjectToken(ctx.Request().Context(), tokenParams, a.networkInfoGetter, tokenOwner)
+	token, err := prepareObjectToken(ctx.Request().Context(), tokenParams, a.networkInfoGetter, tokenOwner)
 	if err != nil {
 		return ctx.JSON(http.StatusBadRequest, util.NewErrorResponse(err))
 	}
 
 	resp := apiserver.FormBearerResponse{
-		Token: preparedTokenData.Token,
+		Token: token,
 	}
 
 	ctx.Response().Header().Set(accessControlAllowOriginHeader, "*")

@@ -123,19 +123,6 @@ func getNeoFSBearerFromCookie(ctx echo.Context) (string, error) {
 	return "", nil
 }
 
-func getPrincipal(ctx echo.Context) (string, error) {
-	headerValue, err := getAuthorizationHeaderValue(ctx)
-	if err != nil {
-		return "", err
-	}
-
-	if headerValue != "" {
-		return headerValue, nil
-	}
-
-	return getNeoFSBearerFromCookie(ctx)
-}
-
 func getNeoFSBearerToken(ctx echo.Context) (string, error) {
 	if principal := ctx.Request().Header.Get(neofsBearerToken); principal != "" {
 		return principal, nil

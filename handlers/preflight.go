@@ -38,21 +38,6 @@ var (
 	allowHeaders    = []string{"Content-Type", "Authorization"}
 	allowHeadersStr = strings.Join(allowHeaders, delimiter)
 
-	optionsAuth = strings.Join(
-		append(allowHeaders,
-			"X-Bearer-For-All-Users",
-			headerXBearerOwnerID,
-			headerXBearerLifetime,
-		),
-		delimiter)
-
-	optionsAuthBearer = strings.Join(
-		append(allowHeaders,
-			headerXBearerSignature,
-			headerXBearerSignatureKey,
-		),
-		delimiter)
-
 	optionsObjectsGetDelete = strings.Join(
 		append(allowHeaders,
 			headerXBearerSignature,
@@ -113,22 +98,6 @@ func allowMethods(methods ...string) string {
 	allowed = append(allowed, methods...)
 
 	return strings.Join(allowed, ", ")
-}
-
-// OptionsAuth handler for the auth options request.
-func (a *RestAPI) OptionsAuth(ctx echo.Context) error {
-	ctx.Response().Header().Set(accessControlAllowOriginHeader, allOrigins)
-	ctx.Response().Header().Set(accessControlAllowHeadersHeader, optionsAuth)
-	ctx.Response().Header().Set(accessControlAllowMethodsHeader, allowMethods(methodPost))
-	return ctx.NoContent(http.StatusOK)
-}
-
-// OptionsAuthBearer handler for the authBearer options request.
-func (a *RestAPI) OptionsAuthBearer(ctx echo.Context) error {
-	ctx.Response().Header().Set(accessControlAllowOriginHeader, allOrigins)
-	ctx.Response().Header().Set(accessControlAllowHeadersHeader, optionsAuthBearer)
-	ctx.Response().Header().Set(accessControlAllowMethodsHeader, allowMethods(methodGet))
-	return ctx.NoContent(http.StatusOK)
 }
 
 // OptionsBalance handler for the balance options request.

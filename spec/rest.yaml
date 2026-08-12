@@ -13,120 +13,6 @@ security:
   - CookieAuth: [ ]
 
 paths:
-  /v1/auth:
-    post:
-      summary: Form bearer token for subsequent requests
-      operationId: auth
-      deprecated: true
-      parameters:
-        - name: X-Bearer-Owner-Id
-          in: header
-          description: Owner Id (wallet address) that will sign the token.
-          required: true
-          schema:
-            type: string
-        - name: X-Bearer-Lifetime
-          in: header
-          description: Token lifetime in epoch.
-          schema:
-            type: integer
-            default: 100
-        - name: X-Bearer-For-All-Users
-          in: header
-          description: Form token for all users or only for this gate.
-          schema:
-            type: boolean
-            default: false
-      requestBody:
-        description: Bearer tokens to form.
-        content:
-          application/json:
-            schema:
-              type: array
-              items:
-                $ref: '#/components/schemas/Bearer'
-        required: true
-      responses:
-        "200":
-          description: Base64 encoded stable binary marshaled bearer token bodies.
-          headers:
-            Access-Control-Allow-Origin:
-              schema:
-                type: string
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/TokenResponse'
-        "400":
-          description: Bad request
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-      security: [ ]
-      x-codegen-request-body-name: tokens
-    options:
-      operationId: optionsAuth
-      responses:
-        "200":
-          description: CORS
-          headers:
-            Access-Control-Allow-Origin:
-              schema:
-                type: string
-            Access-Control-Allow-Methods:
-              schema:
-                type: string
-            Access-Control-Allow-Headers:
-              schema:
-                type: string
-          content: { }
-      security: [ ]
-  /v1/auth/bearer:
-    get:
-      summary: Form binary bearer token
-      operationId: formBinaryBearer
-      deprecated: true
-      parameters:
-        - $ref: '#/components/parameters/signatureParam'
-        - $ref: '#/components/parameters/signatureKeyParam'
-        - $ref: '#/components/parameters/signatureScheme'
-      responses:
-        "200":
-          description: Base64 encoded stable binary marshaled bearer token.
-          headers:
-            Access-Control-Allow-Origin:
-              schema:
-                type: string
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/BinaryBearer'
-        "400":
-          description: Bad request
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-    options:
-      operationId: optionsAuthBearer
-      responses:
-        "200":
-          description: CORS
-          headers:
-            Access-Control-Allow-Origin:
-              schema:
-                type: string
-            Access-Control-Allow-Methods:
-              schema:
-                type: string
-            Access-Control-Allow-Headers:
-              schema:
-                type: string
-          content: { }
-      security: [ ]
   /v2/auth/bearer:
     post:
       summary: Form bearer token for subsequent requests.
@@ -1387,18 +1273,6 @@ components:
       description: Bearer token for object operations that is represented in binary form.
       example:
         token: ChIKDAoAGggIARABIgIIAxoCCGQSZgohA+J5jFWFMiOpyvMZBu9wwPTKsWsG0q206kVe63iuWP/wEkEE4SIV0QngnKppDf54QezUKmar7UQby6HzufT5yVIOvj7QEqZnOavrKW0chCeCwP0khda/j9k00ct6NMEDxQFW+g==
-    Bearer:
-      type: object
-      required:
-        - object
-      properties:
-        name:
-          type: string
-          x-go-type-skip-optional-pointer: true
-        object:
-          type: array
-          items:
-            $ref: '#/components/schemas/Record'
     FormBearerRequest:
       type: object
       required:
@@ -1558,27 +1432,6 @@ components:
         - USER
         - SYSTEM
         - OTHERS
-    TokenResponse:
-      required:
-        - token
-        - type
-      type: object
-      properties:
-        name:
-          type: string
-        type:
-          $ref: '#/components/schemas/TokenType'
-        token:
-          type: string
-      description: Base64 encoded marshaled token (for container or for object operations).
-      example:
-        - type: object
-          token: ClYKBAgCEA0aCAgDEAEiAggDGggIARACIgIIAxoICAIQAiICCAMaCAgDEAIiAggDGggIBBACIgIIAxoICAUQAiICCAMaCAgGEAIiAggDGggIBxACIgIIAxIbChk182WEDFuAqq3nssrGOaH0NK0ZhzF8bu+YGgQIaBgE
-    TokenType:
-      type: string
-      description: Type of token.
-      enum:
-        - object
     ContainerPostInfo:
       type: object
       properties:

@@ -3,8 +3,9 @@
 REST gateway version 0.16.0 introduced a set of /v2/auth paths for
 authorization. It at the same time removed support for container operations
 from /v1/auth because they relied on old session tokens and couldn't be used
-securely. Other /v1/auth functionality was deprecated and applications are
-recommended to migrate to /v2/auth for all purposes.
+securely.
+
+REST gateway version 0.19.0 has only V2 auth API. V1 auth was removed completely.
 
 ### Key differences
 
