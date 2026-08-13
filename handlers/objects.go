@@ -310,9 +310,7 @@ func (a *RestAPI) getByAddress(ctx echo.Context, addr oid.Address, downloadParam
 			// determine the Content-Type from the payload head
 			var payloadHead []byte
 
-			contentType, payloadHead, err = readContentType(payloadSize, func(uint64) (io.Reader, error) {
-				return payload, nil
-			})
+			contentType, payloadHead, err = readContentType(payloadSize, payload)
 			if err != nil {
 				resp := a.logAndGetErrorResponse("invalid  ContentType", err, log)
 				return ctx.JSON(getResponseCodeFromStatus(err), resp)
@@ -366,22 +364,7 @@ func (a *RestAPI) headByAddress(ctx echo.Context, addr oid.Address, downloadPara
 	contentType := a.setAttributes(ctx, param, log)
 	if len(contentType) == 0 {
 		if payloadSize > 0 {
-			contentType, _, err = readContentType(payloadSize, func(sz uint64) (io.Reader, error) {
-				var prmGet client.PrmObjectGet
-				attachBearer(&prmGet, btoken)
-				if sessionToken != nil {
-					prmGet.WithinSessionV2(*sessionToken)
-				}
-				prmGet.SetRange(0, sz)
-				prmGet.MarkPayloadOnly()
-				prmGet.SkipChecksumVerification()
-
-				_, reader, err := a.pool.ObjectGetInit(ctx.Request().Context(), addr.Container(), addr.Object(), a.signer, prmGet)
-				if err != nil {
-					return nil, err
-				}
-				return reader, nil
-			})
+			contentType, err = a.detectContentTypeFromObjectBeginning(ctx.Request().Context(), addr, payloadSize, btoken, sessionToken)
 			if err != nil {
 				resp := a.logAndGetErrorResponse("invalid  ContentType", err, log)
 				return ctx.JSON(getResponseCodeFromStatus(err), resp)
@@ -504,19 +487,29 @@ func (a *RestAPI) setAttributes(ctx echo.Context, params setAttributeParams, log
 	return contentType
 }
 
-// initializes io.Reader with the limited size and detects Content-Type from it.
-// Returns r's error directly. Also returns the processed data.
-func readContentType(maxSize uint64, rInit func(uint64) (io.Reader, error)) (string, []byte, error) {
-	if maxSize > sizeToDetectType {
-		maxSize = sizeToDetectType
+func (a *RestAPI) detectContentTypeFromObjectBeginning(ctx context.Context, addr oid.Address, payloadSize uint64, btoken *bearer.Token, sessionToken *session.Token) (string, error) {
+	var prm client.PrmObjectGet
+	attachBearer(&prm, btoken)
+	if sessionToken != nil {
+		prm.WithinSessionV2(*sessionToken)
 	}
 
-	buf := make([]byte, maxSize)
+	prm.SetRange(0, min(payloadSize, sizeToDetectType))
+	prm.MarkPayloadOnly()
+	prm.SkipChecksumVerification()
 
-	r, err := rInit(maxSize)
+	_, reader, err := a.pool.ObjectGetInit(ctx, addr.Container(), addr.Object(), a.signer, prm)
 	if err != nil {
-		return "", nil, err
+		return "", err
 	}
+	defer func() { _ = reader.Close() }()
+
+	contentType, _, err := readContentType(payloadSize, reader)
+	return contentType, err
+}
+
+func readContentType(maxSize uint64, r io.Reader) (string, []byte, error) {
+	buf := make([]byte, min(maxSize, sizeToDetectType))
 
 	n, err := io.ReadFull(r, buf)
 	if err != nil && !errors.Is(err, io.EOF) {

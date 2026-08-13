@@ -195,6 +195,9 @@ func runTests(ctx context.Context, t *testing.T, key *keys.PrivateKey, node stri
 	t.Run("rest new get by attribute with range", func(t *testing.T) {
 		restNewObjectGetByAttribute(ctx, t, clientPool, &owner, cnrID, signer, false, true)
 	})
+	t.Run("rest new get object ranges", func(t *testing.T) {
+		restNewObjectGetRanges(ctx, t, clientPool, &owner, cnrID, signer)
+	})
 	t.Run("rest set container attribute", func(t *testing.T) {
 		restSetContainerAttribute(ctx, t, clientPool, signer, sessionV2Signer)
 	})
@@ -2870,6 +2873,117 @@ func restNewObjectGetByAttribute(ctx context.Context, t *testing.T, p *pool.Pool
 		} else {
 			require.Equal(t, content, rawPayload)
 		}
+	})
+}
+
+func restNewObjectGetRanges(ctx context.Context, t *testing.T, p *pool.Pool, ownerID *user.ID, cnrID cid.ID, signer user.Signer) {
+	records := []apiserver.Record{
+		formAllowRecord(apiserver.GET),
+		formAllowRecord(apiserver.SEARCH),
+		formAllowRecord(apiserver.HEAD),
+	}
+	records = append(records, getRestrictBearerRecords()...)
+
+	httpClient := defaultHTTPClient()
+	bearerToken := makeAuthTokenRequest(ctx, t, records, httpClient, false)
+	bearer := completeBearerToken(ctx, t, httpClient, bearerToken)
+
+	query := make(url.Values)
+	query.Add(fullBearerQuery, "true")
+
+	content := []byte("some content") // 12 bytes.
+
+	// The Content-Type attribute is deliberately omitted for one object.
+	sniffedID := createObject(ctx, t, p, ownerID, cnrID, map[string]string{
+		object.AttributeFileName: "new-get-obj-ranges-sniffed",
+	}, content, signer)
+	typedID := createObject(ctx, t, p, ownerID, cnrID, map[string]string{
+		object.AttributeFileName:    "new-get-obj-ranges-typed",
+		object.AttributeContentType: "application/octet-stream",
+	}, content, signer)
+
+	doRangeRequest := func(t *testing.T, objID oid.ID, rangeParam string, expectedCode int) (http.Header, []byte) {
+		request, err := http.NewRequest(http.MethodGet, testHost+"/v1/objects/"+cnrID.EncodeToString()+"/by_id/"+objID.EncodeToString()+"?"+query.Encode(), nil)
+		require.NoError(t, err)
+		request.Header.Set("Authorization", "Bearer "+bearer.Token)
+		request.Header.Set("Range", rangeParam)
+
+		return doRequest(t, httpClient, request, expectedCode, nil)
+	}
+
+	satisfiable := []struct {
+		rangeParam string
+		start      int
+		end        int
+	}{
+		{rangeParam: "bytes=0-4", start: 0, end: 4},
+		{rangeParam: "bytes=5-10", start: 5, end: 10},
+		{rangeParam: "bytes=5-", start: 5, end: 11},
+		{rangeParam: "bytes=-5", start: 7, end: 11},
+		{rangeParam: "bytes=0-", start: 0, end: 11},
+		// The last byte position beyond the payload is trimmed to the object end.
+		{rangeParam: "bytes=5-100", start: 5, end: 11},
+		// The suffix length beyond the payload means the whole object.
+		{rangeParam: "bytes=-100", start: 0, end: 11},
+		{rangeParam: "bytes=11-11", start: 11, end: 11},
+	}
+
+	for _, objID := range []oid.ID{sniffedID, typedID} {
+		for _, tc := range satisfiable {
+			t.Run(tc.rangeParam+"/"+objID.String(), func(t *testing.T) {
+				headers, payload := doRangeRequest(t, objID, tc.rangeParam, http.StatusPartialContent)
+
+				require.Equal(t, content[tc.start:tc.end+1], payload)
+				require.Equal(t, fmt.Sprintf("bytes %d-%d/%d", tc.start, tc.end, len(content)), headers.Get("Content-Range"))
+				require.Equal(t, strconv.Itoa(tc.end-tc.start+1), headers.Get("Content-Length"))
+				require.Equal(t, "bytes", headers.Get("Accept-Ranges"))
+			})
+		}
+	}
+
+	t.Run("content type", func(t *testing.T) {
+		// Detected from the payload, no matter where the range starts.
+		ranges := []string{"bytes=0-4", "bytes=5-10", "bytes=-5"}
+		for _, rangeParam := range ranges {
+			headers, _ := doRangeRequest(t, sniffedID, rangeParam, http.StatusPartialContent)
+			require.Equal(t, "text/plain; charset=utf-8", headers.Get("Content-Type"), rangeParam)
+		}
+
+		// Taken from the object attribute.
+		headers, _ := doRangeRequest(t, typedID, "bytes=5-10", http.StatusPartialContent)
+		require.Equal(t, "application/octet-stream", headers.Get("Content-Type"))
+	})
+
+	t.Run("not satisfiable", func(t *testing.T) {
+		ranges := []string{
+			"bytes=12-",     // The first byte position is the payload size.
+			"bytes=12-20",   // The whole range is beyond the payload.
+			"bytes=100-200", // Far beyond the payload.
+			"bytes=-0",      // Zero suffix length.
+			"bytes=abc",     // Not a range at all.
+			"bytes=",        // Empty specifier.
+			"bytes=-",       // No positions.
+			"bytes=10-5",    // The first byte position exceeds the last one.
+			"bytes=0-5,7-9", // Multipart ranges are not supported.
+			"items=0-5",     // Unknown unit.
+		}
+
+		for _, rangeParam := range ranges {
+			t.Run(rangeParam, func(t *testing.T) {
+				doRangeRequest(t, sniffedID, rangeParam, http.StatusRequestedRangeNotSatisfiable)
+			})
+		}
+	})
+
+	t.Run("by attribute", func(t *testing.T) {
+		request, err := http.NewRequest(http.MethodGet, testHost+"/v1/objects/"+cnrID.EncodeToString()+"/by_attribute/"+object.AttributeFileName+"/new-get-obj-ranges-typed?"+query.Encode(), nil)
+		require.NoError(t, err)
+		request.Header.Set("Authorization", "Bearer "+bearer.Token)
+		request.Header.Set("Range", "bytes=-5")
+
+		headers, payload := doRequest(t, httpClient, request, http.StatusPartialContent, nil)
+		require.Equal(t, content[7:], payload)
+		require.Equal(t, fmt.Sprintf("bytes 7-11/%d", len(content)), headers.Get("Content-Range"))
 	})
 }
 
