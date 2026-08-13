@@ -14,6 +14,8 @@ This document outlines major changes between releases.
 - Deprecated `/v1/auth` and `/v1/auth/bearer` APIs (#403)
 
 ### Updated
+- github.com/nspcc-dev/neofs-sdk-go dependency to `v1.0.0-rc.21` (#410)
+- github.com/nspcc-dev/neo-go dependency to `v0.122.0` (#410)
 
 ### Upgrading from 0.18.0
 The deprecated `/v1/auth` and `/v1/auth/bearer` endpoints has been removed.
