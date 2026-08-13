@@ -355,7 +355,7 @@ func addExpirationHeaders(headers map[string]string, params apiserver.NewUploadC
 }
 
 // shares code of NeoFS object recording performed by various RestAPI methods.
-func (a *RestAPI) putObject(ctx echo.Context, hdr object.Object, bt *bearer.Token, sessionToken *sessionv2.Token, wp func(io.Writer) error) (oid.ID, error) {
+func (a *RestAPI) putObject(ctx echo.Context, hdr object.Object, bt *bearer.Token, sessionToken *sessionv2.Token, payload io.Reader) (oid.ID, error) {
 	var opts client.PrmObjectPutInit
 	if bt != nil {
 		opts.WithBearerToken(*bt)
@@ -368,9 +368,8 @@ func (a *RestAPI) putObject(ctx echo.Context, hdr object.Object, bt *bearer.Toke
 		return oid.ID{}, fmt.Errorf("init: %w", err)
 	}
 
-	err = wp(writer)
-	if err != nil {
-		return oid.ID{}, fmt.Errorf("write: %w", err)
+	if _, err = writer.ReadFrom(payload); err != nil {
+		return oid.ID{}, fmt.Errorf("read from: %w", err)
 	}
 
 	if err = writer.Close(); err != nil {

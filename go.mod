@@ -5,8 +5,8 @@ go 1.25.0
 require (
 	github.com/getkin/kin-openapi v0.144.0
 	github.com/labstack/echo/v4 v4.15.1
-	github.com/nspcc-dev/neo-go v0.120.0
-	github.com/nspcc-dev/neofs-sdk-go v1.0.0-rc.20.0.20260701132011-c8072a564b1f
+	github.com/nspcc-dev/neo-go v0.122.0
+	github.com/nspcc-dev/neofs-sdk-go v1.0.0-rc.21
 	github.com/oapi-codegen/echo-middleware v1.0.2
 	github.com/oapi-codegen/runtime v1.4.2
 	github.com/spf13/pflag v1.0.10
