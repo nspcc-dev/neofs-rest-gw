@@ -129,19 +129,7 @@ func (a *RestAPI) NewUploadContainerObject(ctx echo.Context, containerID apiserv
 	a.setOwner(&hdr, btoken)
 	hdr.SetAttributes(attributes...)
 
-	wp := func(w io.Writer) error {
-		var err error
-		if cln := ctx.Request().ContentLength; cln >= 0 && uint64(cln) < a.payloadBufferSize { // negative means unknown
-			if cln != 0 { // otherwise io.CopyBuffer panics
-				_, err = io.CopyBuffer(w, ctx.Request().Body, make([]byte, cln))
-			}
-		} else {
-			_, err = io.CopyBuffer(w, ctx.Request().Body, make([]byte, a.payloadBufferSize))
-		}
-		return err
-	}
-
-	idObj, err := a.putObject(ctx, hdr, btoken, sessionTokenV2, wp)
+	idObj, err := a.putObject(ctx, hdr, btoken, sessionTokenV2, ctx.Request().Body)
 	if err != nil {
 		resp := a.logAndGetErrorResponse("put object", err, log)
 		return ctx.JSON(getResponseCodeFromStatus(err), resp)

@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"context"
+	"crypto/rand"
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/hex"
@@ -165,6 +166,9 @@ func runTests(ctx context.Context, t *testing.T, key *keys.PrivateKey, node stri
 	})
 	t.Run("rest new upload object session v2 and bearer", func(t *testing.T) {
 		restNewObjectUploadSessionTokenV2(ctx, t, clientPool, cnrID, sessionV2Signer, true)
+	})
+	t.Run("rest new upload object payload shapes", func(t *testing.T) {
+		restNewObjectUploadPayloadShapes(ctx, t, clientPool, cnrID, signer)
 	})
 	t.Run("rest new upload object with bearer in cookie", func(t *testing.T) { restNewObjectUploadCookie(ctx, t, clientPool, cnrID, signer) })
 	t.Run("rest new upload object with wallet connect", func(t *testing.T) { restNewObjectUploadWC(ctx, t, clientPool, cnrID, signer) })
@@ -1991,6 +1995,59 @@ func restNewObjectUploadInt(ctx context.Context, t *testing.T, clientPool *pool.
 
 	for _, attribute := range res.Attributes() {
 		require.Equal(t, attributes[attribute.Key()], attribute.Value(), attribute.Key())
+	}
+}
+
+func restNewObjectUploadPayloadShapes(ctx context.Context, t *testing.T, clientPool *pool.Pool, cnrID cid.ID, signer user.Signer) {
+	// Bigger than the SDK's internal payload chunk so that ReadFrom performs several sends.
+	var large = make([]byte, 7<<20)
+	_, err := rand.Read(large)
+	require.NoError(t, err)
+
+	for _, tc := range []struct {
+		name    string
+		content []byte
+		chunked bool
+	}{
+		{name: "empty", content: []byte{}},
+		{name: "content", content: large},
+		{name: "chunked multi-chunk", content: large, chunked: true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			httpClient := defaultHTTPClient()
+			bearerToken := makeAuthTokenRequest(ctx, t, append([]apiserver.Record{formAllowRecord(apiserver.PUT)}, getRestrictBearerRecords()...), httpClient, false)
+			resp := completeBearerToken(ctx, t, httpClient, bearerToken)
+
+			query := make(url.Values)
+			query.Add(fullBearerQuery, "true")
+
+			request, err := http.NewRequest(http.MethodPost, testHost+"/v1/objects/"+cnrID.String()+"?"+query.Encode(), bytes.NewReader(tc.content))
+			require.NoError(t, err)
+			if tc.chunked {
+				// Unknown length: makes net/http use chunked transfer encoding, so the
+				// handler sees a negative ContentLength.
+				request.ContentLength = -1
+			} else {
+				require.EqualValues(t, len(tc.content), request.ContentLength)
+			}
+			request.Header.Set("Content-Type", "application/octet-stream")
+			request.Header.Add("Authorization", "Bearer "+resp.Token)
+
+			addr := &apiserver.AddressForUpload{}
+			doRequest(t, httpClient, request, http.StatusOK, addr)
+
+			var id oid.ID
+			require.NoError(t, id.DecodeString(addr.ObjectId))
+
+			var prm client.PrmObjectGet
+			hdr, payloadReader, err := clientPool.ObjectGetInit(ctx, cnrID, id, signer, prm)
+			require.NoError(t, err)
+
+			payload, err := io.ReadAll(payloadReader)
+			require.NoError(t, err)
+			require.EqualValues(t, len(tc.content), hdr.PayloadSize())
+			require.Equal(t, tc.content, payload)
+		})
 	}
 }
 

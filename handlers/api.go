@@ -30,8 +30,6 @@ type PrmAPI struct {
 	Key              *keys.PrivateKey
 	NNSName          string
 	DefaultTimestamp bool
-	// Size limit for buffering of object payloads. Must be positive.
-	MaxPayloadBufferSize uint64
 
 	GateMetric             *metrics.GateMetrics
 	ApiMetric              *metrics.ApiMetrics
@@ -69,18 +67,14 @@ const (
 
 // NewAPI creates a new RestAPI using specified logger, connection pool and other parameters.
 func NewAPI(prm *PrmAPI) (*RestAPI, error) {
-	if prm.MaxPayloadBufferSize == 0 {
-		return nil, errors.New("zero payload buffer size limit")
-	}
 	signer := user.NewAutoIDSignerRFC6979(prm.Key.PrivateKey)
 
 	return &RestAPI{
-		log:               prm.Logger,
-		pool:              prm.Pool,
-		signer:            signer,
-		nnsName:           prm.NNSName,
-		defaultTimestamp:  prm.DefaultTimestamp,
-		payloadBufferSize: prm.MaxPayloadBufferSize,
+		log:              prm.Logger,
+		pool:             prm.Pool,
+		signer:           signer,
+		nnsName:          prm.NNSName,
+		defaultTimestamp: prm.DefaultTimestamp,
 
 		prometheusService:      prm.PrometheusService,
 		pprofService:           prm.PprofService,
@@ -138,12 +132,11 @@ func (a *RestAPI) logAndGetErrorResponse(msg string, err error, log *zap.Logger)
 
 // RestAPI is a REST v1 request handler.
 type RestAPI struct {
-	log               *zap.Logger
-	pool              *pool.Pool
-	signer            user.Signer
-	defaultTimestamp  bool
-	payloadBufferSize uint64
-	nnsName           string
+	log              *zap.Logger
+	pool             *pool.Pool
+	signer           user.Signer
+	defaultTimestamp bool
+	nnsName          string
 
 	gateMetric             *metrics.GateMetrics
 	apiMetric              *metrics.ApiMetrics

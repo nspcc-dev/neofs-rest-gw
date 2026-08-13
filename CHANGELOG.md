@@ -9,6 +9,7 @@ This document outlines major changes between releases.
 ### Fixed
 
 ### Changed
+- Optimized object write buffering (#410)
 
 ### Removed
 - Deprecated `/v1/auth` and `/v1/auth/bearer` APIs (#403)
