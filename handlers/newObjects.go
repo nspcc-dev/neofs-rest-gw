@@ -4,10 +4,8 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
-	"io"
 	"net/http"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/labstack/echo/v4"
@@ -22,10 +20,6 @@ import (
 	"github.com/nspcc-dev/neofs-sdk-go/session/v2"
 	"go.uber.org/zap"
 )
-
-// maxRangeStart represents the maximum start range position for reading a payload in one piece
-// to detect the Content-Type in the beginning and return the payload simultaneously.
-const maxRangeStart = 4096
 
 // NewUploadContainerObject handler that upload file as object with attributes to NeoFS.
 func (a *RestAPI) NewUploadContainerObject(ctx echo.Context, containerID apiserver.ContainerId, params apiserver.NewUploadContainerObjectParams) error {
@@ -315,32 +309,46 @@ func (a *RestAPI) NewHeadByAttribute(ctx echo.Context, containerID apiserver.Con
 }
 
 func (a *RestAPI) getRange(ctx echo.Context, addr oid.Address, rangeParam string, downloadParam *string, btoken *bearer.Token, sessionToken *session.Token, log *zap.Logger) error {
-	// Read the object header to determine the attributes and the size of the payload.
-	var prm client.PrmObjectHead
-	if btoken != nil {
-		attachBearer(&prm, btoken)
+	rng, err := parseRangeHeader(rangeParam)
+	if err != nil {
+		resp := a.logAndGetErrorResponse("parse Range header", err, log.With(zap.String("range", rangeParam)))
+		return ctx.JSON(http.StatusRequestedRangeNotSatisfiable, resp)
 	}
+
+	var prm client.PrmObjectGet
+	attachBearer(&prm, btoken)
 	if sessionToken != nil {
 		prm.WithinSessionV2(*sessionToken)
 	}
 
-	header, err := a.pool.ObjectHead(ctx.Request().Context(), addr.Container(), addr.Object(), a.signer, prm)
+	switch rng.kind {
+	case rangeSuffix:
+		prm.SetRangeSuffix(rng.suffix)
+	case rangeFrom:
+		prm.SetRangeFrom(rng.first)
+	default:
+		prm.SetRangeBounds(rng.first, rng.last)
+	}
+
+	prm.SkipChecksumVerification()
+
+	header, resObj, err := a.pool.ObjectGetInit(ctx.Request().Context(), addr.Container(), addr.Object(), a.signer, prm)
 	if err != nil {
 		if isNotFoundError(err) {
-			resp := a.logAndGetErrorResponse("head object: not found", err, log)
+			resp := a.logAndGetErrorResponse("get object range: not found", err, log)
 			return ctx.JSON(http.StatusNotFound, resp)
 		}
-		resp := a.logAndGetErrorResponse("head object", err, log)
+		resp := a.logAndGetErrorResponse("get object range", err, log)
 		return ctx.JSON(getResponseCodeFromStatus(err), resp)
 	}
 
+	payload := readCloseWriterTo(resObj)
 	payloadSize := header.PayloadSize()
 
-	// Parse range parameters.
-	var start, end uint64
-	start, end, err = getRangeParams(rangeParam, payloadSize)
+	start, end, err := rng.resolveRangeForResponse(payloadSize)
 	if err != nil {
-		resp := a.logAndGetErrorResponse("get range params", err, log.With(zap.String("range", rangeParam)))
+		_ = payload.Close()
+		resp := a.logAndGetErrorResponse("resolve range", err, log.With(zap.String("range", rangeParam), zap.Uint64("payloadSize", payloadSize)))
 		return ctx.JSON(http.StatusRequestedRangeNotSatisfiable, resp)
 	}
 
@@ -356,95 +364,36 @@ func (a *RestAPI) getRange(ctx echo.Context, addr oid.Address, rangeParam string
 		payloadSize: payloadSize,
 		download:    downloadParam,
 		useJSON:     true,
-		header:      *header,
+		header:      header,
 	}
 	contentType := a.setAttributes(ctx, param, log)
 
-	// Find offset and length.
-	separateContentType := false
-	offset := start
 	if len(contentType) == 0 {
-		if start > maxRangeStart {
-			// We need to detect the Content-Type in a separate object range request
-			// because the start of the requested payload is far from the beginning.
-			separateContentType = true
-		} else {
-			// We should read payload from the beginning to detect ContentType.
-			offset = 0
-		}
-	}
-	length := end - offset + 1
-	log.Debug("Params for ObjectGetInit with range",
-		zap.Bool("separateContentType", separateContentType),
-		zap.Uint64("offset", offset),
-		zap.Uint64("length", length))
-
-	// Get object range.
-	var prmRange client.PrmObjectGet
-	if btoken != nil {
-		attachBearer(&prmRange, btoken)
-	}
-	if sessionToken != nil {
-		prmRange.WithinSessionV2(*sessionToken)
-	}
-	prmRange.SetRange(offset, length)
-	prmRange.MarkPayloadOnly()
-	prmRange.SkipChecksumVerification()
-
-	_, resObj, err := a.pool.ObjectGetInit(ctx.Request().Context(), addr.Container(), addr.Object(), a.signer, prmRange)
-	if err != nil {
-		return ctx.JSON(getResponseCodeFromStatus(err), util.NewErrorResponse(err))
-	}
-
-	payload := readCloseWriterTo(resObj)
-
-	if len(contentType) == 0 {
-		if separateContentType {
-			readerInit := func(sz uint64) (io.Reader, error) {
-				var prmBegin client.PrmObjectGet
-				if btoken != nil {
-					attachBearer(&prmBegin, btoken)
-				}
-				if sessionToken != nil {
-					prmBegin.WithinSessionV2(*sessionToken)
-				}
-				prmBegin.SetRange(0, sz)
-				prmBegin.MarkPayloadOnly()
-				prmBegin.SkipChecksumVerification()
-
-				_, beginObj, err := a.pool.ObjectGetInit(ctx.Request().Context(), addr.Container(), addr.Object(), a.signer, prmBegin)
-				if err != nil {
-					return nil, err
-				}
-				return beginObj, nil
-			}
-
-			// Determine the Content-Type in a separate request .
-			contentType, _, err = readContentType(payloadSize, readerInit)
-			if err != nil {
-				resp := a.logAndGetErrorResponse("invalid  ContentType", err, log)
-				return ctx.JSON(getResponseCodeFromStatus(err), resp)
-			}
-		} else {
-			// Determine the Content-Type from the payload head.
+		if start == 0 {
+			// The payload starts at the object beginning, detect the Content-Type from it.
 			var payloadHead []byte
 
-			contentType, payloadHead, err = readContentType(length, func(uint64) (io.Reader, error) {
-				return payload, nil
-			})
+			contentType, payloadHead, err = readContentType(end-start+1, payload)
 			if err != nil {
+				_ = payload.Close()
 				resp := a.logAndGetErrorResponse("invalid  ContentType", err, log)
 				return ctx.JSON(getResponseCodeFromStatus(err), resp)
 			}
 
-			// A piece of `payload` was read and is stored in `payloadHead`.
-			// RangeReader allows reading data from both `payloadHead` and `payload` starting from position `start`,
-			// regardless of where the `start` is.
-			log.Debug("RangeReader params",
-				zap.Int("payloadHead length", len(payloadHead)),
-				zap.Uint64("length", length),
-				zap.Uint64("start", start))
-			payload = NewRangeReader(payload, payloadHead, length, start)
+			// Reset the payload reader since a part of the data has been read.
+			payload = &prefixedReadCloser{
+				prefix: payloadHead,
+				reader: payload,
+			}
+		} else {
+			// The requested payload does not start at the object beginning,
+			// so the Content-Type requires a separate request.
+			contentType, err = a.detectContentTypeFromObjectBeginning(ctx.Request().Context(), addr, payloadSize, btoken, sessionToken)
+			if err != nil {
+				_ = payload.Close()
+				resp := a.logAndGetErrorResponse("invalid  ContentType", err, log)
+				return ctx.JSON(getResponseCodeFromStatus(err), resp)
+			}
 		}
 	}
 
@@ -455,50 +404,4 @@ func (a *RestAPI) getRange(ctx echo.Context, addr oid.Address, rangeParam string
 	ctx.Response().Header().Set("Accept-Ranges", "bytes")
 
 	return ctx.Stream(http.StatusPartialContent, contentType, payload)
-}
-
-func getRangeParams(rangeParam string, payloadSize uint64) (end, start uint64, err error) {
-	const (
-		prefix  = "bytes="
-		base    = 10
-		bitSize = 64
-	)
-
-	// Preliminary checks.
-	if payloadSize == 0 {
-		return 0, 0, errors.New("zero payload size")
-	}
-	var found bool
-	if rangeParam, found = strings.CutPrefix(rangeParam, prefix); !found {
-		return 0, 0, errors.New("bytes= prefix required")
-	}
-	arr := strings.Split(rangeParam, "-")
-	if len(arr) > 2 {
-		return 0, 0, errors.New("unsupported multipart range request")
-	} else if len(arr) != 2 || (arr[0] == "" && arr[1] == "") {
-		return 0, 0, errors.New("wrong Range header format")
-	}
-
-	// Parse range parameters.
-	var err0, err1 error
-
-	if len(arr[0]) == 0 {
-		end, err1 = strconv.ParseUint(arr[1], base, bitSize)
-		start = payloadSize - end
-		end = payloadSize - 1
-	} else if len(arr[1]) == 0 {
-		start, err0 = strconv.ParseUint(arr[0], base, bitSize)
-		end = payloadSize - 1
-	} else {
-		start, err0 = strconv.ParseUint(arr[0], base, bitSize)
-		end, err1 = strconv.ParseUint(arr[1], base, bitSize)
-		if end > payloadSize-1 {
-			end = payloadSize - 1
-		}
-	}
-
-	if err0 != nil || err1 != nil || start > end || start > payloadSize {
-		return 0, 0, errors.New("invalid range parameters")
-	}
-	return start, end, nil
 }
