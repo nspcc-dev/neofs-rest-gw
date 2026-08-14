@@ -2284,6 +2284,40 @@ func restNewObjectHead(ctx context.Context, t *testing.T, p *pool.Pool, ownerID 
 			}
 		}
 	})
+
+	t.Run("non-ascii file name", func(t *testing.T) {
+		const nonASCIIName = "Лев.txt"
+
+		nonASCIIAttributes := map[string]string{
+			object.AttributeFileName:  nonASCIIName,
+			object.AttributeTimestamp: strconv.FormatInt(time.Now().Unix(), 10),
+		}
+
+		objID := createObject(ctx, t, p, ownerID, cnrID, nonASCIIAttributes, content, signer)
+
+		request, err := http.NewRequest(http.MethodHead, testHost+"/v1/objects/"+cnrID.EncodeToString()+"/by_id/"+objID.EncodeToString()+"?"+query.Encode(), nil)
+		require.NoError(t, err)
+
+		if !walletConnect {
+			request.Header.Set("Authorization", "Bearer "+resp.Token)
+		} else {
+			prepareCommonHeaders(request.Header, bearerToken)
+		}
+
+		headers, _ := doRequest(t, httpClient, request, http.StatusOK, nil)
+		require.NotEmpty(t, headers)
+
+		// The name can't be carried by the plain filename parameter, so the
+		// extended one is used instead.
+		require.Equal(t, []string{"inline; filename*=utf-8''%D0%9B%D0%B5%D0%B2.txt"}, headers["Content-Disposition"])
+
+		// Non-ASCII values are still omitted from the raw and plain-JSON headers.
+		require.Empty(t, headers.Get("X-Attribute-FileName"))
+		require.NotContains(t, headers, "X-Attributes")
+
+		customAttr := decodeXAttributes(t, headers.Get("X-Attributes-Base64"))
+		require.Equal(t, nonASCIIName, customAttr[object.AttributeFileName])
+	})
 }
 
 func restNewObjectHeadSessionV2(ctx context.Context, t *testing.T, p *pool.Pool, cnrID cid.ID, signer, signerForToken user.Signer) {

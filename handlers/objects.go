@@ -10,6 +10,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"mime"
 	"net/http"
 	"path"
 	"slices"
@@ -415,6 +416,13 @@ func (a *RestAPI) setAttributes(ctx echo.Context, params setAttributeParams, log
 			// In JSON mode the values are additionally carried by the base64-encoded
 			// X-Attributes-Base64 header.
 			headerSafe := isValidToken(key) && isValidValue(val)
+
+			// Content-Disposition can carry non-ASCII file names via the extended
+			// filename* parameter, so it is filled in regardless of header safety.
+			if key == object.AttributeFileName {
+				ctx.Response().Header().Set("Content-Disposition", contentDisposition(dis, val))
+			}
+
 			if !params.useJSON && !headerSafe {
 				continue
 			}
@@ -425,10 +433,6 @@ func (a *RestAPI) setAttributes(ctx echo.Context, params setAttributeParams, log
 
 			switch key {
 			case object.AttributeFileName:
-				// Add FileName to Content-Disposition
-				if headerSafe {
-					ctx.Response().Header().Set("Content-Disposition", ctx.Response().Header().Get("Content-Disposition")+"; filename="+path.Base(val))
-				}
 				if params.useJSON {
 					attrJSON[key] = val
 				} else {
@@ -519,6 +523,20 @@ func readContentType(maxSize uint64, r io.Reader) (string, []byte, error) {
 	buf = buf[:n]
 
 	return http.DetectContentType(buf), buf, nil
+}
+
+func contentDisposition(dis, name string) string {
+	name = path.Base(name)
+	if name == "." || name == "/" {
+		// Avoiding "inline; filename=." situations.
+		return dis
+	}
+
+	if res := mime.FormatMediaType(dis, map[string]string{"filename": name}); res != "" {
+		return res
+	}
+
+	return dis
 }
 
 func isValidToken(s string) bool {
