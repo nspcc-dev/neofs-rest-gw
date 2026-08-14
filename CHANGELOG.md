@@ -11,6 +11,7 @@ This document outlines major changes between releases.
 ### Changed
 - Optimized object write buffering (#410)
 - Ranged GET uses HTTP-alike NeoFS ranges (#409)
+- Improve Content-Disposition for non-ASCII FileName (#406)
 
 ### Removed
 - Deprecated `/v1/auth` and `/v1/auth/bearer` APIs (#403)

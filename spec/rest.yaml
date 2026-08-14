@@ -2044,6 +2044,8 @@ components:
         Content-Disposition:
           schema:
             type: string
+          description: Object's `FileName` base name, given in the `filename` parameter
+            or, for non-ASCII names, in the percent-encoded `filename*` one (RFC 5987).
         X-Object-Id:
           schema:
             type: string
@@ -2095,6 +2097,8 @@ components:
         Content-Disposition:
           schema:
             type: string
+          description: Object's `FileName` base name, given in the `filename` parameter
+            or, for non-ASCII names, in the percent-encoded `filename*` one (RFC 5987).
         X-Object-Id:
           schema:
             type: string
@@ -2150,6 +2154,8 @@ components:
         Content-Disposition:
           schema:
             type: string
+          description: Object's `FileName` base name, given in the `filename` parameter
+            or, for non-ASCII names, in the percent-encoded `filename*` one (RFC 5987).
         X-Object-Id:
           schema:
             type: string
