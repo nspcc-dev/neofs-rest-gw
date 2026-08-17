@@ -141,6 +141,9 @@ func runTests(ctx context.Context, t *testing.T, key *keys.PrivateKey, node stri
 	t.Run("rest post container session v2", func(t *testing.T) {
 		restContainerPostSessionTokenV2(ctx, t, clientPool, sessionV2Signer)
 	})
+	t.Run("rest post container with eacl session v2", func(t *testing.T) {
+		restContainerPostEACLSessionTokenV2(ctx, t, clientPool, sessionV2Signer)
+	})
 	t.Run("rest get container", func(t *testing.T) { restContainerGet(ctx, t, owner, cnrID) })
 	t.Run("rest delete container session v2", func(t *testing.T) { restContainerDeleteSessionV2(ctx, t, clientPool, owner, signer, sessionV2Signer) })
 	t.Run("rest put container eacl session v2", func(t *testing.T) { restContainerEACLPutSessionV2(ctx, t, clientPool, owner, signer, sessionV2Signer) })
@@ -1802,6 +1805,158 @@ func restContainerPostSessionTokenV2(ctx context.Context, t *testing.T, clientPo
 	for key, val := range userAttributes {
 		require.Equal(t, val, cnrAttr[key])
 	}
+}
+
+func doPostContainerRequestSessionV2(ctx context.Context, t *testing.T, httpClient *http.Client, signedToken string, body []byte, status int, model any) (http.Header, errorResponse) {
+	request, err := http.NewRequest(http.MethodPost, testHost+"/v1/containers", bytes.NewReader(body))
+	require.NoError(t, err)
+	request = request.WithContext(ctx)
+	prepareSessionV2Headers(request.Header, signedToken)
+
+	header, payload := doRequest(t, httpClient, request, status, model)
+
+	var er errorResponse
+	require.NoError(t, json.Unmarshal(payload, &er))
+
+	return header, er
+}
+
+func postContainerWithEACL(ctx context.Context, t *testing.T, httpClient *http.Client, signedToken string, req apiserver.ContainerPostInfo, status int, model any) (http.Header, errorResponse) {
+	body, err := json.Marshal(&req)
+	require.NoError(t, err)
+
+	return doPostContainerRequestSessionV2(ctx, t, httpClient, signedToken, body, status, model)
+}
+
+func restContainerPostEACLSessionTokenV2(ctx context.Context, t *testing.T, clientPool *pool.Pool, signer user.Signer) {
+	var (
+		ownerID    = signer.UserID()
+		gateUserID = gateMetadataID(ctx, t)
+		httpClient = defaultHTTPClient()
+		records    = []apiserver.Record{formRestrictRecord(apiserver.DELETE)}
+	)
+
+	// The SDK asserts CONTAINER_SET_EACL against a zero container ID, so the context
+	// must not be bound to any particular container.
+	signedToken := getSignedSessionToken(ctx, t, apiserver.SessionTokenV2Request{
+		Contexts: []apiserver.TokenContext{{Verbs: []apiserver.TokenVerb{"CONTAINER_PUT", "CONTAINER_SET_EACL"}}},
+		Issuer:   ownerID.String(),
+		Targets:  []string{gateUserID.String()},
+	}, httpClient, signer)
+
+	putOnlyToken := getSignedSessionToken(ctx, t, apiserver.SessionTokenV2Request{
+		Contexts: []apiserver.TokenContext{{Verbs: []apiserver.TokenVerb{"CONTAINER_PUT"}}},
+		Issuer:   ownerID.String(),
+		Targets:  []string{gateUserID.String()},
+	}, httpClient, signer)
+
+	var cnrID cid.ID
+
+	t.Run("happy path", func(t *testing.T) {
+		addr := &apiserver.PostContainerOK{}
+		header, _ := postContainerWithEACL(ctx, t, httpClient, signedToken, apiserver.ContainerPostInfo{
+			ContainerName: randomString(),
+			BasicAcl:      acl.NamePublicRWExtended,
+			Eacl:          records,
+		}, http.StatusCreated, addr)
+
+		require.NoError(t, cnrID.DecodeString(addr.ContainerId))
+		require.Equal(t, handlers.LocationHeader(cnrID), header.Get("Location"))
+
+		cnr, err := clientPool.ContainerGet(ctx, cnrID, client.PrmContainerGet{})
+		require.NoError(t, err)
+		require.True(t, cnr.BasicACL().Extendable())
+
+		table, err := clientPool.ContainerEACL(ctx, cnrID, client.PrmContainerEACL{})
+		require.NoError(t, err)
+
+		expectedTable, err := util.ToNativeTable(records)
+		require.NoError(t, err)
+		expectedTable.SetCID(cnrID)
+
+		require.Equal(t, expectedTable.Marshal(), table.Marshal())
+	})
+
+	t.Run("read back via REST", func(t *testing.T) {
+		require.False(t, cnrID.IsZero(), "depends on the happy path")
+
+		request, err := http.NewRequest(http.MethodGet, testHost+"/v1/containers/"+cnrID.EncodeToString()+"/eacl", nil)
+		require.NoError(t, err)
+		request = request.WithContext(ctx)
+
+		responseTable := &apiserver.Eacl{}
+		doRequest(t, httpClient, request, http.StatusOK, responseTable)
+
+		require.Equal(t, cnrID.EncodeToString(), responseTable.ContainerId)
+
+		actualTable, err := util.ToNativeTable(responseTable.Records)
+		require.NoError(t, err)
+		actualTable.SetCID(cnrID)
+
+		expectedTable, err := util.ToNativeTable(records)
+		require.NoError(t, err)
+		expectedTable.SetCID(cnrID)
+
+		require.Equal(t, expectedTable.Marshal(), actualTable.Marshal())
+	})
+
+	t.Run("non-extendable basic acl", func(t *testing.T) {
+		for _, basicACL := range []string{"", acl.NamePublicRW} {
+			_, er := postContainerWithEACL(ctx, t, httpClient, signedToken, apiserver.ContainerPostInfo{
+				ContainerName: randomString(),
+				BasicAcl:      basicACL,
+				Eacl:          records,
+			}, http.StatusBadRequest, nil)
+
+			require.Contains(t, er.Message, "extended ACL is disabled")
+		}
+	})
+
+	t.Run("token without CONTAINER_SET_EACL", func(t *testing.T) {
+		_, er := postContainerWithEACL(ctx, t, httpClient, putOnlyToken, apiserver.ContainerPostInfo{
+			ContainerName: randomString(),
+			BasicAcl:      acl.NamePublicRWExtended,
+			Eacl:          records,
+		}, http.StatusBadRequest, nil)
+
+		require.Contains(t, er.Message, "CONTAINER_SET_EACL")
+	})
+
+	t.Run("malformed record", func(t *testing.T) {
+		oth := apiserver.OTHERS
+		_, er := postContainerWithEACL(ctx, t, httpClient, signedToken, apiserver.ContainerPostInfo{
+			ContainerName: randomString(),
+			BasicAcl:      acl.NamePublicRWExtended,
+			Eacl: []apiserver.Record{{
+				Operation: apiserver.GET,
+				Action:    apiserver.ALLOW,
+				Filters: []apiserver.Filter{{
+					HeaderType: apiserver.OBJECT,
+					MatchType:  apiserver.NUMGT,
+					Key:        "attr",
+					Value:      "not-a-number",
+				}},
+				Targets: []apiserver.Target{{Role: &oth}},
+			}},
+		}, http.StatusBadRequest, nil)
+
+		require.Contains(t, er.Message, "is not a valid numeric value")
+	})
+
+	t.Run("empty eacl", func(t *testing.T) {
+		addr := &apiserver.PostContainerOK{}
+		postContainerWithEACL(ctx, t, httpClient, signedToken, apiserver.ContainerPostInfo{
+			ContainerName: randomString(),
+			BasicAcl:      acl.NamePublicRWExtended,
+			Eacl:          []apiserver.Record{},
+		}, http.StatusCreated, addr)
+
+		var emptyCnrID cid.ID
+		require.NoError(t, emptyCnrID.DecodeString(addr.ContainerId))
+
+		_, err := clientPool.ContainerEACL(ctx, emptyCnrID, client.PrmContainerEACL{})
+		require.Error(t, err)
+	})
 }
 
 func prepareCommonHeaders(header http.Header, bearerToken *handlers.BearerToken) {

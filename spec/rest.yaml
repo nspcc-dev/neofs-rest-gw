@@ -1449,6 +1449,15 @@ components:
           x-go-type-skip-optional-pointer: true
           items:
             $ref: '#/components/schemas/Attribute'
+        eacl:
+          type: array
+          description: |
+            Optional initial extended ACL table. Requires an extendable basicAcl
+            and a session token authorizing CONTAINER_SET_EACL with an empty container id.
+            An empty array is equivalent to omitting the property.
+          x-go-type-skip-optional-pointer: true
+          items:
+            $ref: '#/components/schemas/Record'
       description: |
         <p>Request body to create container. To specify container name use appropriate property (name provided in attributes will be ignored).<p>
         <p>To create a container you must provide <code>PlacementPolicy</code> and <code>BasicACL</code>.</p>
@@ -1516,13 +1525,27 @@ components:
         <p>To upload objects with a bearer token your container must have Bearer bits set. For example, you can use <code>0x0FBFBFFF</code> or predefined <code>eacl-public-read-write</code> values.</p>
         <p>Also, don't forget to set appropriate eACL to restrict your container.</p>
         <p><a href="https://github.com/nspcc-dev/neofs-spec/blob/master/01-arch/07-acl.md">More about ACL</a>.</p>
+
+        <h5>Extended ACL</h5>
+        <p>The optional <code>eacl</code> property carries the initial extended ACL table. It is stored together with the container within a single NeoFS operation, so the container is never exposed without it and no separate <code>PUT /containers/{containerId}/eacl</code> call is needed.</p>
+        <ul>
+            <li>The basic ACL must be extendable. It must have the <code>F</code> (Final) bit unset, e.g. <code>eacl-public-read-write</code>. The default <code>private</code> value is <b>not</b> extendable, and <code>400</code> is returned in that case.</li>
+            <li>The session token must authorize the <code>CONTAINER_SET_EACL</code> verb in a context with an <b>empty</b> container id, in addition to <code>CONTAINER_PUT</code>.</li>
+            <li>An empty array is treated as if the property were omitted.</li>
+        </ul>
       example:
         containerName: container
         placementPolicy: REP 3
-        basicAcl: public-read-write
+        basicAcl: eacl-public-read-write
         attributes:
           - key: Custom-Attribute
             value: value
+        eacl:
+          - operation: DELETE
+            action: DENY
+            filters: [ ]
+            targets:
+              - role: OTHERS
     ContainerInfo:
       required:
         - attributes

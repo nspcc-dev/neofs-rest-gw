@@ -17,6 +17,7 @@ import (
 	"github.com/nspcc-dev/neofs-sdk-go/container"
 	"github.com/nspcc-dev/neofs-sdk-go/container/acl"
 	cid "github.com/nspcc-dev/neofs-sdk-go/container/id"
+	"github.com/nspcc-dev/neofs-sdk-go/eacl"
 	"github.com/nspcc-dev/neofs-sdk-go/netmap"
 	"github.com/nspcc-dev/neofs-sdk-go/pool"
 	sessionv2 "github.com/nspcc-dev/neofs-sdk-go/session/v2"
@@ -37,6 +38,8 @@ const (
 
 var (
 	errNeoFSRequestFailed = errors.New("neofs request failed")
+	errEACLDisabled       = errors.New("extended ACL is disabled for this container")
+	errInvalidEACL        = errors.New("invalid initial eACL")
 )
 
 // PostContainer handler that creates container in NeoFS.
@@ -61,6 +64,11 @@ func (a *RestAPI) PostContainer(ctx echo.Context, params apiserver.PostContainer
 	cnrID, err := createContainer(ctx.Request().Context(), a.pool, sessionTokenV2, body, params.NameScopeGlobal, a.signer, a.networkInfoGetter)
 	if err != nil {
 		resp := a.logAndGetErrorResponse("create container", err, log)
+
+		if errors.Is(err, errEACLDisabled) || errors.Is(err, errInvalidEACL) {
+			return ctx.JSON(http.StatusBadRequest, resp)
+		}
+
 		return ctx.JSON(getResponseCodeFromStatus(err), resp)
 	}
 
@@ -479,6 +487,29 @@ func getContainerEACL(ctx context.Context, p *pool.Pool, cnrID cid.ID) (*apiserv
 	return tableResp, nil
 }
 
+func initialEACLTable(records []apiserver.Record, basicACL acl.Basic, token *sessionv2.Token) (*eacl.Table, error) {
+	if len(records) == 0 {
+		return nil, nil
+	}
+
+	if !basicACL.Extendable() {
+		return nil, errEACLDisabled
+	}
+
+	// The SDK asserts the verb against a zero container ID, so the token must carry
+	// a context that is not bound to any particular container.
+	if token == nil || !token.AssertVerb(sessionv2.VerbContainerSetEACL, cid.ID{}) {
+		return nil, fmt.Errorf("%w: session token must authorize %s for any container", errInvalidEACL, sessionv2.VerbContainerSetEACL)
+	}
+
+	table, err := util.ToNativeTable(records)
+	if err != nil {
+		return nil, fmt.Errorf("%w: %w", errInvalidEACL, err)
+	}
+
+	return table, nil
+}
+
 func createContainer(ctx context.Context, p *pool.Pool, sessionTokenV2 *sessionv2.Token, request apiserver.ContainerPostInfo, nameScopeGlobal *bool, signer user.Signer, networkInfoGetter networkInfoGetter) (cid.ID, error) {
 	if request.PlacementPolicy == "" {
 		request.PlacementPolicy = defaultPlacementPolicy
@@ -496,6 +527,11 @@ func createContainer(ctx context.Context, p *pool.Pool, sessionTokenV2 *sessionv
 	basicACL, err := decodeBasicACL(request.BasicAcl)
 	if err != nil {
 		return cid.ID{}, fmt.Errorf("couldn't parse basic acl: %w", err)
+	}
+
+	eaclTable, err := initialEACLTable(request.Eacl, basicACL, sessionTokenV2)
+	if err != nil {
+		return cid.ID{}, err
 	}
 
 	var cnr container.Container
@@ -546,6 +582,11 @@ func createContainer(ctx context.Context, p *pool.Pool, sessionTokenV2 *sessionv
 	var prm client.PrmContainerPut
 	if sessionTokenV2 != nil {
 		prm.WithinSessionV2(*sessionTokenV2)
+	}
+
+	if eaclTable != nil {
+		eaclTable.SetCID(cid.NewFromMarshalledContainer(cnr.Marshal()))
+		prm.WithEACL(*eaclTable, nil)
 	}
 
 	cnrID, err := p.ContainerPut(ctx, cnr, signer, prm)
