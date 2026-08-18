@@ -5,9 +5,21 @@ This document outlines major changes between releases.
 ## [Unreleased]
 
 ### Added
-- EACL passing along in container creation (#393)
 
 ### Fixed
+
+### Changed
+
+### Removed
+
+### Updated
+
+### Upgrading from 0.19.0
+
+## [0.19.0] - 2026-08-18
+
+### Added
+- EACL passing along in container creation (#393)
 
 ### Changed
 - Optimized object write buffering (#410)
@@ -18,15 +30,18 @@ This document outlines major changes between releases.
 - Deprecated `/v1/auth` and `/v1/auth/bearer` APIs (#403)
 
 ### Updated
+- golang.org/x/crypto dependency from 0.51.0 to 0.52.0 (#405)
+- google.golang.org/grpc dependency from 1.79.3 to 1.82.1 (#407)
+- github.com/getkin/kin-openapi dependency from 0.140.0 to 0.144.0 (#408)
 - github.com/nspcc-dev/neofs-sdk-go dependency to `v1.0.0-rc.21` (#410)
 - github.com/nspcc-dev/neo-go dependency to `v0.122.0` (#410)
 
 ### Upgrading from 0.18.0
-The deprecated `/v1/auth` and `/v1/auth/bearer` endpoints has been removed.
+Deprecated `/v1/auth` and `/v1/auth/bearer` endpoints have been removed.
 Use `/v2/auth/bearer` and `/v2/auth/bearer/complete` instead, see
 [docs/migration-to-auth-v2.md](./docs/migration-to-auth-v2.md).
 
-The `auth_duration` and `form_binary_bearer_duration` Prometheus metrics are
+`auth_duration` and `form_binary_bearer_duration` Prometheus metrics are
 dropped along with these endpoints.
 
 ## [0.18.0] - 2026-07-03
@@ -549,4 +564,5 @@ Please refer to [GitHub releases](https://github.com/nspcc-dev/neofs-rest-gw/rel
 [0.17.0]: https://github.com/nspcc-dev/neofs-rest-gw/compare/v0.16.0...v0.17.0
 [0.17.1]: https://github.com/nspcc-dev/neofs-rest-gw/compare/v0.17.0...v0.17.1
 [0.18.0]: https://github.com/nspcc-dev/neofs-rest-gw/compare/v0.17.1...v0.18.0
-[Unreleased]: https://github.com/nspcc-dev/neofs-rest-gw/compare/v0.18.0...master
+[0.19.0]: https://github.com/nspcc-dev/neofs-rest-gw/compare/v0.18.0...v0.19.0
+[Unreleased]: https://github.com/nspcc-dev/neofs-rest-gw/compare/v0.19.0...master
