@@ -5,6 +5,7 @@ This document outlines major changes between releases.
 ## [Unreleased]
 
 ### Added
+- EACL passing along in container creation (#393)
 
 ### Fixed
 
