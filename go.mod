@@ -9,7 +9,7 @@ require (
 	github.com/nspcc-dev/neo-go v0.122.0
 	github.com/nspcc-dev/neofs-sdk-go v1.0.0-rc.21
 	github.com/oapi-codegen/echo-middleware v1.0.2
-	github.com/oapi-codegen/runtime v1.4.2
+	github.com/oapi-codegen/runtime v1.7.0
 	github.com/spf13/pflag v1.0.10
 	github.com/stretchr/testify v1.12.1
 	github.com/testcontainers/testcontainers-go v0.44.0
