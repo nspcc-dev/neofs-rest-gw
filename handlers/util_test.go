@@ -270,12 +270,12 @@ func Test_getOffsetAndLimit(t *testing.T) {
 		wantErr    bool
 	}{
 		{name: "default", args: args{}, wantOffset: offsetDefault, wantLimit: limitDefault, wantErr: false},
-		{name: "invalid offset", args: args{offset: newInt(offsetMin - 1)}, wantErr: true},
-		{name: "valid offset", args: args{offset: newInt(offsetMin)}, wantOffset: offsetMin, wantLimit: limitDefault, wantErr: false},
-		{name: "invalid limit, lower", args: args{limit: newInt(limitMin - 1)}, wantErr: true},
-		{name: "invalid limit, greater", args: args{limit: newInt(limitMax + 1)}, wantErr: true},
-		{name: "valid limit", args: args{limit: newInt(limitMin)}, wantOffset: offsetDefault, wantLimit: limitMin, wantErr: false},
-		{name: "valid limit", args: args{limit: newInt(limitMax)}, wantOffset: offsetDefault, wantLimit: limitMax, wantErr: false},
+		{name: "invalid offset", args: args{offset: new(offsetMin - 1)}, wantErr: true},
+		{name: "valid offset", args: args{offset: new(offsetMin)}, wantOffset: offsetMin, wantLimit: limitDefault, wantErr: false},
+		{name: "invalid limit, lower", args: args{limit: new(limitMin - 1)}, wantErr: true},
+		{name: "invalid limit, greater", args: args{limit: new(limitMax + 1)}, wantErr: true},
+		{name: "valid limit", args: args{limit: new(limitMin)}, wantOffset: offsetDefault, wantLimit: limitMin, wantErr: false},
+		{name: "valid limit", args: args{limit: new(limitMax)}, wantOffset: offsetDefault, wantLimit: limitMax, wantErr: false},
 	}
 
 	for _, tt := range tests {
@@ -295,13 +295,6 @@ func Test_getOffsetAndLimit(t *testing.T) {
 	}
 }
 
-func newInt(v int) *int {
-	return &v
-}
-
-func stringPtr(s string) *string {
-	return &s
-}
 func Test_paramIsPositive(t *testing.T) {
 	type args struct {
 		s *string
@@ -311,14 +304,14 @@ func Test_paramIsPositive(t *testing.T) {
 		args args
 		want bool
 	}{
-		{name: "empty string", args: args{stringPtr("")}, want: false},
-		{name: "false string", args: args{stringPtr("false")}, want: false},
-		{name: "random string", args: args{stringPtr("@$FC1*")}, want: false},
-		{name: "0 number", args: args{stringPtr("0")}, want: false},
-		{name: "2 number", args: args{stringPtr("2")}, want: false},
-		{name: "1 number", args: args{stringPtr("1")}, want: true},
-		{name: "true string", args: args{stringPtr("true")}, want: true},
-		{name: "YES string", args: args{stringPtr("YES")}, want: true},
+		{name: "empty string", args: args{new("")}, want: false},
+		{name: "false string", args: args{new("false")}, want: false},
+		{name: "random string", args: args{new("@$FC1*")}, want: false},
+		{name: "0 number", args: args{new("0")}, want: false},
+		{name: "2 number", args: args{new("2")}, want: false},
+		{name: "1 number", args: args{new("1")}, want: true},
+		{name: "true string", args: args{new("true")}, want: true},
+		{name: "YES string", args: args{new("YES")}, want: true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

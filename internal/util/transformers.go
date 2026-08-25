@@ -468,11 +468,6 @@ func ToNativeFilters(searchFilters []apiserver.SearchFilter) (object.SearchFilte
 	return filters, nil
 }
 
-// NewString returns pointer to provided string.
-func NewString(val string) *string {
-	return &val
-}
-
 // NewSuccessResponse forms model.SuccessResponse.
 func NewSuccessResponse() *apiserver.SuccessResponse {
 	return &apiserver.SuccessResponse{
