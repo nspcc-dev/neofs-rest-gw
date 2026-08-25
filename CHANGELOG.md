@@ -17,6 +17,7 @@ This document outlines major changes between releases.
 - github.com/testcontainers/testcontainers-go v0.40.0 => v0.44.0 (#358)
 - go.uber.org/zap v1.27.1 => v1.28.0 (#358)
 - github.com/oapi-codegen/runtime v1.4.2 => v1.7.0 (#358)
+- github.com/labstack/echo/v4 v4.15.1 => v4.15.4 (#358)
 
 ### Upgrading from 0.19.0
 
