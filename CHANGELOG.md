@@ -14,6 +14,7 @@ This document outlines major changes between releases.
 ### Removed
 
 ### Updated
+- github.com/testcontainers/testcontainers-go v0.40.0 => v0.44.0 (#358)
 
 ### Upgrading from 0.19.0
 
