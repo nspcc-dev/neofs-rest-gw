@@ -426,7 +426,7 @@ func getContainerInfo(ctx context.Context, p *pool.Pool, cnrID cid.ID) (*apiserv
 		ContainerName:   cnr.Name(),
 		OwnerId:         cnr.Owner().String(),
 		BasicAcl:        cnr.BasicACL().EncodeToString(),
-		CannedAcl:       util.NewString(friendlyBasicACL(cnr.BasicACL())),
+		CannedAcl:       new(friendlyBasicACL(cnr.BasicACL())),
 		PlacementPolicy: sb.String(),
 		Attributes:      attrs,
 		Version:         cnr.Version().String(),

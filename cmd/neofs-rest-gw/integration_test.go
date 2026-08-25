@@ -18,8 +18,8 @@ import (
 	"testing"
 	"time"
 
-	dockerContainer "github.com/docker/docker/api/types/container"
 	"github.com/labstack/echo/v4"
+	container2 "github.com/moby/moby/api/types/container"
 	"github.com/nspcc-dev/neo-go/pkg/crypto/keys"
 	"github.com/nspcc-dev/neofs-rest-gw/handlers"
 	"github.com/nspcc-dev/neofs-rest-gw/handlers/apiserver"
@@ -211,7 +211,7 @@ func createDockerContainer(ctx context.Context, t *testing.T, image, version str
 		Image:      image,
 		WaitingFor: wait.NewLogStrategy("aio container started").WithStartupTimeout(2 * time.Minute),
 		Name:       "restgw-aio-test-" + version,
-		HostConfigModifier: func(hostConfig *dockerContainer.HostConfig) {
+		HostConfigModifier: func(hostConfig *container2.HostConfig) {
 			hostConfig.NetworkMode = "host"
 		},
 	}
