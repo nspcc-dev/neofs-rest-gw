@@ -61,7 +61,7 @@ jobs:
         run: mv ./bin/neofs-rest-gw* ./bin/neofs-rest-gw-${{ matrix.go_os }}-${{ matrix.go_arch }}${{ (matrix.go_os == 'windows' && '.exe') || '' }}
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: neofs-rest-gw-${{ matrix.go_os }}-${{ matrix.go_arch }}
           path: ./bin/neofs-rest-gw*
