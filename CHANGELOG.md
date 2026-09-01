@@ -9,10 +9,20 @@ This document outlines major changes between releases.
 ### Fixed
 
 ### Changed
-- Go 1.26+ is required to build now (#358)
-- Ignore GETRANGEHASH in existing EACL rules (#422)
 
 ### Removed
+
+### Updated
+
+### Upgrading from 0.19.1
+
+## [0.19.1] - 2026-09-01
+
+### Fixed
+- Ignore GETRANGEHASH in existing EACL rules (#422)
+
+### Changed
+- Go 1.26+ is required to build now (#358)
 
 ### Updated
 - github.com/testcontainers/testcontainers-go v0.40.0 => v0.44.0 (#358)
@@ -21,8 +31,6 @@ This document outlines major changes between releases.
 - github.com/labstack/echo/v4 v4.15.1 => v4.15.4 (#358)
 - NeoFS SDK to RC22 (#424)
 - NeoGo dependency to 0.123.0 (#424)
-
-### Upgrading from 0.19.0
 
 ## [0.19.0] - 2026-08-18
 
@@ -573,4 +581,5 @@ Please refer to [GitHub releases](https://github.com/nspcc-dev/neofs-rest-gw/rel
 [0.17.1]: https://github.com/nspcc-dev/neofs-rest-gw/compare/v0.17.0...v0.17.1
 [0.18.0]: https://github.com/nspcc-dev/neofs-rest-gw/compare/v0.17.1...v0.18.0
 [0.19.0]: https://github.com/nspcc-dev/neofs-rest-gw/compare/v0.18.0...v0.19.0
-[Unreleased]: https://github.com/nspcc-dev/neofs-rest-gw/compare/v0.19.0...master
+[0.19.1]: https://github.com/nspcc-dev/neofs-rest-gw/compare/v0.19.0...v0.19.1
+[Unreleased]: https://github.com/nspcc-dev/neofs-rest-gw/compare/v0.19.1...master
