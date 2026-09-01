@@ -479,6 +479,10 @@ func getContainerEACL(ctx context.Context, p *pool.Pool, cnrID cid.ID) (*apiserv
 	for i, rec := range table.Records() {
 		record, err := util.FromNativeRecord(rec)
 		if err != nil {
+			if errors.Is(err, util.ErrIgnoreEACLOperation) {
+				continue
+			}
+
 			return nil, fmt.Errorf("couldn't transform record from native: %w", err)
 		}
 		tableResp.Records[i] = record

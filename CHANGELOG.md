@@ -10,6 +10,7 @@ This document outlines major changes between releases.
 
 ### Changed
 - Go 1.26+ is required to build now (#358)
+- Ignore GETRANGEHASH in existing EACL rules (#422)
 
 ### Removed
 

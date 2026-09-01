@@ -21,6 +21,11 @@ var (
 	intFilterLimitMin = new(big.Int).Neg(intFilterLimitMax)
 )
 
+var (
+	// ErrIgnoreEACLOperation returned if we got unsupported operation in existing EACL rules.
+	ErrIgnoreEACLOperation = errors.New("ignore operation")
+)
+
 // ToNativeAction converts [apiserver.Action] to appropriate [eacl.Action].
 func ToNativeAction(a apiserver.Action) (eacl.Action, error) {
 	switch a {
@@ -80,6 +85,8 @@ func FromNativeOperation(o eacl.Operation) (apiserver.Operation, error) {
 		return apiserver.SEARCH, nil
 	case eacl.OperationRange:
 		return apiserver.RANGE, nil
+	case eacl.OperationRangeHash:
+		return "", ErrIgnoreEACLOperation
 	default:
 		return "", fmt.Errorf("unsupported operation type: '%s'", o)
 	}
