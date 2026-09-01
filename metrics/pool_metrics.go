@@ -26,7 +26,6 @@ type (
 		EndpointInfo               prometheus.Histogram
 		SessionCreate              prometheus.Histogram
 		NetMapSnapshot             prometheus.Histogram
-		ObjectHash                 prometheus.Histogram
 		ContainerAnnounceUsedSpace prometheus.Histogram
 		AnnounceIntermediateTrust  prometheus.Histogram
 		AnnounceLocalTrust         prometheus.Histogram
@@ -137,12 +136,6 @@ func NewPoolMetrics() *PoolMetrics {
 			Name:      "netmap_snapshot",
 			Help:      "Netmap snapshot request handling time",
 		}),
-		ObjectHash: prometheus.NewHistogram(prometheus.HistogramOpts{
-			Namespace: namespace,
-			Subsystem: poolSubsystem,
-			Name:      "object_hash",
-			Help:      "Object hash request handling time",
-		}),
 		ContainerAnnounceUsedSpace: prometheus.NewHistogram(prometheus.HistogramOpts{
 			Namespace: namespace,
 			Subsystem: poolSubsystem,
@@ -215,7 +208,6 @@ func (m PoolMetrics) register() {
 	prometheus.MustRegister(m.EndpointInfo)
 	prometheus.MustRegister(m.SessionCreate)
 	prometheus.MustRegister(m.NetMapSnapshot)
-	prometheus.MustRegister(m.ObjectHash)
 	prometheus.MustRegister(m.ContainerAnnounceUsedSpace)
 	prometheus.MustRegister(m.AnnounceIntermediateTrust)
 	prometheus.MustRegister(m.AnnounceLocalTrust)
@@ -262,8 +254,6 @@ func (m *PoolMetrics) OperationCallback(nodeKey []byte, endpoint string, method 
 		m.SessionCreate.Observe(duration.Seconds())
 	case stat.MethodNetMapSnapshot:
 		m.NetMapSnapshot.Observe(duration.Seconds())
-	case stat.MethodObjectHash:
-		m.ObjectHash.Observe(duration.Seconds())
 	case stat.MethodObjectSearch:
 		m.SearchObjects.Observe(duration.Seconds())
 	case stat.MethodContainerAnnounceUsedSpace:

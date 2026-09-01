@@ -2023,17 +2023,7 @@ func createObject(ctx context.Context, t *testing.T, p *pool.Pool, ownerID *user
 	obj.SetAttributes(attributes...)
 	obj.SetPayload(payload)
 
-	info, err := p.NetworkInfo(ctx, client.PrmNetworkInfo{})
-	require.NoError(t, err)
-
-	var opts slicer.Options
-	//nolint:staticcheck // removed after node 0.53.0
-	if !info.HomomorphicHashingDisabled() {
-		//nolint:staticcheck // removed after node 0.53.0
-		opts.CalculateHomomorphicChecksum()
-	}
-
-	objID, err := slicer.Put(ctx, p, obj, signer, bytes.NewReader(payload), opts)
+	objID, err := slicer.Put(ctx, p, obj, signer, bytes.NewReader(payload), slicer.Options{})
 	require.NoError(t, err)
 
 	return objID
