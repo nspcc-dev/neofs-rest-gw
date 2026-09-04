@@ -14,6 +14,7 @@ This document outlines major changes between releases.
 
 ### Updated
 - github.com/getkin/kin-openapi v0.144.0 => v0.149.0 (#427)
+- github.com/moby/moby/api v1.55.0 => v1.56.0 (#427)
 
 ### Upgrading from 0.19.1
 
