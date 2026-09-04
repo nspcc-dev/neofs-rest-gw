@@ -3,7 +3,7 @@ module github.com/nspcc-dev/neofs-rest-gw
 go 1.26.0
 
 require (
-	github.com/getkin/kin-openapi v0.144.0
+	github.com/getkin/kin-openapi v0.149.0
 	github.com/labstack/echo/v4 v4.15.4
 	github.com/moby/moby/api v1.55.0
 	github.com/nspcc-dev/neo-go v0.123.0
@@ -82,7 +82,7 @@ require (
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
 	github.com/sagikazarmark/locafero v0.4.0 // indirect
 	github.com/sagikazarmark/slog-shim v0.1.0 // indirect
-	github.com/santhosh-tekuri/jsonschema/v6 v6.0.2 // indirect
+	github.com/santhosh-tekuri/jsonschema/v6 v6.0.3 // indirect
 	github.com/shirou/gopsutil/v4 v4.26.7 // indirect
 	github.com/sirupsen/logrus v1.10.1 // indirect
 	github.com/sourcegraph/conc v0.3.0 // indirect

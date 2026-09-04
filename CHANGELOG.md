@@ -13,6 +13,7 @@ This document outlines major changes between releases.
 ### Removed
 
 ### Updated
+- github.com/getkin/kin-openapi v0.144.0 => v0.149.0 (#427)
 
 ### Upgrading from 0.19.1
 
