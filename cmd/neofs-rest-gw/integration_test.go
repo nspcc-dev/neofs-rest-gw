@@ -3499,8 +3499,9 @@ func v2AuthSessionToken(ctx context.Context, t *testing.T) {
 
 		var st session.Token
 		require.NoError(t, st.UnmarshalSignedData(bts))
-		// -10 seconds from https://github.com/nspcc-dev/neofs-node/pull/3671#discussion_r2709969518.
-		require.GreaterOrEqual(t, st.Exp().Unix(), now.Add(time.Hour).Unix()-10)
+		// Expiration is counted from the real current time, not from the shifted issue time.
+		require.GreaterOrEqual(t, st.Exp().Unix(), now.Add(time.Hour).Unix())
+		require.LessOrEqual(t, st.Exp().Unix(), now.Add(time.Hour+time.Minute).Unix())
 	})
 
 	t.Run("invalid owner", func(t *testing.T) {

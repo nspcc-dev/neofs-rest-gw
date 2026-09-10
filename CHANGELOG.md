@@ -7,6 +7,7 @@ This document outlines major changes between releases.
 ### Added
 
 ### Fixed
+- Fresh v2 session tokens rejected because of the clock skew (#428)
 
 ### Changed
 
