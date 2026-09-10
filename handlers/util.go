@@ -480,8 +480,8 @@ func getOriginalSessionTokenV2(v string) (*sessionv2.Token, error) {
 	return &st, nil
 }
 
-func prepareSessionTokenV2Expiration(tokenIssueTime time.Time, apiParams apiserver.SessionTokenV2Request) (time.Time, error) {
-	var expireAt = tokenIssueTime.Add(defaultSessionTokenExpiration)
+func prepareSessionTokenV2Expiration(now time.Time, apiParams apiserver.SessionTokenV2Request) (time.Time, error) {
+	var expireAt = now.Add(defaultSessionTokenExpiration)
 
 	if apiParams.ExpirationRfc3339 != nil && *apiParams.ExpirationRfc3339 != "" {
 		exp, err := time.Parse(time.RFC3339, *apiParams.ExpirationRfc3339)
@@ -489,7 +489,7 @@ func prepareSessionTokenV2Expiration(tokenIssueTime time.Time, apiParams apiserv
 			return time.Time{}, errors.New("format must be in RFC3339")
 		}
 
-		if tokenIssueTime.After(exp) {
+		if now.After(exp) {
 			return time.Time{}, errors.New("must be in the future")
 		}
 
@@ -498,7 +498,7 @@ func prepareSessionTokenV2Expiration(tokenIssueTime time.Time, apiParams apiserv
 
 	if apiParams.ExpirationTimestamp != nil && *apiParams.ExpirationTimestamp > 0 {
 		exp := time.Unix(int64(*apiParams.ExpirationTimestamp), 0)
-		if tokenIssueTime.After(exp) {
+		if now.After(exp) {
 			return time.Time{}, errors.New("must be in the future")
 		}
 
@@ -511,7 +511,7 @@ func prepareSessionTokenV2Expiration(tokenIssueTime time.Time, apiParams apiserv
 			return time.Time{}, errors.New("format must be in RFC3339")
 		}
 
-		expireAt = tokenIssueTime.Add(exp)
+		expireAt = now.Add(exp)
 	}
 
 	return expireAt, nil

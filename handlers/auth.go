@@ -31,6 +31,8 @@ const (
 
 	defaultSessionTokenExpiration = 24 * time.Hour
 
+	tokenIssueTimeShift = time.Minute
+
 	sessionLockSize = 32
 )
 
@@ -97,8 +99,9 @@ func (a *RestAPI) V2AuthSessionToken(ctx echo.Context) error {
 	}
 
 	var (
-		// https://github.com/nspcc-dev/neofs-node/pull/3671#discussion_r2709969518
-		tokenIssueTime = time.Now().Add(-10 * time.Second)
+		now = time.Now()
+		// https://github.com/nspcc-dev/neofs-node/pull/3671#discussion_r2709969518 (at minimum 10s).
+		tokenIssueTime = now.Add(-tokenIssueTimeShift)
 		apiParams      apiserver.SessionTokenV2Request
 		log            = a.log.With(zap.String(handlerFieldName, "V2AuthSessionToken"))
 	)
@@ -196,24 +199,31 @@ func (a *RestAPI) V2AuthSessionToken(ctx echo.Context) error {
 		return ctx.JSON(http.StatusBadRequest, a.logAndGetErrorResponse("invalid contexts", err, log))
 	}
 
-	expiration, err := prepareSessionTokenV2Expiration(tokenIssueTime, apiParams)
+	if apiParams.Origin != "" {
+		var err error
+		if originToken, err = getOriginalSessionTokenV2(apiParams.Origin); err != nil {
+			return ctx.JSON(http.StatusBadRequest, a.logAndGetErrorResponse("invalid origin token", err, log))
+		}
+	}
+
+	// A token can't become valid earlier than its origin, such a chain is
+	// rejected as a whole, so the shift back in time is limited here.
+	var notValidBefore = tokenIssueTime
+	if originToken != nil && originToken.Nbf().After(notValidBefore) {
+		notValidBefore = originToken.Nbf()
+	}
+
+	expiration, err := prepareSessionTokenV2Expiration(now, apiParams)
 	if err != nil {
 		return ctx.JSON(http.StatusBadRequest, a.logAndGetErrorResponse("invalid expiration", err, log))
 	}
 
-	tokenV2.SetNbf(tokenIssueTime)
+	tokenV2.SetNbf(notValidBefore)
 	tokenV2.SetIat(tokenIssueTime)
 	tokenV2.SetExp(expiration)
 	tokenV2.SetFinal(apiParams.Final)
 	tokenV2.SetIssuer(owner)
 	tokenV2.SetVersion(session.TokenCurrentVersion)
-
-	if apiParams.Origin != "" {
-		originToken, err = getOriginalSessionTokenV2(apiParams.Origin)
-		if err != nil {
-			return ctx.JSON(http.StatusBadRequest, a.logAndGetErrorResponse("invalid origin token", err, log))
-		}
-	}
 
 	if originToken != nil {
 		tokenV2.SetOrigin(originToken)
