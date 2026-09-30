@@ -6,6 +6,8 @@ import (
 	"github.com/nspcc-dev/neofs-rest-gw/handlers/apiserver"
 	"github.com/nspcc-dev/neofs-sdk-go/container/acl"
 	cid "github.com/nspcc-dev/neofs-sdk-go/container/id"
+	cidtest "github.com/nspcc-dev/neofs-sdk-go/container/id/test"
+	"github.com/nspcc-dev/neofs-sdk-go/eacl"
 	sessionv2 "github.com/nspcc-dev/neofs-sdk-go/session/v2"
 	"github.com/stretchr/testify/require"
 )
@@ -119,4 +121,24 @@ func TestInitialEACLTable(t *testing.T) {
 		require.Len(t, table.Records(), 1)
 		require.True(t, table.GetCID().IsZero())
 	})
+}
+
+func TestEACLFromNative(t *testing.T) {
+	cnrID := cidtest.ID()
+	targets := []eacl.Target{eacl.NewTargetByRole(eacl.RoleOthers)}
+
+	table := eacl.NewTableForContainer(cnrID, []eacl.Record{
+		eacl.ConstructRecord(eacl.ActionDeny, eacl.OperationGet, targets),
+		eacl.ConstructRecord(eacl.ActionDeny, eacl.OperationRangeHash, targets),
+		eacl.ConstructRecord(eacl.ActionAllow, eacl.OperationPut, targets),
+	})
+
+	res, err := eaclFromNative(cnrID, table)
+	require.NoError(t, err)
+	require.Equal(t, cnrID.EncodeToString(), res.ContainerId)
+	require.Len(t, res.Records, 2)
+	require.Equal(t, apiserver.DENY, res.Records[0].Action)
+	require.Equal(t, apiserver.GET, res.Records[0].Operation)
+	require.Equal(t, apiserver.ALLOW, res.Records[1].Action)
+	require.Equal(t, apiserver.PUT, res.Records[1].Operation)
 }

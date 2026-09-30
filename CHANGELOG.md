@@ -8,6 +8,7 @@ This document outlines major changes between releases.
 
 ### Fixed
 - Fresh v2 session tokens rejected because of the clock skew (#428)
+- Empty records returned instead of skipping GETRANGEHASH ones in container EACL (#431)
 
 ### Changed
 
