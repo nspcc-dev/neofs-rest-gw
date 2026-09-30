@@ -471,12 +471,17 @@ func getContainerEACL(ctx context.Context, p *pool.Pool, cnrID cid.ID) (*apiserv
 		return nil, fmt.Errorf("get eacl: %w", errors.Join(errNeoFSRequestFailed, err))
 	}
 
+	return eaclFromNative(cnrID, table)
+}
+
+// eaclFromNative converts [eacl.Table] to [apiserver.Eacl] skipping no-op records.
+func eaclFromNative(cnrID cid.ID, table eacl.Table) (*apiserver.Eacl, error) {
 	tableResp := &apiserver.Eacl{
 		ContainerId: cnrID.EncodeToString(),
-		Records:     make([]apiserver.Record, len(table.Records())),
+		Records:     make([]apiserver.Record, 0, len(table.Records())),
 	}
 
-	for i, rec := range table.Records() {
+	for _, rec := range table.Records() {
 		record, err := util.FromNativeRecord(rec)
 		if err != nil {
 			if errors.Is(err, util.ErrIgnoreEACLOperation) {
@@ -485,7 +490,7 @@ func getContainerEACL(ctx context.Context, p *pool.Pool, cnrID cid.ID) (*apiserv
 
 			return nil, fmt.Errorf("couldn't transform record from native: %w", err)
 		}
-		tableResp.Records[i] = record
+		tableResp.Records = append(tableResp.Records, record)
 	}
 
 	return tableResp, nil
