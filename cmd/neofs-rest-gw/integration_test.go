@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"io"
 	"maps"
+	"math"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -172,6 +173,9 @@ func runTests(ctx context.Context, t *testing.T, key *keys.PrivateKey, node stri
 	})
 	t.Run("rest new upload object payload shapes", func(t *testing.T) {
 		restNewObjectUploadPayloadShapes(ctx, t, clientPool, cnrID, signer)
+	})
+	t.Run("rest new upload object expiration epoch", func(t *testing.T) {
+		restNewObjectUploadExpirationEpoch(ctx, t, clientPool, cnrID, signer)
 	})
 	t.Run("rest new upload object with bearer in cookie", func(t *testing.T) { restNewObjectUploadCookie(ctx, t, clientPool, cnrID, signer) })
 	t.Run("rest new upload object with wallet connect", func(t *testing.T) { restNewObjectUploadWC(ctx, t, clientPool, cnrID, signer) })
@@ -2148,6 +2152,49 @@ func restNewObjectUploadInt(ctx context.Context, t *testing.T, clientPool *pool.
 	for _, attribute := range res.Attributes() {
 		require.Equal(t, attributes[attribute.Key()], attribute.Value(), attribute.Key())
 	}
+}
+
+func restNewObjectUploadExpirationEpoch(ctx context.Context, t *testing.T, clientPool *pool.Pool, cnrID cid.ID, signer user.Signer) {
+	httpClient := defaultHTTPClient()
+	bearerToken := makeAuthTokenRequest(ctx, t, append([]apiserver.Record{formAllowRecord(apiserver.PUT)}, getRestrictBearerRecords()...), httpClient, false)
+	resp := completeBearerToken(ctx, t, httpClient, bearerToken)
+
+	query := make(url.Values)
+	query.Add(fullBearerQuery, "true")
+
+	newRequest := func(t *testing.T, expirationEpoch string) *http.Request {
+		attributesJSON, err := json.Marshal(map[string]string{object.AttributeExpirationEpoch: expirationEpoch})
+		require.NoError(t, err)
+
+		request, err := http.NewRequest(http.MethodPost, testHost+"/v1/objects/"+cnrID.String()+"?"+query.Encode(), bytes.NewBufferString("content of file"))
+		require.NoError(t, err)
+		request.Header.Set("Content-Type", "text/plain")
+		request.Header.Add("Authorization", "Bearer "+resp.Token)
+		request.Header.Set("X-Attributes-Base64", base64.StdEncoding.EncodeToString(attributesJSON))
+
+		return request.WithContext(ctx)
+	}
+
+	t.Run("valid", func(t *testing.T) {
+		const expirationEpoch = uint64(math.MaxUint32)
+
+		addr := &apiserver.AddressForUpload{}
+		doRequest(t, httpClient, newRequest(t, strconv.FormatUint(expirationEpoch, 10)), http.StatusOK, addr)
+
+		var id oid.ID
+		require.NoError(t, id.DecodeString(addr.ObjectId))
+
+		hdr, err := clientPool.ObjectHead(ctx, cnrID, id, signer, client.PrmObjectHead{})
+		require.NoError(t, err)
+
+		actual, ok := hdr.ExpirationEpoch()
+		require.True(t, ok)
+		require.Equal(t, expirationEpoch, actual)
+	})
+
+	t.Run("invalid", func(t *testing.T) {
+		doRequest(t, httpClient, newRequest(t, "not-a-number"), http.StatusBadRequest, nil)
+	})
 }
 
 func restNewObjectUploadPayloadShapes(ctx context.Context, t *testing.T, clientPool *pool.Pool, cnrID cid.ID, signer user.Signer) {

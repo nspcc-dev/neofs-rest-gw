@@ -11,6 +11,7 @@ This document outlines major changes between releases.
 - Empty records returned instead of skipping GETRANGEHASH ones in container EACL (#431)
 
 ### Changed
+- Object upload with non-numeric `__NEOFS__EXPIRATION_EPOCH` attribute is rejected with 400 status (#435)
 
 ### Removed
 
