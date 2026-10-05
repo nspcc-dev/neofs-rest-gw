@@ -763,7 +763,8 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
         "409":
-          description: Extended ACL is disabled for this container.
+          description: Extended ACL is disabled for this container, or the container has been changed concurrently
+            (container revision mismatch). In the latter case the request can be retried.
           content:
             '*/*':
               schema:
@@ -929,7 +930,8 @@ paths:
             To pass non-ASCII values use the `X-Attributes-Base64` header instead.
             If both headers are present, `X-Attributes-Base64` takes precedence.
             You can also use the special attribute:
-            - `__NEOFS__EXPIRATION_EPOCH` - specifies the expiration epoch used by NeoFS. 
+            - `__NEOFS__EXPIRATION_EPOCH` - specifies the expiration epoch used by NeoFS.
+            The value must be a base-10 unsigned integer, otherwise `400` is returned.
             This attribute should be used if you are familiar with the NeoFS epoch system. 
             More information can be found here: [NeoFS Specifications](https://github.com/nspcc-dev/neofs-spec/blob/master/01-arch/01-netmap.md).
             Instead of this attribute you can use one of `X-Neofs-Expiration-*` headers below.

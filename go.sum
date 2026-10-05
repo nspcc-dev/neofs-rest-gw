@@ -140,8 +140,8 @@ github.com/nspcc-dev/hrw/v2 v2.0.4 h1:o3Zh/2aF+IgGpvt414f46Ya20WG9u9vWxVd16ErFI8
 github.com/nspcc-dev/hrw/v2 v2.0.4/go.mod h1:dUjOx27zTTvoPmT5EG25vSSWL2tKS7ndAa2TPTiZwFo=
 github.com/nspcc-dev/neo-go v0.123.0 h1:xXUuAm2AhNuOX5elq9HgQIM6+ZwuJGLDj+XsgwqBRUQ=
 github.com/nspcc-dev/neo-go v0.123.0/go.mod h1:hFS3FToywd/7nIduyzyWAyTlNLo8haclJ+6Y1CopOis=
-github.com/nspcc-dev/neofs-sdk-go v1.0.0-rc.22 h1:It8noHELh5Qr/Vwr045kF2BA5yP2S21Jcan8iaAsUzA=
-github.com/nspcc-dev/neofs-sdk-go v1.0.0-rc.22/go.mod h1:1jTSRnrBKHCX2nhlBDxUj9bHPb+TCRO6kAEI3XCSyOs=
+github.com/nspcc-dev/neofs-sdk-go v1.0.0-rc.23 h1:kz5d/gbmpsa/Wz9bCpXDV1YWLWkJWUr44JrreyTZpNs=
+github.com/nspcc-dev/neofs-sdk-go v1.0.0-rc.23/go.mod h1:8Nz0EKfdWZVIyq7bEtus0A0j0SCewKX9IfOAeZW5G+A=
 github.com/nspcc-dev/rfc6979 v0.2.4 h1:NBgsdCjhLpEPJZqmC9rciMZDcSY297po2smeaRjw57k=
 github.com/nspcc-dev/rfc6979 v0.2.4/go.mod h1:86ylDw6Kss+P6v4QAJqo1Sp3mC0/Zr9G97xSjQ9TuFg=
 github.com/oapi-codegen/echo-middleware v1.1.0 h1:J0aQ2MOCbwejG/73QkPwtlfzz7iOUh8g/IOATjin/fc=
