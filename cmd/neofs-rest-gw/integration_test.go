@@ -2036,10 +2036,14 @@ func restrictByEACL(ctx context.Context, t *testing.T, clientPool *pool.Pool, cn
 		records = append(records, record)
 	}
 
+	cnr, err := clientPool.ContainerGet(ctx, cnrID, client.PrmContainerGet{})
+	require.NoError(t, err)
+
 	var prm client.PrmContainerSetEACL
+	prm.AttachContainerRevision(cnr.Revision())
 
 	table := eacl.NewTableForContainer(cnrID, records)
-	err := clientPool.ContainerSetEACL(ctx, table, signer, prm)
+	err = clientPool.ContainerSetEACL(ctx, table, signer, prm)
 	require.NoError(t, err)
 
 	return &table

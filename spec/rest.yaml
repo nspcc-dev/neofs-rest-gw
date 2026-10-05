@@ -763,7 +763,8 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
         "409":
-          description: Extended ACL is disabled for this container.
+          description: Extended ACL is disabled for this container, or the container has been changed concurrently
+            (container revision mismatch). In the latter case the request can be retried.
           content:
             '*/*':
               schema:

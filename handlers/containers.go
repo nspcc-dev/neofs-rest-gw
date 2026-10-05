@@ -136,6 +136,9 @@ func (a *RestAPI) PutContainerEACL(ctx echo.Context, containerID apiserver.Conta
 	}
 
 	var prm client.PrmContainerSetEACL
+	if rev := cnr.Revision(); rev > 0 {
+		prm.AttachContainerRevision(rev)
+	}
 
 	sessionTokenV2, err := sessionTokensFromAuthHeader(ctx, sessionv2.VerbContainerSetEACL, cnrID)
 	if err != nil {
