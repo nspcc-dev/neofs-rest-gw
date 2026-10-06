@@ -14,6 +14,7 @@ This document outlines major changes between releases.
 - Object upload with non-numeric `__NEOFS__EXPIRATION_EPOCH` attribute is rejected with 400 status (#435)
 
 ### Removed
+- RANGE EACL operation support (#434)
 
 ### Updated
 - github.com/getkin/kin-openapi v0.144.0 => v0.149.0 (#427)
