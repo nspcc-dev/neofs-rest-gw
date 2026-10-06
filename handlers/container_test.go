@@ -129,6 +129,7 @@ func TestEACLFromNative(t *testing.T) {
 
 	table := eacl.NewTableForContainer(cnrID, []eacl.Record{
 		eacl.ConstructRecord(eacl.ActionDeny, eacl.OperationGet, targets),
+		eacl.ConstructRecord(eacl.ActionDeny, eacl.OperationRange, targets),
 		eacl.ConstructRecord(eacl.ActionDeny, eacl.OperationRangeHash, targets),
 		eacl.ConstructRecord(eacl.ActionAllow, eacl.OperationPut, targets),
 	})

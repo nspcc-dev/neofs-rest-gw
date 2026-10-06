@@ -38,7 +38,6 @@ func TestFromNativeOperation(t *testing.T) {
 		{op: eacl.OperationPut, expected: apiserver.PUT},
 		{op: eacl.OperationDelete, expected: apiserver.DELETE},
 		{op: eacl.OperationSearch, expected: apiserver.SEARCH},
-		{op: eacl.OperationRange, expected: apiserver.RANGE},
 	} {
 		t.Run(tc.op.String(), func(t *testing.T) {
 			op, err := FromNativeOperation(tc.op)
@@ -47,9 +46,11 @@ func TestFromNativeOperation(t *testing.T) {
 		})
 	}
 
-	t.Run("range hash is ignored", func(t *testing.T) {
-		_, err := FromNativeOperation(eacl.OperationRangeHash)
-		require.ErrorIs(t, err, ErrIgnoreEACLOperation)
+	t.Run("range and range hash are ignored", func(t *testing.T) {
+		for _, op := range []eacl.Operation{eacl.OperationRange, eacl.OperationRangeHash} {
+			_, err := FromNativeOperation(op)
+			require.ErrorIs(t, err, ErrIgnoreEACLOperation)
+		}
 	})
 
 	t.Run("unsupported", func(t *testing.T) {
@@ -69,23 +70,25 @@ func TestFromNativeRecord(t *testing.T) {
 	)
 
 	t.Run("supported operation", func(t *testing.T) {
-		var rec = eacl.ConstructRecord(eacl.ActionDeny, eacl.OperationRange, targets)
+		var rec = eacl.ConstructRecord(eacl.ActionDeny, eacl.OperationSearch, targets)
 
 		record, err := FromNativeRecord(rec)
 		require.NoError(t, err)
 		require.Equal(t, apiserver.Record{
 			Action:    apiserver.DENY,
-			Operation: apiserver.RANGE,
+			Operation: apiserver.SEARCH,
 			Filters:   []apiserver.Filter{},
 			Targets:   []apiserver.Target{{Keys: []string{}, Role: &othersRole}},
 		}, record)
 	})
 
-	t.Run("range hash is ignored", func(t *testing.T) {
-		var rec = eacl.ConstructRecord(eacl.ActionDeny, eacl.OperationRangeHash, targets)
+	t.Run("range and range hash are ignored", func(t *testing.T) {
+		for _, op := range []eacl.Operation{eacl.OperationRange, eacl.OperationRangeHash} {
+			var rec = eacl.ConstructRecord(eacl.ActionDeny, op, targets)
 
-		_, err := FromNativeRecord(rec)
-		require.ErrorIs(t, err, ErrIgnoreEACLOperation)
+			_, err := FromNativeRecord(rec)
+			require.ErrorIs(t, err, ErrIgnoreEACLOperation)
+		}
 	})
 
 	t.Run("unsupported operation", func(t *testing.T) {

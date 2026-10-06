@@ -296,7 +296,6 @@ func getRestrictBearerRecords() []apiserver.Record {
 		formRestrictRecord(apiserver.PUT),
 		formRestrictRecord(apiserver.DELETE),
 		formRestrictRecord(apiserver.SEARCH),
-		formRestrictRecord(apiserver.RANGE),
 	}
 }
 
@@ -2035,7 +2034,7 @@ func createObject(ctx context.Context, t *testing.T, p *pool.Pool, ownerID *user
 
 func restrictByEACL(ctx context.Context, t *testing.T, clientPool *pool.Pool, cnrID cid.ID, signer user.Signer) *eacl.Table {
 	var records []eacl.Record
-	for op := eacl.OperationGet; op <= eacl.OperationRange; op++ {
+	for op := eacl.OperationGet; op <= eacl.OperationSearch; op++ {
 		record := eacl.ConstructRecord(eacl.ActionDeny, op, []eacl.Target{eacl.NewTargetByRole(eacl.RoleOthers)})
 		records = append(records, record)
 	}
