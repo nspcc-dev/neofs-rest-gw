@@ -23,6 +23,7 @@ This document outlines major changes between releases.
 - github.com/spf13/viper v1.18.2 => v1.21.0 (#427)
 - github.com/nspcc-dev/neofs-sdk-go v1.0.0-rc.22 => v1.0.0-rc.23 (#435)
 - github.com/labstack/echo/v4 v4.15.4 => v4.16.0 (#438)
+- golang.org/x/term v0.45.0 => v0.46.0 (#438)
 
 ### Upgrading from 0.19.1
 
