@@ -5,7 +5,7 @@ go 1.26.0
 require (
 	github.com/getkin/kin-openapi v0.149.0
 	github.com/labstack/echo/v4 v4.16.0
-	github.com/moby/moby/api v1.56.0
+	github.com/moby/moby/api v1.56.1
 	github.com/nspcc-dev/neo-go v0.123.0
 	github.com/nspcc-dev/neofs-sdk-go v1.0.0-rc.23
 	github.com/oapi-codegen/echo-middleware v1.1.0

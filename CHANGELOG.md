@@ -18,7 +18,7 @@ This document outlines major changes between releases.
 
 ### Updated
 - github.com/getkin/kin-openapi v0.144.0 => v0.149.0 (#427)
-- github.com/moby/moby/api v1.55.0 => v1.56.0 (#427)
+- github.com/moby/moby/api v1.55.0 => v1.56.1 (#427, #438)
 - github.com/oapi-codegen/echo-middleware v1.0.2 => v1.1.0 (#427)
 - github.com/spf13/viper v1.18.2 => v1.21.0 (#427)
 - github.com/nspcc-dev/neofs-sdk-go v1.0.0-rc.22 => v1.0.0-rc.23 (#435)
