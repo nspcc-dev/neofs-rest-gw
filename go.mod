@@ -4,8 +4,8 @@ go 1.26.0
 
 require (
 	github.com/getkin/kin-openapi v0.149.0
-	github.com/labstack/echo/v4 v4.15.4
-	github.com/moby/moby/api v1.56.0
+	github.com/labstack/echo/v4 v4.16.0
+	github.com/moby/moby/api v1.56.1
 	github.com/nspcc-dev/neo-go v0.123.0
 	github.com/nspcc-dev/neofs-sdk-go v1.0.0-rc.23
 	github.com/oapi-codegen/echo-middleware v1.1.0
@@ -16,7 +16,7 @@ require (
 	github.com/stretchr/testify v1.12.1
 	github.com/testcontainers/testcontainers-go v0.44.0
 	go.uber.org/zap v1.28.0
-	golang.org/x/term v0.45.0
+	golang.org/x/term v0.46.0
 )
 
 require (
@@ -103,7 +103,7 @@ require (
 	golang.org/x/crypto v0.56.0 // indirect
 	golang.org/x/exp v0.0.0-20250911091902-df9299821621 // indirect
 	golang.org/x/net v0.58.0 // indirect
-	golang.org/x/sys v0.47.0 // indirect
+	golang.org/x/sys v0.48.0 // indirect
 	golang.org/x/text v0.41.0 // indirect
 	golang.org/x/time v0.15.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20260526163538-3dc84a4a5aaa // indirect
