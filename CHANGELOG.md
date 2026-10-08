@@ -5,6 +5,7 @@ This document outlines major changes between releases.
 ## [Unreleased]
 
 ### Added
+- `revision` field in `ContainerInfo` (#439)
 
 ### Fixed
 - Fresh v2 session tokens rejected because of the clock skew (#428)

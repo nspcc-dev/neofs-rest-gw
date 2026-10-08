@@ -433,6 +433,7 @@ func getContainerInfo(ctx context.Context, p *pool.Pool, cnrID cid.ID) (*apiserv
 		PlacementPolicy: sb.String(),
 		Attributes:      attrs,
 		Version:         cnr.Version().String(),
+		Revision:        cnr.Revision(),
 	}, nil
 }
 
