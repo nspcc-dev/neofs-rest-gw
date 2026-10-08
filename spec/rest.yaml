@@ -1556,6 +1556,7 @@ components:
         - ownerId
         - placementPolicy
         - version
+        - revision
       type: object
       properties:
         containerId:
@@ -1564,6 +1565,10 @@ components:
           type: string
         version:
           type: string
+        revision:
+          type: integer
+          format: uint64
+          description: Container revision number.
         ownerId:
           type: string
         basicAcl:
@@ -1582,6 +1587,7 @@ components:
         containerId: 5HZTn5qkRnmgSz9gSrw22CEdPPk6nQhkwf2Mgzyvkikv
         containerName: container
         version: "2.11"
+        revision: 123
         ownerId: NbUgTSFvPmsRxmGeWpuuGeJUoRoi6PErcM
         basicAcl: 0x1fbf9fff
         placementPolicy: REP 2
