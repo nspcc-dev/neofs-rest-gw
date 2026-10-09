@@ -5,6 +5,20 @@ This document outlines major changes between releases.
 ## [Unreleased]
 
 ### Added
+
+### Fixed
+
+### Changed
+
+### Removed
+
+### Updated
+
+### Upgrading from 0.20.0
+
+## [0.20.0] - 2026-10-09
+
+### Added
 - `revision` field in `ContainerInfo` (#439)
 
 ### Fixed
@@ -22,11 +36,10 @@ This document outlines major changes between releases.
 - github.com/moby/moby/api v1.55.0 => v1.56.1 (#427, #438)
 - github.com/oapi-codegen/echo-middleware v1.0.2 => v1.1.0 (#427)
 - github.com/spf13/viper v1.18.2 => v1.21.0 (#427)
+- google.golang.org/grpc dependency from 1.83.1 to 1.83.2 (#429)
 - github.com/nspcc-dev/neofs-sdk-go v1.0.0-rc.22 => v1.0.0-rc.23 (#435)
 - github.com/labstack/echo/v4 v4.15.4 => v4.16.0 (#438)
 - golang.org/x/term v0.45.0 => v0.46.0 (#438)
-
-### Upgrading from 0.19.1
 
 ## [0.19.1] - 2026-09-01
 
@@ -594,4 +607,5 @@ Please refer to [GitHub releases](https://github.com/nspcc-dev/neofs-rest-gw/rel
 [0.18.0]: https://github.com/nspcc-dev/neofs-rest-gw/compare/v0.17.1...v0.18.0
 [0.19.0]: https://github.com/nspcc-dev/neofs-rest-gw/compare/v0.18.0...v0.19.0
 [0.19.1]: https://github.com/nspcc-dev/neofs-rest-gw/compare/v0.19.0...v0.19.1
-[Unreleased]: https://github.com/nspcc-dev/neofs-rest-gw/compare/v0.19.1...master
+[0.20.0]: https://github.com/nspcc-dev/neofs-rest-gw/compare/v0.19.1...v0.20.0
+[Unreleased]: https://github.com/nspcc-dev/neofs-rest-gw/compare/v0.20.0...master
