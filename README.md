@@ -6,7 +6,6 @@
 </p>
 
 ---
-[![Report](https://goreportcard.com/badge/github.com/nspcc-dev/neofs-rest-gw)](https://goreportcard.com/report/github.com/nspcc-dev/neofs-rest-gw)
 ![GitHub release (latest SemVer)](https://img.shields.io/github/v/release/nspcc-dev/neofs-rest-gw?sort=semver)
 ![License](https://img.shields.io/github/license/nspcc-dev/neofs-rest-gw.svg?style=popout)
 
