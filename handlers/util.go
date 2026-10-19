@@ -38,6 +38,7 @@ const (
 	ExpirationDurationAttr       = SystemAttributePrefix + "EXPIRATION_DURATION"
 	ExpirationTimestampAttr      = SystemAttributePrefix + "EXPIRATION_TIMESTAMP"
 	ExpirationRFC3339Attr        = SystemAttributePrefix + "EXPIRATION_RFC3339"
+	expirationEpochAttr          = SystemAttributePrefix + "EXPIRATION_EPOCH"
 	containerDomainNameAttribute = SystemAttributePrefix + "NAME"
 	containerDomainZoneAttribute = SystemAttributePrefix + "ZONE"
 

@@ -13,11 +13,14 @@ This document outlines major changes between releases.
 - Time-based headers are used for object expiration instead of the __NEOFS__EXPIRATION_EPOCH attribute (#442)
 
 ### Removed
+- `__NEOFS__EXPIRATION_EPOCH` attribute support in object upload (#442)
 
 ### Updated
 - NeoFS SDK to v1.0.0-rc.23.0.20261016124715-c8bb89a24627 (#442)
 
 ### Upgrading from 0.20.0
+Object upload with `__NEOFS__EXPIRATION_EPOCH` attribute is rejected with 400 status now,
+use `X-Neofs-Expiration-*` headers to set object expiration time instead.
 
 ## [0.20.0] - 2026-10-09
 
