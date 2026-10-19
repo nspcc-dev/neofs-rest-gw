@@ -177,6 +177,9 @@ func runTests(ctx context.Context, t *testing.T, key *keys.PrivateKey, node stri
 	t.Run("rest new upload object expiration epoch", func(t *testing.T) {
 		restNewObjectUploadExpirationEpoch(ctx, t, clientPool, cnrID, signer)
 	})
+	t.Run("rest new upload object expiration time", func(t *testing.T) {
+		restNewObjectUploadExpirationTime(ctx, t, clientPool, cnrID, signer)
+	})
 	t.Run("rest new upload object with bearer in cookie", func(t *testing.T) { restNewObjectUploadCookie(ctx, t, clientPool, cnrID, signer) })
 	t.Run("rest new upload object with wallet connect", func(t *testing.T) { restNewObjectUploadWC(ctx, t, clientPool, cnrID, signer) })
 	t.Run("rest new head object", func(t *testing.T) { restNewObjectHead(ctx, t, clientPool, &owner, cnrID, signer, false) })
@@ -2193,6 +2196,99 @@ func restNewObjectUploadExpirationEpoch(ctx context.Context, t *testing.T, clien
 
 	t.Run("invalid", func(t *testing.T) {
 		doRequest(t, httpClient, newRequest(t, "not-a-number"), http.StatusBadRequest, nil)
+	})
+}
+
+func restNewObjectUploadExpirationTime(ctx context.Context, t *testing.T, clientPool *pool.Pool, cnrID cid.ID, signer user.Signer) {
+	httpClient := defaultHTTPClient()
+	bearerToken := makeAuthTokenRequest(ctx, t, append([]apiserver.Record{formAllowRecord(apiserver.PUT)}, getRestrictBearerRecords()...), httpClient, false)
+	resp := completeBearerToken(ctx, t, httpClient, bearerToken)
+
+	query := make(url.Values)
+	query.Add(fullBearerQuery, "true")
+
+	newRequest := func(t *testing.T, attributes map[string]string, headers map[string]string) *http.Request {
+		request, err := http.NewRequest(http.MethodPost, testHost+"/v1/objects/"+cnrID.String()+"?"+query.Encode(), bytes.NewBufferString("content of file"))
+		require.NoError(t, err)
+		request.Header.Set("Content-Type", "text/plain")
+		request.Header.Add("Authorization", "Bearer "+resp.Token)
+		if attributes != nil {
+			attributesJSON, err := json.Marshal(attributes)
+			require.NoError(t, err)
+			request.Header.Set("X-Attributes", string(attributesJSON))
+		}
+		for k, v := range headers {
+			request.Header.Set(k, v)
+		}
+
+		return request.WithContext(ctx)
+	}
+
+	head := func(t *testing.T, addr *apiserver.AddressForUpload) object.Object {
+		var id oid.ID
+		require.NoError(t, id.DecodeString(addr.ObjectId))
+
+		hdr, err := clientPool.ObjectHead(ctx, cnrID, id, signer, client.PrmObjectHead{})
+		require.NoError(t, err)
+		return *hdr
+	}
+
+	t.Run("timestamp", func(t *testing.T) {
+		expTime := time.Now().Add(time.Hour).Truncate(time.Second)
+
+		addr := &apiserver.AddressForUpload{}
+		doRequest(t, httpClient, newRequest(t, nil, map[string]string{
+			"X-Neofs-Expiration-Timestamp": strconv.FormatInt(expTime.Unix(), 10),
+		}), http.StatusOK, addr)
+
+		hdr := head(t, addr)
+		require.True(t, expTime.Equal(hdr.ExpirationTime()), "expected %s, got %s", expTime, hdr.ExpirationTime())
+		for _, attr := range hdr.Attributes() {
+			require.NotEqual(t, object.AttributeExpirationEpoch, attr.Key())
+		}
+	})
+
+	t.Run("duration", func(t *testing.T) {
+		before := time.Now().Add(time.Hour).Truncate(time.Second)
+
+		addr := &apiserver.AddressForUpload{}
+		doRequest(t, httpClient, newRequest(t, nil, map[string]string{
+			"X-Neofs-Expiration-Duration": "1h",
+		}), http.StatusOK, addr)
+
+		after := time.Now().Add(time.Hour)
+
+		hdr := head(t, addr)
+		actual := hdr.ExpirationTime()
+		require.False(t, actual.Before(before), "expected not before %s, got %s", before, actual)
+		require.False(t, actual.After(after), "expected not after %s, got %s", after, actual)
+	})
+
+	t.Run("epoch takes precedence", func(t *testing.T) {
+		const expirationEpoch = "4294967295"
+
+		addr := &apiserver.AddressForUpload{}
+		doRequest(t, httpClient, newRequest(t, map[string]string{object.AttributeExpirationEpoch: expirationEpoch}, map[string]string{
+			"X-Neofs-Expiration-Duration": "1h",
+		}), http.StatusOK, addr)
+
+		hdr := head(t, addr)
+		require.True(t, hdr.ExpirationTime().IsZero())
+
+		var actual string
+		for _, attr := range hdr.Attributes() {
+			if attr.Key() == object.AttributeExpirationEpoch {
+				actual = attr.Value()
+				break
+			}
+		}
+		require.Equal(t, expirationEpoch, actual)
+	})
+
+	t.Run("in the past", func(t *testing.T) {
+		doRequest(t, httpClient, newRequest(t, nil, map[string]string{
+			"X-Neofs-Expiration-Timestamp": strconv.FormatInt(time.Now().Add(-time.Hour).Unix(), 10),
+		}), http.StatusBadRequest, nil)
 	})
 }
 

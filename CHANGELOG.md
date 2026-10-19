@@ -10,6 +10,7 @@ This document outlines major changes between releases.
 
 ### Changed
 - GW now specifies payload length of uploaded objects if known (#443)
+- Time-based headers are used for object expiration instead of the __NEOFS__EXPIRATION_EPOCH attribute (#442)
 
 ### Removed
 
