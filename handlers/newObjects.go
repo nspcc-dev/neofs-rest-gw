@@ -69,17 +69,15 @@ func (a *RestAPI) NewUploadContainerObject(ctx echo.Context, containerID apiserv
 	}
 
 	addExpirationHeaders(filtered, params)
-	if needParseExpiration(filtered) {
-		epochDuration, err := getEpochDurations(ctx.Request().Context(), a.networkInfoGetter)
-		if err != nil {
-			resp := a.logAndGetErrorResponse("could not get epoch durations from network info", err, log)
-			return ctx.JSON(getResponseCodeFromStatus(err), resp)
-		}
-
-		if err = prepareExpirationHeader(filtered, epochDuration, time.Now()); err != nil {
-			resp := a.logAndGetErrorResponse("could not parse expiration header", err, log)
-			return ctx.JSON(http.StatusBadRequest, resp)
-		}
+	expTime, err := parseExpiration(filtered, time.Now())
+	if err != nil {
+		resp := a.logAndGetErrorResponse("could not parse expiration header", err, log)
+		return ctx.JSON(http.StatusBadRequest, resp)
+	}
+	// expiration epoch attribute and expiration time are mutually exclusive,
+	// explicitly set epoch takes precedence
+	if _, ok := filtered[object.AttributeExpirationEpoch]; ok {
+		expTime = time.Time{}
 	}
 
 	attributes := make([]object.Attribute, 0, len(filtered))
@@ -126,6 +124,12 @@ func (a *RestAPI) NewUploadContainerObject(ctx echo.Context, containerID apiserv
 	hdr.SetContainerID(idCnr)
 	a.setOwner(&hdr, btoken)
 	hdr.SetAttributes(attributes...)
+	if !expTime.IsZero() {
+		if err = hdr.SetExpirationTime(expTime); err != nil {
+			resp := a.logAndGetErrorResponse("could not set expiration time", err, log)
+			return ctx.JSON(http.StatusBadRequest, resp)
+		}
+	}
 
 	if ln := ctx.Request().ContentLength; ln >= 0 {
 		hdr.SetPayloadSize(uint64(ln))
