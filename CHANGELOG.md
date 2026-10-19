@@ -14,6 +14,7 @@ This document outlines major changes between releases.
 ### Removed
 
 ### Updated
+- NeoFS SDK to v1.0.0-rc.24 (#442)
 
 ### Upgrading from 0.20.0
 
