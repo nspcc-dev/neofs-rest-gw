@@ -11,7 +11,6 @@ import (
 	"fmt"
 	"io"
 	"maps"
-	"math"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -175,7 +174,7 @@ func runTests(ctx context.Context, t *testing.T, key *keys.PrivateKey, node stri
 		restNewObjectUploadPayloadShapes(ctx, t, clientPool, cnrID, signer)
 	})
 	t.Run("rest new upload object expiration epoch", func(t *testing.T) {
-		restNewObjectUploadExpirationEpoch(ctx, t, clientPool, cnrID, signer)
+		restNewObjectUploadExpirationEpoch(ctx, t, cnrID)
 	})
 	t.Run("rest new upload object expiration time", func(t *testing.T) {
 		restNewObjectUploadExpirationTime(ctx, t, clientPool, cnrID, signer)
@@ -2156,7 +2155,7 @@ func restNewObjectUploadInt(ctx context.Context, t *testing.T, clientPool *pool.
 	}
 }
 
-func restNewObjectUploadExpirationEpoch(ctx context.Context, t *testing.T, clientPool *pool.Pool, cnrID cid.ID, signer user.Signer) {
+func restNewObjectUploadExpirationEpoch(ctx context.Context, t *testing.T, cnrID cid.ID) {
 	httpClient := defaultHTTPClient()
 	bearerToken := makeAuthTokenRequest(ctx, t, append([]apiserver.Record{formAllowRecord(apiserver.PUT)}, getRestrictBearerRecords()...), httpClient, false)
 	resp := completeBearerToken(ctx, t, httpClient, bearerToken)
@@ -2164,39 +2163,16 @@ func restNewObjectUploadExpirationEpoch(ctx context.Context, t *testing.T, clien
 	query := make(url.Values)
 	query.Add(fullBearerQuery, "true")
 
-	newRequest := func(t *testing.T, expirationEpoch string) *http.Request {
-		attributesJSON, err := json.Marshal(map[string]string{object.AttributeExpirationEpoch: expirationEpoch})
-		require.NoError(t, err)
+	attributesJSON, err := json.Marshal(map[string]string{"__NEOFS__EXPIRATION_EPOCH": "100"})
+	require.NoError(t, err)
 
-		request, err := http.NewRequest(http.MethodPost, testHost+"/v1/objects/"+cnrID.String()+"?"+query.Encode(), bytes.NewBufferString("content of file"))
-		require.NoError(t, err)
-		request.Header.Set("Content-Type", "text/plain")
-		request.Header.Add("Authorization", "Bearer "+resp.Token)
-		request.Header.Set("X-Attributes-Base64", base64.StdEncoding.EncodeToString(attributesJSON))
+	request, err := http.NewRequest(http.MethodPost, testHost+"/v1/objects/"+cnrID.String()+"?"+query.Encode(), bytes.NewBufferString("content of file"))
+	require.NoError(t, err)
+	request.Header.Set("Content-Type", "text/plain")
+	request.Header.Add("Authorization", "Bearer "+resp.Token)
+	request.Header.Set("X-Attributes-Base64", base64.StdEncoding.EncodeToString(attributesJSON))
 
-		return request.WithContext(ctx)
-	}
-
-	t.Run("valid", func(t *testing.T) {
-		const expirationEpoch = uint64(math.MaxUint32)
-
-		addr := &apiserver.AddressForUpload{}
-		doRequest(t, httpClient, newRequest(t, strconv.FormatUint(expirationEpoch, 10)), http.StatusOK, addr)
-
-		var id oid.ID
-		require.NoError(t, id.DecodeString(addr.ObjectId))
-
-		hdr, err := clientPool.ObjectHead(ctx, cnrID, id, signer, client.PrmObjectHead{})
-		require.NoError(t, err)
-
-		actual, ok := hdr.ExpirationEpoch()
-		require.True(t, ok)
-		require.Equal(t, expirationEpoch, actual)
-	})
-
-	t.Run("invalid", func(t *testing.T) {
-		doRequest(t, httpClient, newRequest(t, "not-a-number"), http.StatusBadRequest, nil)
-	})
+	doRequest(t, httpClient, request.WithContext(ctx), http.StatusBadRequest, nil)
 }
 
 func restNewObjectUploadExpirationTime(ctx context.Context, t *testing.T, clientPool *pool.Pool, cnrID cid.ID, signer user.Signer) {
@@ -2243,9 +2219,6 @@ func restNewObjectUploadExpirationTime(ctx context.Context, t *testing.T, client
 
 		hdr := head(t, addr)
 		require.True(t, expTime.Equal(hdr.ExpirationTime()), "expected %s, got %s", expTime, hdr.ExpirationTime())
-		for _, attr := range hdr.Attributes() {
-			require.NotEqual(t, object.AttributeExpirationEpoch, attr.Key())
-		}
 	})
 
 	t.Run("duration", func(t *testing.T) {
@@ -2262,27 +2235,6 @@ func restNewObjectUploadExpirationTime(ctx context.Context, t *testing.T, client
 		actual := hdr.ExpirationTime()
 		require.False(t, actual.Before(before), "expected not before %s, got %s", before, actual)
 		require.False(t, actual.After(after), "expected not after %s, got %s", after, actual)
-	})
-
-	t.Run("epoch takes precedence", func(t *testing.T) {
-		const expirationEpoch = "4294967295"
-
-		addr := &apiserver.AddressForUpload{}
-		doRequest(t, httpClient, newRequest(t, map[string]string{object.AttributeExpirationEpoch: expirationEpoch}, map[string]string{
-			"X-Neofs-Expiration-Duration": "1h",
-		}), http.StatusOK, addr)
-
-		hdr := head(t, addr)
-		require.True(t, hdr.ExpirationTime().IsZero())
-
-		var actual string
-		for _, attr := range hdr.Attributes() {
-			if attr.Key() == object.AttributeExpirationEpoch {
-				actual = attr.Value()
-				break
-			}
-		}
-		require.Equal(t, expirationEpoch, actual)
 	})
 
 	t.Run("in the past", func(t *testing.T) {

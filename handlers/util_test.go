@@ -13,7 +13,6 @@ import (
 
 	"github.com/nspcc-dev/neo-go/pkg/crypto/keys"
 	cid "github.com/nspcc-dev/neofs-sdk-go/container/id"
-	"github.com/nspcc-dev/neofs-sdk-go/object"
 	"github.com/nspcc-dev/neofs-sdk-go/session/v2"
 	"github.com/nspcc-dev/neofs-sdk-go/user"
 	"github.com/stretchr/testify/require"
@@ -74,10 +73,10 @@ func TestParseExpiration(t *testing.T) {
 			left:    map[string]string{"key": "value"},
 		},
 		{
-			name:     "valid epoch, valid duration",
-			headers:  map[string]string{object.AttributeExpirationEpoch: "100", ExpirationDurationAttr: "24h"},
+			name:     "valid duration, other attribute",
+			headers:  map[string]string{"key": "value", ExpirationDurationAttr: "24h"},
 			expected: tomorrow,
-			left:     map[string]string{object.AttributeExpirationEpoch: "100"},
+			left:     map[string]string{"key": "value"},
 		},
 		{
 			name:     "valid timestamp sec",

@@ -68,25 +68,21 @@ func (a *RestAPI) NewUploadContainerObject(ctx echo.Context, containerID apiserv
 		return ctx.JSON(http.StatusBadRequest, resp)
 	}
 
+	if _, ok := filtered[expirationEpochAttr]; ok {
+		resp := a.logAndGetErrorResponse("unsupported attribute", fmt.Errorf("%s attribute is not supported, use X-Neofs-Expiration-* headers instead", expirationEpochAttr), log)
+		return ctx.JSON(http.StatusBadRequest, resp)
+	}
+
 	addExpirationHeaders(filtered, params)
 	expTime, err := parseExpiration(filtered, time.Now())
 	if err != nil {
 		resp := a.logAndGetErrorResponse("could not parse expiration header", err, log)
 		return ctx.JSON(http.StatusBadRequest, resp)
 	}
-	// expiration epoch attribute and expiration time are mutually exclusive,
-	// explicitly set epoch takes precedence
-	if _, ok := filtered[object.AttributeExpirationEpoch]; ok {
-		expTime = time.Time{}
-	}
 
 	attributes := make([]object.Attribute, 0, len(filtered))
 	// prepares attributes from filtered headers
 	for key, val := range filtered {
-		// is set separately below
-		if key == object.AttributeExpirationEpoch {
-			continue
-		}
 		attribute := object.NewAttribute(key, val)
 		log.Debug("Added attribute", zap.String("key", key), zap.String("value", val))
 		attributes = append(attributes, attribute)
@@ -133,16 +129,6 @@ func (a *RestAPI) NewUploadContainerObject(ctx echo.Context, containerID apiserv
 
 	if ln := ctx.Request().ContentLength; ln >= 0 {
 		hdr.SetPayloadSize(uint64(ln))
-	}
-
-	if val, ok := filtered[object.AttributeExpirationEpoch]; ok {
-		expirationEpoch, err := strconv.ParseUint(val, 10, 64)
-		if err != nil {
-			resp := a.logAndGetErrorResponse("could not parse expiration epoch", err, log.With(zap.String("value", val)))
-			return ctx.JSON(http.StatusBadRequest, resp)
-		}
-
-		hdr.SetExpirationEpoch(expirationEpoch)
 	}
 
 	idObj, err := a.putObject(ctx, hdr, btoken, sessionTokenV2, ctx.Request().Body)
