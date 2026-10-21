@@ -127,6 +127,10 @@ func (a *RestAPI) NewUploadContainerObject(ctx echo.Context, containerID apiserv
 	a.setOwner(&hdr, btoken)
 	hdr.SetAttributes(attributes...)
 
+	if ln := ctx.Request().ContentLength; ln >= 0 {
+		hdr.SetPayloadSize(uint64(ln))
+	}
+
 	if val, ok := filtered[object.AttributeExpirationEpoch]; ok {
 		expirationEpoch, err := strconv.ParseUint(val, 10, 64)
 		if err != nil {
