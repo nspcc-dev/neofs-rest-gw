@@ -9,6 +9,7 @@ This document outlines major changes between releases.
 ### Fixed
 
 ### Changed
+- GW now specifies payload length of uploaded objects if known (#443)
 
 ### Removed
 
