@@ -4,7 +4,6 @@ import (
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/base64"
-	"math"
 	"net/http"
 	"reflect"
 	"strconv"
@@ -14,7 +13,6 @@ import (
 
 	"github.com/nspcc-dev/neo-go/pkg/crypto/keys"
 	cid "github.com/nspcc-dev/neofs-sdk-go/container/id"
-	"github.com/nspcc-dev/neofs-sdk-go/object"
 	"github.com/nspcc-dev/neofs-sdk-go/session/v2"
 	"github.com/nspcc-dev/neofs-sdk-go/user"
 	"github.com/stretchr/testify/require"
@@ -54,113 +52,73 @@ func TestDecodeHexOrBase64(t *testing.T) {
 	})
 }
 
-func TestPrepareExpirationHeader(t *testing.T) {
-	tomorrow := time.Now().Add(24 * time.Hour)
-	tomorrowUnix := tomorrow.Unix()
-	tomorrowUnixNano := tomorrow.UnixNano()
-	tomorrowUnixMilli := tomorrowUnixNano / 1e6
+func TestParseExpiration(t *testing.T) {
+	now := time.Now().UTC()
+	tomorrow := now.Add(24 * time.Hour)
+	dayAfterTomorrow := now.Add(48 * time.Hour)
 
-	epoch := "100"
-	duration := "24h"
-	timestampSec := strconv.FormatInt(tomorrowUnix, 10)
-	timestampMilli := strconv.FormatInt(tomorrowUnixMilli, 10)
-	timestampNano := strconv.FormatInt(tomorrowUnixNano, 10)
-
-	defaultDurations := &epochDurations{
-		currentEpoch:    10,
-		secondsPerEpoch: 101,
-	}
-
-	epochPerDay := uint64((24 * time.Hour).Seconds()) / defaultDurations.secondsPerEpoch
-	if uint64((24*time.Hour).Seconds())%defaultDurations.secondsPerEpoch != 0 {
-		epochPerDay++
-	}
-
-	defaultExpEpoch := strconv.FormatUint(defaultDurations.currentEpoch+epochPerDay, 10)
+	timestampSec := strconv.FormatInt(tomorrow.Unix(), 10)
+	timestampMilli := strconv.FormatInt(tomorrow.UnixMilli(), 10)
 
 	for _, tc := range []struct {
-		name      string
-		headers   map[string]string
-		durations *epochDurations
-		err       bool
-		expected  map[string]string
+		name     string
+		headers  map[string]string
+		err      bool
+		expected time.Time
+		left     map[string]string
 	}{
 		{
-			name:     "valid epoch",
-			headers:  map[string]string{object.AttributeExpirationEpoch: epoch},
-			expected: map[string]string{object.AttributeExpirationEpoch: epoch},
+			name:    "none",
+			headers: map[string]string{"key": "value"},
+			left:    map[string]string{"key": "value"},
 		},
 		{
-			name: "valid epoch, valid duration",
+			name:     "valid duration, other attribute",
+			headers:  map[string]string{"key": "value", ExpirationDurationAttr: "24h"},
+			expected: tomorrow,
+			left:     map[string]string{"key": "value"},
+		},
+		{
+			name:     "valid timestamp sec",
+			headers:  map[string]string{ExpirationTimestampAttr: timestampSec},
+			expected: time.Unix(tomorrow.Unix(), 0),
+			left:     map[string]string{},
+		},
+		{
+			name:     "valid timestamp milli",
+			headers:  map[string]string{ExpirationTimestampAttr: timestampMilli},
+			expected: time.Unix(tomorrow.UnixMilli(), 0),
+			left:     map[string]string{},
+		},
+		{
+			name:     "valid duration",
+			headers:  map[string]string{ExpirationDurationAttr: "24h"},
+			expected: tomorrow,
+			left:     map[string]string{},
+		},
+		{
+			name:     "valid rfc3339",
+			headers:  map[string]string{ExpirationRFC3339Attr: tomorrow.Format(time.RFC3339)},
+			expected: tomorrow.Truncate(time.Second),
+			left:     map[string]string{},
+		},
+		{
+			name: "timestamp overrides rfc3339",
 			headers: map[string]string{
-				object.AttributeExpirationEpoch: epoch,
-				ExpirationDurationAttr:          duration,
+				ExpirationRFC3339Attr:   dayAfterTomorrow.Format(time.RFC3339),
+				ExpirationTimestampAttr: timestampSec,
 			},
-			durations: defaultDurations,
-			expected:  map[string]string{object.AttributeExpirationEpoch: epoch},
+			expected: time.Unix(tomorrow.Unix(), 0),
+			left:     map[string]string{},
 		},
 		{
-			name: "valid epoch, valid rfc3339",
+			name: "duration overrides timestamp",
 			headers: map[string]string{
-				object.AttributeExpirationEpoch: epoch,
-				ExpirationRFC3339Attr:           tomorrow.Format(time.RFC3339),
+				ExpirationTimestampAttr: strconv.FormatInt(dayAfterTomorrow.Unix(), 10),
+				ExpirationDurationAttr:  "24h",
 			},
-			durations: defaultDurations,
-			expected:  map[string]string{object.AttributeExpirationEpoch: epoch},
-		},
-		{
-			name: "valid epoch, valid timestamp sec",
-			headers: map[string]string{
-				object.AttributeExpirationEpoch: epoch,
-				ExpirationTimestampAttr:         timestampSec,
-			},
-			durations: defaultDurations,
-			expected:  map[string]string{object.AttributeExpirationEpoch: epoch},
-		},
-		{
-			name: "valid epoch, valid timestamp milli",
-			headers: map[string]string{
-				object.AttributeExpirationEpoch: epoch,
-				ExpirationTimestampAttr:         timestampMilli,
-			},
-			durations: defaultDurations,
-			expected:  map[string]string{object.AttributeExpirationEpoch: epoch},
-		},
-		{
-			name: "valid epoch, valid timestamp nano",
-			headers: map[string]string{
-				object.AttributeExpirationEpoch: epoch,
-				ExpirationTimestampAttr:         timestampNano,
-			},
-			durations: defaultDurations,
-			expected:  map[string]string{object.AttributeExpirationEpoch: epoch},
-		},
-		{
-			name:      "valid timestamp sec",
-			headers:   map[string]string{ExpirationTimestampAttr: timestampSec},
-			durations: defaultDurations,
-			expected:  map[string]string{object.AttributeExpirationEpoch: defaultExpEpoch},
-		},
-		{
-			name:      "valid duration",
-			headers:   map[string]string{ExpirationDurationAttr: duration},
-			durations: defaultDurations,
-			expected:  map[string]string{object.AttributeExpirationEpoch: defaultExpEpoch},
-		},
-		{
-			name:      "valid rfc3339",
-			headers:   map[string]string{ExpirationRFC3339Attr: tomorrow.Format(time.RFC3339)},
-			durations: defaultDurations,
-			expected:  map[string]string{object.AttributeExpirationEpoch: defaultExpEpoch},
-		},
-		{
-			name:    "valid max uint 64",
-			headers: map[string]string{ExpirationRFC3339Attr: tomorrow.Format(time.RFC3339)},
-			durations: &epochDurations{
-				currentEpoch:    math.MaxUint64 - 1,
-				secondsPerEpoch: defaultDurations.secondsPerEpoch,
-			},
-			expected: map[string]string{object.AttributeExpirationEpoch: strconv.FormatUint(uint64(math.MaxUint64), 10)},
+			expected: tomorrow,
+			left:     map[string]string{},
 		},
 		{
 			name:    "invalid timestamp sec",
@@ -194,14 +152,14 @@ func TestPrepareExpirationHeader(t *testing.T) {
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			now := time.Now().UTC()
-			err := prepareExpirationHeader(tc.headers, tc.durations, now)
+			expTime, err := parseExpiration(tc.headers, now)
 			if tc.err {
 				require.Error(t, err)
-			} else {
-				require.NoError(t, err)
-				require.Equal(t, tc.expected, tc.headers)
+				return
 			}
+			require.NoError(t, err)
+			require.True(t, tc.expected.Equal(expTime), "expected %s, got %s", tc.expected, expTime)
+			require.Equal(t, tc.left, tc.headers)
 		})
 	}
 }
