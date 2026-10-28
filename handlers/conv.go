@@ -14,6 +14,8 @@ func getResponseCodeFromStatus(err error) int {
 	}
 
 	switch {
+	case errors.Is(err, errPayloadRead):
+		return http.StatusBadRequest
 	case errors.Is(err, context.Canceled):
 		return http.StatusGatewayTimeout
 	case errors.Is(err, context.DeadlineExceeded):

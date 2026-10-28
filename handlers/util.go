@@ -39,6 +39,13 @@ type epochDurations struct {
 	secondsPerEpoch uint64
 }
 
+// payloadReader remembers the first error of the underlying reader except
+// io.EOF, so it can't be lost or replaced by the payload consumer.
+type payloadReader struct {
+	io.Reader
+	err error
+}
+
 const (
 	SystemAttributePrefix = "__NEOFS__"
 
@@ -59,6 +66,10 @@ const (
 
 	handlerFieldName = "handler"
 )
+
+// errPayloadRead is returned when object payload can't be read from the
+// request, e.g. it's shorter than the declared Content-Length.
+var errPayloadRead = errors.New("read payload")
 
 func getEpochDurations(ctx context.Context, networkInfoGetter networkInfoGetter) (*epochDurations, error) {
 	networkInfo, err := networkInfoGetter.NetworkInfo(ctx)
@@ -354,6 +365,15 @@ func addExpirationHeaders(headers map[string]string, params apiserver.NewUploadC
 	}
 }
 
+func (r *payloadReader) Read(p []byte) (int, error) {
+	n, err := r.Reader.Read(p)
+	if err != nil && !errors.Is(err, io.EOF) && r.err == nil {
+		r.err = err
+	}
+
+	return n, err
+}
+
 // shares code of NeoFS object recording performed by various RestAPI methods.
 func (a *RestAPI) putObject(ctx echo.Context, hdr object.Object, bt *bearer.Token, sessionToken *sessionv2.Token, payload io.Reader) (oid.ID, error) {
 	var opts client.PrmObjectPutInit
@@ -368,7 +388,12 @@ func (a *RestAPI) putObject(ctx echo.Context, hdr object.Object, bt *bearer.Toke
 		return oid.ID{}, fmt.Errorf("init: %w", err)
 	}
 
-	if _, err = writer.ReadFrom(payload); err != nil {
+	pr := &payloadReader{Reader: payload}
+	_, err = writer.ReadFrom(pr)
+	if pr.err != nil {
+		return oid.ID{}, fmt.Errorf("%w: %w", errPayloadRead, pr.err)
+	}
+	if err != nil {
 		return oid.ID{}, fmt.Errorf("read from: %w", err)
 	}
 
