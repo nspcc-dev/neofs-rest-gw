@@ -4,12 +4,15 @@ import (
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/base64"
+	"fmt"
+	"io"
 	"math"
 	"net/http"
 	"reflect"
 	"strconv"
 	"strings"
 	"testing"
+	"testing/iotest"
 	"time"
 
 	"github.com/nspcc-dev/neo-go/pkg/crypto/keys"
@@ -519,5 +522,27 @@ func TestGetSessionTokenV2(t *testing.T) {
 		_, err = getSessionTokenV2(encoded)
 		require.Error(t, err)
 		require.ErrorContains(t, err, "lock mismatch")
+	})
+}
+
+func TestPayloadReader(t *testing.T) {
+	t.Run("EOF", func(t *testing.T) {
+		r := &payloadReader{Reader: strings.NewReader("content")}
+
+		data, err := io.ReadAll(r)
+		require.NoError(t, err)
+		require.Equal(t, "content", string(data))
+		require.NoError(t, r.err)
+	})
+
+	t.Run("error", func(t *testing.T) {
+		r := &payloadReader{Reader: io.MultiReader(strings.NewReader("content"), iotest.ErrReader(io.ErrUnexpectedEOF))}
+
+		_, err := io.ReadAll(r)
+		require.ErrorIs(t, err, io.ErrUnexpectedEOF)
+		require.ErrorIs(t, r.err, io.ErrUnexpectedEOF)
+
+		err = fmt.Errorf("%w: %w", errPayloadRead, r.err)
+		require.Equal(t, http.StatusBadRequest, getResponseCodeFromStatus(err))
 	})
 }
