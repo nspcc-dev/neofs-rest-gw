@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"bytes"
-	"context"
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/hex"
@@ -10,7 +9,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"math"
 	"net"
 	"net/http"
 	"strconv"
@@ -34,17 +32,13 @@ type PrmAttributes struct {
 	DefaultFileName  string
 }
 
-type epochDurations struct {
-	currentEpoch    uint64
-	secondsPerEpoch uint64
-}
-
 const (
 	SystemAttributePrefix = "__NEOFS__"
 
 	ExpirationDurationAttr       = SystemAttributePrefix + "EXPIRATION_DURATION"
 	ExpirationTimestampAttr      = SystemAttributePrefix + "EXPIRATION_TIMESTAMP"
 	ExpirationRFC3339Attr        = SystemAttributePrefix + "EXPIRATION_RFC3339"
+	expirationEpochAttr          = SystemAttributePrefix + "EXPIRATION_EPOCH"
 	containerDomainNameAttribute = SystemAttributePrefix + "NAME"
 	containerDomainZoneAttribute = SystemAttributePrefix + "ZONE"
 
@@ -60,90 +54,49 @@ const (
 	handlerFieldName = "handler"
 )
 
-func getEpochDurations(ctx context.Context, networkInfoGetter networkInfoGetter) (*epochDurations, error) {
-	networkInfo, err := networkInfoGetter.NetworkInfo(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	res := &epochDurations{
-		currentEpoch:    networkInfo.CurrentEpoch(),
-		secondsPerEpoch: networkInfo.EpochDuration(),
-	}
-
-	if res.secondsPerEpoch == 0 {
-		return nil, errors.New("EpochDuration is zero")
-	}
-	return res, nil
-}
-
-func needParseExpiration(headers map[string]string) bool {
-	_, ok1 := headers[ExpirationDurationAttr]
-	_, ok2 := headers[ExpirationRFC3339Attr]
-	_, ok3 := headers[ExpirationTimestampAttr]
-	return ok1 || ok2 || ok3
-}
-
-func prepareExpirationHeader(headers map[string]string, epochDurations *epochDurations, now time.Time) error {
-	expirationInEpoch := headers[object.AttributeExpirationEpoch]
+func parseExpiration(headers map[string]string, now time.Time) (time.Time, error) {
+	var expTime time.Time
 
 	if timeRFC3339, ok := headers[ExpirationRFC3339Attr]; ok {
-		expTime, err := time.Parse(time.RFC3339, timeRFC3339)
+		t, err := time.Parse(time.RFC3339, timeRFC3339)
 		if err != nil {
-			return fmt.Errorf("couldn't parse value %s of header %s", timeRFC3339, ExpirationRFC3339Attr)
+			return time.Time{}, fmt.Errorf("couldn't parse value %s of header %s", timeRFC3339, ExpirationRFC3339Attr)
 		}
 
-		if expTime.Before(now) {
-			return fmt.Errorf("value %s of header %s must be in the future", timeRFC3339, ExpirationRFC3339Attr)
+		if t.Before(now) {
+			return time.Time{}, fmt.Errorf("value %s of header %s must be in the future", timeRFC3339, ExpirationRFC3339Attr)
 		}
-		updateExpirationHeader(headers, epochDurations, expTime.Sub(now))
+		expTime = t
 		delete(headers, ExpirationRFC3339Attr)
 	}
 
 	if timestamp, ok := headers[ExpirationTimestampAttr]; ok {
 		value, err := strconv.ParseInt(timestamp, 10, 64)
 		if err != nil {
-			return fmt.Errorf("couldn't parse value %s of header %s", timestamp, ExpirationTimestampAttr)
+			return time.Time{}, fmt.Errorf("couldn't parse value %s of header %s", timestamp, ExpirationTimestampAttr)
 		}
-		expTime := time.Unix(value, 0)
+		t := time.Unix(value, 0)
 
-		now := time.Now()
-		if expTime.Before(now) {
-			return fmt.Errorf("value %s of header %s must be in the future", timestamp, ExpirationTimestampAttr)
+		if t.Before(now) {
+			return time.Time{}, fmt.Errorf("value %s of header %s must be in the future", timestamp, ExpirationTimestampAttr)
 		}
-		updateExpirationHeader(headers, epochDurations, expTime.Sub(now))
+		expTime = t
 		delete(headers, ExpirationTimestampAttr)
 	}
 
 	if duration, ok := headers[ExpirationDurationAttr]; ok {
 		expDuration, err := time.ParseDuration(duration)
 		if err != nil {
-			return fmt.Errorf("couldn't parse value %s of header %s", duration, ExpirationDurationAttr)
+			return time.Time{}, fmt.Errorf("couldn't parse value %s of header %s", duration, ExpirationDurationAttr)
 		}
 		if expDuration <= 0 {
-			return fmt.Errorf("value %s of header %s must be positive", expDuration, ExpirationDurationAttr)
+			return time.Time{}, fmt.Errorf("value %s of header %s must be positive", expDuration, ExpirationDurationAttr)
 		}
-		updateExpirationHeader(headers, epochDurations, expDuration)
+		expTime = now.Add(expDuration)
 		delete(headers, ExpirationDurationAttr)
 	}
 
-	if expirationInEpoch != "" {
-		headers[object.AttributeExpirationEpoch] = expirationInEpoch
-	}
-
-	return nil
-}
-
-func updateExpirationHeader(headers map[string]string, durations *epochDurations, expDuration time.Duration) {
-	currentEpoch := durations.currentEpoch
-	numEpoch := (uint64(expDuration.Seconds()) + durations.secondsPerEpoch - 1) / durations.secondsPerEpoch
-
-	expirationEpoch := uint64(math.MaxUint64)
-	if numEpoch < math.MaxUint64-currentEpoch {
-		expirationEpoch = currentEpoch + numEpoch
-	}
-
-	headers[object.AttributeExpirationEpoch] = strconv.FormatUint(expirationEpoch, 10)
+	return expTime, nil
 }
 
 // decodeBasicACL is the same as DecodeString on acl.Basic but
