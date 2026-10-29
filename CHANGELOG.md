@@ -5,6 +5,7 @@ This document outlines major changes between releases.
 ## [Unreleased]
 
 ### Added
+- `X-Expiration-Timestamp` header in object GET/HEAD (#442)
 
 ### Fixed
 

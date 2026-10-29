@@ -2086,6 +2086,11 @@ components:
         X-Object-Type:
           schema:
             $ref: '#/components/schemas/ObjectType'
+        X-Expiration-Timestamp:
+          schema:
+            type: string
+          description: Object expiration time as a Unix timestamp in seconds. Present only
+            if the object has the expiration time set.
         Content-Length:
           schema:
             type: string
@@ -2139,6 +2144,11 @@ components:
         X-Object-Type:
           schema:
             $ref: '#/components/schemas/ObjectType'
+        X-Expiration-Timestamp:
+          schema:
+            type: string
+          description: Object expiration time as a Unix timestamp in seconds. Present only
+            if the object has the expiration time set.
         Content-Length:
           schema:
             type: string
@@ -2196,6 +2206,11 @@ components:
         X-Object-Type:
           schema:
             $ref: '#/components/schemas/ObjectType'
+        X-Expiration-Timestamp:
+          schema:
+            type: string
+          description: Object expiration time as a Unix timestamp in seconds. Present only
+            if the object has the expiration time set.
         Content-Length:
           schema:
             type: string

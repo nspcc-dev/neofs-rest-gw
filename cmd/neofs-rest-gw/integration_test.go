@@ -2177,7 +2177,7 @@ func restNewObjectUploadExpirationEpoch(ctx context.Context, t *testing.T, cnrID
 
 func restNewObjectUploadExpirationTime(ctx context.Context, t *testing.T, clientPool *pool.Pool, cnrID cid.ID, signer user.Signer) {
 	httpClient := defaultHTTPClient()
-	bearerToken := makeAuthTokenRequest(ctx, t, append([]apiserver.Record{formAllowRecord(apiserver.PUT)}, getRestrictBearerRecords()...), httpClient, false)
+	bearerToken := makeAuthTokenRequest(ctx, t, append([]apiserver.Record{formAllowRecord(apiserver.PUT), formAllowRecord(apiserver.HEAD)}, getRestrictBearerRecords()...), httpClient, false)
 	resp := completeBearerToken(ctx, t, httpClient, bearerToken)
 
 	query := make(url.Values)
@@ -2219,6 +2219,13 @@ func restNewObjectUploadExpirationTime(ctx context.Context, t *testing.T, client
 
 		hdr := head(t, addr)
 		require.True(t, expTime.Equal(hdr.ExpirationTime()), "expected %s, got %s", expTime, hdr.ExpirationTime())
+
+		request, err := http.NewRequest(http.MethodHead, testHost+"/v1/objects/"+cnrID.EncodeToString()+"/by_id/"+addr.ObjectId+"?"+query.Encode(), nil)
+		require.NoError(t, err)
+		request.Header.Set("Authorization", "Bearer "+resp.Token)
+
+		headers, _ := doRequest(t, httpClient, request.WithContext(ctx), http.StatusOK, nil)
+		require.Equal(t, strconv.FormatInt(expTime.Unix(), 10), headers.Get("X-Expiration-Timestamp"))
 	})
 
 	t.Run("duration", func(t *testing.T) {

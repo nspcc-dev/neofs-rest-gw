@@ -42,6 +42,7 @@ const (
 	userAttributesHeader        = "X-Attributes"
 	userAttributesEncodedHeader = "X-Attributes-Base64"
 	objectTypeHeader            = "X-Object-Type"
+	expirationTimestampHeader   = "X-Expiration-Timestamp"
 
 	attributeFilepathHTTP = "Filepath"
 	attributeFilenameHTTP = "Filename"
@@ -394,6 +395,9 @@ func (a *RestAPI) setAttributes(ctx echo.Context, params setAttributeParams, log
 	ctx.Response().Header().Set("X-Object-Id", params.oid)
 	ctx.Response().Header().Set("X-Owner-Id", params.header.Owner().EncodeToString())
 	ctx.Response().Header().Set(objectTypeHeader, params.header.Type().String())
+	if exp := params.header.ExpirationTime(); !exp.IsZero() {
+		ctx.Response().Header().Set(expirationTimestampHeader, strconv.FormatInt(exp.Unix(), 10))
+	}
 
 	var (
 		contentType             string
