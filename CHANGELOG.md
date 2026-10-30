@@ -5,9 +5,21 @@ This document outlines major changes between releases.
 ## [Unreleased]
 
 ### Added
-- `X-Expiration-Timestamp` header in object GET/HEAD (#442)
 
 ### Fixed
+
+### Changed
+
+### Removed
+
+### Updated
+
+### Upgrading from 0.21.0
+
+## [0.21.0] - 2026-10-30
+
+### Added
+- `X-Expiration-Timestamp` header in object GET/HEAD (#442)
 
 ### Changed
 - GW now specifies payload length of uploaded objects if known (#443)
@@ -615,4 +627,5 @@ Please refer to [GitHub releases](https://github.com/nspcc-dev/neofs-rest-gw/rel
 [0.19.0]: https://github.com/nspcc-dev/neofs-rest-gw/compare/v0.18.0...v0.19.0
 [0.19.1]: https://github.com/nspcc-dev/neofs-rest-gw/compare/v0.19.0...v0.19.1
 [0.20.0]: https://github.com/nspcc-dev/neofs-rest-gw/compare/v0.19.1...v0.20.0
-[Unreleased]: https://github.com/nspcc-dev/neofs-rest-gw/compare/v0.20.0...master
+[0.21.0]: https://github.com/nspcc-dev/neofs-rest-gw/compare/v0.20.0...v0.21.0
+[Unreleased]: https://github.com/nspcc-dev/neofs-rest-gw/compare/v0.21.0...master
